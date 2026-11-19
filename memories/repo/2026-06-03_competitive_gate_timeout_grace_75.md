@@ -1,0 +1,5 @@
+- Competitive-Gate zeigte wiederholt False-Red knapp ueber Hardlimit: 660s+30s und 660s+45s reichten nicht (z.B. 706.25s Walltime).
+- Fix in `tests/normative/test_competitive_ci_gate.py`: `_resolve_competitive_worker_time_budget()` default grace auf 15% geclamped 20..75s (bei 660 => 75, effektiv 735s), Override via `AURIK_COMPETITIVE_BENCHMARK_GRACE_S` bleibt moeglich.
+- Sync: `.vscode/tasks.json` Competitive-Task setzt explizit `AURIK_COMPETITIVE_BENCHMARK_GRACE_S=75`.
+- Sync: `scripts/resume_quality_gates.sh` Competitive-Block setzt ebenfalls `AURIK_COMPETITIVE_BENCHMARK_GRACE_S=75`.
+- Structural-Tests fuer Worker-Time-Budget aktualisiert (Expected 75/735).

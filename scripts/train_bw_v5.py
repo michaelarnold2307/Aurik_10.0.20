@@ -1,0 +1,532 @@
+"""
+BW Reconstructor V5 — Waveform-Domain U-Net + Multi-Resolution STFT Loss.
+
+Statt Mel→Mel: Direkte Waveform-Rekonstruktion mit 1D-Convolutions.
+Kein Griffin-Lim nötig — das Modell lernt Phase implizit über STFT-Loss.
+Optional: BigVGAN als Post-Processor für "Air"-Frequenzen (> 16 kHz).
+
+Architektur inspiriert von Demucs/Wave-U-Net:
+  - 1D Encoder-Decoder mit GLU-Aktivierung
+  - Skip-Connections auf jeder Ebene
+  - LSTM-Bottleneck für Langzeit-Kontext
+  - FiLM-Conditioning auf Cutoff-Frequenz
+
+Loss: Multi-Resolution STFT Loss (3 FFT-Größen) + L1-Waveform
+      + HF-Band-Loss (§v10.19) + optional maskierungs-informierter A1-Hör-Loss
+      (KP-7/F11 Re-Training: ``--a1-weight``, Muster SOTA-A1/EAR-VAE — Lader aus
+      ``train_banquet_vinyl_finetune.load_a1_masking_loss``, §G9 (copilot-instructions.md) eine Quelle).
+"""
+
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from scipy.signal import butter, sosfiltfilt
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# §G9 (copilot-instructions.md): eine Quelle — der A1-Hör-Loss-Lader liegt
+# kanonisch im BANQUET-Finetune-Skript; ``sys.path[0]`` = scripts/ (Skript-Aufruf).
+from train_banquet_vinyl_finetune import load_a1_masking_loss
+
+from backend.core.training_artifacts import save_guarded
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Config
+# ═══════════════════════════════════════════════════════════════════════════
+
+SR = 22050
+CHUNK_SEC = 3.0  # seconds per training chunk
+CHUNK_SAMPLES = int(CHUNK_SEC * SR)
+CUTOFFS = [3000, 5000, 8000, 11000]
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Synthetic audio generator
+# ═══════════════════════════════════════════════════════════════════════════
+
+_NOTES = np.array([130.81, 164.81, 196.00, 220.00, 261.63, 329.63, 392.00, 523.25, 659.25, 783.99])
+
+
+def make_synthetic(n_samples, sr):
+    """Generate rich audio: harmonics + transients + noise + HF-Layer.
+
+    §v10.19-Fix: Frühere Versionen erzeugten oberhalb der Trainings-Cutoffs
+    (3000–11000 Hz) fast keinen Inhalt — das Modell lernte dort Stille statt
+    Rekonstruktion. Der HF-Layer garantiert rekonstruierbare Ziele > 8 kHz.
+    """
+    t = np.arange(n_samples, dtype=np.float64) / sr
+    y = np.zeros(n_samples, dtype=np.float64)
+
+    # Harmonic content
+    for _ in range(np.random.randint(1, 4)):
+        f0 = np.random.choice(_NOTES) * np.random.uniform(0.5, 2.0)
+        for h in range(1, np.random.randint(2, 8)):
+            amp = 0.4 / (h ** np.random.uniform(0.5, 1.5))
+            y += amp * np.sin(2 * np.pi * f0 * h * t + np.random.uniform(0, 2 * np.pi))
+
+    # HF-Layer (§v10.19): echte Ziele oberhalb der Cutoffs (8–11 kHz),
+    # damit 8000/11000-Hz-Bandbegrenzungen rekonstruierbaren Inhalt haben.
+    for _ in range(np.random.randint(2, 5)):
+        _f_hf = np.random.uniform(8_000, 10_900)
+        _a_hf = np.random.uniform(0.02, 0.10)
+        _k = np.random.uniform(1.0, 2.5)  # leichte Inharmonizität
+        y += _a_hf * np.sin(2 * np.pi * _f_hf * _k * t + np.random.uniform(0, 2 * np.pi))
+
+    # Transients (drum-like)
+    for _ in range(np.random.randint(0, 3)):
+        pos = np.random.randint(n_samples // 4, 3 * n_samples // 4)
+        decay = np.exp(-np.arange(min(2000, n_samples - pos)) / np.random.uniform(50, 300))
+        freq = np.random.uniform(200, 2000)
+        pulse = decay * np.sin(2 * np.pi * freq * np.arange(len(decay)) / sr)
+        y[pos : pos + len(pulse)] += 0.3 * pulse
+
+    # Noise
+    noise = np.random.randn(n_samples).astype(np.float64)
+    color = np.random.choice(["pink", "brown", "white"])
+    if color == "pink":
+        noise = np.cumsum(noise)
+    elif color == "brown":
+        noise = np.cumsum(np.cumsum(noise))
+    noise /= np.abs(noise).max() + 1e-8
+    y += 0.05 * noise
+
+    # Normalize
+    peak = np.abs(y).max() + 1e-8
+    y /= peak
+    y = np.clip(y, -1.0, 1.0)
+    return y.astype(np.float32)
+
+
+def butter_lp(y, cutoff, sr, order=6):
+    nyq = sr / 2
+    if cutoff >= nyq * 0.98:
+        return y.copy()
+    sos = butter(order, cutoff / nyq, btype="low", output="sos")
+    return sosfiltfilt(sos, y).astype(np.float32)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Waveform U-Net (1D)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class FiLM1D(nn.Module):
+    """1D FiLM: condition on cutoff frequency."""
+
+    def __init__(self, cond_dim, feat_ch):
+        super().__init__()
+        self.scale = nn.Linear(cond_dim, feat_ch)
+        self.bias = nn.Linear(cond_dim, feat_ch)
+
+    def forward(self, features, condition):
+        # features: (B, C, T), condition: (B, cond_dim)
+        s = self.scale(condition).unsqueeze(-1) + 1.0
+        b = self.bias(condition).unsqueeze(-1)
+        return features * s + b
+
+
+class EncoderBlock(nn.Module):
+    """Downsampling encoder block: Conv1d + GLU + optional downsample."""
+
+    def __init__(self, in_ch, out_ch, downsample=True):
+        super().__init__()
+        self.downsample = downsample
+        self.conv = nn.Conv1d(in_ch, out_ch * 2, 3, padding=1, bias=False)
+        self.norm = nn.BatchNorm1d(out_ch * 2)
+        if downsample:
+            self.down = nn.Conv1d(out_ch, out_ch, 4, stride=2, padding=1, bias=False)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.norm(x)
+        x = F.glu(x, dim=1)  # splits channels in half, applies gate
+        if self.downsample:
+            x = self.down(x)
+        return x
+
+
+class DecoderBlock(nn.Module):
+    """Upsampling decoder block with skip connection."""
+
+    def __init__(self, in_ch, skip_ch, out_ch):
+        super().__init__()
+        self.up = nn.ConvTranspose1d(in_ch, in_ch, 4, stride=2, padding=1, bias=False)
+        self.conv = nn.Conv1d(in_ch + skip_ch, out_ch * 2, 3, padding=1, bias=False)
+        self.norm = nn.BatchNorm1d(out_ch * 2)
+
+    def forward(self, x, skip):
+        x = self.up(x)
+        # Align lengths
+        if x.shape[-1] > skip.shape[-1]:
+            x = x[..., : skip.shape[-1]]
+        elif x.shape[-1] < skip.shape[-1]:
+            skip = skip[..., : x.shape[-1]]
+        x = torch.cat([x, skip], dim=1)
+        x = self.conv(x)
+        x = self.norm(x)
+        return F.glu(x, dim=1)
+
+
+class WaveformUNet(nn.Module):
+    """1D U-Net for waveform reconstruction with FiLM conditioning."""
+
+    def __init__(self, base_ch=32):
+        super().__init__()
+        C = base_ch
+
+        # Encoder
+        self.enc1 = EncoderBlock(1, C, downsample=True)  # T -> T/2
+        self.enc2 = EncoderBlock(C, C * 2, downsample=True)  # T/2 -> T/4
+        self.enc3 = EncoderBlock(C * 2, C * 4, downsample=True)  # T/4 -> T/8
+        self.enc4 = EncoderBlock(C * 4, C * 8, downsample=True)  # T/8 -> T/16
+
+        # LSTM Bottleneck
+        self.lstm = nn.LSTM(C * 8, C * 8, num_layers=2, bidirectional=True, batch_first=True)
+        self.lstm_proj = nn.Conv1d(C * 16, C * 8, 1)  # bidirectional -> single
+
+        # FiLM at bottleneck
+        self.film = FiLM1D(1, C * 8)
+
+        # Decoder with skip connections
+        self.dec4 = DecoderBlock(C * 8, C * 4, C * 4)  # T/16 -> T/8
+        self.dec3 = DecoderBlock(C * 4, C * 2, C * 2)  # T/8 -> T/4
+        self.dec2 = DecoderBlock(C * 2, C, C)  # T/4 -> T/2
+        self.dec1 = DecoderBlock(C, 0, C)  # T/2 -> T  (no skip for input)
+
+        self.final = nn.Sequential(
+            nn.Conv1d(C, C, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv1d(C, 1, 1),
+            nn.Tanh(),
+        )
+
+    def forward(self, x, cutoff_norm):
+        # x: (B, 1, T), cutoff_norm: (B, 1)
+        e1 = self.enc1(x)  # (B, C,   T/2)
+        e2 = self.enc2(e1)  # (B, 2C,  T/4)
+        e3 = self.enc3(e2)  # (B, 4C,  T/8)
+        e4 = self.enc4(e3)  # (B, 8C,  T/16)
+
+        # LSTM: (B, 8C, T/16) -> (B, T/16, 8C) -> LSTM -> (B, T/16, 16C) -> (B, 8C, T/16)
+        b_lstm = e4.permute(0, 2, 1)
+        b_lstm, _ = self.lstm(b_lstm)
+        b_lstm = b_lstm.permute(0, 2, 1)
+        b = self.lstm_proj(b_lstm)
+
+        # FiLM
+        b = self.film(b, cutoff_norm)
+
+        d4 = self.dec4(b, e3)  # T/8
+        d3 = self.dec3(d4, e2)  # T/4
+        d2 = self.dec2(d3, e1)  # T/2
+
+        # Final block without skip
+        d2_up = F.interpolate(d2, scale_factor=2, mode="linear", align_corners=False)
+        if d2_up.shape[-1] > x.shape[-1]:
+            d2_up = d2_up[..., : x.shape[-1]]
+        d1 = self.final(d2_up)
+
+        return d1
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Multi-Resolution STFT Loss (waveform domain)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def mr_stft_loss(pred_wave, target_wave):
+    """Multi-resolution STFT loss on waveforms."""
+    loss = 0.0
+    for n_fft in [512, 1024, 2048]:
+        for hop in [n_fft // 4, n_fft // 2]:
+            pred_spec = torch.stft(
+                pred_wave.squeeze(1),
+                n_fft=n_fft,
+                hop_length=hop,
+                window=torch.hann_window(n_fft, device=pred_wave.device),
+                return_complex=True,
+            )
+            target_spec = torch.stft(
+                target_wave.squeeze(1),
+                n_fft=n_fft,
+                hop_length=hop,
+                window=torch.hann_window(n_fft, device=target_wave.device),
+                return_complex=True,
+            )
+            # Spectral convergence + magnitude loss
+            sc_loss = (pred_spec - target_spec).abs().pow(2).sum() / (target_spec.abs().pow(2).sum() + 1e-8)
+            mag_loss = F.l1_loss(pred_spec.abs(), target_spec.abs())
+            loss += sc_loss + mag_loss  # type: ignore[assignment]
+    return loss / 6.0  # Average over 6 combinations
+
+
+def hf_band_loss(pred_wave, target_wave, cutoff_hz=8000.0, sr=SR):
+    """Hochband-Loss (§v10.19): erzwingt HF-Rekonstruktion über cutoff_hz.
+
+    Ohne diesen Term wird die Loss vom dominanten Tief-/Mittelband bestimmt —
+    das Modell lernt, den fainten HF-Anteil zu ignorieren (HF-Gain-Gate schlug
+    mit 0.21x fehl). Maskiert alle STFT-Bins > cutoff und gewichtet sie hart.
+    """
+    n_fft = 1024
+    hop = n_fft // 4
+    win = torch.hann_window(n_fft, device=pred_wave.device)
+    pred_spec = torch.stft(pred_wave.squeeze(1), n_fft=n_fft, hop_length=hop, window=win, return_complex=True)
+    target_spec = torch.stft(target_wave.squeeze(1), n_fft=n_fft, hop_length=hop, window=win, return_complex=True)
+    freqs = torch.fft.rfftfreq(n_fft, 1 / sr).to(pred_wave.device)
+    mask = (freqs > cutoff_hz).float().unsqueeze(-1)  # [F, 1]
+    pred_hf = pred_spec.abs() * mask
+    target_hf = target_spec.abs() * mask
+    return F.mse_loss(pred_hf, target_hf)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Training
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def train(
+    epochs=200,
+    batch_size=4,
+    lr=1e-4,
+    base_ch=32,
+    steps_per_epoch=200,
+    device="cpu",
+    seed=42,
+    a1_weight=0.0,
+    out_dir="models/bw_reconstructor",
+    skip_export=False,
+    pregen_samples=0,
+):
+    # §G5 (copilot-instructions.md): Seeds pro Session — reproduzierbare Trainingsläufe.
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    device = torch.device(device)
+    if device.type == "cuda" and not torch.cuda.is_available():
+        # §V6 (copilot-instructions.md): ehrlicher Fallback statt Stille.
+        print("WARNUNG: CUDA angefordert, aber nicht verfügbar — CPU-Fallback (§V6, copilot-instructions.md)")
+        device = torch.device("cpu")
+    print(f"Device: {device} (Seed: {seed})")
+
+    # KP-7/F11: maskierungs-informierter A1-Hör-Loss (Muster SOTA-A1/EAR-VAE).
+    a1_loss_fn = load_a1_masking_loss(SR) if a1_weight > 0.0 else None
+    if a1_weight > 0.0:
+        print(
+            f"A1-Hör-Loss: aktiv (Gewicht {a1_weight})"
+            if a1_loss_fn is not None
+            else "WARNUNG: A1-Loss nicht ladbar — weiter ohne (§V6, copilot-instructions.md)"
+        )
+
+    model = WaveformUNet(base_ch=base_ch).to(device)
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"WaveformUNet: {n_params:,} params")
+    print(f"Chunk: {CHUNK_SAMPLES} samples ({CHUNK_SEC}s) @ {SR} Hz")
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs)
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Try loading V3 generator weights for the convolutional layers (partial transfer)
+    v3_path = Path("models/bw_reconstructor/best_model_v3.pt")
+    if v3_path.exists():
+        ckpt = torch.load(v3_path, map_location=device, weights_only=True)
+        ms = model.state_dict()
+        loaded = 0
+        for k, v in ckpt["model_state_dict"].items():
+            # Map 2D conv weights to 1D where possible
+            k.replace("enc1", "enc1").replace("enc2", "enc2")
+            if k in ms and v.shape == ms[k].shape:
+                ms[k].copy_(v)
+                loaded += 1
+        model.load_state_dict(ms, strict=False)
+        if loaded > 0:
+            print(f"Loaded {loaded} compatible weights from V3")
+
+    best_loss = float("inf")
+    needs_pad = CHUNK_SAMPLES % (2**4)  # 4 downsamples = factor 16
+    if needs_pad:
+        target_len = ((CHUNK_SAMPLES // 16) + 1) * 16
+        print(f"Padding target length: {CHUNK_SAMPLES} -> {target_len}")
+    else:
+        target_len = CHUNK_SAMPLES
+
+    print(f"Epochs: {epochs}, Batch: {batch_size}, Steps/epoch: {steps_per_epoch}")
+    print(f"LR: {lr}, MR-STFT Loss (waveform)")
+    print()
+
+    # KP-7-Performance: per-Step-Datengenerierung (make_synthetic + butter_lp,
+    # ~2 s/Step CPU-gebunden) dominiert die GPU-Trainingszeit. --pregen-samples
+    # erzeugt den synthetischen Pool EINMAL deterministisch (gleicher Seed ⇒
+    # gleicher Pool); die Steps ziehen nur noch Indizes. Legacy (0) unverändert.
+    pregen = None
+    if pregen_samples > 0:
+        pregen = []
+        for _ in range(pregen_samples):
+            y_full = make_synthetic(target_len + SR, SR)
+            cutoff = np.random.choice(CUTOFFS)
+            y_lim = butter_lp(y_full, cutoff, SR)
+            start = np.random.randint(0, len(y_full) - target_len)
+            pregen.append(
+                (
+                    y_lim[start : start + target_len].copy(),
+                    y_full[start : start + target_len].copy(),
+                    cutoff / 11025.0,
+                )
+            )
+        print(f"Pre-Gen-Pool: {len(pregen)} Samples ({pregen_samples}) generiert")
+
+    for epoch in range(epochs):
+        model.train()
+        total_loss = 0.0
+        t0 = time.time()
+
+        for step in range(steps_per_epoch):
+            batch_x, batch_y, batch_c = [], [], []
+
+            if pregen is not None:
+                for _idx in np.random.randint(0, len(pregen), size=batch_size):
+                    _px, _py, _pc = pregen[_idx]
+                    batch_x.append(torch.from_numpy(_px))
+                    batch_y.append(torch.from_numpy(_py))
+                    batch_c.append(_pc)
+            else:
+                for _ in range(batch_size):
+                    y_full = make_synthetic(target_len + SR, SR)
+                    cutoff = np.random.choice(CUTOFFS)
+                    y_lim = butter_lp(y_full, cutoff, SR)
+
+                    # Random crop
+                    start = np.random.randint(0, len(y_full) - target_len)
+                    batch_x.append(torch.from_numpy(y_lim[start : start + target_len]))
+                    batch_y.append(torch.from_numpy(y_full[start : start + target_len]))
+                    batch_c.append(cutoff / 11025.0)
+
+            x = torch.stack(batch_x).unsqueeze(1).to(device)  # (B, 1, T)
+            y = torch.stack(batch_y).unsqueeze(1).to(device)
+            c = torch.tensor(batch_c, dtype=torch.float32, device=device).unsqueeze(1)
+
+            optimizer.zero_grad()
+            pred = model(x, c)
+
+            loss_wave = F.l1_loss(pred, y)
+            loss_stft = mr_stft_loss(pred, y)
+            loss_hf = hf_band_loss(pred, y, cutoff_hz=8000.0)  # §v10.19: HF-Rekonstruktion erzwingen
+            loss = loss_wave + 0.5 * loss_stft + 6.0 * loss_hf
+            if a1_loss_fn is not None:
+                loss = loss + a1_weight * a1_loss_fn(pred, y)
+
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
+            optimizer.step()
+
+            total_loss += loss.item()
+
+        avg_loss = total_loss / steps_per_epoch
+        scheduler.step()
+        elapsed = time.time() - t0
+
+        print(
+            f"Epoch {epoch + 1:3d}/{epochs} | Loss {avg_loss:.4f} | "
+            f"LR {scheduler.get_last_lr()[0]:.1e} | {elapsed:.0f}s",
+            flush=True,
+        )
+
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            save_guarded(
+                out_dir / "best_model_v5.pt", {"model_state_dict": model.state_dict(), "epoch": epoch, "loss": avg_loss}
+            )
+
+    # Export ONNX
+    if skip_export:
+        print("ONNX-Export übersprungen (--skip-export)")
+        print(f"Best loss: {best_loss:.4f}")
+        print("Done!")
+        return
+    model.eval()
+    dummy_input = torch.randn(1, 1, target_len).to(device)
+    dummy_cutoff = torch.tensor([[0.5]], dtype=torch.float32, device=device)
+
+    class ExportWrapper(nn.Module):
+        def __init__(self, m):
+            super().__init__()
+            self.m = m
+
+        def forward(self, x, cutoff):
+            return self.m(x, cutoff)
+
+    onnx_path = out_dir / "bw_reconstructor_v5.onnx"
+    torch.onnx.export(
+        ExportWrapper(model),
+        (dummy_input, dummy_cutoff),
+        str(onnx_path),
+        input_names=["waveform", "cutoff"],
+        output_names=["waveform_out"],
+        dynamic_axes={
+            "waveform": {0: "batch", 2: "time"},
+            "cutoff": {0: "batch"},
+            "waveform_out": {0: "batch", 2: "time"},
+        },
+        opset_version=17,
+        dynamo=False,  # Legacy-Exporter: torch 2.11-Dynamo-Pfad hängt am LSTM-Graphen (KP-7-Befund)
+    )
+
+    import onnx
+
+    onnx.checker.check_model(str(onnx_path))
+    size_mb = onnx_path.stat().st_size / 1e6
+    print(f"\nONNX exported: {onnx_path} ({size_mb:.1f} MB)")
+    print(f"Best loss: {best_loss:.4f}")
+    print("Done!")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    p = argparse.ArgumentParser()
+    p.add_argument("--epochs", type=int, default=200)
+    p.add_argument("--batch-size", type=int, default=4)
+    p.add_argument("--lr", type=float, default=1e-4)
+    p.add_argument("--base-ch", type=int, default=32)
+    p.add_argument("--steps-per-epoch", type=int, default=200)
+    p.add_argument("--device", type=str, default="cpu", help="cpu oder cuda (GPU-Training, §G5-Seed)")
+    p.add_argument("--seed", type=int, default=42, help="Determinismus §G5 (copilot-instructions.md)")
+    p.add_argument(
+        "--a1-weight",
+        type=float,
+        default=0.0,
+        help="KP-7/F11: Gewicht des maskierungs-informierten A1-Hör-Losses (0.0 = aus, Bestandsverhalten)",
+    )
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default="models/bw_reconstructor",
+        help="Ausgabeverzeichnis für Checkpoint + ONNX (Re-Training: separates Verzeichnis wählen)",
+    )
+    p.add_argument("--skip-export", action="store_true", help="ONNX-Export am Ende überspringen (Timing-/Smoke-Läufe)")
+    p.add_argument(
+        "--pregen-samples",
+        type=int,
+        default=0,
+        help="KP-7: synthetischen Pool EINMAL vorab erzeugen (deterministisch, §G5, copilot-instructions.md) — 0 = Legacy-Generierung je Step",
+    )
+    args = p.parse_args()
+    train(
+        args.epochs,
+        args.batch_size,
+        args.lr,
+        args.base_ch,
+        args.steps_per_epoch,
+        args.device,
+        args.seed,
+        args.a1_weight,
+        args.out_dir,
+        args.skip_export,
+        args.pregen_samples,
+    )

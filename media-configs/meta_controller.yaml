@@ -1,0 +1,222 @@
+meta_controller:
+  name: medium_offline_media_chain_classifier
+  mode: offline
+  goal: robust_routing_to_profile_yaml
+
+  segmentation:
+    pilot_segments:
+      count: 3
+      length_sec: 6.0
+      selection:
+        - loud_transient_rich
+        - quiet_low_energy
+        - vocal_rich_if_present
+    analysis_segments:
+      length_sec: 2.0
+      overlap_sec: 0.5
+
+  analysis_stft:
+    base:
+      window_size: 2048
+      hop_size: 256
+      window: hann
+    hf:
+      window_size: 4096
+      hop_size: 512
+      window: hann
+
+  hard_tests:
+    dat_digital_errors:
+      digital_mute:
+        rms_dbfs_threshold: -90.0
+        min_duration_ms: 8
+        min_count: 1
+      zero_order_hold:
+        identical_samples_min_ms: 3
+        min_count: 1
+
+    lossy_codec_present:
+      hf_warble:
+        band_hz: [6000, 16000]
+        warble_energy_strong: 0.020
+        warble_randomness_min: 0.60
+      trigger_all_of:
+        - hf_warble_energy_strong
+        - hf_warble_randomness_min
+
+    lossy2_streaming_suspected:
+      hf_warble_energy_very_strong: 0.025
+      pre_echo_strong_db: -17
+      joint_stereo_instability_min: 0.60
+      trigger_all_of:
+        - hf_warble_energy_very_strong
+        - pre_echo_strong_db
+        - joint_stereo_instability_min
+
+    shellac_or_instant_disc_suspected:
+      crackle_density_min_per_sec: 120
+
+    vinyl_suspected:
+      click_rate_min_per_sec: 3.0
+      crackle_density_range_per_sec: [30, 120]
+
+    cd_preemphasis_suspected:
+      hf_tilt_db_min: 10.0
+      sibilance_spike_db_min: 12.0
+      spectral_centroid_hz_min: 3500
+      trigger_all_of:
+        - hf_tilt_db_min
+        - sibilance_spike_db_min
+        - spectral_centroid_hz_min
+
+  candidate_sets:
+    profiles:
+      - shellac_medium_offline
+      - vinyl_medium_offline_stereo
+      - tape_medium_offline_stereo
+      - cassette_medium_offline_stereo
+      - cd_medium_offline_stereo
+      - dat_medium_offline_stereo
+      - minidisc_medium_offline_stereo
+      - mp3_medium_offline_stereo
+      - tape_to_mp3_medium_offline_stereo
+      - cassette_to_mp3_medium_offline_stereo
+      - cd_to_mp3_medium_offline_stereo
+      - vinyl_to_mp3_medium_offline_stereo
+      - tape_to_cd_to_mp3_medium_offline_stereo
+      - cassette_to_cd_to_mp3_medium_offline_stereo
+      - shellac_to_cd_to_mp3_medium_offline
+      - dat_to_cd_to_mp3_medium_offline_stereo
+      - minidisc_to_cd_to_mp3_medium_offline_stereo
+      - streaming_to_mp3_lossy2_medium_offline_stereo
+      - field_tape_to_mp3_medium_offline_stereo
+
+  scoring:
+    features:
+      - lossy_present
+      - lossy2_present
+      - dat_error_present
+      - wow_E
+      - flutter_E
+      - corr_LR_mod
+      - hf_dropout_count
+      - digital_mute_count
+      - zero_hold_events
+      - click_rate_per_sec
+      - crackle_density_per_sec
+      - noise_floor_A_dbfs
+      - nonstationarity
+      - hf_coherence
+      - phase_slope_rad_per_khz
+      - preemph_evidence
+      - joint_stereo_instability
+      - pre_echo_db
+      - hf_warble_E
+    archetype_weights:
+      dat:
+        dat_error_present: 5.0
+        digital_mute_count: 2.0
+        zero_hold_events: 2.0
+        lossy_present: 0.5
+        wow_E: -1.0
+        click_rate_per_sec: -0.3
+      shellac:
+        crackle_density_per_sec: 4.0
+        click_rate_per_sec: 1.5
+        lossy_present: 0.5
+        wow_E: -0.5
+        hf_coherence: -0.2
+      vinyl:
+        click_rate_per_sec: 3.0
+        crackle_density_per_sec: 1.0
+        lossy_present: 0.5
+        wow_E: -0.5
+        flutter_E: -0.2
+      tape:
+        wow_E: 2.2
+        flutter_E: 1.8
+        hf_dropout_count: 2.0
+        corr_LR_mod: 1.2
+        lossy_present: 0.5
+        crackle_density_per_sec: -1.0
+      cassette:
+        wow_E: 2.2
+        flutter_E: 1.4
+        nonstationarity: 1.5
+        noise_floor_A_dbfs: 1.0
+        hf_coherence: -0.5
+        lossy_present: 0.5
+        hf_dropout_count: 1.2
+      cd:
+        lossy_present: -1.5
+        dat_error_present: -1.5
+        wow_E: -1.0
+        flutter_E: -1.0
+        click_rate_per_sec: -0.8
+        crackle_density_per_sec: -1.2
+        noise_floor_A_dbfs: -1.0
+        preemph_evidence: 1.5
+      minidisc:
+        lossy_present: 1.5
+        hf_warble_E: 1.2
+        pre_echo_db: 0.8
+        joint_stereo_instability: 0.8
+        wow_E: -0.8
+        dat_error_present: -1.0
+      mp3:
+        lossy_present: 2.0
+        hf_warble_E: 1.6
+        pre_echo_db: 1.0
+        joint_stereo_instability: 1.0
+        wow_E: -0.8
+        dat_error_present: -1.0
+      streaming_lossy2:
+        lossy2_present: 3.0
+        lossy_present: 1.0
+        hf_warble_E: 1.2
+        pre_echo_db: 1.0
+        joint_stereo_instability: 1.2
+    profile_map:
+      shellac_medium_offline: { archetype: shellac, bias: 0.0 }
+      vinyl_medium_offline_stereo: { archetype: vinyl, bias: 0.0 }
+      tape_medium_offline_stereo: { archetype: tape, bias: 0.0 }
+      cassette_medium_offline_stereo: { archetype: cassette, bias: 0.0 }
+      cd_medium_offline_stereo: { archetype: cd, bias: 0.0 }
+      dat_medium_offline_stereo: { archetype: dat, bias: 0.0 }
+      minidisc_medium_offline_stereo: { archetype: minidisc, bias: 0.0 }
+      mp3_medium_offline_stereo: { archetype: mp3, bias: 0.0 }
+      tape_to_mp3_medium_offline_stereo: { archetype: tape, bias: 0.6 }
+      cassette_to_mp3_medium_offline_stereo: { archetype: cassette, bias: 0.6 }
+      cd_to_mp3_medium_offline_stereo: { archetype: mp3, bias: 0.4 }
+      vinyl_to_mp3_medium_offline_stereo: { archetype: vinyl, bias: 0.6 }
+      tape_to_cd_to_mp3_medium_offline_stereo: { archetype: tape, bias: 0.5 }
+      cassette_to_cd_to_mp3_medium_offline_stereo: { archetype: cassette, bias: 0.5 }
+      shellac_to_cd_to_mp3_medium_offline: { archetype: shellac, bias: 0.5 }
+      dat_to_cd_to_mp3_medium_offline_stereo: { archetype: dat, bias: 0.5 }
+      minidisc_to_cd_to_mp3_medium_offline_stereo: { archetype: minidisc, bias: 0.4 }
+      streaming_to_mp3_lossy2_medium_offline_stereo: { archetype: streaming_lossy2, bias: 0.8 }
+      field_tape_to_mp3_medium_offline_stereo: { archetype: tape, bias: 0.3 }
+  pilot_run:
+    enabled: true
+    compare_top_k: 2
+    validators:
+      require_no_hard_gate_violations: true
+      forbid_musical_noise_increase: true
+      forbid_chorus_increase: true
+      max_transient_smear_percent: 3.0
+      mono_fold_max_regression_db: 0.0
+    decision:
+      min_delta_anchor_to_win: 0.010
+      if_both_fail:
+        fallback_profile: cd_medium_offline_stereo
+      if_lossy_present_and_uncertain:
+        fallback_profile: streaming_to_mp3_lossy2_medium_offline_stereo
+  routing:
+    confidence:
+      method: margin_sigmoid
+      min_confidence_strict_mode: 0.55
+    strict_mode_overrides:
+      wow_flutter_allowed: limited
+      denoise_allowed: off
+      repair_allowed: low
+      codec_taming_required: auto

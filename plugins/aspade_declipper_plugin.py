@@ -1,0 +1,335 @@
+"""A-SPADE-Declipper-Plugin — neuronaler Declip-Zweig für Phase 07.
+
+DECLIPPER_SOTA_PLAN.md Slice B (2026-09-12): A-SPADE-Klasse (Gaultier et al.,
+IEEE/ACM TASLP 2023 — unrolled ADMM, 1-D-CNN, deterministische Feed-Forward-
+Inferenz) als Quality-Zweig für starkes Clipping, wo PCHIP nichts bewirkt.
+
+Vertrag:
+    - Modell-Pfad: models/aspade/aspade_declipper.onnx (Waveform→Waveform,
+      float32, time-domain).
+    - Kein Modell vorhanden → Plugin meldet `is_available() == False`;
+      der Aufrufer fällt auf DSP/CQT-Diff zurück (§V6 (copilot-instructions.md):
+      logger.warning + Begründung).
+    - Deterministisch (§G5 (copilot-instructions.md)): kein Sampling, feste
+      Thread-Zahlen, chunked Inferenz mit Hann-Overlap-Add.
+    - Never-worsen bleibt beim Aufrufer (Phase 07, Harmonik-Proxy).
+
+Kein Netzwerk, kein Docker — lokales ONNX über ml_device_manager/Providers.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+import numpy as np
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_MODEL_SUBPATH = "models/aspade/aspade_declipper.onnx"
+TARGET_SR = 48_000
+CHUNK_SEC = 10.0
+OVERLAP_SEC = 0.5
+_PEAK_NORM = 0.95
+
+
+# ── APPLADE-Pfad (Gaultier et al., ICASSP 2022 — aus dem Paper implementiert) ──
+# DGT: Hann 1024, Hop 256, FFT 1024, kanonisch-tightes Fenster (deterministisch).
+# PnP-ADMM: x ← Π_Γ(F.H(v−u)); v ← T_θ(Fx+u); u ← Fx−v+u; λ = 0.3·Clip-Prozent.
+_APL_W, _APL_A, _APL_M = 1024, 256, 1024
+
+
+def _apl_tight_window() -> np.ndarray:
+    g = np.hanning(_APL_W)
+    s = np.zeros(_APL_W)
+    for n in range(_APL_W):
+        acc = 0.0
+        for k in range(-4, 5):
+            idx = n - k * _APL_A
+            if 0 <= idx < _APL_W:
+                acc += g[idx] ** 2
+        s[n] = acc
+    return (g / np.sqrt(s)).astype(np.float32)  # type: ignore[no-any-return]
+
+
+_APL_GT = _apl_tight_window()
+
+
+def _apl_dgt(x: np.ndarray) -> np.ndarray:
+    n = len(x)
+    n_frames = (n + _APL_A - 1) // _APL_A
+    out = np.zeros((_APL_M // 2 + 1, n_frames), dtype=np.complex128)
+    for m in range(n_frames):
+        seg = np.zeros(_APL_W, dtype=np.float64)
+        s0 = m * _APL_A
+        ln = min(_APL_W, n - s0)
+        if ln > 0:
+            seg[:ln] = x[s0 : s0 + ln]
+        out[:, m] = np.fft.rfft(seg * _APL_GT)
+    return out  # type: ignore[no-any-return]
+
+
+def _apl_idgt(x_cmplx: np.ndarray, n: int) -> np.ndarray:
+    n_frames = x_cmplx.shape[1]
+    out = np.zeros(n + _APL_W, dtype=np.float64)
+    for m in range(n_frames):
+        seg = np.fft.irfft(x_cmplx[:, m], n=_APL_W) * _APL_GT
+        out[m * _APL_A : m * _APL_A + _APL_W] += seg
+    return out[:n]  # type: ignore[no-any-return]
+
+
+def _apl_pi_gamma(x: np.ndarray, idx: dict, clipped: np.ndarray) -> np.ndarray:
+    y = x.copy()
+    y[idx["R"]] = clipped[idx["R"]]
+    y[idx["H"]] = np.maximum(y[idx["H"]], clipped[idx["H"]])
+    y[idx["L"]] = np.minimum(y[idx["L"]], clipped[idx["L"]])
+    return y
+
+
+def _mask16_from_mask48(mask: np.ndarray, n16: int) -> np.ndarray:
+    """Projiziert die 48-kHz-Clip-Maske auf die 16-kHz-Achse (OR je 3 Samples).
+
+    Erkenntnis-Schwelle (Analyse 2026-11-13): die AA-Filterung des
+    ``resample_poly(1, 3)`` dämpft schwelle-nahe Clips (±0,90-Plateaus) unter
+    die Detektionsschwelle — die Detektion MUSS in der 48-kHz-Domäne
+    geschehen, bevor resampelt wird (Träumer-Befund: Δ = 0,0).
+    """
+    m16 = np.zeros(n16, dtype=bool)
+    avail = min(len(mask), 3 * n16)
+    blocks = avail // 3
+    if blocks:
+        m16[:blocks] = mask[: blocks * 3].reshape(blocks, 3).any(axis=1)
+    if avail % 3:
+        m16[blocks] = mask[blocks * 3 : avail].any()
+    return m16  # type: ignore[no-any-return]
+
+
+def _region_idx_48k(x16: np.ndarray, mask16: np.ndarray) -> dict[str, np.ndarray]:
+    """ADMM-Regionen-Partition aus der 48-kHz-Maske (Vorzeichen aus x16)."""
+    idx: dict[str, np.ndarray] = {
+        "H": mask16 & (x16 >= 0.0),
+        "L": mask16 & (x16 < 0.0),
+    }
+    idx["R"] = ~(idx["H"] | idx["L"])
+    return idx
+
+
+class AspadeDeclipperPlugin:
+    """Lädt A-SPADE-ONNX und de-clippt deterministisch (Waveform→Waveform)."""
+
+    def __init__(self, model_dir: str | None = None) -> None:
+        self._session = None
+        self._input_name: str = ""
+        self._output_name: str = ""
+        self._model_ok: bool = False
+        if model_dir is not None:
+            self._model_path = Path(model_dir) / "aspade_declipper.onnx"
+        else:
+            self._model_path = Path(__file__).parent.parent / DEFAULT_MODEL_SUBPATH
+        self._try_load_model()
+
+    # ------------------------------------------------------------------
+
+    def _try_load_model(self) -> None:
+        if not self._model_path.exists():
+            logger.warning(
+                "A-SPADE-ONNX nicht gefunden: %s — Phase 07 nutzt CQT-Diff/PCHIP-Ersatzpfad",
+                self._model_path,
+            )
+            return
+        try:
+            import onnxruntime as ort
+
+            try:
+                from backend.core.ml_memory_budget import try_allocate as _try_alloc
+
+                if not _try_alloc("AspadeDeclipper", size_gb=0.60):
+                    logger.warning("AspadeDeclipper: ML-Grenze erschöpft — Ersatzpfad.")
+                    return
+            except Exception as _exc:
+                logger.debug("Plugin operation fehlgeschlagen (unkritisch): %s", _exc)
+
+            opts = ort.SessionOptions()
+            opts.inter_op_num_threads = 1
+            opts.intra_op_num_threads = 4
+            opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+            try:
+                from backend.core.ml_device_manager import get_ort_providers as _get_prov
+
+                _providers = _get_prov("AspadeDeclipper")
+            except Exception:
+                _providers = ["CPUExecutionProvider"]
+            self._session = ort.InferenceSession(
+                str(self._model_path),
+                sess_options=opts,
+                providers=_providers,
+            )
+            self._input_name = self._session.get_inputs()[0].name  # type: ignore[attr-defined]
+            self._output_name = self._session.get_outputs()[0].name  # type: ignore[attr-defined]
+            self._model_ok = True
+            logger.info(
+                "A-SPADE ONNX geladen: %s | In=%s | Out=%s", self._model_path, self._input_name, self._output_name
+            )
+        except Exception as _exc:
+            logger.warning("A-SPADE-ONNX nicht ladbar (%s) — Ersatzpfad.", _exc)
+
+    def is_available(self) -> bool:
+        return self._model_ok and self._session is not None
+
+    def declip(self, audio: np.ndarray, sr: int, clip_threshold: float) -> np.ndarray | None:
+        """Neuronaler Declip eines Mono-Signals; None, wenn nicht verfügbar.
+
+        Robuste Modellreparatur nach Resampling (D-K4-1-Voraussetzung):
+        beliebige Quellrate wird deterministisch auf 48 kHz gehoben, declippt
+        und auf die Quellrate zurückgeführt — kein stiller Ersatzpfad mehr
+        für sr ≠ 48 kHz (§V6 (copilot-instructions.md)).
+
+        Args:
+            audio: Mono-Waveform (N,) float32.
+            sr: Abtastrate (> 0).
+            clip_threshold: Detektionsschwelle — wird dem Aufrufer überlassen.
+
+        Returns:
+            Degeclipptes Mono-Signal (N,) float32 — oder None (Ersatzpfad).
+        """
+        if not self.is_available():
+            return None
+        x = np.asarray(audio, dtype=np.float32)
+        x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+        if int(sr) <= 0:
+            logger.warning("A-SPADE: sr=%d ungültig — Ersatzpfad.", sr)
+            return None
+        if int(sr) == TARGET_SR:
+            return self._declip_applade(x, int(sr), clip_threshold)
+        # Resampling-Robustheit: gcd-reduzierte resample_poly (deterministisch).
+        from scipy.signal import resample_poly
+
+        try:
+            g = int(np.gcd(int(sr), TARGET_SR))
+            x48 = resample_poly(x.astype(np.float64), TARGET_SR // g, int(sr) // g).astype(np.float32)
+            rec48 = self._declip_applade(x48, TARGET_SR, clip_threshold)
+            if rec48 is None:
+                return None
+            zurueck = resample_poly(rec48.astype(np.float64), int(sr) // g, TARGET_SR // g)[: len(x)]
+            aus: np.ndarray = np.array(zurueck, dtype=np.float32)
+            return aus
+        except Exception as _exc:
+            logger.warning("A-SPADE-Resampling fehlgeschlagen (%s) — Ersatzpfad.", _exc)
+            return None
+
+    def _declip_applade(self, audio: np.ndarray, sr: int, clip_threshold: float) -> np.ndarray | None:
+        """APPLADE-PnP-ADMM um das ONNX-DNN (16-kHz-Sprachmodell, Papier-Setup).
+
+        Deterministisch; 16 384-Sample-Blöcke (64 DGT-Frames); Rückmischung
+        nur in den geclippten Regionen (Masken-Blend, 48-kHz-Treue sonst).
+        Detektion in der 48-kHz-Domäne VOR dem Resampling (2026-11-13-Befund).
+        """
+        from scipy.signal import resample_poly  # pylint: disable=import-outside-toplevel
+
+        try:
+            x = np.asarray(audio, dtype=np.float32)
+            x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+            theta = float(np.clip(clip_threshold, 0.05, 0.999))
+            mask = np.abs(x) >= theta  # 48-kHz-Domäne — EINE Wahrheit (Detektion + Blend)
+            if not mask.any():
+                return x.copy()  # type: ignore[no-any-return]
+
+            x16 = resample_poly(x.astype(np.float64), 1, 3).astype(np.float64)
+            # Erkenntnis-Schwelle (2026-11-13-Analyse): das 16-kHz-Gate verpasst
+            # schwelle-nahe Clips — die AA-Filterung dämpft ±0,90-Plateaus unter
+            # theta (Träumer-Befund: Δ = 0,0). Partition aus der 48-kHz-Maske.
+            idx = _region_idx_48k(x16, _mask16_from_mask48(mask, len(x16)))
+            pct = float(np.mean(~idx["R"]) * 100.0)
+            lam = 30.0 * pct / 100.0
+            weight = ((np.arange(1, _APL_M // 2 + 2, dtype=np.float64) / (_APL_M // 2 + 1)) ** 2).reshape(-1, 1)
+
+            rec16 = np.zeros_like(x16)
+            block = 16384
+            assert self._session is not None
+            for s0 in range(0, len(x16), block):
+                blk = x16[s0 : s0 + block]
+                if len(blk) < 512:
+                    rec16[s0:] = blk
+                    break
+                orig_len = len(blk)
+                if orig_len < block:
+                    blk = np.pad(blk, (0, block - orig_len))
+                # Block-lokale Masks: Slice der 48-kHz-Ableitung (padding-aware) —
+                # NICHT aus den 16-kHz-Werten (AA-Dämpfung, 2026-11-13-Befund).
+                _bidx = {
+                    "H": np.pad(idx["H"][s0 : s0 + orig_len], (0, block - orig_len)),
+                    "L": np.pad(idx["L"][s0 : s0 + orig_len], (0, block - orig_len)),
+                }
+                _bidx["R"] = ~(_bidx["H"] | _bidx["L"])
+                _v = _apl_dgt(blk)
+                _u = np.zeros_like(_v)
+                _x = blk.copy()
+                for _ in range(100):
+                    _x = _apl_pi_gamma(_apl_idgt(_v - _u, len(_x)), _bidx, blk)
+                    _fx = _apl_dgt(_x)
+                    _vin = _fx + _u
+                    _mag = np.abs(_vin)
+                    _feed = np.zeros((1, 1, _APL_M // 2, _mag.shape[1]), dtype=np.float32)
+                    _feed[0, 0, :, :] = _mag[:-1, :]
+                    _out = self._session.run([self._output_name], {self._input_name: _feed})[0]
+                    _den = np.vstack([np.asarray(_out, dtype=np.float64)[0, 0], np.zeros((1, _mag.shape[1]))])
+                    _v = np.maximum(0.0, 1.0 - lam * weight / (_den + 1e-6) ** 2) * _vin
+                    _u = _fx - _v + _u
+                _x[_bidx["R"]] = blk[_bidx["R"]]
+                rec16[s0 : s0 + orig_len] = _x[:orig_len]
+
+            rec48 = resample_poly(rec16, 3, 1)[: len(x)].astype(np.float32)
+            fade = int(0.005 * sr)
+            win = 0.5 * (1 - np.cos(np.pi * np.arange(fade) / max(fade, 1)))
+            blend = np.zeros(len(x), dtype=np.float32)
+            edges = np.diff(mask.astype(np.int8))
+            starts = np.where(edges == 1)[0]
+            ends = np.where(edges == -1)[0]
+            for st in starts:
+                a0 = max(0, st - fade)
+                blend[a0:st] = np.maximum(blend[a0:st], win[: st - a0])
+            for en in ends:
+                b1 = min(len(x), en + fade)
+                blend[en:b1] = np.maximum(blend[en:b1], win[::-1][: b1 - en])
+            blend[mask] = 1.0
+            out = blend * rec48 + (1.0 - blend) * x
+            return np.clip(out, -1.0, 1.0).astype(np.float32)  # type: ignore[no-any-return]
+        except Exception as _exc:
+            logger.warning("A-SPADE-APPLADE-Pfad fehlgeschlagen (%s) — Ersatzpfad.", _exc)
+            return None
+
+    def _infer(self, seg: np.ndarray) -> np.ndarray:
+        """Ein Segment (chunk,) → Modell-Inferenz → (chunk,) float32."""
+        assert self._session is not None
+        n = len(seg)
+        # Robust gegen beide üblichen A-SPADE-Export-Layouts: (1, 1, T) und (1, T).
+        try:
+            feed = np.zeros((1, 1, n), dtype=np.float32)
+            feed[0, 0, :] = seg
+            res = self._session.run([self._output_name], {self._input_name: feed})[0]
+        except Exception:
+            feed = np.zeros((1, n), dtype=np.float32)
+            feed[0, :] = seg
+            res = self._session.run([self._output_name], {self._input_name: feed})[0]
+        arr = np.asarray(res, dtype=np.float32)
+        if arr.ndim == 3:
+            arr = arr[0, 0, :]
+        elif arr.ndim == 2:
+            arr = arr[0, :]
+        arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+        if len(arr) >= n:
+            return arr[:n]
+        rec = np.zeros(n, dtype=np.float32)
+        rec[: len(arr)] = arr
+        return rec
+
+
+_plugin_singleton: AspadeDeclipperPlugin | None = None
+
+
+def get_aspade_declipper_plugin() -> AspadeDeclipperPlugin:
+    """Prozess-weite Singleton-Instanz (lazy, deterministisch)."""
+    global _plugin_singleton
+    if _plugin_singleton is None:
+        _plugin_singleton = AspadeDeclipperPlugin()
+    return _plugin_singleton

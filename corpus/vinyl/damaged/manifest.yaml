@@ -1,0 +1,14 @@
+- channels: 1
+  checksum_sha256: 945a1093607d3e15b1c0b8a7b8e0227052cc999b781c2be43b6dd1c0749a337e
+  defects:
+  - pops
+  - crackle
+  duration_s: 3.0
+  era: 1974
+  file: vinyl_test_damaged.wav
+  genre: Classical
+  license: CC0
+  material: vinyl
+  notes: Synthetische Test-Aufnahme
+  sample_rate: 48000
+  source: Synthetic Test Corpus

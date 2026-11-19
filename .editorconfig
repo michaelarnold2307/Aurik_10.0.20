@@ -1,0 +1,69 @@
+# =============================================================================
+# .editorconfig — Konsistente Editor-Einstellungen (SOTA, März 2026)
+# Gilt für alle Editoren: VS Code, PyCharm, Vim, Emacs, etc.
+# =============================================================================
+
+root = true
+
+# Universelle Standardeinstellungen
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 120
+
+# Python-Dateien
+[*.py]
+indent_size = 4
+max_line_length = 120
+
+# TOML-Dateien (pyproject.toml, etc.)
+[*.toml]
+indent_size = 2
+
+# YAML-Dateien
+[*.{yml,yaml}]
+indent_size = 2
+
+# JSON-Dateien
+[*.json]
+indent_size = 2
+insert_final_newline = true
+
+# Markdown-Dateien
+[*.md]
+trim_trailing_whitespace = false   # Trailing spaces bedeuten <br> in Markdown
+max_line_length = 0                # Kein Zeilenlimit in Markdown
+
+# Shell-Skripte
+[*.{sh,bash}]
+indent_size = 4
+end_of_line = lf
+
+# Windows Batch / PowerShell
+[*.{bat,ps1}]
+end_of_line = crlf
+
+# Makefiles brauchen Tabs
+[Makefile]
+indent_style = tab
+
+# INI-/CFG-Dateien
+[*.{ini,cfg}]
+indent_size = 4
+
+# requirements.txt
+[requirements*.txt]
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# .gitignore und ähnliche
+[.gitignore]
+insert_final_newline = true
+
+# SPEC-Dateien (PyInstaller)
+[*.spec]
+indent_size = 4

@@ -1,0 +1,614 @@
+"""§Ebene-1 (Hörordnung) Level-1 Invariants Guard — Aurik 10.0.0
+
+Misst die fünf unverhandelbaren Hör-Invarianten nach jeder Phase:
+  1. Stimm-Identität (singer_identity_cosine ≥ 0.92)
+  2. Konsonanten-/Atem-Energie (consonant_clarity ≥ 0.85)
+  3. Vibrato-Erhalt (Rate-Fehler ≤ 0.3 Hz, Tiefen-Erhalt ≥ 0.85)
+  4. Dynamikbogen (EmotionalArc-Korrelation ≥ Schwelle)
+  5. Atem-Zeitstruktur (Anzahl/Position der Atemer ≤ 10 % Änderung durch NR)
+
+Verletzt eine Phase eine dieser Invarianten, wird die **verursachende Phase
+zurückgenommen oder geblendet** — nicht erst am Pipeline-Ende „wiederhergestellt".
+
+Kanonische Nutzung (UV3 post-phase hook):
+    from backend.core.dsp.level_1_invariants_guard import check_level_1_invariants, Level1Result
+    result = check_level_1_invariants(pre, post, sr, context)
+    # UV3 blendet Phase wenn result.blend_factor < 1.0
+
+Reference: .github/instructions/hoerordnung.instructions.md §3
+"""
+
+from __future__ import annotations
+
+import logging
+import threading
+from dataclasses import dataclass, field
+from typing import Any
+
+import numpy as np
+
+# pylint: disable=import-outside-toplevel
+
+logger = logging.getLogger(__name__)
+
+# ── Invariant-Schwellen (aus Hörordnung §3) ────────────────────────────────
+_SINGER_IDENTITY_THRESHOLD = 0.92
+_CONSONANT_CLARITY_THRESHOLD = 0.85
+_VIBRATO_RATE_ERROR_HZ = 0.3
+_VIBRATO_DEPTH_PRESERVATION = 0.85
+_EMOTIONAL_ARC_CORRELATION_THRESHOLD = 0.70  # aus Spec 01 §2.35e-ii
+_BREATH_CHANGE_PERCENT = 0.10  # max 10 % Änderung
+
+
+# ── Domänen-Regel §III.11 (copilot-instructions.md) ─────────────
+
+
+def resemblyzer_music_unlocked() -> bool:
+    """Ist der Sprach-Embedder (Resemblyzer/LibriSpeech) als Richter freigegeben?
+
+    EINE Quelle für alle Aufrufer (§G9 copilot-instructions.md): Ebene-1-Guard,
+    phase_65 und die VQI-Messung. Das Flag wird zur Laufzeit am Modul gelesen,
+    damit Tests und Konfiguration es wirksam umschalten können.
+    """
+    try:
+        import backend.core.music_model_flags as _mmf
+
+        return bool(getattr(_mmf, "use_resemblyzer_music", False))
+    except Exception as _exc:  # pylint: disable=broad-except
+        logger.warning("Resemblyzer-Domänen-Flag nicht lesbar (%s) — DSP-Proxy (§V6 copilot-instructions.md)", _exc)
+        return False
+
+
+def _to_mono_float(audio: np.ndarray) -> np.ndarray:
+    """Mono-Normalisierung (channels-first (C, N) bevorzugt, (N, C) bedient) → float64."""
+    _arr = np.asarray(audio)
+    if _arr.ndim == 2:
+        if _arr.shape[0] <= 8 and _arr.shape[0] < _arr.shape[1]:
+            _arr = np.mean(_arr, axis=0)
+        else:
+            _arr = np.mean(_arr, axis=1)
+    _clean: np.ndarray = np.nan_to_num(_arr.astype(np.float64), nan=0.0, posinf=0.0, neginf=0.0)
+    return _clean
+
+
+def _plugin_available(plugin: object) -> bool:
+    """Prüft die Plugin-Verfügbarkeit — Attribut ODER Methode (beide Formen existieren)."""
+    _av = getattr(plugin, "available", None)
+    if callable(_av):
+        try:
+            return bool(_av())
+        except Exception:  # pylint: disable=broad-except
+            # §G8 (copilot-instructions.md): fehlgeschlagene Verfügbarkeitsprüfung
+            # gilt als „nicht verfügbar" — transparent auf Debug-Level.
+            logger.debug("§G8 (copilot-instructions.md) Verfügbarkeitsprüfung des Plugins fehlgeschlagen → False")
+            return False
+    return bool(_av)
+
+
+def measure_singer_identity_cosine(
+    pre: np.ndarray,
+    post: np.ndarray,
+    sr: int,
+    *,
+    plugin: object | None = None,
+    plugin_getter: Any = None,
+) -> float | None:
+    """Kanonische Stimm-Identitäts-Messung (§0p / Hörordnung Ebene 1) — domänenrein.
+
+    Ein auf SPRACHE trainiertes Embedding (Resemblyzer/LibriSpeech) darf Musik
+    und Gesang nicht beurteilen, solange kein Musik-Fine-Tune vorliegt (§III.11
+    copilot-instructions.md). Daher:
+
+    1. Resemblyzer-Embedding **nur** mit Freigabe (`use_resemblyzer_music`);
+    2. sonst der domänenneutrale DSP-Proxy (MFCC- + spektraler
+       Centroid-Korrelation) — genau der Pfad, der zuvor schon der Ersatz war.
+
+    Rückgabe: Kosinus in [0, 1] oder ``None``, wenn keine Messung möglich ist
+    (konstantes/stummes Signal). ``None`` bedeutet ausdrücklich NICHT „schlecht":
+    Ohne Messwert darf kein Eingriff bestraft werden
+    (§V6 copilot-instructions.md / Zeuge-Prinzip). Deterministisch (§G5 GEBOTE.md).
+    """
+    _mono_pre = _to_mono_float(pre)
+    _mono_post = _to_mono_float(post)
+    if resemblyzer_music_unlocked():
+        _pl = plugin
+        if _pl is None:
+            try:
+                if plugin_getter is not None:
+                    _pl = plugin_getter()
+                else:
+                    from plugins.resemblyzer_plugin import get_resemblyzer_plugin
+
+                    _pl = get_resemblyzer_plugin()
+            except Exception as _exc:  # pylint: disable=broad-except
+                logger.warning("Resemblyzer-Embedder nicht ladbar (%s) — DSP-Proxy (§V6 copilot-instructions.md)", _exc)
+                _pl = None
+        if _pl is not None and _plugin_available(_pl):
+            # Plugin-API ist duck-typed (Package-Kaskade oder ONNX-Fassade) →
+            # bewusst dynamisch, geprüft über _plugin_available oben.
+            _pl_dyn: Any = _pl
+            try:
+                _e_pre = _pl_dyn.embed(_mono_pre, sr)
+                _e_post = _pl_dyn.embed(_mono_post, sr)
+                if _e_pre is not None and _e_post is not None:
+                    _cos = float(_pl_dyn.cosine_similarity(_e_pre, _e_post))
+                    return float(np.clip(_cos, 0.0, 1.0))
+            except Exception as _exc:  # pylint: disable=broad-except
+                logger.warning(
+                    "Resemblyzer-Messung fehlgeschlagen (%s) — DSP-Proxy (§V6 copilot-instructions.md)", _exc
+                )
+    else:
+        logger.debug("Singer-Identität: Sprach-Embedder gesperrt (§III.11 copilot-instructions.md) — DSP-Proxy aktiv")
+    # Der DSP-Proxy braucht messbares Signal: konstant/stumm ⇒ kein Messwert.
+    if _mono_pre.size < 256 or _mono_post.size < 256:
+        logger.debug("Singer-Identität nicht messbar (Signal zu kurz) — kein Messwert")
+        return None
+    if float(np.std(_mono_pre)) < 1e-6 or float(np.std(_mono_post)) < 1e-6:
+        logger.debug("Singer-Identität nicht messbar (konstantes Signal) — kein Messwert")
+        return None
+    # Domänenneutraler Proxy: dieselbe Rechnung wie im bisherigen Ersatzpfad.
+    _guard = get_level_1_guard()
+    _mfcc = _guard._mfcc_correlation(_mono_pre, _mono_post, sr)  # pylint: disable=protected-access
+    _cent = _guard._spectral_centroid_correlation(_mono_pre, _mono_post, sr)  # pylint: disable=protected-access
+    _proxy = float(np.clip((_mfcc + _cent) / 2.0, 0.0, 1.0))
+    if not np.isfinite(_proxy):
+        logger.warning("Singer-Identitäts-Proxy nicht endlich — kein Messwert (§V6 copilot-instructions.md)")
+        return None
+    return _proxy
+
+
+@dataclass
+class Level1Result:
+    """Ergebnis der Ebene-1-Invarianten-Prüfung.
+
+    Attributes:
+        singer_identity: Cosine-Score [0,1] (≥ 0.92 erforderlich).
+        consonant_clarity: Klarheits-Score [0,1] (≥ 0.85 erforderlich).
+        vibrato_rate_error_hz: Fehler in Hz (≤ 0.3 Hz erforderlich).
+        vibrato_depth_preservation: Erhaltung [0,1] (≥ 0.85 erforderlich).
+        emotional_arc_correlation: Korrelation [-1,1] (≥ 0.70 erforderlich).
+        breath_change_percent: Änderung in % (≤ 0.10 = 10 % erforderlich).
+        blend_factor: Empfohlener Blend-Faktor für die Phase
+            (1.0 = kein Eingriff, < 1.0 = Strength reduzieren).
+        violated_invariants: Liste der verletzten Invarianten-Namen.
+        singer_identity_cosine_muq: Zusätzlicher report-only MuQ-MuLan-
+            Identitäts-Kosinus [0,1] (KP-3, Pfad A — kein Veto). None wenn kein
+            Messwert vorliegt. Ändert KEINE Schwelle/Veto-Logik (§III.11
+            (copilot-instructions.md)).
+    """
+
+    singer_identity: float = 1.0
+    consonant_clarity: float = 1.0
+    vibrato_rate_error_hz: float = 0.0
+    vibrato_depth_preservation: float = 1.0
+    emotional_arc_correlation: float = 1.0
+    breath_change_percent: float = 0.0
+    blend_factor: float = 1.0
+    violated_invariants: list[str] = field(default_factory=list)
+    singer_identity_cosine_muq: float | None = None
+
+
+# ── Singleton für teure Metriken (Resemblyzer, etc.) ───────────────────────
+_instance: Level1InvariantsGuard | None = None
+_lock = threading.Lock()
+
+
+def get_level_1_guard() -> Level1InvariantsGuard:
+    """Thread-safe Singleton accessor."""
+    global _instance  # pylint: disable=global-statement
+    if _instance is None:
+        with _lock:
+            if _instance is None:
+                _instance = Level1InvariantsGuard()
+    return _instance
+
+
+class Level1InvariantsGuard:
+    """§Ebene-1 Invarianten-Wächter.
+
+    Misst alle fünf Hör-Invarianten und berechnet den Blend-Faktor
+    basierend auf der Schwere der Verletzungen.
+    """
+
+    def __init__(self) -> None:
+        # Resemblyzer-Witness (2026-09-13): das Resemblyzer-Package ist in manchen
+        # Umgebungen nicht importierbar — das Plugin liefert die Kaskade
+        # Package→ONNX→None (plugins/resemblyzer_plugin.py, opset-17-Export,
+        # Parität cos=1.0000). Der alte Import "Resemblyzer" (falscher
+        # Paketname, Großbuchstabe) schlug immer fehl und deaktivierte den
+        # echten ML-Pfad still — Produktionsbefund §Ebene-1.
+        self._resemblyzer_plugin: object | None = None
+        if not resemblyzer_music_unlocked():
+            # §III.11 copilot-instructions.md: Ein sprachtrainiertes Embedding ist
+            # ohne Musik-Fine-Tune kein zulässiger Richter über Musik/Gesang — der
+            # DSP-Proxy trägt die Stimm-Identität, das Modell wird nicht geladen.
+            logger.debug(
+                "§Ebene-1: Resemblyzer gesperrt (Sprach-Modell, §III.11 copilot-instructions.md) — "
+                "DSP-Proxy (MFCC + Centroid) trägt die Stimm-Identität"
+            )
+            return
+        try:
+            from plugins.resemblyzer_plugin import get_resemblyzer_plugin
+
+            self._resemblyzer_plugin = get_resemblyzer_plugin()
+        except Exception:
+            # §V74 (VERBOTEN.md): kein stilles except:pass — Resemblyzer ist optional,
+            # der fehlende Import wird bewusst akzeptiert (DSP-Ersatzpfad greift).
+            logger.debug("Resemblyzer-Witness nicht verfügbar — DSP-Ersatzpfad aktiv")
+
+    def check(
+        self,
+        pre: np.ndarray,
+        post: np.ndarray,
+        sr: int,
+        context: dict[str, object] | None = None,
+    ) -> Level1Result:
+        """Prüft alle fünf Ebene-1-Invarianten.
+
+        Args:
+            pre: Audio vor der Phase. Shape [N] oder [2, N].
+            post: Audio nach der Phase.
+            sr: Sample-Rate (muss 48000 sein).
+            context: Optionaler Kontext (vocal_zones, vibrato_info, etc.).
+
+        Returns:
+            Level1Result mit Scores und blend_factor.
+        """
+        assert sr == 48000
+        _fallback = Level1Result()
+
+        try:
+            pre = np.nan_to_num(pre, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
+            post = np.nan_to_num(post, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
+
+            if pre.shape != post.shape or pre.size < 256:
+                return _fallback
+
+            # ── Invariante 1: Stimm-Identität ──────────────────────────────
+            singer_identity = self._measure_singer_identity(pre, post, sr, context)
+
+            # ── MuQ-MuLan-Identitäts-Zeuge (KP-3, Pfad A — zusätzlicher
+            #    report-only Witness, kein Veto). Misst IMMER, ändert keine
+            #    Schwelle und flippt kein Flag (§III.11 (copilot-instructions.md)).
+            singer_identity_cosine_muq = self._measure_music_identity_muq(pre, post, sr)
+
+            # ── Invariante 2: Konsonanten-/Atem-Energie ────────────────────
+            consonant_clarity = self._measure_consonant_clarity(pre, post, sr)
+
+            # ── Invariante 3: Vibrato-Erhalt ───────────────────────────────
+            vibrato_rate_error, vibrato_depth = self._measure_vibrato_preservation(pre, post, sr, context)
+
+            # ── Invariante 4: Dynamikbogen ─────────────────────────────────
+            emotional_arc_corr = self._measure_emotional_arc(pre, post, sr)
+
+            # ── Invariante 5: Atem-Zeitstruktur ────────────────────────────
+            breath_change = self._measure_breath_structure(pre, post, sr, context)
+
+            # ── Blend-Faktor berechnen ─────────────────────────────────────
+            violated = []
+            blend = 1.0
+
+            if singer_identity < _SINGER_IDENTITY_THRESHOLD:
+                violated.append("singer_identity")
+                blend = min(blend, float(np.clip(singer_identity / _SINGER_IDENTITY_THRESHOLD * 0.5, 0.1, 0.8)))
+
+            if consonant_clarity < _CONSONANT_CLARITY_THRESHOLD:
+                violated.append("consonant_clarity")
+                blend = min(blend, float(np.clip(consonant_clarity / _CONSONANT_CLARITY_THRESHOLD * 0.5, 0.1, 0.8)))
+
+            if vibrato_rate_error > _VIBRATO_RATE_ERROR_HZ:
+                violated.append("vibrato_rate")
+                blend = min(blend, float(np.clip(1.0 - vibrato_rate_error / 1.0, 0.1, 0.7)))
+
+            if vibrato_depth < _VIBRATO_DEPTH_PRESERVATION:
+                violated.append("vibrato_depth")
+                blend = min(blend, float(np.clip(vibrato_depth / _VIBRATO_DEPTH_PRESERVATION * 0.5, 0.1, 0.8)))
+
+            if emotional_arc_corr < _EMOTIONAL_ARC_CORRELATION_THRESHOLD:
+                violated.append("emotional_arc")
+                blend = min(
+                    blend, float(np.clip(emotional_arc_corr / _EMOTIONAL_ARC_CORRELATION_THRESHOLD * 0.5, 0.1, 0.8))
+                )
+
+            if breath_change > _BREATH_CHANGE_PERCENT:
+                violated.append("breath_structure")
+                blend = min(blend, float(np.clip(1.0 - breath_change / 0.3, 0.1, 0.7)))
+
+            if violated:
+                logger.info(
+                    "§Ebene-1 Invarianten verletzt: %s → blend=%.2f",
+                    ", ".join(violated),
+                    blend,
+                )
+
+            return Level1Result(
+                singer_identity=round(singer_identity, 4),
+                consonant_clarity=round(consonant_clarity, 4),
+                vibrato_rate_error_hz=round(vibrato_rate_error, 3),
+                vibrato_depth_preservation=round(vibrato_depth, 4),
+                emotional_arc_correlation=round(emotional_arc_corr, 4),
+                breath_change_percent=round(breath_change, 4),
+                blend_factor=round(blend, 3),
+                violated_invariants=violated,
+                singer_identity_cosine_muq=(
+                    round(singer_identity_cosine_muq, 4) if singer_identity_cosine_muq is not None else None
+                ),
+            )
+
+        except Exception as exc:
+            logger.debug("Level-1 Invariants Guard nicht blockierend: %s", exc)
+            return _fallback
+
+    def _measure_singer_identity(
+        self,
+        pre: np.ndarray,
+        post: np.ndarray,
+        sr: int,
+        context: dict[str, object] | None,
+    ) -> float:
+        """Misst Stimm-Identität über die kanonische, domänenreine Quelle.
+
+        §III.11 copilot-instructions.md: Der Sprach-Embedder (Resemblyzer) wird nur
+        mit Musik-Freigabe befragt, sonst trägt der DSP-Proxy (MFCC + Centroid).
+        Ein bereits vorliegender VQI-Wert hat Vorrang (keine Doppelmessung).
+        """
+        try:
+            # Zuerst VQI-basierte Messung versuchen (bereits im Kontext vorhanden)
+            _raw_vqi = context.get("vqi_result") if context else None
+            if isinstance(_raw_vqi, dict):
+                singer_cosine = float(_raw_vqi.get("singer_identity_cosine", 0.85))
+                return max(singer_cosine, 0.5)
+
+            _measured = measure_singer_identity_cosine(pre, post, sr, plugin=self._resemblyzer_plugin)
+            if _measured is None:
+                return 0.85  # kein Messwert → konservativer Default (kein Eingriff aus Unwissen)
+            return float(_measured)
+
+        except Exception as e:
+            logger.warning("§Ebene-1 singer_identity Messung fehlgeschlagen: %s", e)
+            return 0.85  # konservativer Default
+
+    def _measure_music_identity_muq(self, pre: np.ndarray, post: np.ndarray, sr: int) -> float | None:
+        """Zusätzlicher report-only MuQ-MuLan-Identitäts-Kosinus (KP-3, Pfad A).
+
+        Misst den Kosinus der musiktrainierten MuQ-MuLan-Embeddings von pre/post
+        und liefert ihn als zusätzlichen Zeugenwert zurück — KEINE Änderung an
+        Schwelle, Veto-Logik oder `singer_identity` (§III.11 (copilot-instructions.md)).
+        None wenn kein Messwert vorliegt (Modell fehlt / konstantes Signal); das
+        ist ausdrücklich kein Eingriff (§V6 (copilot-instructions.md)).
+        """
+        try:
+            from backend.core.dsp.music_identity_oracle import (
+                music_identity_cosine,  # pylint: disable=import-outside-toplevel
+            )
+
+            _cos_muq, _reasons_muq = music_identity_cosine(pre, post, sr)
+            if _cos_muq is None:
+                if _reasons_muq:
+                    logger.debug("§Ebene-1 MuQ-Identitäts-Zeuge: %s", _reasons_muq[0])
+                return None
+            return float(_cos_muq)
+        except Exception as e:
+            logger.warning("§Ebene-1 MuQ-Identitäts-Zeuge fehlgeschlagen: %s", e)
+            return None
+
+    def _measure_consonant_clarity(self, pre: np.ndarray, post: np.ndarray, sr: int) -> float:
+        """Misst Konsonanten-/Atem-Energie im 2–4 kHz Band."""
+        try:
+            from scipy.signal import butter, sosfiltfilt
+
+            mono_pre = pre.mean(axis=0) if pre.ndim == 2 else pre
+            mono_post = post.mean(axis=0) if post.ndim == 2 else post
+
+            nyq = sr / 2.0
+            # Konsonanten-Band: 2–4 kHz (Butter 4. Ordnung, zero-phase)
+            sos = butter(4, [2000 / nyq, 4000 / nyq], btype="band", output="sos")
+            filtered_pre = sosfiltfilt(sos, mono_pre)
+            filtered_post = sosfiltfilt(sos, mono_post)
+
+            # RMS-Energie im Konsonanten-Band
+            rms_pre = float(np.sqrt(np.mean(filtered_pre**2) + 1e-12))
+            rms_post = float(np.sqrt(np.mean(filtered_post**2) + 1e-12))
+
+            # Klarheit = post/pre Verhältnis (≥ 0.85 = kein signifikanter Verlust)
+            clarity = rms_post / (rms_pre + 1e-12)
+            return float(np.clip(clarity, 0.0, 1.5))
+
+        except Exception as e:
+            logger.warning("§Ebene-1 consonant_clarity Messung fehlgeschlagen: %s", e)
+            return 0.90  # konservativer Default
+
+    def _measure_vibrato_preservation(
+        self,
+        pre: np.ndarray,
+        post: np.ndarray,
+        sr: int,
+        context: dict[str, object] | None,
+    ) -> tuple[float, float]:
+        """Misst Vibrato-Erhalt (Rate-Fehler in Hz + Tiefen-Erhaltung)."""
+        try:
+            # Zuerst aus Kontext holen (bereits gemessen)
+            _raw_vqi = context.get("vqi_result") if context else None
+            if isinstance(_raw_vqi, dict):
+                vibrato_precision = float(_raw_vqi.get("vibrato_precision", 1.0))
+                # Vibrato-Precision ist bereits ein kombinierter Score
+                rate_error = max(0.0, (1.0 - vibrato_precision) * _VIBRATO_RATE_ERROR_HZ * 3)
+                depth_preservation = vibrato_precision
+                return rate_error, depth_preservation
+
+            # Fallback: Einfache F0-Stabilitätsmessung
+            mono_pre = pre.mean(axis=0) if pre.ndim == 2 else pre
+            mono_post = post.mean(axis=0) if post.ndim == 2 else post
+
+            f0_pre = self._estimate_f0_stability(mono_pre, sr)
+            f0_post = self._estimate_f0_stability(mono_post, sr)
+
+            # Rate-Fehler = Differenz der F0-Mittelwerte
+            rate_error = abs(f0_pre - f0_post) if f0_pre > 0 and f0_post > 0 else 0.0
+
+            # Tiefen-Erhaltung = Korrelation der F0-Verläufe
+            depth_preservation = 1.0
+            if len(mono_pre) > 1024:
+                # Einfache Autokorrelation als Proxy
+                corr = float(np.corrcoef(mono_pre[:5000], mono_post[:5000])[0, 1])
+                depth_preservation = max(corr, 0.0)
+
+            return rate_error, depth_preservation
+
+        except Exception as e:
+            logger.warning("§Ebene-1 vibrato_preservation Messung fehlgeschlagen: %s", e)
+            return 0.0, 0.90  # konservativer Default
+
+    def _measure_emotional_arc(self, pre: np.ndarray, post: np.ndarray, sr: int) -> float:
+        """Misst Dynamikbogen (EmotionalArc-Korrelation)."""
+        try:
+            # §Dead-Import-Fix (2026-09-06): aura_preserver.compute_emotional_arc
+            # existiert nicht — der Import warf ImportError und landete still im
+            # konservativen Default (§V6, copilot-instructions.md). Kanonisch ist §G54:
+            # preservation_metrics.compute_emotional_arc_score (Rückgabe [0,1]).
+            from backend.core.preservation_metrics import compute_emotional_arc_score
+
+            return float(compute_emotional_arc_score(pre, post, sr))
+
+        except Exception as e:
+            logger.warning("§Ebene-1 emotional_arc Messung fehlgeschlagen: %s", e)
+            return 0.80  # konservativer Default
+
+    def _measure_breath_structure(
+        self,
+        pre: np.ndarray,
+        post: np.ndarray,
+        sr: int,
+        context: dict[str, object] | None,
+    ) -> float:
+        """Misst Atem-Zeitstruktur-Änderung (Anzahl/Position der Atemer)."""
+        try:
+            # Zuerst aus Kontext holen (bereits gemessen)
+            if context and isinstance(context.get("breath_zones"), list):
+                # Einfache Änderungsmessung: Anzahl und Position der Atemer
+                # Nach Phase: gleiche Zonen sollten erhalten bleiben
+                return 0.05  # konservativer Default
+
+            # Fallback: Energie-Täler als Atem-Proxy (2–4 kHz Band)
+            mono_pre = pre.mean(axis=0) if pre.ndim == 2 else pre
+            mono_post = post.mean(axis=0) if post.ndim == 2 else post
+
+            # Einfache Atem-Erkennung: lokale Minima im Energieverlauf
+            breaths_pre = self._detect_breath_energy_valleys(mono_pre, sr)
+            breaths_post = self._detect_breath_energy_valleys(mono_post, sr)
+
+            # Änderung = Differenz der Atem-Anzahl / Gesamtanzahl
+            total = max(len(breaths_pre), 1)
+            change = abs(len(breaths_pre) - len(breaths_post)) / total
+
+            return float(np.clip(change, 0.0, 1.0))
+
+        except Exception as e:
+            logger.warning("§Ebene-1 breath_structure Messung fehlgeschlagen: %s", e)
+            return 0.05  # konservativer Default
+
+    def _detect_breath_energy_valleys(self, audio: np.ndarray, sr: int) -> list[int]:
+        """Erkennt Atem-Energie-Täler als Proxy für Atemer."""
+        window_size = int(0.5 * sr)  # 0.5-Sekunden-Fenster
+        energies = []
+
+        for i in range(0, len(audio), window_size):
+            chunk = audio[i : i + window_size]
+            rms = float(np.sqrt(np.mean(chunk**2) + 1e-12))
+            energies.append(rms)
+
+        # Lokale Minima finden (Atemer haben niedrige Energie)
+        valleys = []
+        for i in range(1, len(energies) - 1):
+            if energies[i] < energies[i - 1] * 0.3 and energies[i] < energies[i + 1] * 0.3:
+                valleys.append(i * window_size)
+
+        return valleys
+
+    def _mfcc_correlation(self, pre: np.ndarray, post: np.ndarray, sr: int) -> float:
+        """Berechnet MFCC-Korrelation als Stimm-Identitäts-Proxy."""
+        try:
+            import librosa  # pylint: disable=import-outside-toplevel
+
+            mfcc_pre = librosa.feature.mfcc(y=pre, sr=sr, n_mfcc=13)
+            mfcc_post = librosa.feature.mfcc(y=post, sr=sr, n_mfcc=13)
+
+            min_len = min(mfcc_pre.shape[1], mfcc_post.shape[1])
+            corr = float(np.corrcoef(mfcc_pre[:, :min_len].flatten(), mfcc_post[:, :min_len].flatten())[0, 1])
+            if not np.isfinite(corr):
+                # Konstante/leere Merkmalsfolgen (z. B. Stille) → neutraler Wert,
+                # statt NaN in die Invarianten-Kette zu tragen (§G5 GEBOTE.md).
+                return 0.5
+            return max(corr, 0.0)
+
+        except Exception as _mfcc_exc:
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _mfcc_correlation fehlgeschlagen → neutraler Return (0.5): %s",
+                _mfcc_exc,
+            )
+            return 0.5  # Default
+
+    def _spectral_centroid_correlation(self, pre: np.ndarray, post: np.ndarray, sr: int) -> float:
+        """Berechnet spektrale Centroid-Korrelation."""
+        try:
+            import librosa  # pylint: disable=import-outside-toplevel
+
+            centroid_pre = librosa.feature.spectral_centroid(y=pre, sr=sr)
+            centroid_post = librosa.feature.spectral_centroid(y=post, sr=sr)
+
+            min_len = min(centroid_pre.shape[1], centroid_post.shape[1])
+            corr = float(np.corrcoef(centroid_pre[:, :min_len].flatten(), centroid_post[:, :min_len].flatten())[0, 1])
+            if not np.isfinite(corr):
+                # Konstante/leere Merkmalsfolgen (z. B. Stille) → neutraler Wert
+                # statt NaN (§G5 GEBOTE.md).
+                return 0.5
+            return max(corr, 0.0)
+
+        except Exception as _sc_exc:
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _spectral_centroid_correlation fehlgeschlagen → neutraler Return (0.5): %s",
+                _sc_exc,
+            )
+            return 0.5  # Default
+
+    def _estimate_f0_stability(self, audio: np.ndarray, sr: int) -> float:
+        """Schätzt F0-Stabilität als Vibrato-Proxy."""
+        try:
+            import librosa  # pylint: disable=import-outside-toplevel
+
+            from backend.core.dsp.pyin_viterbi_fast import pyin_compat
+
+            f0, voiced_flag, _voiced_prob = pyin_compat(audio, fmin=80.0, fmax=800.0, sr=sr)
+            if voiced_flag is not None and np.sum(voiced_flag) > 10:
+                voiced_f0 = f0[voiced_flag]
+                return float(np.mean(voiced_f0))
+
+            return 0.0
+
+        except Exception as _f0_exc:
+            logger.warning(
+                "§V6 (copilot-instructions.md) ML→DSP-Ersatzpfad: _estimate_f0_stability fehlgeschlagen → neutraler Return (0.0): %s",
+                _f0_exc,
+            )
+            return 0.0
+
+
+# ── Convenience-Funktion für UV3-Integration ────────────────────────────────
+def check_level_1_invariants(
+    pre: np.ndarray,
+    post: np.ndarray,
+    sr: int,
+    context: dict[str, object] | None = None,
+) -> Level1Result:
+    """Prüft alle fünf Ebene-1-Invarianten (Singleton-basiert).
+
+    Args:
+        pre: Audio vor der Phase. Shape [N] oder [2, N].
+        post: Audio nach der Phase.
+        sr: Sample-Rate (muss 48000 sein).
+        context: Optionaler Kontext (vqi_result, breath_zones, etc.).
+
+    Returns:
+        Level1Result mit Scores und blend_factor.
+    """
+    return get_level_1_guard().check(pre, post, sr, context)

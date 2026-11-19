@@ -1,0 +1,15 @@
+{
+  "schema": "aurik.q0_erstbeleg/1",
+  "datum": "2026-11-15",
+  "klasse": "sibilance",
+  "kandidat": "witness_kopf",
+  "runde": "nacharbeit_id_anker",
+  "status": "gate_bestanden",
+  "q_median_gate": 1.1469,
+  "never_worsen_anteil_gate": 0.9598,
+  "n_gate_regionen": 200,
+  "befund": "Identitäts-Anker (Spec 26 DRT-2): Gewinn- und Schutz-Arm bestanden.",
+  "quellen": [
+    "docs/reports/current/2026-11-15_witness_kopf_gate_sibilance.json"
+  ]
+}

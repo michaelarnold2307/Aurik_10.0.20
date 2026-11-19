@@ -1,0 +1,79 @@
+{
+  "schema": "aurik.qualitaetsmetrik_richtungszertifikat/1",
+  "seed": 42,
+  "schwelle": 0.8,
+  "grad": [
+    "Original",
+    "Overlay -18 dB",
+    "+ Clipping + LP8k",
+    "+ starkes Clipping + LP3k5"
+  ],
+  "materialien": ["cassette_1980s_wow.wav", "reel_1940s_dropout.wav"],
+  "metriken": {
+    "defektlast": {
+      "pro_material": {
+        "cassette_1980s_wow.wav": {
+          "stufenwerte": [0.3823, 0.3824, 0.4943, 0.4965],
+          "spearman": 1.0,
+          "richtungssicher": true
+        },
+        "reel_1940s_dropout.wav": {
+          "stufenwerte": [0.0269, 0.0269, 0.4805, 0.4899],
+          "spearman": 0.9487,
+          "richtungssicher": true
+        }
+      },
+      "spearman_min": 0.9487,
+      "richtungssicher": true
+    },
+    "musik_mos": {
+      "pro_material": {
+        "cassette_1980s_wow.wav": {
+          "stufenwerte": [4.7955, 4.7955, 4.6611, 4.6564],
+          "spearman": 0.9487,
+          "richtungssicher": true
+        },
+        "reel_1940s_dropout.wav": {
+          "stufenwerte": [4.912, 4.912, 4.5604, 4.5456],
+          "spearman": 0.9487,
+          "richtungssicher": true
+        }
+      },
+      "spearman_min": 0.9487,
+      "richtungssicher": true
+    },
+    "pqs_dsp": {
+      "pro_material": {
+        "cassette_1980s_wow.wav": {
+          "stufenwerte": [4.4901, 4.4901, 4.516, 4.5231],
+          "spearman": -0.8,
+          "richtungssicher": false
+        },
+        "reel_1940s_dropout.wav": {
+          "stufenwerte": [4.7326, 4.7326, 4.7318, 4.7342],
+          "spearman": -0.2,
+          "richtungssicher": false
+        }
+      },
+      "spearman_min": -0.8,
+      "richtungssicher": false
+    },
+    "utmos:utmosv2_fold_ensemble": {
+      "pro_material": {
+        "cassette_1980s_wow.wav": {
+          "stufenwerte": [4.7401, 4.7401, 4.766, 4.7731],
+          "spearman": -0.8,
+          "richtungssicher": false
+        },
+        "reel_1940s_dropout.wav": {
+          "stufenwerte": [4.9826, 4.9826, 4.9818, 4.9842],
+          "spearman": -0.2,
+          "richtungssicher": false
+        }
+      },
+      "spearman_min": -0.8,
+      "richtungssicher": false
+    }
+  },
+  "quelle": "scripts/quality_metric_direction_gate.py"
+}

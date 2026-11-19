@@ -1,0 +1,33 @@
+[run]
+source = .
+omit =
+    .venv_*/*
+    */tests/*
+    */test_*
+    */__pycache__/*
+    */site-packages/*
+    setup.py
+    setup_cython.py
+    */models/*
+    */archive/*
+    */build/*
+    */dist/*
+    */frontend/.venv_*/*
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @(abc\.)?abstractmethod
+    pass
+
+ignore_errors = True
+precision = 2
+
+[html]
+directory = htmlcov

@@ -1,0 +1,722 @@
+corpus_version: 1.0.0
+material: reel_tape
+description: 'Reel_tape-Untercorpus: Bestands-Einträge + 40 deterministische Synthetik-Proben
+  (D-K0-8, SOTA-M18, Seed 42). era_year ist die SIMULIERTE Ära (keine echte Provenienz,
+  Lizenz-unbedenklich).'
+entries:
+- checksum_sha256: a7d79ff68b176bf8c21fc4e31a52f338be82662a4170b4ec05f4454ce4684954
+  defect_types: []
+  duration_s: 10.0
+  era_year: 1968
+  file: clean/reel_soul_1960s_clean.wav
+  genre: soul
+  license: CC0 (generated)
+  material: reel_tape
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+- checksum_sha256: 7b9637fdd739b436ad37d0d3a5b0c2ea57d91ae72f1a49b35f25b4e8c7e12010
+  defect_description: Leichtes Hiss + 50Hz
+  defect_types:
+  - hiss
+  duration_s: 10.0
+  era_year: 1968
+  file: damaged/reel_soul_1960s_hiss_hum.wav
+  genre: soul
+  license: CC0 (generated)
+  material: reel_tape
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  chain:
+  - reel_tape
+- checksum_sha256: e2a6f8a41e87521cbe49f179e7fe632bda87487c4c597e25b1c65a63d3931af8
+  defect_description: Dropouts
+  defect_types:
+  - dropout
+  duration_s: 10.0
+  era_year: 1968
+  file: damaged/reel_soul_1960s_dropouts.wav
+  genre: soul
+  license: CC0 (generated)
+  material: reel_tape
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  chain:
+  - reel_tape
+- file: clean/reel_jazz_1950s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1955
+  genre: jazz
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: bdccb804e1c8c66b3d109af896006a323923e2c67d0237961ad5c659f43b263c
+  defect_types: []
+- file: damaged/reel_jazz_1950s_hiss_hum.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1955
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 7868e379b84d10061ba9114ccafe0051418e780aed15dc02ddb346d0c3bbdd7a
+  defect_types:
+  - hiss
+  - hum
+  chain:
+  - reel_tape
+- file: damaged/reel_jazz_1950s_dropouts.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1955
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: cb5fcba0451ca64022540b07aa2d385c99271839ed5fc320b4356e005e0fa924
+  defect_types:
+  - dropouts
+  chain:
+  - reel_tape
+- file: clean/reel_classical_1960s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1964
+  genre: classical
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 8c173450320f77ea6f8c7b5fdb5c4c2b41c9db1b7448124c4ce4682fbb1b7d2f
+  defect_types: []
+- file: damaged/reel_classical_1960s_hiss.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1964
+  genre: classical
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 6acd2d9860c926e17896456c98bda58bed6f0707548e9885c286d178c951b10c
+  defect_types:
+  - hiss
+  chain:
+  - reel_tape
+- file: damaged/reel_classical_1960s_wow_flutter.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1964
+  genre: classical
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: eeebf4b097397da775e5129749b9477c6e09b5cad3877ffd5d5bd24c019f2b86
+  defect_types:
+  - wow
+  - flutter
+  chain:
+  - reel_tape
+- file: damaged/reel_tape_2025_summer_stuff_reel_t_02.flac
+  duration_s: 100.987
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 2025
+  genre: Reel To Reel Old Time Radio
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  source_attribution: Taperwayne — Summer Stuff Reel (Internet Archive, summer-stuff-reel.t-02)
+  license: CC0
+  source_url: https://archive.org/download/summer-stuff-reel.t-02/Summer%20Stuff%20Reel.flac16/Summer%20Stuff%20Reel.t03.flac
+  checksum_sha256: 10b90a865397f17c43d2020792c1934751819380b3647c1da4fe0cb183a8f187
+- file: damaged/reel_tape_synth_000_Music Delta - Rockabilly.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a40858b2f30347b0f75ca1d4b540ae021ed97dd48597043784ba9c41afe011ac
+  synthetic: true
+- file: damaged/reel_tape_synth_001_Night Panther - Fire.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 93311ba763bed6c034333cee0be0c8a680fe97206e4a451e7dd376cf5f9b60c2
+  synthetic: true
+- file: damaged/reel_tape_synth_002_North To Alaska - All The .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: ddb121b77e799644145a357da688ded41363fbe7e3a7ebad707481511f361b08
+  synthetic: true
+- file: damaged/reel_tape_synth_003_Patrick Talbot - A Reason .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 071b4d3ac1eaa479d0c918b920c649664234495123163a7962325abbe9914f02
+  synthetic: true
+- file: damaged/reel_tape_synth_004_Patrick Talbot - Set Me Fr.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 6c0cfb5db4d8a99f33278bf5f16f62431c19e9787ca28a8264a315e10964d32e
+  synthetic: true
+- file: damaged/reel_tape_synth_005_Phre The Eon - Everybody's.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 63324b0ffc13273dfd677b207aa385d4ea614b32f0242d53f41b5e728270a2a4
+  synthetic: true
+- file: damaged/reel_tape_synth_006_Port St Willow - Stay Even.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 8ae25c50b9d191ec89cded9dacece0204136760eafed5a809087edbda2608de1
+  synthetic: true
+- file: damaged/reel_tape_synth_007_Remember December - C U Ne.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 13741c48d97f3a389c88ee811443a48c2abe74dbde6f8bc0173f7c6d6103688c
+  synthetic: true
+- file: damaged/reel_tape_synth_008_Secret Mountains - High Ho.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: c209fe685d72bff7fa87bf1a6ce2e48a675f97113d268417f2d8778fc9cd0e9d
+  synthetic: true
+- file: damaged/reel_tape_synth_009_Skelpolu - Human Mistakes.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f19671a353d548731986a28d484f985d856f8ec969199bc9c18cbe35a200377a
+  synthetic: true
+- file: damaged/reel_tape_synth_010_Skelpolu - Together Alone.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: be41e420e498e2e4f9b1ac5d8492d9fe2a58457bad1e763ec7c0ff272f6fba66
+  synthetic: true
+- file: damaged/reel_tape_synth_011_Snowmine - Curfews.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 41d34cda400f9ed90873a682e3b1a7159525789a4d88da1df2acfc1f78eedb58
+  synthetic: true
+- file: damaged/reel_tape_synth_012_Spike Mullings - Mike's Su.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: d06ec34e8b22fb02ff330ec635884b08a7fa929ac9a1132345648befb8a18195
+  synthetic: true
+- file: damaged/reel_tape_synth_013_St Vitus - Word Gets Aroun.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5d9f720ac22ab9c5345b9d80360ffbfa9fd768847e4a05701e74e1072acdd520
+  synthetic: true
+- file: damaged/reel_tape_synth_014_Steven Clark - Bounty.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a2cbdfc5ea0b6c002a27afac89060b04f07533c18a1c59121e6aa76f375b9bfb
+  synthetic: true
+- file: damaged/reel_tape_synth_015_Strand Of Oaks - Spacestat.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: c7f38cad3faa0e689658a30ec61e78d01bf65dbf52a23cc27294faa959d70149
+  synthetic: true
+- file: damaged/reel_tape_synth_016_Sweet Lights - You Let Me .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a6c0cec79d59c630b2d92eb94280c6ab0ac41ff633b237e120e777614fae024e
+  synthetic: true
+- file: damaged/reel_tape_synth_017_Swinging Steaks - Lost My .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a3486939482c65474b4b1d16aebfec28c9b2a6b06b82bb96e44a946e6c8abb6d
+  synthetic: true
+- file: damaged/reel_tape_synth_018_The Districts - Vermont.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 9e9673b62006db4ba29760a1e0d55e3149f375ef5b80a6dd07761c659397974e
+  synthetic: true
+- file: damaged/reel_tape_synth_019_The Long Wait - Back Home .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 92fa4e7664f209afb62dc44bdec974f769cf236508e8582ba5eea6e9d54d024b
+  synthetic: true
+- file: damaged/reel_tape_synth_020_The Scarlet Brand - Les Fl.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 7bf10063c3210c04872bf10a4781729639c4dccfca610a03ec9f1d63276d1963
+  synthetic: true
+- file: damaged/reel_tape_synth_021_The So So Glos - Emergency.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 3e3b4916d1f63b8a6a91b5b0421557f884f55ab80048d9bb6bc3144d23f473b0
+  synthetic: true
+- file: damaged/reel_tape_synth_022_The Wrong'Uns - Rothko.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a8db4ff33c76a6af50be6708d357b3c705780f1cad6e2d68186917c3955f2d36
+  synthetic: true
+- file: damaged/reel_tape_synth_023_Tim Taler - Stalker.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f58a8198c5630c110108e21e57db86ab2b4c8c804bd275927084488a0e65ed76
+  synthetic: true
+- file: damaged/reel_tape_synth_024_Titanium - Haunted Age.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 58354c4782f69cfe29fd7277afcd983b7dc75498e5122b28dd9e41f7f745f219
+  synthetic: true
+- file: damaged/reel_tape_synth_025_Traffic Experiment - Once .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: ba71fbe77b7f14a6de60b01cbb2ec37190001849c6b03c1209715e42760ceed8
+  synthetic: true
+- file: damaged/reel_tape_synth_026_Traffic Experiment - Siren.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 039d2a1d8aeaeb0830550954851070d96f929f488a07f82bb2d2e88cc77f1742
+  synthetic: true
+- file: damaged/reel_tape_synth_027_Triviul - Angelsaint.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: ca29faf79e930f980c25f7c911a812c7d7c82f277b046fca1f6658c8170aa8d2
+  synthetic: true
+- file: damaged/reel_tape_synth_028_Triviul - Dorothy.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 98ec17b046b1447b8607faf2f5d4e9b76b706b6cdbe897af88f9c34529e238ec
+  synthetic: true
+- file: damaged/reel_tape_synth_029_Voelund - Comfort Lives In.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5f7997318820e05e8353f1d8df3ae766a07d6c860f222406a0b0ac16fa2a26bc
+  synthetic: true
+- file: damaged/reel_tape_synth_030_Wall Of Death - Femme.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 879f9d325ccd1b959e3b8a7b1e1553ba2852bf1bec92791f622802b3818222fa
+  synthetic: true
+- file: damaged/reel_tape_synth_031_Young Griffo - Blood To Bo.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: b000a1a799c2a84d1ec80399e5a72e3066eae179d61349959f24741a3b811c31
+  synthetic: true
+- file: damaged/reel_tape_synth_032_Young Griffo - Facade.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 155ff0fabed338c67b1d1bbe12d1e0e136cebeedb4c4606cb3cebdd075c4dcfd
+  synthetic: true
+- file: damaged/reel_tape_synth_033_Young Griffo - Pennies.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 3461b3090d0225dbd853e25e6f209ffdbef11a436b708895713f869c7485bbe4
+  synthetic: true
+- file: damaged/reel_tape_synth_034_AM Contra - Heart Peripher.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 63bf41d3707caa3698d90a8ad88566984d6318b7c3b9c516565d676cedd3195a
+  synthetic: true
+- file: damaged/reel_tape_synth_035_Al James - Schoolboy Facin.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: aa65f22e55b5443cf7da2c08327272541cd69281b22651e9ea022be604c6faff
+  synthetic: true
+- file: damaged/reel_tape_synth_036_Angels In Amplifiers - I'm.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: bb6dcb7fe31a64e7e4717c1dc7b6a793f140c594bbcc08e46effd4b22c3768ee
+  synthetic: true
+- file: damaged/reel_tape_synth_037_Arise - Run Run Run.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 24924461513286040a4e49d77908ca48635d32a9931dd1f8d4baf13cef4baa45
+  synthetic: true
+- file: damaged/reel_tape_synth_038_BKS - Bulldozer.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 9599ac7f3a73913c3603f457557f10aabf764d8833902030a85d21f74e3f5b22
+  synthetic: true
+- file: damaged/reel_tape_synth_039_BKS - Too Much.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: reel_tape
+  era_year: 1965
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 7c67fa4d74d92ca50ba9b0451f0dc7abd7891366692c9e1864e9f827dbd09402
+  synthetic: true

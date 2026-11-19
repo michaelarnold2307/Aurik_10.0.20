@@ -1,0 +1,108 @@
+profile:
+  name: shellac_to_cd_to_mp3_medium_offline
+  medium: shellac_cd_mp3_hybrid
+  mode: offline
+  channels: stereo_or_mono
+
+analysis:
+  segment_length_sec: 1.5
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 12.0
+
+budgets:
+  artifact_budget: 0.18
+  identity_budget: 0.12
+  temporal_change_budget: 0.10
+  spectral_change_budget: 0.22
+  stereo_change_budget: 0.05
+  noise_change_budget: 0.08
+
+processing_order:
+  - channel_selection
+  - eq_curve
+  - repair
+  - rumble
+  - codec_taming
+  - noise_surface_optional
+  - stereo_guard
+  - finalize
+
+modules:
+
+  channel_selection:
+    enabled: true
+    mode: auto
+    strategy: [select_best_channel, sum_if_similar]
+    criteria:
+      click_density_weight: 0.5
+      noise_floor_weight: 0.3
+      hf_integrity_weight: 0.2
+
+  eq_curve:
+    enabled: true
+    mode: historical
+    curves:
+      default: flat
+      known_labels: [columbia_pre_1938, victor_pre_1938, hm_pre_1938]
+    commit:
+      min_anchor_gain: 0.020
+
+  repair:
+    clicks:
+      detect:
+        impulse_salience_db: 18.0
+        max_duration_ms: 2.5
+      trial: { wet: 1.0 }
+      commit: { min_anchor_gain: 0.008 }
+    crackle:
+      detect:
+        micro_impulse_density_per_sec: 120
+      trial:
+        wet: 0.55
+        wet_max: 0.65
+      commit:
+        min_anchor_gain: 0.010
+      gates:
+        forbid_codec_warble_increase: true
+        forbid_musical_noise_increase: true
+
+  rumble:
+    hpf: { cutoff_hz: 80, slope_db_per_oct: 12 }
+    commit: { min_anchor_gain: 0.010 }
+
+  codec_taming:
+    detect:
+      pre_echo_warn_db: -20
+      pre_echo_strong_db: -15
+      warble_energy_warn: 0.010
+      warble_energy_strong: 0.020
+    trial:
+      smoothing_strength: 0.12
+      hf_tilt_db_at_10k: -0.8
+    commit:
+      min_anchor_gain: 0.015
+      forbid_musical_noise_increase: true
+
+  noise_surface_optional:
+    enabled: true
+    detect:
+      noise_floor_dbfs: -45.0
+    trial:
+      wet: 0.18
+      wet_max: 0.25
+    commit:
+      min_anchor_gain: 0.020
+      musical_noise_tolerance: 0.0
+
+  stereo_guard:
+    enforce_mono: auto
+    hf_coherence_min_delta: -0.02
+
+finalize:
+  true_peak_guard:
+    enabled: true
+    target_dbTP: -2.0
+  dither:
+    enabled: auto
+    bitdepth_out: 24
+    noise_shaping: off

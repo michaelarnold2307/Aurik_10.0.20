@@ -1,0 +1,4 @@
+- Added terminal output budget in run_tests_safe.sh for live mode: AURIK_TERMINAL_LINE_BUDGET (default 400) + AURIK_TERMINAL_PROGRESS_EVERY.
+- In live mode, output is still fully logged to logs/pytest_safe.log; terminal shows first N lines, then throttled progress heartbeats.
+- AURIK_STREAM_TO_TERMINAL now supports auto: quiet in VS Code terminals, live outside VS Code.
+- Added phase contract guard test file tests/unit/test_phase_contract_stability_guards.py to lock resolver usage (phase27) and material normalization behavior (phase31).

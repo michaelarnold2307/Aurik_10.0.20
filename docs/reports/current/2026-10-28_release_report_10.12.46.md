@@ -1,0 +1,31 @@
+# Release-Report — Aurik 10.12.46
+
+> „Keine Zeile ohne Beleg“ (Pfeiler 8): Jede Aussagezeile trägt ihre Quelle;
+> fehlende Quellen stehen unter **Provenienz-Lücken**.
+
+## Version & Provenienz
+- Version: **10.12.46**  (Quelle: backend/core/version.py)
+
+## Git
+- Git-Revision: `9c84ddec37d73c19979ca5afb89e72013cd45ebb` (sauber)  (Quelle: git rev-parse/status)
+
+## Modelle & Fingerabdrücke
+- Artefakt-Registry: 390 Zeilen, sha256 `a18a4ea65a42679c…`  (Quelle: .github/ML_ARTIFACT_FINGERPRINTS.md)
+
+## Release-Kandidaten & Fallback-Quote
+- Kandidaten: 9 Flag(s) gemessen  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+- `use_scnet_music`: fallback_count=9, flag_freigabe=blockiert (Fallback-Quote > 0, Pfeiler 5)  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+- `use_sgmse_musik`: fallback_count=9, flag_freigabe=blockiert (Fallback-Quote > 0, Pfeiler 5)  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+- `use_bigvgan_f3_studio`: fallback_count=10, flag_freigabe=blockiert (Fallback-Quote > 0, Pfeiler 5)  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+- `use_bw_v5`: fallback_count=9, flag_freigabe=blockiert (Fallback-Quote > 0, Pfeiler 5)  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+- `use_wf4_warp_head`: fallback_count=11, flag_freigabe=blockiert (Fallback-Quote > 0, Pfeiler 5)  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+- `use_tp_v2_phase`: fallback_count=9, flag_freigabe=blockiert (Fallback-Quote > 0, Pfeiler 5)  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+- `use_rt60_regressor`: fallback_count=9, flag_freigabe=blockiert (Fallback-Quote > 0, Pfeiler 5)  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+- `use_aspade_declipper`: fallback_count=9, flag_freigabe=blockiert (Fallback-Quote > 0, Pfeiler 5)  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+- `use_tf_gridnet_quality`: fallback_count=12, flag_freigabe=blockiert (Fallback-Quote > 0, Pfeiler 5)  (Quelle: docs/reports/current/2026-10-27_release_candidates_voll.json)
+
+## Hör-Verdikte (Hörordnung entscheidet)
+- nicht belegt
+
+## Provenienz-Lücken
+- Hör-Verdikte nicht belegt (scripts/ab_harness.py collect nicht ausgeführt)

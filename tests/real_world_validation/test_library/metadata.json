@@ -1,0 +1,82 @@
+{
+  "digital": {
+    "digital_test_01.wav": {
+      "defects": ["clipping", "quantization_noise", "buffer_underruns"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    },
+    "digital_test_02.wav": {
+      "defects": ["clipping", "quantization_noise", "buffer_underruns"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    },
+    "digital_test_03.wav": {
+      "defects": ["clipping", "quantization_noise", "buffer_underruns"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    }
+  },
+  "tape": {
+    "tape_test_01.wav": {
+      "defects": ["dropouts", "wow_flutter", "tape_hiss", "azimuth_error"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    },
+    "tape_test_02.wav": {
+      "defects": ["dropouts", "wow_flutter", "tape_hiss", "azimuth_error"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    },
+    "tape_test_03.wav": {
+      "defects": ["dropouts", "wow_flutter", "tape_hiss", "azimuth_error"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    }
+  },
+  "vinyl": {
+    "vinyl_test_01.wav": {
+      "defects": ["surface_noise", "clicks", "pops", "rumble"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    },
+    "vinyl_test_02.wav": {
+      "defects": ["surface_noise", "clicks", "pops", "rumble"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    },
+    "vinyl_test_03.wav": {
+      "defects": ["surface_noise", "clicks", "pops", "rumble"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    }
+  },
+  "vocals": {
+    "vocals_test_01.wav": {
+      "defects": ["sibilance", "plosives", "breaths", "resonances"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    },
+    "vocals_test_02.wav": {
+      "defects": ["sibilance", "plosives", "breaths", "resonances"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    },
+    "vocals_test_03.wav": {
+      "defects": ["sibilance", "plosives", "breaths", "resonances"],
+      "duration": 30.0,
+      "sample_rate": 44100,
+      "type": "placeholder"
+    }
+  }
+}

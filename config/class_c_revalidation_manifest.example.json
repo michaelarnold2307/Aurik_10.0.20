@@ -1,0 +1,45 @@
+{
+  "cases": [
+    {
+      "audio_path": "test_audio/_tmp_mode_check.wav",
+      "case_id": "shellac_vocal_001",
+      "material": "shellac",
+      "mode": "restoration",
+      "restorability_bin": "lt40",
+      "vocal_focus": true
+    },
+    {
+      "audio_path": "test_audio/vinyl/jazz_1950s_scratched.wav",
+      "case_id": "vinyl_vocal_001",
+      "material": "vinyl",
+      "mode": "restoration",
+      "restorability_bin": "40to70",
+      "vocal_focus": true
+    },
+    {
+      "audio_path": "test_audio/tape/cassette_1980s_wow.wav",
+      "case_id": "tape_vocal_001",
+      "material": "tape",
+      "mode": "restoration",
+      "restorability_bin": "40to70",
+      "vocal_focus": true
+    },
+    {
+      "audio_path": "test_audio/digital/cd_clipped_2000s.wav",
+      "case_id": "cd_vocal_001",
+      "material": "cd_digital",
+      "mode": "restoration",
+      "restorability_bin": "gt70",
+      "vocal_focus": true
+    },
+    {
+      "audio_path": "test_audio/digital/mp3_64kbps_artifacts.wav",
+      "case_id": "mp3_vocal_001",
+      "material": "mp3_low",
+      "mode": "restoration",
+      "restorability_bin": "40to70",
+      "vocal_focus": true
+    }
+  ],
+  "description": "Beispiel-Manifest fuer Klasse-C-Revalidierung (PR-A)"
+}

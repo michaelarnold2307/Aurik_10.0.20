@@ -1,0 +1,13 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "sota_m9-20261117T175953Z-808100",
+  "name": "m9_tf_gridnet",
+  "phase": "sota_m9",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4",
+  "resume_befehl": "bash -c if [ -f models/tf_gridnet/checkpoint_latest.pt ]; then exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4 --resume models/tf_gridnet/checkpoint_latest.pt; else exec env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs/clean --noisy-dir data/tfgrid_pairs/noisy --batch-size 1 --grad-accum 4; fi",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [],
+  "quelle": "scripts/train_job_runner.py"
+}

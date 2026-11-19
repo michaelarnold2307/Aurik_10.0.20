@@ -1,0 +1,4 @@
+- Thema: AdaptivePhaseRescheduler + uncertainty_budget Grenzfalltests.
+- Beobachtung: Test `high_uncertainty_budget_blocks_borderline_gap` darf keinen zu großen Gap verwenden (z.B. 0.08), sonst bleibt Injektion trotz hoher Unsicherheit korrekt möglich.
+- Fix-Pattern: Für klaren Block-Nachweis einen echten Borderline-Gap (0.05 bei hoher Restorability) nutzen und denselben Gap mit niedrigem uncertainty_budget als Gegenprobe erlauben.
+- Nutzen: Stabilere Tests, die exakt die Unsicherheitslogik statt allgemeiner Gap-Logik validieren.

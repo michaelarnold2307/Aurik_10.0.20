@@ -1,0 +1,98 @@
+profile:
+  name: cassette_medium_offline_stereo
+  medium: cassette
+  mode: offline
+  channels: stereo
+
+analysis:
+  segment_length_sec: 2.0
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 12.0
+
+budgets:
+  artifact_budget: 0.15
+  identity_budget: 0.10
+  temporal_change_budget: 0.30
+  spectral_change_budget: 0.20
+  noise_change_budget: 0.15
+  stereo_change_budget: 0.10
+
+processing_order:
+  - wow_flutter
+  - azimuth
+  - dropout_repair
+  - deharsh
+  - hiss_taming
+  - stereo_guard
+  - finalize
+
+modules:
+
+  wow_flutter:
+    detect:
+      wow_warn: 0.015
+      wow_strong: 0.030
+      flutter_warn: 0.010
+      flutter_strong: 0.020
+      stereo_corr_min: 0.60
+    trial:
+      wow_strength_warn: 0.40
+      wow_strength_strong: 0.60
+      flutter_strength_warn: 0.30
+      flutter_strength_strong: 0.45
+    commit:
+      min_anchor_gain: 0.020
+
+  azimuth:
+    detect:
+      hf_coherence_warn: 0.60
+      hf_coherence_strong: 0.45
+      phase_slope_warn_rad_per_khz: 0.20
+      phase_slope_strong_rad_per_khz: 0.35
+    trial:
+      strength_warn: 0.40
+      strength_strong: 0.60
+    commit:
+      min_anchor_gain: 0.015
+
+  dropout_repair:
+    detect:
+      hf_drop_warn_db: -6.0
+      hf_drop_strong_db: -10.0
+      min_duration_ms: 30
+    trial:
+      spectral_inpaint_wet: 1.0
+    commit:
+      min_anchor_gain: 0.010
+
+  deharsh:
+    detect:
+      hf_spikiness_warn_db: 9.0
+      hf_spikiness_strong_db: 12.0
+    trial:
+      resonance_strength: 0.20
+      deesser_wet: 0.18
+      deesser_wet_max: 0.30
+    commit:
+      max_hf_loss_db: 2.5
+
+  hiss_taming:
+    detect:
+      noise_floor_dbfs: -55.0
+      masking_index: 0.60
+      nonstationarity: 0.40
+    trial:
+      denoise_wet: 0.20
+      denoise_wet_max: 0.35
+    commit:
+      min_anchor_gain: 0.020
+      musical_noise_tolerance: 0.0
+
+  stereo_guard:
+    mono_fold_max_regression_db: 0.0
+    hf_coherence_min_delta: -0.02
+
+finalize:
+  true_peak_guard:
+    enabled: true
+    target_dbTP: -1.0

@@ -1,0 +1,75 @@
+{
+  "seed": 42,
+  "tracks": [
+    {
+      "track": "BKS - Bulldozer",
+      "mos": {
+        "ref": 1.879,
+        "band12": 1.9646,
+        "band16": 1.8624,
+        "noise10": 2.0469,
+        "noise0": 2.328
+      },
+      "delta_vs_ref": {
+        "band12": -0.0856,
+        "band16": 0.0166,
+        "noise10": -0.1679,
+        "noise0": -0.449
+      }
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "mos": {
+        "ref": 2.173,
+        "band12": 2.3103,
+        "band16": 2.1775,
+        "noise10": 2.4897,
+        "noise0": 2.5451
+      },
+      "delta_vs_ref": {
+        "band12": -0.1373,
+        "band16": -0.0045,
+        "noise10": -0.3167,
+        "noise0": -0.3721
+      }
+    },
+    {
+      "track": "Speak Softly - Broken Man",
+      "mos": {
+        "ref": 1.4382,
+        "band12": 1.7029,
+        "band16": 1.417,
+        "noise10": 1.5732,
+        "noise0": 1.8033
+      },
+      "delta_vs_ref": {
+        "band12": -0.2647,
+        "band16": 0.0212,
+        "noise10": -0.135,
+        "noise0": -0.3651
+      }
+    }
+  ],
+  "summary": {
+    "band12": {
+      "mean_delta": -0.16253333333333328,
+      "min_delta": -0.26470000000000016,
+      "direction_correct": false
+    },
+    "band16": {
+      "mean_delta": 0.011099999999999888,
+      "min_delta": -0.0045000000000001705,
+      "direction_correct": false
+    },
+    "noise10": {
+      "mean_delta": -0.20653333333333332,
+      "min_delta": -0.3167,
+      "direction_correct": false
+    },
+    "noise0": {
+      "mean_delta": -0.3954,
+      "min_delta": -0.44899999999999984,
+      "direction_correct": false
+    }
+  }
+}

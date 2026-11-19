@@ -1,0 +1,4 @@
+- PreAnalysis parallel scheduler optimiert: ThreadPool `max_workers` jetzt dynamisch `min(4, len(missing_steps))` statt immer 4; reduziert Overhead bei teil-gecacheten Runs.
+- Telemetrie verbessert: Debug-Log meldet `parallel steps`, `cached` und `workers` fuer bessere Laufzeitdiagnose.
+- Competitive Gate robustifiziert: Wenn Worker nach `terminate()+join` noch lebt, folgt `kill()+join` als harter Fallback, um Zombie-Prozesse zu vermeiden.
+- Timeout-Assertion im Competitive Gate enthaelt jetzt gemessene Laufzeit bis Abbruch (`elapsed_s`) fuer schnellere Root-Cause-Analyse.

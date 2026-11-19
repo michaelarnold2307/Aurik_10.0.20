@@ -1,0 +1,15 @@
+- channels: 1
+  checksum_sha256: 171403bad28ffbd60ee87b07d22627175be32f4bbd987a4a1281da370658a4c7
+  defects:
+  - clicks
+  - surface_noise
+  - bandwidth_limited
+  duration_s: 3.0
+  era: 1932
+  file: shellac_test_damaged.wav
+  genre: Jazz
+  license: CC0
+  material: shellac
+  notes: Synthetische Test-Aufnahme
+  sample_rate: 48000
+  source: Synthetic Test Corpus

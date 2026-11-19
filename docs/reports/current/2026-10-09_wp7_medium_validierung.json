@@ -1,0 +1,110 @@
+[
+  {
+    "file": "shellac_1902_prochvariationenmariedietrich.mp3",
+    "erwartet": "shellac",
+    "primaer": "vinyl",
+    "kette": ["vinyl", "reel_tape", "lacquer_disc"],
+    "konfidenz": 0.6,
+    "top3": [
+      ["unknown", 0.951],
+      ["vinyl", 0.047],
+      ["lacquer_disc", 0.002]
+    ]
+  },
+  {
+    "file": "shellac_1919_w_moor_echo.mp3",
+    "erwartet": "shellac",
+    "primaer": "vinyl",
+    "kette": ["vinyl", "reel_tape", "lacquer_disc", "mp3_low"],
+    "konfidenz": 0.6,
+    "top3": [
+      ["unknown", 0.749],
+      ["lacquer_disc", 0.229],
+      ["vinyl", 0.02]
+    ]
+  },
+  {
+    "file": "shellac_1924_nozzedifigarodb831.mp3",
+    "erwartet": "shellac",
+    "primaer": "unknown",
+    "kette": ["unknown"],
+    "konfidenz": 0.6,
+    "top3": [
+      ["unknown", 0.999],
+      ["vinyl", 0.001],
+      ["lacquer_disc", 0.0]
+    ]
+  },
+  {
+    "file": "shellac_1908_caruso_rigoletto_la_donna_e_mobile.mp3",
+    "erwartet": "shellac",
+    "primaer": "shellac",
+    "kette": ["shellac", "mp3_low"],
+    "konfidenz": 0.971,
+    "top3": [
+      ["shellac", 0.971],
+      ["wax_cylinder", 0.015],
+      ["unknown", 0.013]
+    ]
+  },
+  {
+    "file": "digital_2011_fourhorns_mountain_metal.mp3",
+    "erwartet": "digital",
+    "primaer": "mp3_high",
+    "kette": ["mp3_high"],
+    "konfidenz": 0.449,
+    "top3": [
+      ["unknown", 0.997],
+      ["lacquer_disc", 0.003],
+      ["vinyl", 0.0]
+    ]
+  },
+  {
+    "file": "digital_2007_marav994d.mp3",
+    "erwartet": "digital",
+    "primaer": "vinyl",
+    "kette": ["vinyl", "reel_tape", "lacquer_disc"],
+    "konfidenz": 0.6,
+    "top3": [
+      ["unknown", 0.963],
+      ["vinyl", 0.035],
+      ["lacquer_disc", 0.003]
+    ]
+  },
+  {
+    "file": "cassette_1987_archive_20260930.mp3",
+    "erwartet": "cassette",
+    "primaer": "vinyl",
+    "kette": ["vinyl"],
+    "konfidenz": 0.989,
+    "top3": [
+      ["vinyl", 0.989],
+      ["unknown", 0.009],
+      ["lacquer_disc", 0.001]
+    ]
+  },
+  {
+    "file": "reel_tape_2025_summer_stuff_reel_t_02.flac",
+    "erwartet": "reel_tape",
+    "primaer": "lacquer_disc",
+    "kette": ["lacquer_disc", "tape", "cassette", "mp3_low"],
+    "konfidenz": 0.6,
+    "top3": [
+      ["lacquer_disc", 0.574],
+      ["cassette", 0.286],
+      ["tape", 0.12]
+    ]
+  },
+  {
+    "file": "tape_2011_cartepostal1diewurstbruckeinistanbul.mp3",
+    "erwartet": "tape",
+    "primaer": "vinyl",
+    "kette": ["vinyl", "reel_tape", "lacquer_disc", "mp3_low"],
+    "konfidenz": 0.648,
+    "top3": [
+      ["vinyl", 0.966],
+      ["unknown", 0.034],
+      ["shellac", 0.0]
+    ]
+  }
+]

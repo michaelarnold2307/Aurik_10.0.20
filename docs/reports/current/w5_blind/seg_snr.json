@@ -1,0 +1,26 @@
+[
+  {
+    "sample": "cassette_hiphop_1980",
+    "seg_snr_in": 20.97,
+    "seg_snr_out": 20.97,
+    "delta_db": 0.0
+  },
+  {
+    "sample": "cassette_pop_1980s_c",
+    "seg_snr_in": 21.69,
+    "seg_snr_out": 21.69,
+    "delta_db": 0.0
+  },
+  {
+    "sample": "cassette_rock_1990s_",
+    "seg_snr_in": 18.93,
+    "seg_snr_out": 18.93,
+    "delta_db": 0.0
+  },
+  {
+    "sample": "digital_electronic_2",
+    "seg_snr_in": 99.21,
+    "seg_snr_out": 99.21,
+    "delta_db": 0.0
+  }
+]

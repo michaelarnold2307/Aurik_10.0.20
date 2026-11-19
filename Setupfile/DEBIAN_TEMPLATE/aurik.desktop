@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Aurik 10
+GenericName=Audio-Restaurierung
+Comment=Weltklasse-Audio-Restaurierung mit natürlichem Wohlklang
+Exec=/usr/bin/aurik
+Icon=audio-x-generic
+Terminal=false
+Categories=AudioVideo;Audio;AudioVideoEditing;
+Keywords=Audio;Restaurierung;Vinyl;Mastering;

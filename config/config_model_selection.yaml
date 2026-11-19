@@ -1,0 +1,43 @@
+# Aurik 6.0 Modell-Konfiguration
+# Für jeden Anwendungsfall ist das optimale Modell/Ensemble festgelegt.
+
+# Standard-Musikseparation (robust, universell)
+standard:
+  type: ensemble
+  models:
+    - models/mdx_ensemble/uvr-mdx-net-inst_hq1.onnx
+    - models/mdx_ensemble/uvr-mdx-net-inst_hq2.onnx
+    - models/mdx_ensemble/uvr-mdx-net-inst_hq3.onnx
+    - models/mdx_ensemble/uvr-mdx-net-inst_hq4.onnx
+
+# Moderne/komplexe Musik (maximale Qualität)
+modern:
+  type: single
+  models:
+    - models/mdx23c/mdx23c.onnx
+
+# Vinyl-/Sonderfälle
+vinyl:
+  type: single
+  models:
+    - models/banquet/banquet_vinyl.onnx
+
+# Optional: Demucs v4 als weitere Option
+# demucs:
+#   type: single
+#   models:
+#     - models/demucs/demucs_v4.onnx
+
+# Qualitätsbewertung nach Separation
+quality_evaluation:
+  enabled: true
+  metrics:
+    - dnsmos
+    - visqol
+  min_score: 3.0
+
+# Fallback, falls Modell nicht verfügbar
+fallback:
+  type: single
+  models:
+    - models/mdx_ensemble/uvr-mdx-net-inst_hq1.onnx

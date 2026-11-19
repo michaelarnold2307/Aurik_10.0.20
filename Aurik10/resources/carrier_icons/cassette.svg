@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="sh" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#2E3440"/><stop offset="1" stop-color="#141820"/>
+</linearGradient>
+<radialGradient id="rl" cx="38%" cy="35%" r="60%">
+<stop offset="0" stop-color="#4C3A20"/><stop offset="1" stop-color="#1C1008"/>
+</radialGradient>
+<filter id="gl"><feGaussianBlur stdDeviation="1.15" result="b"/>
+<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <!-- Mystical: transparent nebula backdrop -->
+  <radialGradient id="m_nbg" cx="50%" cy="50%" r="50%">
+    <stop offset="0%"   stop-color="#0C0720" stop-opacity="0.92"/>
+    <stop offset="55%"  stop-color="#08041A" stop-opacity="0.80"/>
+    <stop offset="85%"  stop-color="#05030E" stop-opacity="0.45"/>
+    <stop offset="100%" stop-color="#020108" stop-opacity="0.00"/>
+  </radialGradient>
+  <!-- Mystical: outer cosmic ring gradient -->
+  <radialGradient id="m_ring" cx="50%" cy="50%" r="50%">
+    <stop offset="80%"  stop-color="#7744CC" stop-opacity="0.00"/>
+    <stop offset="95%"  stop-color="#6633BB" stop-opacity="0.30"/>
+    <stop offset="100%" stop-color="#4422AA" stop-opacity="0.10"/>
+  </radialGradient>
+  <!-- Mystical: ethereal glow filter -->
+  <filter id="m_glow" x="-80%" y="-80%" width="260%" height="260%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="2.8" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <!-- Mystical: sparkle glow filter -->
+  <filter id="m_spark" x="-200%" y="-200%" width="500%" height="500%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+<!-- Mystical nebula backdrop (transparent at edges) -->
+<rect width="48" height="48" rx="6" fill="url(#m_nbg)"/>
+
+<rect x="4" y="11" width="40" height="26" rx="3" fill="url(#sh)" stroke="#414858" stroke-width="1.0"/>
+<rect x="12" y="18" width="24" height="13" rx="2" fill="#080C10" stroke="#303840" stroke-width="0.7"/>
+<circle cx="19" cy="24.5" r="5.2" fill="url(#rl)" stroke="#6C5030" stroke-width="0.7"/>
+<circle cx="19" cy="24.5" r="3.2" fill="#0E0A06" stroke="#4C3820" stroke-width="0.5"/>
+<circle cx="19" cy="24.5" r="1.3" fill="#8A7050"/>
+<circle cx="29" cy="24.5" r="5.2" fill="url(#rl)" stroke="#6C5030" stroke-width="0.7"/>
+<circle cx="29" cy="24.5" r="3.2" fill="#0E0A06" stroke="#4C3820" stroke-width="0.5"/>
+<circle cx="29" cy="24.5" r="1.3" fill="#8A7050"/>
+<path d="M14 30 L19 28.5 L29 28.5 L34 30" fill="none" stroke="#5C3820" stroke-width="0.9" opacity="0.8"/>
+<circle cx="8" cy="15" r="1.6" fill="#303840"/><circle cx="40" cy="15" r="1.6" fill="#303840"/>
+<circle cx="8" cy="33" r="1.6" fill="#303840"/><circle cx="40" cy="33" r="1.6" fill="#303840"/>
+<rect x="4" y="11" width="40" height="5" rx="3" fill="#505860" opacity="0.09"/>
+<!-- Mystical: ethereal aura rings -->
+<circle cx="24" cy="24" r="22.8" fill="url(#m_ring)" opacity="1.0"/>
+<circle cx="24" cy="24" r="22.5" fill="none" stroke="#7744DD" stroke-width="0.55"
+  stroke-dasharray="4 3.5" opacity="0.30" filter="url(#m_glow)"/>
+<circle cx="24" cy="24" r="20.5" fill="none" stroke="#3355BB" stroke-width="0.30"
+  opacity="0.18" stroke-dasharray="2 5"/>
+<!-- Mystical: ethereal sparkle particles -->
+<g filter="url(#m_spark)">
+  <circle cx="6.5"  cy="6.5"  r="0.85" fill="#B09AFF" opacity="0.65"/>
+  <circle cx="41.5" cy="7.0"  r="0.70" fill="#80CCFF" opacity="0.55"/>
+  <circle cx="42.0" cy="41.5" r="0.80" fill="#CC88FF" opacity="0.60"/>
+  <circle cx="7.0"  cy="41.5" r="0.65" fill="#99DDFF" opacity="0.50"/>
+  <circle cx="24.0" cy="3.5"  r="0.60" fill="#FFD0FF" opacity="0.40"/>
+  <circle cx="44.5" cy="24.0" r="0.55" fill="#A0B8FF" opacity="0.38"/>
+</g>
+</svg>

@@ -1,0 +1,981 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "pegel_matching": true,
+  "jnd_defektlast": 0.05,
+  "n_paare": 45,
+  "n_besser": 6,
+  "n_ueberrestauration": 0,
+  "aggregat": {
+    "vinyl": {
+      "n": 3,
+      "delta_defektlast": -0.00467,
+      "delta_musik_mos": -0.0117,
+      "besser": 0
+    },
+    "kassette": {
+      "n": 3,
+      "delta_defektlast": -0.001,
+      "delta_musik_mos": -0.025,
+      "besser": 0
+    },
+    "clipping": {
+      "n": 3,
+      "delta_defektlast": 0.00403,
+      "delta_musik_mos": -0.0289,
+      "besser": 1
+    },
+    "mp3_128": {
+      "n": 3,
+      "delta_defektlast": -0.01213,
+      "delta_musik_mos": -0.0169,
+      "besser": 1
+    }
+  },
+  "zeilen": [
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "vinyl",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.4075,
+        "musik_mos": 4.8009
+      },
+      "restauriert": {
+        "defektlast": 0.3983,
+        "musik_mos": 4.7952
+      },
+      "delta_defektlast": -0.0092,
+      "delta_musik_mos": -0.0057,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9824
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "kassette",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.4741,
+        "musik_mos": 4.7725
+      },
+      "restauriert": {
+        "defektlast": 0.4714,
+        "musik_mos": 4.759
+      },
+      "delta_defektlast": -0.0027,
+      "delta_musik_mos": -0.0135,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.982
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "clipping",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0147,
+        "musik_mos": 4.7126
+      },
+      "restauriert": {
+        "defektlast": 0.0204,
+        "musik_mos": 4.7244
+      },
+      "delta_defektlast": 0.0057,
+      "delta_musik_mos": 0.0118,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9791
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "mp3_128",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.1519,
+        "musik_mos": 4.9028
+      },
+      "restauriert": {
+        "defektlast": 0.1181,
+        "musik_mos": 4.909
+      },
+      "delta_defektlast": -0.0338,
+      "delta_musik_mos": 0.0062,
+      "besser": true,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9822
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "hum",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0148,
+        "musik_mos": 4.9264
+      },
+      "restauriert": {
+        "defektlast": 0.0161,
+        "musik_mos": 4.9229
+      },
+      "delta_defektlast": 0.0013,
+      "delta_musik_mos": -0.0035,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9688
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "wowflutter",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0115,
+        "musik_mos": 4.9318
+      },
+      "restauriert": {
+        "defektlast": 0.0125,
+        "musik_mos": 4.9284
+      },
+      "delta_defektlast": 0.001,
+      "delta_musik_mos": -0.0034,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9821
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "kompression",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.03,
+        "musik_mos": 4.9301
+      },
+      "restauriert": {
+        "defektlast": 0.0327,
+        "musik_mos": 4.9273
+      },
+      "delta_defektlast": 0.0027,
+      "delta_musik_mos": -0.0028,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9824
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "kammfilter",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0138,
+        "musik_mos": 4.9334
+      },
+      "restauriert": {
+        "defektlast": 0.0145,
+        "musik_mos": 4.9297
+      },
+      "delta_defektlast": 0.0007,
+      "delta_musik_mos": -0.0037,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9889
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "verzerrung",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0159,
+        "musik_mos": 4.9319
+      },
+      "restauriert": {
+        "defektlast": 0.0172,
+        "musik_mos": 4.9287
+      },
+      "delta_defektlast": 0.0013,
+      "delta_musik_mos": -0.0032,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9824
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "clicks",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9272
+      },
+      "restauriert": {
+        "defektlast": 0.0171,
+        "musik_mos": 4.9237
+      },
+      "delta_defektlast": 0.0013,
+      "delta_musik_mos": -0.0035,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9824
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "pitch_drift",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0109,
+        "musik_mos": 4.9324
+      },
+      "restauriert": {
+        "defektlast": 0.0117,
+        "musik_mos": 4.9326
+      },
+      "delta_defektlast": 0.0008,
+      "delta_musik_mos": 0.0002,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9779
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "dropout",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9282
+      },
+      "restauriert": {
+        "defektlast": 0.0171,
+        "musik_mos": 4.9249
+      },
+      "delta_defektlast": 0.0013,
+      "delta_musik_mos": -0.0033,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9824
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "raum",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 1.1065,
+        "musik_mos": 3.6893
+      },
+      "restauriert": {
+        "defektlast": 0.611,
+        "musik_mos": 3.7309
+      },
+      "delta_defektlast": -0.4955,
+      "delta_musik_mos": 0.0416,
+      "besser": true,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9339
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "lautheit",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "restauriert": {
+        "defektlast": 0.0171,
+        "musik_mos": 4.9235
+      },
+      "delta_defektlast": 0.0013,
+      "delta_musik_mos": -0.0039,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9824
+    },
+    {
+      "song": "Snowmine - Curfews",
+      "rezept": "amp_drift",
+      "clean": {
+        "defektlast": 0.0158,
+        "musik_mos": 4.9274
+      },
+      "schaden": {
+        "defektlast": 0.0165,
+        "musik_mos": 4.9305
+      },
+      "restauriert": {
+        "defektlast": 0.0179,
+        "musik_mos": 4.9283
+      },
+      "delta_defektlast": 0.0014,
+      "delta_musik_mos": -0.0022,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9817
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "vinyl",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4336,
+        "musik_mos": 4.7072
+      },
+      "restauriert": {
+        "defektlast": 0.4324,
+        "musik_mos": 4.6972
+      },
+      "delta_defektlast": -0.0012,
+      "delta_musik_mos": -0.01,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9852
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "kassette",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4997,
+        "musik_mos": 4.6534
+      },
+      "restauriert": {
+        "defektlast": 0.4997,
+        "musik_mos": 4.6204
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": -0.033,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9854
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "clipping",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4949,
+        "musik_mos": 4.1275
+      },
+      "restauriert": {
+        "defektlast": 0.4949,
+        "musik_mos": 4.1986
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": 0.0711,
+      "besser": true,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9852
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "mp3_128",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4924,
+        "musik_mos": 4.6551
+      },
+      "restauriert": {
+        "defektlast": 0.4897,
+        "musik_mos": 4.6186
+      },
+      "delta_defektlast": -0.0027,
+      "delta_musik_mos": -0.0365,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9852
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "hum",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4959,
+        "musik_mos": 4.66
+      },
+      "restauriert": {
+        "defektlast": 0.4957,
+        "musik_mos": 4.6215
+      },
+      "delta_defektlast": -0.0002,
+      "delta_musik_mos": -0.0385,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.948
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "wowflutter",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4973,
+        "musik_mos": 4.6539
+      },
+      "restauriert": {
+        "defektlast": 0.4973,
+        "musik_mos": 4.617
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": -0.0369,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9854
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "kompression",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4942,
+        "musik_mos": 4.6569
+      },
+      "restauriert": {
+        "defektlast": 0.4942,
+        "musik_mos": 4.6259
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": -0.031,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9851
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "kammfilter",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4971,
+        "musik_mos": 4.6541
+      },
+      "restauriert": {
+        "defektlast": 0.4971,
+        "musik_mos": 4.6573
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": 0.0032,
+      "besser": true,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9911
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "verzerrung",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6609
+      },
+      "restauriert": {
+        "defektlast": 0.496,
+        "musik_mos": 4.633
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": -0.0279,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9851
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "clicks",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4961,
+        "musik_mos": 4.6728
+      },
+      "restauriert": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6603
+      },
+      "delta_defektlast": -0.0001,
+      "delta_musik_mos": -0.0125,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9852
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "pitch_drift",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4967,
+        "musik_mos": 4.6651
+      },
+      "restauriert": {
+        "defektlast": 0.4966,
+        "musik_mos": 4.6292
+      },
+      "delta_defektlast": -0.0001,
+      "delta_musik_mos": -0.0359,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9822
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "dropout",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6563
+      },
+      "restauriert": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6252
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": -0.0311,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9852
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "raum",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 1.2335,
+        "musik_mos": 2.3995
+      },
+      "restauriert": {
+        "defektlast": 1.0191,
+        "musik_mos": 2.4304
+      },
+      "delta_defektlast": -0.2144,
+      "delta_musik_mos": 0.0309,
+      "besser": true,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9437
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "lautheit",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "restauriert": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6244
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": -0.0312,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9851
+    },
+    {
+      "song": "Alexander Ross - Goodbye Bolero",
+      "rezept": "amp_drift",
+      "clean": {
+        "defektlast": 0.496,
+        "musik_mos": 4.6556
+      },
+      "schaden": {
+        "defektlast": 0.4961,
+        "musik_mos": 4.643
+      },
+      "restauriert": {
+        "defektlast": 0.4961,
+        "musik_mos": 4.6152
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": -0.0278,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9851
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "vinyl",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.3694,
+        "musik_mos": 4.8419
+      },
+      "restauriert": {
+        "defektlast": 0.3658,
+        "musik_mos": 4.8226
+      },
+      "delta_defektlast": -0.0036,
+      "delta_musik_mos": -0.0193,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9798
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "kassette",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4959,
+        "musik_mos": 4.7916
+      },
+      "restauriert": {
+        "defektlast": 0.4956,
+        "musik_mos": 4.7631
+      },
+      "delta_defektlast": -0.0003,
+      "delta_musik_mos": -0.0285,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9796
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "clipping",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4978,
+        "musik_mos": 4.2019
+      },
+      "restauriert": {
+        "defektlast": 0.5042,
+        "musik_mos": 4.0324
+      },
+      "delta_defektlast": 0.0064,
+      "delta_musik_mos": -0.1695,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9779
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "mp3_128",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4996,
+        "musik_mos": 4.7678
+      },
+      "restauriert": {
+        "defektlast": 0.4997,
+        "musik_mos": 4.7473
+      },
+      "delta_defektlast": 0.0001,
+      "delta_musik_mos": -0.0205,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.979
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "hum",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4982,
+        "musik_mos": 4.7915
+      },
+      "restauriert": {
+        "defektlast": 0.4981,
+        "musik_mos": 4.7564
+      },
+      "delta_defektlast": -0.0001,
+      "delta_musik_mos": -0.0351,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9711
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "wowflutter",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4998,
+        "musik_mos": 4.7922
+      },
+      "restauriert": {
+        "defektlast": 0.4998,
+        "musik_mos": 4.7597
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": -0.0325,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9788
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "kompression",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4992,
+        "musik_mos": 4.7936
+      },
+      "restauriert": {
+        "defektlast": 0.4991,
+        "musik_mos": 4.7572
+      },
+      "delta_defektlast": -0.0001,
+      "delta_musik_mos": -0.0364,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.979
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "kammfilter",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.499,
+        "musik_mos": 4.7398
+      },
+      "restauriert": {
+        "defektlast": 0.4991,
+        "musik_mos": 4.731
+      },
+      "delta_defektlast": 0.0001,
+      "delta_musik_mos": -0.0088,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9866
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "verzerrung",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7909
+      },
+      "restauriert": {
+        "defektlast": 0.4984,
+        "musik_mos": 4.7501
+      },
+      "delta_defektlast": -0.0002,
+      "delta_musik_mos": -0.0408,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9776
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "clicks",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "restauriert": {
+        "defektlast": 0.4984,
+        "musik_mos": 4.7568
+      },
+      "delta_defektlast": -0.0002,
+      "delta_musik_mos": -0.0371,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.979
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "pitch_drift",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4955,
+        "musik_mos": 4.7945
+      },
+      "restauriert": {
+        "defektlast": 0.495,
+        "musik_mos": 4.746
+      },
+      "delta_defektlast": -0.0005,
+      "delta_musik_mos": -0.0485,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9782
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "dropout",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "restauriert": {
+        "defektlast": 0.4984,
+        "musik_mos": 4.7577
+      },
+      "delta_defektlast": -0.0002,
+      "delta_musik_mos": -0.0362,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.979
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "raum",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 1.6706,
+        "musik_mos": 2.3934
+      },
+      "restauriert": {
+        "defektlast": 1.1964,
+        "musik_mos": 2.4383
+      },
+      "delta_defektlast": -0.4742,
+      "delta_musik_mos": 0.0449,
+      "besser": true,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.8645
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "lautheit",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "restauriert": {
+        "defektlast": 0.4984,
+        "musik_mos": 4.7575
+      },
+      "delta_defektlast": -0.0002,
+      "delta_musik_mos": -0.0364,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.979
+    },
+    {
+      "song": "Music Delta - Rock",
+      "rezept": "amp_drift",
+      "clean": {
+        "defektlast": 0.4986,
+        "musik_mos": 4.7939
+      },
+      "schaden": {
+        "defektlast": 0.4989,
+        "musik_mos": 4.7923
+      },
+      "restauriert": {
+        "defektlast": 0.4987,
+        "musik_mos": 4.76
+      },
+      "delta_defektlast": -0.0002,
+      "delta_musik_mos": -0.0323,
+      "besser": false,
+      "ueberrestauration": false,
+      "pegel_gain_ist": 0.9777
+    }
+  ]
+}

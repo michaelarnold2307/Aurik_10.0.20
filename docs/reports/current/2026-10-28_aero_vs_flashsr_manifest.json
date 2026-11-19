@@ -1,0 +1,37 @@
+{
+  "task": "preference",
+  "seed": 42,
+  "question": "Welches klingt besser?",
+  "trials": [
+    {
+      "trial_id": "cassette_a1",
+      "class": "aero_vs_flashsr",
+      "reference": "output_audio/mushra/aero_vs_flashsr_stimuli/cassette_aero.wav",
+      "candidate": "output_audio/mushra/aero_vs_flashsr_stimuli/cassette_flashsr.wav"
+    },
+    {
+      "trial_id": "reel_a1",
+      "class": "aero_vs_flashsr",
+      "reference": "output_audio/mushra/aero_vs_flashsr_stimuli/reel_aero.wav",
+      "candidate": "output_audio/mushra/aero_vs_flashsr_stimuli/reel_flashsr.wav"
+    },
+    {
+      "trial_id": "vinyl_a1",
+      "class": "aero_vs_flashsr",
+      "reference": "output_audio/mushra/aero_vs_flashsr_stimuli/vinyl_aero.wav",
+      "candidate": "output_audio/mushra/aero_vs_flashsr_stimuli/vinyl_flashsr.wav"
+    },
+    {
+      "trial_id": "catch_1",
+      "class": "catch",
+      "catch": true,
+      "reference": "output_audio/mushra/aero_vs_flashsr_stimuli/cassette_referenz.wav",
+      "candidate": "output_audio/mushra/aero_vs_flashsr_stimuli/cassette_referenz.wav"
+    }
+  ],
+  "rollen": {
+    "reference": "AERO (12-kHz-Degradation → 48 kHz)",
+    "candidate": "FlashSR (16-kHz-Bandlimit → BW-Extension)"
+  },
+  "quelle": "scripts/mushra_harness.py thresholds-build (Vorbereitung §9/6, D-K2-5)"
+}

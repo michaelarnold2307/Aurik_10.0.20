@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/mnt/1846D15B46D139E8/Aurik_Standalone/aurik_cli.py", line 170, in main
+    result = process_file(input_file, output_file, verbose=verbose)
+  File "/mnt/1846D15B46D139E8/Aurik_Standalone/aurik_cli.py", line 58, in process_file
+    raise FileNotFoundError(f"Input-Datei nicht gefunden: {input_path}")
+FileNotFoundError: Input-Datei nicht gefunden: process
+╔══════════════════════════════════════════════════════════╗
+║  AURIK Audio Restoration - CLI Mode                     ║
+║  Lokale Verarbeitung ohne Server                        ║
+╚══════════════════════════════════════════════════════════╝
+
+📂 Lade: process
+
+╔══════════════════════════════════════════════════════════╗
+║  ❌ FEHLER                                               ║
+╚══════════════════════════════════════════════════════════╝
+
+Error: Input-Datei nicht gefunden: process

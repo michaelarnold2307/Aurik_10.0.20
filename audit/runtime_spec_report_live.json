@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-08-31T06:29:47.427474",
+  "backend_log": "logs/aurik_backend.log",
+  "frontend_log": "logs/aurik_frontend.out",
+  "latest_run_window": {
+    "start_line": 21560,
+    "end_line": 22813
+  },
+  "compliance_ok": false,
+  "required_passed": 10,
+  "required_total": 13,
+  "checks": [
+    {
+      "id": "entry_denker",
+      "title": "AurikDenker Einstieg genutzt",
+      "passed": true,
+      "required": true,
+      "evidence": "AurikDenker.denke() gestartet gefunden"
+    },
+    {
+      "id": "run_completed",
+      "title": "AurikDenker Lauf vollständig abgeschlossen",
+      "passed": false,
+      "required": true,
+      "evidence": "Kein AurikDenker-Abschluss im Run-Window"
+    },
+    {
+      "id": "mode_contract",
+      "title": "Nur erlaubter Betriebsmodus",
+      "passed": false,
+      "required": true,
+      "evidence": "Kein erlaubter mode=... Eintrag"
+    },
+    {
+      "id": "preanalysis_handover",
+      "title": "§2.47a PreAnalysis-Handover sichtbar",
+      "passed": true,
+      "required": true,
+      "evidence": "Cached Defect/PreAnalysis im Lauf genutzt"
+    },
+    {
+      "id": "medium_detect_single",
+      "title": "MediumDetector im Lauf nicht mehrfach aktiv",
+      "passed": true,
+      "required": true,
+      "evidence": "🔍 MediumDetector fresh_count=0 (cached ignoriert)"
+    },
+    {
+      "id": "artifact_gate",
+      "title": "§2.49 Artifact-Freedom Gate erfüllt",
+      "passed": true,
+      "required": true,
+      "evidence": "artifact_freedom=1.000"
+    },
+    {
+      "id": "hpi_gate",
+      "title": "§2.44 HPI-Gate protokolliert",
+      "passed": true,
+      "required": true,
+      "evidence": "HPI-Eintrag vorhanden"
+    },
+    {
+      "id": "exp_joy_runtime",
+      "title": "§2.53 joy_runtime_index propagiert",
+      "passed": true,
+      "required": true,
+      "evidence": "Joy-Index-Signal gefunden"
+    },
+    {
+      "id": "exp_auto_improve",
+      "title": "§2.53 auto_improvement_recommendations propagiert",
+      "passed": true,
+      "required": true,
+      "evidence": "Auto-Improve-Signal gefunden"
+    },
+    {
+      "id": "exp_cluster_policy",
+      "title": "§2.53 cluster_policy propagiert",
+      "passed": true,
+      "required": true,
+      "evidence": "cluster_policy gefunden"
+    },
+    {
+      "id": "dag_final_clean",
+      "title": "§7.5a Finale DAG-Validierung ohne Verletzung",
+      "passed": false,
+      "required": true,
+      "evidence": "Finale DAG-Validierung fehlt"
+    },
+    {
+      "id": "phase12_effective_when_started",
+      "title": "Phase 12 wirkt bei Ausführung (kein low-confidence Komplett-Skip)",
+      "passed": true,
+      "required": true,
+      "evidence": "Phase 12 nicht im Laufplan"
+    },
+    {
+      "id": "material_specificity_guard",
+      "title": "Material-Spezifität erhalten (kein cassette→tape Downcast)",
+      "passed": true,
+      "required": true,
+      "evidence": "Kein cassette→tape Downcast im Lauf"
+    },
+    {
+      "id": "exzellenz_api_contract",
+      "title": "§2.53a Exzellenz-API-Pfad erkennbar",
+      "passed": false,
+      "required": false,
+      "evidence": "Kein expliziter Exzellenz-API-Hinweis im Log (inconclusive)"
+    }
+  ]
+}

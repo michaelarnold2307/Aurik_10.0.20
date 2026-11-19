@@ -1,0 +1,130 @@
+INFO:MLModelPolicyEngine:Policy-Engine initialisiert
+INFO:DSPPolicyEngine:DSP Registry aufgebaut: 177 Module
+INFO:AdaptiveProcessingPipeline:AdaptiveProcessingPipeline initialized: 177 DSP + 28 ML-Plugins + Ethics Engine + Monitor
+WARNING:plugins.deepfilternet_v3_ii_plugin:ONNX model not found: /mnt/1846D15B46D139E8/Aurik_Standalone/models/deepfilternet_v3_ii/enc.onnx
+WARNING:plugins.deepfilternet_v3_ii_plugin:ONNX model not found: /mnt/1846D15B46D139E8/Aurik_Standalone/models/deepfilternet_v3_ii/dec.onnx
+WARNING:plugins.deepfilternet_v3_ii_plugin:ONNX model not found: /mnt/1846D15B46D139E8/Aurik_Standalone/models/deepfilternet_v3_ii/erb_dec.onnx
+INFO:plugins.deepfilternet_v3_ii_plugin:DeepFilterNetV3IIPlugin initialized: deepfilternet-v3-ii:latest
+INFO:plugins.resemble_enhance_plugin:ResembleEnhancePlugin initialized: resemble-enhance:latest
+INFO:plugins.demucs_v4_plugin:DemucsV4Plugin initialized: demucs-v4:latest
+INFO:plugins.mdx23c_plugin:MDX23C Plugin initialisiert: Image=mdx23c:latest, Models=/mnt/1846D15B46D139E8/Aurik_Standalone/models/mdx23c
+INFO:plugins.sgmse_plugin:SGMSE+ Plugin initialisiert: Image=sgmse_plus:latest, Models=/mnt/1846D15B46D139E8/Aurik_Standalone/models/sgmse_plus
+INFO:plugins.fullsubnet_plus_plugin:FullSubNet+ Plugin initialisiert: Image=fullsubnet_plus:latest, Models=/mnt/1846D15B46D139E8/Aurik_Standalone/models/fullsubnet_plus
+INFO:plugins.dccrn_plugin:DCCRN Plugin initialisiert: Image=dccrn:latest, Models=/mnt/1846D15B46D139E8/Aurik_Standalone/models/dccrn
+INFO:plugins.banquet_vinyl_plugin:Banquet Vinyl Plugin initialisiert: Image=banquet:latest, Models=/mnt/1846D15B46D139E8/Aurik_Standalone/models/banquet
+INFO:plugins.uvr_mdxnet_plugin:UVR MDX-Net Plugin initialisiert: Image=uvr_mdx_net:latest, Models=/mnt/1846D15B46D139E8/Aurik_Standalone/models/uvr_mdx_net
+╔══════════════════════════════════════════════════════════╗
+║  AURIK Audio Restoration - CLI Mode                     ║
+║  Lokale Verarbeitung ohne Server                        ║
+╚══════════════════════════════════════════════════════════╝
+
+📂 Lade: /mnt/1846D15B46D139E8/Aurik_Standalone/test_audio/tape/cassette_1980s_wow.wav
+   Größe: 0.25 MB
+
+🔧 Starte Adaptive Processing Pipeline...
+   • Defekterkennung (11 Typen)
+   • Tonträgerketten-Analyse
+   • ML-Modell-Auswahl
+   • Ethics Engine
+   • Quality Monitoring
+
+
+════════════════════════════════════════════════════════════════════════════════
+  AURIK PROFESSIONAL v8.3 - SYSTEM-KOMPONENTEN STATUS
+════════════════════════════════════════════════════════════════════════════════
+
+┌─ ML-PLUGINS (Denoise/Repair/Enhancement) ───────────────────────────────────┐
+│  ✓ deepfilternet        DeepFilterNet v3.0 (Speech/Broadband) │
+│  ✓ resemble_enhance     Resemble-Enhance ONNX (Universal)   │
+│  ✓ sgmse                SGMSE+ Diffusion (Music/Classical)  │
+│  ✓ banquet              Banquet Vinyl (Vinyl Restoration)   │
+│  ✓ dccrn                DCCRN (De-Reverb/Speech)            │
+│  ✓ fullsubnet           FullSubNet+ (Speech Repair)         │
+│  ✓ demucs               Demucs v4 (Stem Separation)         │
+│  ✓ mdx23c               MDX23C (Advanced Separation)        │
+│  ✓ uvr_mdxnet           UVR MDXNet (Vocal Isolation)        │
+│  ✓ gacela               GACELA (Quality Enhancement)        │
+└─ Status: 10/10 ML-Plugins verfügbar ──────────────────────────────────────┘
+
+┌─ DSP-MODULE (Policy-Engine) ────────────────────────────────────────────────┐
+│  ✓ Spectral Processing     ✓ Dynamic Range Control  ✓ EQ Systems       │
+│  ✓ Artifact Detection      ✓ Transient Shaping      ✓ Stereo Tools     │
+│  ✓ Noise Gates             ✓ Compressors/Limiters   ✓ Phase Correction │
+└─ Status: 177 DSP-Module aktiv ─────────────────────────────────────────────┘
+
+┌─ ADVANCED FEATURES (v8.0+) ──────────────────────────────────────────────────┐
+│  ✓ Vocal Separation v8.1    (Hybrid: MDX-Net + Demucs v5)        │
+│  ✓ Pitch Correction v8.2    (CREPE + Epistemic Gates)           │
+│  ✓ Defect Detection v8.2    (11 Defect Types, iZotope-level)    │
+│  ✓ Ethics Engine              (HIPS Compliance + Safety Wrappers)     │
+│  ✓ Audio Monitor              (Permanent Quality Tracking)            │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ ANALYSIS & METRICS ─────────────────────────────────────────────────────────┐
+│  ✓ Material Quality Analyzer  (7-Level Classification + Adaptive)     │
+│  ✓ Musical Goals Validation   (7 Goals: Authenticity, Waerme, etc.)   │
+│  ✓ Adaptive Thresholds        (Generation-Count Weighted Scoring)     │
+│  ✓ LUFS/True-Peak Metering    (EBU R128 Compliant)                    │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+  ✓ SYSTEM BEREIT - Alle kritischen Komponenten verfügbar
+════════════════════════════════════════════════════════════════════════════════
+
+2026-02-16 06:18:37,884 - backend.ml.inference_only.vocal_separation.hybrid_separation - INFO - HybridVocalSeparator initialized: strategy=adaptive, device=None
+INFO:backend.ml.inference_only.vocal_separation.hybrid_separation:HybridVocalSeparator initialized: strategy=adaptive, device=None
+2026-02-16 06:18:37,887 - backend.ml.inference_only.vocal_separation.mdx_net_wrapper - INFO - MDXNetSeparator initialized on cpu
+INFO:backend.ml.inference_only.vocal_separation.mdx_net_wrapper:MDXNetSeparator initialized on cpu
+2026-02-16 06:18:37,888 - backend.ml.inference_only.vocal_separation.mdx_net_wrapper - WARNING - MDX-Net model not found at /mnt/1846D15B46D139E8/Aurik_Standalone/models/mdx_net/mdx_net_vocal_v2.onnx. Please download from: https://github.com/kuielab/mdx-net
+WARNING:backend.ml.inference_only.vocal_separation.mdx_net_wrapper:MDX-Net model not found at /mnt/1846D15B46D139E8/Aurik_Standalone/models/mdx_net/mdx_net_vocal_v2.onnx. Please download from: https://github.com/kuielab/mdx-net
+2026-02-16 06:18:37,891 - backend.ml.inference_only.vocal_separation.mdx_net_wrapper - WARNING - MDX-Net model not available. Using fallback mode.
+WARNING:backend.ml.inference_only.vocal_separation.mdx_net_wrapper:MDX-Net model not available. Using fallback mode.
+2026-02-16 06:18:37,896 - backend.ml.inference_only.vocal_separation.demucs_v5_wrapper - INFO - DemucsV5Separator (htdemucs) initialized on cpu
+INFO:backend.ml.inference_only.vocal_separation.demucs_v5_wrapper:DemucsV5Separator (htdemucs) initialized on cpu
+2026-02-16 06:18:37,896 - backend.ml.inference_only.vocal_separation.demucs_v5_wrapper - WARNING - Demucs model not found at /mnt/1846D15B46D139E8/Aurik_Standalone/models/demucs/htdemucs.yaml. Install with: pip install demucs
+WARNING:backend.ml.inference_only.vocal_separation.demucs_v5_wrapper:Demucs model not found at /mnt/1846D15B46D139E8/Aurik_Standalone/models/demucs/htdemucs.yaml. Install with: pip install demucs
+2026-02-16 06:18:37,897 - backend.ml.inference_only.vocal_separation.demucs_v5_wrapper - WARNING - Demucs package not installed. Install with: pip install demucs
+WARNING:backend.ml.inference_only.vocal_separation.demucs_v5_wrapper:Demucs package not installed. Install with: pip install demucs
+INFO:backend.ml.safety_wrappers.vocal_separation_safety:VocalSeparationSafetyWrapper initialized: strict_mode=False, audit_log=/mnt/1846D15B46D139E8/logs/vocal_separation/hips_audit.jsonl
+INFO:AdaptiveProcessingPipeline:v8.1 Vocal Separation initialized (Hybrid: MDX-Net + Demucs v5)
+[2026-02-16 06:18:37] [WARNING] [pitch_detector] CREPE not available. Install with: pip install crepe-tf2. Falling back to basic pitch tracking.
+WARNING:pitch_detector:CREPE not available. Install with: pip install crepe-tf2. Falling back to basic pitch tracking.
+[2026-02-16 06:18:37] [INFO] [pitch_detector] CREPEPitchDetector initialized: sr=44100, model=full, step=10ms
+INFO:pitch_detector:CREPEPitchDetector initialized: sr=44100, model=full, step=10ms
+[2026-02-16 06:18:37] [INFO] [pitch_corrector] ConservativePitchCorrector initialized: error_threshold=25.0¢, max_dcs=0.15, min_epistemic_conf=0.8, formant_preservation=True
+INFO:pitch_corrector:ConservativePitchCorrector initialized: error_threshold=25.0¢, max_dcs=0.15, min_epistemic_conf=0.8, formant_preservation=True
+INFO:backend.ml.safety_wrappers.pitch_correction_safety:PitchCorrectionSafetyWrapper initialized: strict_mode=False, audit_log=/mnt/1846D15B46D139E8/logs/pitch_correction/hips_audit.jsonl
+INFO:AdaptiveProcessingPipeline:v8.2 Pitch Correction initialized (CREPE + Epistemic Gates)
+INFO:AdaptiveProcessingPipeline:v8.2 Defect Detection initialized (11 defect types + treatment recommendations)
+INFO:AdaptiveProcessingPipeline:AdaptiveProcessingPipeline initialized with Docker-based ML plugins + Policy-Engine + v8.1 Vocal Sep + v8.2 Pitch Correction + v8.2 Defect Detection
+ERROR:AdaptiveProcessingPipeline:SOTA-Maximum-Policy konnte nicht geladen werden: Report nicht gefunden: /mnt/1846D15B46D139E8/Aurik_Standalone/results_sota/report.json
+WARNING:AdaptiveProcessingPipeline:FEHLER: detected_medium nicht übergeben - sollte in Phase 1 passieren!
+INFO:backend.audio_monitor:📊 Capturing baseline metrics for: unknown
+INFO:backend.audio_monitor:   ✅ Baseline captured: RMS=0.1773, F0=221.5 Hz, HNR=19.4 dB
+INFO:AdaptiveProcessingPipeline:Kontextanalyse abgeschlossen: {'detected_medium': 'unknown', 'detected_medium_chain': 'unknown', 'medium_confidence': 0.0, 'sample_rate': None, 'artefact_risk': False, 'channels': None}
+INFO:AdaptiveProcessingPipeline:Zieldefinition abgeschlossen: {'target_brightness': 'neutral', 'quality_level': 'standard', 'artefact_avoidance': False}
+INFO:AdaptiveProcessingPipeline:🧭 Phase 4.5: Ethics Engine - Epistemic Gate
+INFO:AdaptiveProcessingPipeline:Ethics Decision: mode_a - Standard Restoration Mode. Defekt: unknown, Severity: medium, Confidence: 85.00%.
+INFO:backend.audio_monitor:📊 Capturing final metrics...
+INFO:backend.audio_monitor:✅ Exported JSON audit: audits/audit_20260216_061846.json
+INFO:backend.audio_monitor:✅ Exported YAML audit: audits/audit_20260216_061846.yaml
+INFO:backend.audio_monitor:✅ Exported CSV audit: audits/audit_20260216_061846.csv
+INFO:backend.audio_monitor:📊 Audit Report Summary:
+INFO:backend.audio_monitor:   ├─ File: unknown
+INFO:backend.audio_monitor:   ├─ Modules: 0
+INFO:backend.audio_monitor:   ├─ Total Time: 0.0 ms
+INFO:backend.audio_monitor:   ├─ Quality Gates: ALL PASS ✅
+INFO:backend.audio_monitor:   └─ CAS Improvement: +0.00
+✅ Verarbeitung abgeschlossen
+
+⚠️  Kein processed_audio - verwende Original
+💾 Gespeichert: /mnt/1846D15B46D139E8/Aurik_Standalone/benchmarks/competitive/results_20260216_061753/aurik_balanced/cassette_1980s_wow_restored.wav
+
+📊 Verarbeitungs-Details:
+   • Steps: 0
+   • Quality Checks: 0
+   • Log Entries: 3
+
+╔══════════════════════════════════════════════════════════╗
+║  ✅ ERFOLGREICH ABGESCHLOSSEN                            ║
+╚══════════════════════════════════════════════════════════╝

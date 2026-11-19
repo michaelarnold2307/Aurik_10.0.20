@@ -1,0 +1,55 @@
+version: "2026-05-21"
+owner: "Aurik Scientific Governance"
+scope: "release_gates_hpi_afg_vqi_wcs"
+
+thresholds:
+  artifact_freedom_gate:
+    source_class: "A"
+    source_ids: ["S14", "S15", "S06", "S07"]
+    source_ref:
+      - "Lapierre & Lefebvre (2017), ICASSP, DOI:10.1109/ICASSP.2017.7952243"
+      - "Godsill et al. (1995), IEEE TSAP, DOI:10.1109/89.365378"
+      - "ITU-R BS.1770-5"
+      - "EBU R128"
+    validated_on: "2026-05-21"
+
+  vqi_gate:
+    source_class: "B"
+    source_ids: ["S16", "S17", "S18", "S08", "S09", "S10", "S11"]
+    source_ref:
+      - "Miller (1992), Journal of Voice, DOI:10.1016/S0892-1997(05)80150-X"
+      - "Prame (2004), Journal of Voice, DOI:10.1016/j.jvoice.2003.09.003"
+      - "Jones et al. (2022), JASA, DOI:10.1121/10.0015518"
+      - "Makhoul (1975), Linear prediction"
+      - "Boersma (1993), F0/HNR analysis"
+      - "Titze (2000), Principles of Voice Production"
+      - "Sundberg (1987), The Science of the Singing Voice"
+    validated_on: "2026-05-21"
+
+  hpi_gate:
+    source_class: "B"
+    source_ids: ["S06", "S07", "S14", "S15"]
+    source_ref:
+      - "ITU-R BS.1770-5"
+      - "EBU R128"
+      - "Lapierre & Lefebvre (2017), DOI:10.1109/ICASSP.2017.7952243"
+      - "Godsill et al. (1995), DOI:10.1109/89.365378"
+    validated_on: "2026-05-21"
+
+  worldclass_composite_gate:
+    source_class: "C"
+    source_ids: ["S06", "S07"]
+    source_ref:
+      - "Class-C calibrated on AMRB/UAT restoration corpus"
+      - "Anchored to ITU-R BS.1770-5 and EBU R128 safety constraints"
+    validated_on: "2026-05-21"
+    revalidate_by: "2026-09-30"
+
+  psychoacoustic_naturalness_gate:
+    source_class: "B"
+    source_ids: ["S14", "S15"]
+    source_ref:
+      - "Fastl & Zwicker (2007), Psychoacoustics: Facts and Models"
+      - "Lapierre & Lefebvre (2017), ICASSP, DOI:10.1109/ICASSP.2017.7952243"
+      - "Godsill et al. (1995), IEEE TSAP, DOI:10.1109/89.365378"
+    validated_on: "2026-05-21"

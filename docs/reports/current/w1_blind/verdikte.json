@@ -1,0 +1,10 @@
+[
+  { "trial_id": "w1_0__r0", "preferred": "right" },
+  { "trial_id": "w1_1__r0", "preferred": "left" },
+  { "trial_id": "w1_2__r0", "preferred": "left" },
+  { "trial_id": "w1_3__r0", "preferred": "left" },
+  { "trial_id": "w1_4__r0", "preferred": "right" },
+  { "trial_id": "w1_5__r0", "preferred": "right" },
+  { "trial_id": "w1_6__r0", "preferred": "right" },
+  { "trial_id": "w1_7__r0", "preferred": "left" }
+]

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+<defs>
+<linearGradient id="cart" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#1A2940"/><stop offset="1" stop-color="#0A1420"/>
+</linearGradient>
+<radialGradient id="disc" cx="50%" cy="50%" r="50%">
+<stop offset="0" stop-color="#8090A0"/><stop offset="0.6" stop-color="#485058"/>
+<stop offset="1" stop-color="#20242E"/>
+</radialGradient>
+<filter id="gl"><feGaussianBlur stdDeviation="1.32" result="b"/>
+<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <!-- Mystical: transparent nebula backdrop -->
+  <radialGradient id="m_nbg" cx="50%" cy="50%" r="50%">
+    <stop offset="0%"   stop-color="#0C0720" stop-opacity="0.92"/>
+    <stop offset="55%"  stop-color="#08041A" stop-opacity="0.80"/>
+    <stop offset="85%"  stop-color="#05030E" stop-opacity="0.45"/>
+    <stop offset="100%" stop-color="#020108" stop-opacity="0.00"/>
+  </radialGradient>
+  <!-- Mystical: outer cosmic ring gradient -->
+  <radialGradient id="m_ring" cx="50%" cy="50%" r="50%">
+    <stop offset="80%"  stop-color="#7744CC" stop-opacity="0.00"/>
+    <stop offset="95%"  stop-color="#6633BB" stop-opacity="0.30"/>
+    <stop offset="100%" stop-color="#4422AA" stop-opacity="0.10"/>
+  </radialGradient>
+  <!-- Mystical: ethereal glow filter -->
+  <filter id="m_glow" x="-80%" y="-80%" width="260%" height="260%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="2.8" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <!-- Mystical: sparkle glow filter -->
+  <filter id="m_spark" x="-200%" y="-200%" width="500%" height="500%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+<!-- Mystical nebula backdrop (transparent at edges) -->
+<rect width="48" height="48" rx="6" fill="url(#m_nbg)"/>
+
+<rect x="5" y="7" width="38" height="34" rx="3" fill="url(#cart)" stroke="#243050" stroke-width="1.0"/>
+<rect x="5" y="35" width="28" height="6" rx="1" fill="#1A2838" stroke="#304060" stroke-width="0.6"/>
+<rect x="13" y="35.5" width="18" height="5" rx="1" fill="#304870" stroke="#405880" stroke-width="0.5"/>
+<circle cx="30" cy="20" r="11" fill="url(#disc)" stroke="#606878" stroke-width="0.7"/>
+<circle cx="30" cy="20" r="11" fill="none" stroke="rgba(180,150,255,0.10)" stroke-width="5"/>
+<circle cx="30" cy="20" r="7" fill="none" stroke="#485058" stroke-width="0.4" opacity="0.5"/>
+<circle cx="30" cy="20" r="4" fill="none" stroke="#485058" stroke-width="0.4" opacity="0.4"/>
+<circle cx="30" cy="20" r="2.5" fill="#8090A0" stroke="#A0AAB8" stroke-width="0.5"/>
+<circle cx="30" cy="20" r="1.0" fill="#101420"/>
+<rect x="7" y="9" width="18" height="22" rx="2" fill="#0E1624" stroke="#1A2838" stroke-width="0.5"/>
+<rect x="9" y="11" width="14" height="3" rx="1" fill="#1E3050" opacity="0.6"/>
+<rect x="9" y="16" width="10" height="1.5" rx="0.5" fill="#1A2840" opacity="0.5"/>
+<rect x="9" y="19" width="12" height="1.5" rx="0.5" fill="#1A2840" opacity="0.4"/>
+<rect x="5" y="7" width="38" height="5" rx="3" fill="#3060A0" opacity="0.07"/>
+<ellipse cx="14" cy="10" rx="4" ry="1.5" fill="#4080C0" opacity="0.07" filter="url(#gl)"/>
+<!-- Mystical: ethereal aura rings -->
+<circle cx="24" cy="24" r="22.8" fill="url(#m_ring)" opacity="1.0"/>
+<circle cx="24" cy="24" r="22.5" fill="none" stroke="#7744DD" stroke-width="0.55"
+  stroke-dasharray="4 3.5" opacity="0.30" filter="url(#m_glow)"/>
+<circle cx="24" cy="24" r="20.5" fill="none" stroke="#3355BB" stroke-width="0.30"
+  opacity="0.18" stroke-dasharray="2 5"/>
+<!-- Mystical: ethereal sparkle particles -->
+<g filter="url(#m_spark)">
+  <circle cx="6.5"  cy="6.5"  r="0.85" fill="#B09AFF" opacity="0.65"/>
+  <circle cx="41.5" cy="7.0"  r="0.70" fill="#80CCFF" opacity="0.55"/>
+  <circle cx="42.0" cy="41.5" r="0.80" fill="#CC88FF" opacity="0.60"/>
+  <circle cx="7.0"  cy="41.5" r="0.65" fill="#99DDFF" opacity="0.50"/>
+  <circle cx="24.0" cy="3.5"  r="0.60" fill="#FFD0FF" opacity="0.40"/>
+  <circle cx="44.5" cy="24.0" r="0.55" fill="#A0B8FF" opacity="0.38"/>
+</g>
+</svg>

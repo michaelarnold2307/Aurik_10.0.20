@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
+  <defs>
+    <!-- ── Base: polished silver-blue metallic (characteristic Blu-ray hard coat) ── -->
+    <radialGradient id="s_base" cx="40%" cy="34%" r="66%">
+      <stop offset="0%"   stop-color="#f6fbff"/>
+      <stop offset="16%"  stop-color="#d0e8ff"/>
+      <stop offset="36%"  stop-color="#90c0f0"/>
+      <stop offset="58%"  stop-color="#4e8ed0"/>
+      <stop offset="80%"  stop-color="#1a4e98"/>
+      <stop offset="100%" stop-color="#081e50"/>
+    </radialGradient>
+
+    <!-- ── Hub ring: brushed aluminium-blue ── -->
+    <radialGradient id="s_hub" cx="42%" cy="36%" r="58%">
+      <stop offset="0%"   stop-color="#ddeeff"/>
+      <stop offset="45%"  stop-color="#8ab4d8"/>
+      <stop offset="85%"  stop-color="#3462a0"/>
+      <stop offset="100%" stop-color="#102040"/>
+    </radialGradient>
+
+    <!-- ── Spindle: fine polished steel ── -->
+    <radialGradient id="s_spin" cx="38%" cy="30%" r="62%">
+      <stop offset="0%"   stop-color="#e8f4ff"/>
+      <stop offset="55%"  stop-color="#8ab0cc"/>
+      <stop offset="100%" stop-color="#243848"/>
+    </radialGradient>
+
+    <!-- ── Main specular lens-flash top-left ── -->
+    <radialGradient id="s_spec" cx="30%" cy="22%" r="44%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="28%"  stop-color="#e4f2ff" stop-opacity="0.78"/>
+      <stop offset="65%"  stop-color="#b8d8f8" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#ffffff"  stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- ── Electric-blue edge glow (Blu-ray brand identity) ── -->
+    <radialGradient id="s_rim" cx="50%" cy="50%" r="50%">
+      <stop offset="83%"  stop-color="#00aaff" stop-opacity="0"/>
+      <stop offset="90%"  stop-color="#0088ff" stop-opacity="0.38"/>
+      <stop offset="94%"  stop-color="#00ccff" stop-opacity="0.82"/>
+      <stop offset="97%"  stop-color="#44ddff" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#aaeeff" stop-opacity="1"/>
+    </radialGradient>
+
+    <!-- ── Drop shadow ── -->
+    <filter id="s_shad" x="-14%" y="-14%" width="128%" height="128%">
+      <feDropShadow dx="0" dy="10" stdDeviation="22" flood-color="#001020" flood-opacity="0.80"/>
+    </filter>
+
+    <!-- ── Soft text glow ── -->
+    <filter id="s_tglow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <clipPath id="s_clip"><circle cx="450" cy="450" r="425"/></clipPath>
+  </defs>
+
+  <!-- ═══════════════════════════════ DROP SHADOW ═══════════════════════════ -->
+  <circle cx="450" cy="462" r="428" fill="#00060e" opacity="0.55" filter="url(#s_shad)"/>
+
+  <!-- ═══════════════════════════════ OUTER RIM (dark gunmetal) ════════════ -->
+  <circle cx="450" cy="450" r="432" fill="#080f1c"/>
+
+  <!-- ═══════════════════════════════ MAIN DISC SURFACE ════════════════════ -->
+  <circle cx="450" cy="450" r="425" fill="url(#s_base)"/>
+
+  <!-- ═══════════════════════════════ CONCENTRIC DATA TRACKS ═══════════════ -->
+  <!-- Simulates the fine spiral of 25 GB BD-ROM tracks (pitch 320 nm → visible as rings) -->
+  <g fill="none" clip-path="url(#s_clip)" opacity="1">
+    <circle cx="450" cy="450" r="418" stroke="#b0d0ee" stroke-width="0.7" opacity="0.28"/>
+    <circle cx="450" cy="450" r="410" stroke="#a0c4e8" stroke-width="0.5" opacity="0.22"/>
+    <circle cx="450" cy="450" r="402" stroke="#90b8e0" stroke-width="0.7" opacity="0.28"/>
+    <circle cx="450" cy="450" r="393" stroke="#80acd8" stroke-width="0.5" opacity="0.22"/>
+    <circle cx="450" cy="450" r="384" stroke="#70a0d0" stroke-width="0.6" opacity="0.25"/>
+    <circle cx="450" cy="450" r="375" stroke="#6098c8" stroke-width="0.5" opacity="0.22"/>
+    <circle cx="450" cy="450" r="366" stroke="#5090c0" stroke-width="0.7" opacity="0.28"/>
+    <circle cx="450" cy="450" r="356" stroke="#4488b8" stroke-width="0.5" opacity="0.22"/>
+    <circle cx="450" cy="450" r="346" stroke="#3880b0" stroke-width="0.6" opacity="0.25"/>
+    <circle cx="450" cy="450" r="336" stroke="#2e78a8" stroke-width="0.5" opacity="0.20"/>
+    <circle cx="450" cy="450" r="326" stroke="#2470a0" stroke-width="0.7" opacity="0.28"/>
+    <circle cx="450" cy="450" r="315" stroke="#1c6898" stroke-width="0.5" opacity="0.22"/>
+    <circle cx="450" cy="450" r="304" stroke="#1460a8" stroke-width="0.6" opacity="0.25"/>
+    <circle cx="450" cy="450" r="293" stroke="#1060c0" stroke-width="0.5" opacity="0.20"/>
+    <circle cx="450" cy="450" r="282" stroke="#1268d8" stroke-width="0.7" opacity="0.26"/>
+    <circle cx="450" cy="450" r="271" stroke="#1470f0" stroke-width="0.5" opacity="0.22"/>
+    <circle cx="450" cy="450" r="260" stroke="#1878ff" stroke-width="0.6" opacity="0.24"/>
+    <circle cx="450" cy="450" r="249" stroke="#1c82ff" stroke-width="0.5" opacity="0.20"/>
+    <circle cx="450" cy="450" r="238" stroke="#208aff" stroke-width="0.7" opacity="0.24"/>
+    <circle cx="450" cy="450" r="227" stroke="#2492ff" stroke-width="0.5" opacity="0.20"/>
+  </g>
+
+  <!-- ═══════════════════════════════ RAINBOW DIFFRACTION BANDS ════════════ -->
+  <!-- Iridescent interference colors — exactly what you see holding a BD disc under light -->
+  <g clip-path="url(#s_clip)">
+    <!-- Magenta-pink sweep -->
+    <ellipse cx="450" cy="450" rx="455" ry="92"
+             fill="none" stroke="#ff3d9a" stroke-width="70" stroke-opacity="0.20"
+             transform="rotate(-40 450 450)"/>
+    <!-- Gold-yellow swept band -->
+    <ellipse cx="450" cy="450" rx="438" ry="82"
+             fill="none" stroke="#ffcc00" stroke-width="58" stroke-opacity="0.17"
+             transform="rotate(6 450 450)"/>
+    <!-- Electric cyan-teal -->
+    <ellipse cx="450" cy="450" rx="448" ry="98"
+             fill="none" stroke="#00ffee" stroke-width="62" stroke-opacity="0.19"
+             transform="rotate(50 450 450)"/>
+    <!-- Royal blue band -->
+    <ellipse cx="450" cy="450" rx="432" ry="86"
+             fill="none" stroke="#2299ff" stroke-width="55" stroke-opacity="0.22"
+             transform="rotate(-70 450 450)"/>
+    <!-- Lime-green -->
+    <ellipse cx="450" cy="450" rx="422" ry="78"
+             fill="none" stroke="#44ff88" stroke-width="48" stroke-opacity="0.14"
+             transform="rotate(26 450 450)"/>
+    <!-- Deep coral-red -->
+    <ellipse cx="450" cy="450" rx="442" ry="88"
+             fill="none" stroke="#ff5500" stroke-width="44" stroke-opacity="0.12"
+             transform="rotate(-18 450 450)"/>
+    <!-- Cold blue-white (secondary specular) -->
+    <ellipse cx="450" cy="450" rx="428" ry="76"
+             fill="none" stroke="#88ccff" stroke-width="40" stroke-opacity="0.16"
+             transform="rotate(68 450 450)"/>
+  </g>
+
+  <!-- Thin unifying blue overlay (tightens colour read as 'Blu-ray') -->
+  <circle cx="450" cy="450" r="425" fill="#0044cc" opacity="0.07" clip-path="url(#s_clip)"/>
+
+  <!-- ═══════════════════════════════ SPECULAR HIGHLIGHTS ═══════════════════ -->
+  <!-- Primary lens flare — top-left quadrant -->
+  <ellipse cx="316" cy="275" rx="196" ry="128" fill="url(#s_spec)" opacity="0.90"/>
+  <!-- Tiny secondary glint bottom-right -->
+  <ellipse cx="614" cy="636" rx="68" ry="40"
+           fill="white" opacity="0.07" transform="rotate(32 614 636)"/>
+
+  <!-- ═══════════════════════════════ HUB ZONE ══════════════════════════════ -->
+  <!-- Dark backing ring (no-data zone border) -->
+  <circle cx="450" cy="450" r="188" fill="#050c18" opacity="0.65"/>
+  <!-- Brushed aluminium-blue hub surface -->
+  <circle cx="450" cy="450" r="182" fill="url(#s_hub)"/>
+  <!-- Hub groove rings -->
+  <circle cx="450" cy="450" r="180" fill="none" stroke="#4490d0" stroke-width="2"   opacity="0.50"/>
+  <circle cx="450" cy="450" r="170" fill="none" stroke="#3478bc" stroke-width="1.5" opacity="0.36"/>
+  <circle cx="450" cy="450" r="156" fill="none" stroke="#2466a8" stroke-width="1"   opacity="0.28"/>
+
+  <!-- ═══════════════════════════════ SPINDLE HOLE ═══════════════════════════ -->
+  <circle cx="450" cy="450" r="44" fill="#080f1c"/>
+  <circle cx="450" cy="450" r="40" fill="#c8dae8"/>
+  <circle cx="450" cy="450" r="36" fill="url(#s_spin)"/>
+  <circle cx="450" cy="450" r="25" fill="#060c18"/>
+  <!-- Spindle micro-specular -->
+  <ellipse cx="440" cy="440" rx="13" ry="9" fill="white" opacity="0.38"
+           transform="rotate(-28 440 440)"/>
+
+  <!-- ═══════════════════════════════ HUB TEXT ══════════════════════════════ -->
+  <!-- 'STUDIO' above spindle -->
+  <text x="450" y="406"
+        text-anchor="middle"
+        font-family="'Helvetica Neue','Arial',sans-serif"
+        font-size="23" font-weight="600" letter-spacing="7"
+        fill="#b8deff" opacity="0.92"
+        filter="url(#s_tglow)">STUDIO</text>
+  <!-- '2026' below spindle -->
+  <text x="450" y="512"
+        text-anchor="middle"
+        font-family="'Helvetica Neue','Arial',sans-serif"
+        font-size="44" font-weight="900" letter-spacing="2"
+        fill="#00ccff" opacity="1.0"
+        filter="url(#s_tglow)">2026</text>
+  <!-- subtitle -->
+  <text x="450" y="532"
+        text-anchor="middle"
+        font-family="'Helvetica Neue','Arial',sans-serif"
+        font-size="10" font-weight="300" letter-spacing="4"
+        fill="#5898c8" opacity="0.78">NEXT GEN REC</text>
+
+  <!-- ═══════════════════════════════ ELECTRIC BLUE EDGE GLOW ═══════════════ -->
+  <circle cx="450" cy="450" r="430" fill="url(#s_rim)"/>
+
+  <!-- Final crisp border rings -->
+  <circle cx="450" cy="450" r="430" fill="none" stroke="#00aaee" stroke-width="2.5" opacity="0.55"/>
+  <circle cx="450" cy="450" r="432" fill="none" stroke="#003888" stroke-width="1.5" opacity="0.40"/>
+</svg>

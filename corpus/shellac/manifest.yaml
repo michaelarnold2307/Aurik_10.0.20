@@ -1,0 +1,1028 @@
+corpus_version: 1.0.0
+material: shellac
+description: 'Shellac-Corpus: synthetische CC0-Referenzen + 12 echte Public-Domain-Aufnahmen
+  (Internet Archive 78rpm Collection, 1905-1925, US-Public-Domain). Defekt-Labels
+  der PD-Aufnahmen: DefectScanner-Messung auf 15s-Exzerpt + Medium-Wissen.'
+entries:
+- checksum_sha256: a7d79ff68b176bf8c21fc4e31a52f338be82662a4170b4ec05f4454ce4684954
+  defect_types: []
+  duration_s: 10.0
+  era_year: 1925
+  file: clean/shellac_jazz_1920s_clean.wav
+  genre: jazz
+  license: CC0 (generated)
+  material: shellac
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+- chain:
+  - shellac
+  checksum_sha256: c4f569811dc0af3e1d3a971a746abdabfcf5fe0fe22201cdfbd1cc1619625bd0
+  defect_description: Starkes Knistern + BW-Limit
+  defect_types: []
+  duration_s: 10.0
+  era_year: 1925
+  file: damaged/shellac_jazz_1920s_crackle.wav
+  genre: jazz
+  license: CC0 (generated)
+  material: shellac
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+- chain:
+  - shellac
+  checksum_sha256: a197391157fb083a4dc8222ce017f6ab8b3508bea436d7ed641a872ad6e67d43
+  defect_description: Hiss + 50Hz Brumm + 8kHz BW
+  defect_types:
+  - hiss
+  duration_s: 10.0
+  era_year: 1925
+  file: damaged/shellac_jazz_1920s_hiss_hum.wav
+  genre: jazz
+  license: CC0 (generated)
+  material: shellac
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+- bit_depth: 16
+  channels: 2
+  checksum_sha256: f0d182ca404b5f083f92ddd57e56fd8f4a087d474de217d229b573c520c73324
+  condition: clean
+  defect_types: []
+  duration_s: 15.0
+  era_year: 1932
+  file: clean/shellac_blues_1930s_clean.wav
+  genre: blues
+  license: CC0 (synthetisch generiert)
+  material: shellac
+  sample_rate: 48000
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  vocal: true
+- bit_depth: 16
+  chain:
+  - shellac
+  channels: 2
+  checksum_sha256: 39b086237810a867c44c7217686b6ec79691689c47942f8b08684559697fdc37
+  condition: damaged
+  defect_types:
+  - hiss
+  - crackle
+  - hum
+  duration_s: 15.0
+  era_year: 1932
+  file: damaged/shellac_blues_1930s_hiss_crackle_hum.wav
+  genre: blues
+  license: CC0 (synthetisch generiert)
+  material: shellac
+  sample_rate: 48000
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  vocal: true
+- bit_depth: 16
+  chain:
+  - shellac
+  channels: 2
+  checksum_sha256: 613625faa60db7bfa87dc5c04ada9fd2435caaa27076aee009160381013f41fe
+  condition: damaged
+  defect_types:
+  - surface
+  - noise
+  duration_s: 15.0
+  era_year: 1932
+  file: damaged/shellac_blues_1930s_surface_noise.wav
+  genre: blues
+  license: CC0 (synthetisch generiert)
+  material: shellac
+  sample_rate: 48000
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  vocal: true
+- bit_depth: 16
+  channels: 2
+  checksum_sha256: bd874a30f5bebb40661c7ab5fe7c4af22c68c6772f487aeb629c0254a2ff8337
+  condition: clean
+  defect_types: []
+  duration_s: 15.0
+  era_year: 1945
+  file: clean/shellac_classical_1940s_clean.wav
+  genre: classical
+  license: CC0 (synthetisch generiert)
+  material: shellac
+  sample_rate: 48000
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  vocal: false
+- bit_depth: 16
+  chain:
+  - shellac
+  channels: 2
+  checksum_sha256: 854b62f9e43b3e7255ee3cffef7bfcee675382b634a750d9bb17619aefdb93a6
+  condition: damaged
+  defect_types:
+  - crackle
+  duration_s: 15.0
+  era_year: 1945
+  file: damaged/shellac_classical_1940s_crackle.wav
+  genre: classical
+  license: CC0 (synthetisch generiert)
+  material: shellac
+  sample_rate: 48000
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  vocal: false
+- bit_depth: 16
+  chain:
+  - shellac
+  channels: 2
+  checksum_sha256: 9d39851c54ff909aeff6720fca4231ac0c0cc81c8aaa6aaffbe3320964609706
+  condition: damaged
+  defect_types:
+  - hiss
+  - hum
+  duration_s: 15.0
+  era_year: 1945
+  file: damaged/shellac_classical_1940s_hiss_hum.wav
+  genre: classical
+  license: CC0 (synthetisch generiert)
+  material: shellac
+  sample_rate: 48000
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  vocal: false
+- chain:
+  - shellac
+  - vinyl
+  - reel_tape
+  checksum_sha256: 474046b11ebfe7c7e83ec057ccda41369c0ed106c9cc65aa613869b511bd3f1d
+  defect_types:
+  - chain_artifacts
+  duration_s: 15.0
+  era_year: 1932
+  file: damaged/shellac_blues_1930s_hiss_crackle_hum_chain_shellac_vinyl_reel_tape.wav
+  genre: blues
+  license: CC0 (generated)
+  material: shellac
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator) — chain synthesis (deterministic)
+  source_attribution: Synthetic Corpus Generator (CC0)
+- chain:
+  - shellac
+  - vinyl
+  - reel_tape
+  - mp3_low
+  checksum_sha256: 1ab34d365e07aee6c6863c4a007bbc32cae72bff0b593f8f28ab9aa18e7df94a
+  defect_types:
+  - chain_artifacts
+  duration_s: 15.0
+  era_year: 1932
+  file: damaged/shellac_blues_1930s_hiss_crackle_hum_chain_shellac_vinyl_reel_tape_mp3_low.wav
+  genre: blues
+  license: CC0 (generated)
+  material: shellac
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator) — chain synthesis (deterministic)
+  source_attribution: Synthetic Corpus Generator (CC0)
+- file: damaged/shellac_1902_prochvariationenmariedietrich.mp3
+  duration_s: 161.489
+  sample_rate: 44100
+  material: shellac
+  era_year: 1902
+  genre: '[''Dietrich'', ''Proch'', ''Gramophone & Type'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Marie DIETRICH - Sopran — Proch Variationen Marie Dietrich (Internet
+    Archive, ProchVariationenMarieDietrich)
+  license: Public Domain
+  source_url: https://archive.org/download/ProchVariationenMarieDietrich/Proch%20Variationen%20Marie%20Dietrich.mp3
+  checksum_sha256: 96de27b370c84ae7ee1b8eb6d8c0137f807f4c2f96e4b0c4e59e80b03152cffe
+- file: damaged/shellac_1904_rheingoldelizzapohlnerkittelvx98.mp3
+  duration_s: 169.169
+  sample_rate: 44100
+  material: shellac
+  era_year: 1904
+  genre: '[''Rheingold'', ''Wagner'', ''Opera'', ''sopran'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Elise ELIZZA - Sopran, Hermine KITTEL - Alt, Jenny POHLNER -
+    Mezzosopran — Rheingold Elizza Pohlner Kittel Vx 98 (Internet Archive, RheingoldElizzaPohlnerKittel
+  license: Public Domain
+  source_url: https://archive.org/download/RheingoldElizzaPohlnerKittelVx98/Rheingold%20Elizza%20Pohlner%20Kittel%20Vx%2098%20korr.mp3
+  checksum_sha256: 9205e10558826868f1f76707478e3e393277da0b88bd9af53b416ea651c63fc4
+- file: damaged/shellac_1905_maskenballfrdeinglck.mp3
+  duration_s: 148.82
+  sample_rate: 44100
+  material: shellac
+  era_year: 1905
+  genre: '[''Gramophone Concert Record'', ''Opera'', '''
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: 'Leopold DEMUTH - Bariton — Maskenball: Für Dein Glück (Internet
+    Archive, MaskenballFrDeinGlck)'
+  license: Public Domain
+  source_url: https://archive.org/download/MaskenballFrDeinGlck/Maskenball%20F%C3%BCr%20Dein%20Gl%C3%BCck.mp3
+  checksum_sha256: edbdaad02257ae11aab7dd5031012bf79575f75c8fc2eaa82face7992212a54a
+- file: damaged/shellac_1905_meinherrundgotthesch342416.mp3
+  duration_s: 134.034
+  sample_rate: 44100
+  material: shellac
+  era_year: 1905
+  genre: '[''Gramophone & Typewriter'', ''Hesch'', ''ba'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Wilhelm HESCH - Bass — Mein Herr Und Gott Hesch 3-42416 (Internet
+    Archive, MeinHerrUndGottHesch342416)
+  license: Public Domain
+  source_url: https://archive.org/download/MeinHerrUndGottHesch342416/Mein%20Herr%20und%20Gott%20Hesch%203%2042416.mp3
+  checksum_sha256: 761097ac509ee9138a91faebc0686e4648f34fe837b17ce4c58783937a9804b0
+- file: damaged/shellac_1905_x_33937_note_si_jetais_dieu.mp3
+  duration_s: 165.46
+  sample_rate: 44100
+  material: shellac
+  era_year: 1905
+  genre: '[''Noté'', ''baritone'', ''Vortragslied franz'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Jean NOTÈ - Bariton — Si j'etais Dieu (Marietti) (Internet Archive,
+    x-33937-note-si-jetais-dieu)
+  license: Public Domain
+  source_url: https://archive.org/download/x-33937-note-si-jetais-dieu/X%2033937%20Not%C3%A9%20Si%20j%27etais%20dieu.mp3
+  checksum_sha256: 89f903f48bdd90f69aec4d0dc50eca0c96083206112279454efad39dfddf6011
+- file: damaged/shellac_1906_fernando_de_lucia_et_giuseppina_huguet_giuseppe_verdi_la_tra.mp3
+  duration_s: 239.726
+  sample_rate: 44100
+  material: shellac
+  era_year: 1906
+  genre: '[''FernandoDeLuciaEtGiuseppinaHuguet'', ''G'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: léo472 — Fernando De Lucia Et Giuseppina Huguet, Giuseppe Verdi,
+    La Traviata, Parigi OCara, G.& T. 054081 (Internet Archive, fernando-de-lucia-et-giuseppina-hug
+  license: Public Domain
+  source_url: https://archive.org/download/fernando-de-lucia-et-giuseppina-huguet-giuseppe-verdi-la-traviata-parigi-ocara-g.-t.-054081/FernandoDeLuciaEtGiuseppinaHuguet%2CGiuseppeVerdi%2CLaTraviata%2CParigiOCara%2CG.%26T.054081.mp3
+  checksum_sha256: bd28f4f90b24ecfdfb1d0eb6001697af3b39e70ae16afb2992bf6bece44b68d6
+- file: damaged/shellac_1906_lerchlehempel.mp3
+  duration_s: 160.522
+  sample_rate: 44100
+  material: shellac
+  era_year: 1906
+  genre: '[''Odeon'', ''Taubert'', ''Hempel'', ''soprano'''
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Frieda HEMPEL - Sopran — S Lerchle Hempel (Internet Archive,
+    LerchleHempel)
+  license: Public Domain
+  source_url: https://archive.org/download/LerchleHempel/Lerchle%20Hempel.mp3
+  checksum_sha256: b881e3c1433427b3716cee8fec57961f1273b107d13955d2b569b6d48477818b
+- file: damaged/shellac_1906_lillilehmannfreudvollundleidvoll.mp3
+  duration_s: 157.1
+  sample_rate: 44100
+  material: shellac
+  era_year: 1906
+  genre: '[''Odeon'', ''acoustic'', ''Kunstlied'', ''Beet'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Lilli LEHMANN - Sopran. Fritz LINDEMANN - Piano — Freudvoll
+    und leidvoll (Beethoven) (Internet Archive, LilliLehmannFreudvollUndLeidvoll)
+  license: Public Domain
+  source_url: https://archive.org/download/LilliLehmannFreudvollUndLeidvoll/Lilli%20Lehmann%20Freudvoll%20und%20leidvoll.mp3
+  checksum_sha256: bc99af81893c234149c72ab2562ed671a33e8885f7a3dca4bb52fbff71179a20
+- file: damaged/shellac_1907_owiesotrgerisch.mp3
+  duration_s: 140.904
+  sample_rate: 44100
+  material: shellac
+  era_year: 1907
+  genre: '[''Rigoletto'', ''Opera'', ''Verdi'', ''tenor'','
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Karl JÖRN - Tenor — O wie so trügerisch (Rigoletto) (Internet
+    Archive, OWieSoTrgerisch)
+  license: Public Domain
+  source_url: https://archive.org/download/OWieSoTrgerisch/O%20wie%20so%20tr%C3%BCgerisch.mp3
+  checksum_sha256: 553c4da27281263b4103c55f6ef6d3763d5070f89de3a52a1035d24829ae05c1
+- file: damaged/shellac_1907_titta_ruffo_ettore_titta_malena_disse_il_saggio_predog_2_526.mp3
+  duration_s: 134.795
+  sample_rate: 44100
+  material: shellac
+  era_year: 1907
+  genre: '[''TittaRuffo'', ''EttoreTitta'', ''Malena'', '
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: léo472 — Titta Ruffo, Ettore Titta, Malena, Disse Il Saggio,
+    Predog 2 52624 (Internet Archive, titta-ruffo-ettore-titta-malena-disse-il-saggio-predog-2-52624)
+  license: Public Domain
+  source_url: https://archive.org/download/titta-ruffo-ettore-titta-malena-disse-il-saggio-predog-2-52624/TittaRuffo%2CEttoreTitta%2CMalena%2CDisseIlSaggio%2CPredog2-52624.mp3
+  checksum_sha256: f0bc7964fa2a577225ed342003996200a0f6684cbe0c054f783ebb9f053fa549
+- file: damaged/shellac_1907_valentin_jaume_fromenthal_halevy_la_juive_rachelquanddu_seig.mp3
+  duration_s: 199.439
+  sample_rate: 44100
+  material: shellac
+  era_year: 1907
+  genre: '[''ValentinJaume'', ''Fromenthal Halevy'', '''
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: léo472 — Valentin Jaume, Fromenthal Halevy, La Juive, Rachelquanddu
+    Seigneur, Odéon Brun 60159 (Internet Archive, valentin-jaume-fromenthal-halevy-la-juive-rach
+  license: Public Domain
+  source_url: https://archive.org/download/valentin-jaume-fromenthal-halevy-la-juive-rachelquanddu-seigneur-odeon-brun-60159/ValentinJaume%2CFromenthal%20Halevy%2CLaJuive%2CRachelquandduSeigneur%2COdeonBrun60159.mp3
+  checksum_sha256: 08da10cf968aa7eda470e545792620a6729487d403afc19a17347733d6046fa2
+- file: damaged/shellac_1907_vittorio_arimondi_charles_gounod_faust_serenade_de_mephisto.mp3
+  duration_s: 159.688
+  sample_rate: 44100
+  material: shellac
+  era_year: 1907
+  genre: '[''VittorioArimondi'', ''CharlesGounod'', ''F'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: léo472 — Vittorio Arimondi, Charles Gounod, Faust, Sérénade
+    De Méphisto, Columbia Tricolor A 5010 (Internet Archive, vittorio-arimondi-charles-gounod-faust-sere
+  license: Public Domain
+  source_url: https://archive.org/download/vittorio-arimondi-charles-gounod-faust-serenade-de-mephisto-columbia-tricolor-a-5010/VittorioArimondi%2CCharlesGounod%2CFaust%2CS%C3%A9r%C3%A9nadeDeM%C3%A9phisto%2CColumbiaTricolorA5010.mp3
+  checksum_sha256: e0700188e46558277fcc2697862105bd756cf27b0428b69cc4c210594799ecef
+- file: damaged/shellac_1907_x_22667_hieber_andreas_hofer.mp3
+  duration_s: 169.143
+  sample_rate: 44100
+  material: shellac
+  era_year: 1907
+  genre: '[''Vortragslied deutsch'', ''Knebelsberger'''
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Theodor HIEBER - Bass — Andreas Hofer (Internet Archive, x-22667-hieber-andreas-hofer)
+  license: Public Domain
+  source_url: https://archive.org/download/x-22667-hieber-andreas-hofer/X-22667%20Hieber%20-%20Andreas%20Hofer.mp3
+  checksum_sha256: c6516315c6aefb00c1f62fd8d3602bc1f740000efa21620c060cd5758f954284
+- file: damaged/shellac_1908_caruso_rigoletto_la_donna_e_mobile.mp3
+  duration_s: 139.572
+  sample_rate: 44100
+  material: shellac
+  era_year: 1908
+  genre: opera
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: 'Enrico Caruso — Rigoletto: La donna è mobile (Internet Archive,
+    78rpm Collection)'
+  license: Public Domain
+  source_url: https://archive.org/download/enrico-caruso-giuseppe-vesrdi-rigoletto-la-donna-emobile-gramophone-da-1303/EnricoCaruso%2CGiuseppeVesrdi%2CRigoletto%2CLaDonnaEMobile%2CGramophone%2CDA1303.mp3
+  vocal: true
+  checksum_sha256: 3f993f8e6e4e495e6da92fd23dfb42ad363ea474abab1831886a6015026aba9f
+- file: damaged/shellac_1908_x_22841_arno_vogelhochzeit.mp3
+  duration_s: 174.42
+  sample_rate: 44100
+  material: shellac
+  era_year: 1908
+  genre: '[''Vortragslied deutsch'', ''Ludwig Arno'', '
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Ludwig ARNO - Tenor — Vogelhochzeit (Internet Archive, x-22841-arno-vogelhochzeit)
+  license: Public Domain
+  source_url: https://archive.org/download/x-22841-arno-vogelhochzeit/X-22841%20Arno%20Vogelhochzeit.mp3
+  checksum_sha256: bd7240ab4e1c9e7701a59db7ac2cd5e6fb1e25780d794d7615f552ab2c7196fd
+- file: damaged/shellac_1908_x_22960_roeder_uhr_aufziehn.mp3
+  duration_s: 169.744
+  sample_rate: 44100
+  material: shellac
+  era_year: 1908
+  genre: '[''Zonophone Record'', ''Roeder'', ''Ludwig A'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Hermann ROEDER - Tenor, Ludwig ARNO - Tenor — Woll'n Sie meiner
+    Frau nicht mal die Uhr aufzieh'n? (Internet Archive, x-22960-roeder-uhr-aufziehn)
+  license: Public Domain
+  source_url: https://archive.org/download/x-22960-roeder-uhr-aufziehn/X-22960%20Roeder%20-%20Uhr%20aufziehn.mp3
+  checksum_sha256: f86a1295c5b4a00cc0280c2b8da034ad274177f245ded6d4804423c70f4ceeb5
+- file: damaged/shellac_1909_waldandachthubertus.mp3
+  duration_s: 142.184
+  sample_rate: 44100
+  material: shellac
+  era_year: 1909
+  genre: '[''Concert Record Gramophone'', ''Kunstpfei'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: HUBERTUS - Vogelstimmenimitator — Waldandacht mit Vogelgezwitscher
+    (Internet Archive, waldandachthubertus)
+  license: Public Domain
+  source_url: https://archive.org/download/waldandachthubertus/Waldandacht%20Hubertus.mp3
+  checksum_sha256: 12f123598f69fc582d43296cb3b93997dc4d3cf361869f229bc0a30b6c1feb4d
+- file: damaged/shellac_1909_wiemeiahnerlgruber.mp3
+  duration_s: 189.884
+  sample_rate: 44100
+  material: shellac
+  era_year: 1909
+  genre: '[''Operette'', ''Operetta'', ''Gruber'', ''teno'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Franz GRUBER - Tenor — Wie mein Ahnerl (Gruber) (Internet Archive,
+    wiemeiahnerlgruber)
+  license: Public Domain
+  source_url: https://archive.org/download/wiemeiahnerlgruber/Wie%20mei%20Ahnerl%20Gruber.mp3
+  checksum_sha256: 3b3f116d631fd424f998128860c53e600ed84374afc3b6c52aa129c62d390aec
+- file: damaged/shellac_1909_x_5_22014_arno_paula_mach_die_bluse_zu.mp3
+  duration_s: 174.994
+  sample_rate: 44100
+  material: shellac
+  era_year: 1909
+  genre: '[''Ludwig Arno'', ''tenor'', ''Vortragslied d'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Ludwig ARNO - Tenor — Paula, mach die Bluse zu (Internet Archive,
+    x-5-22014-arno-paula-mach-die-bluse-zu)
+  license: Public Domain
+  source_url: https://archive.org/download/x-5-22014-arno-paula-mach-die-bluse-zu/X-5-22014%20Arno%20-%20Paula%20mach%20die%20Bluse%20zu.mp3
+  checksum_sha256: 5d3e32cfafcb314a167b4fe07d776f65a341ad6b528c2bcd2384b6b8e6c4843f
+- file: damaged/shellac_1911_caruso_celeste_aida.mp3
+  duration_s: 289.176
+  sample_rate: 48000
+  material: shellac
+  era_year: 1911
+  genre: opera
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: 'Enrico Caruso — Aïda: Celeste Aïda (Internet Archive, 78rpm
+    Collection)'
+  license: Public Domain
+  source_url: https://archive.org/download/78_ada-celeste-ada-heavenly-aida_enrico-caruso-giueseppi-verdi_gbia0290541a/A%C3%AFda%20-%20Celeste%20A%C3%AFda%20%28Heavenly%20Aida%21%29%20-%20Enrico%20Caruso.mp3
+  vocal: true
+  checksum_sha256: 8314a045b9ed5e7739b49506671a1caf8e156525fbf66a789f5b6d70c5d40f41
+- file: damaged/shellac_1912_aristodemo_giorgini_arrigo_boito_mefistofele_giunto_sul_pass.mp3
+  duration_s: 189.37
+  sample_rate: 44100
+  material: shellac
+  era_year: 1912
+  genre: '[''AristodemoGiorgini'', ''ArrigoBoito'', ''M'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: léo472 — Aristodemo Giorgini, Arrigo Boito, Mefistofele, Giunto
+    Sul Passo Estremo, Pathé X 6 (Internet Archive, aristodemo-giorgini-arrigo-boito-mefistofele-giu
+  license: Public Domain
+  source_url: https://archive.org/download/aristodemo-giorgini-arrigo-boito-mefistofele-giunto-sul-passo-estremo-pathe-x-6/AristodemoGiorgini%2CArrigoBoito%2CMefistofele%2CGiuntoSulPassoEstremo%2CPath%C3%A9X6.mp3
+  checksum_sha256: 1129785e89ccfd839a53f91008c3ef2b024aa429bb4efb2db7bd2c1d31c7f0af
+- file: damaged/shellac_1913_muettedeportici1215s.mp3
+  duration_s: 279.223
+  sample_rate: 44100
+  material: shellac
+  era_year: 1913
+  genre: '[''Muette de Portici'', ''Stumme von Portic'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Hermann JADLOWKER - Tenor — Muette De Portici 1215 s (Internet
+    Archive, MuetteDePortici1215S)
+  license: Public Domain
+  source_url: https://archive.org/download/MuetteDePortici1215S/Muette%20de%20Portici%201215%20s.mp3
+  checksum_sha256: 7c5e279ebdc0357b4914040c1c28f66ff93645c9b8ea3bebda4cbec99a229efb
+- file: damaged/shellac_1913_zartlich_suss_und_leise.mp3
+  duration_s: 193.097
+  sample_rate: 44100
+  material: shellac
+  era_year: 1913
+  genre: '[''Zonophone Record'', ''Kino-Königin'', ''Je'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Grete WIEDECKE - Gesang, August BOCKMANN - Gesang — Zärtlich,
+    süß und leise (Internet Archive, zartlich-suss-und-leise)
+  license: Public Domain
+  source_url: https://archive.org/download/zartlich-suss-und-leise/Z%C3%A4rtlich%20s%C3%BCss%20und%20leise.mp3
+  checksum_sha256: 81f9f918070500de54068b5c87b65463a319e7b831df5cd9c44de449685a4138
+- file: damaged/shellac_1915_van_endert_alles_pflegt.mp3
+  duration_s: 275.801
+  sample_rate: 44100
+  material: shellac
+  era_year: 1915
+  genre: '[''Schallplatte Grammophon'', ''van Endert'''
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Elisabeth VAN ENDERT - Sopran — Alles pflegt schon längst der
+    Ruh' (Internet Archive, van-endert-alles-pflegt)
+  license: Public Domain
+  source_url: https://archive.org/download/van-endert-alles-pflegt/van%20Endert%20Alles%20pflegt.mp3
+  checksum_sha256: 5e3964d981e4577adcb06b148225f9fc4d13c256d84967debbac47b3f29939cb
+- file: damaged/shellac_1916_caruso_o_sole_mio.mp3
+  duration_s: 203.377
+  sample_rate: 44100
+  material: shellac
+  era_year: 1916
+  genre: opera
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Enrico Caruso — O Sole Mio (Internet Archive, 78rpm Collection)
+  license: Public Domain
+  source_url: https://archive.org/download/enrico-caruso-eduardo-di-capuai-osole-mio-gramophone-da-1303/EnricoCaruso%2CEduardoDiCapuai%2COSoleMio%2CGramophoneDA1303.mp3
+  vocal: true
+  checksum_sha256: 21f121b120342dfabb52e0d326f0f054496245709208cf421ef84ae258df5f04
+- file: damaged/shellac_1919_samuels_dance_orch_taxi.mp3
+  duration_s: 204.408
+  sample_rate: 48000
+  material: shellac
+  era_year: 1919
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  source_attribution: Joseph Samuels' Dance Orchestra — Taxi (Internet Archive, 78rpm
+    Collection)
+  license: Public Domain
+  source_url: https://archive.org/download/1919-USA-Archives-1919-07-00-Joseph-Samuels-Dance-Orch-Taxi/1919%20%28USA%29%20Archives%201919%2007%2000%20Joseph%20Samuels%27%20Dance%20Orch%20-%20Taxi.mp3
+  vocal: false
+  checksum_sha256: 22c9470135135c65d54d73dc6e08eaeffda6052b072d1cc4cfe08fd57d88cdfa
+- file: damaged/shellac_1919_w_moor_echo.mp3
+  duration_s: 239.726
+  sample_rate: 44100
+  material: shellac
+  era_year: 1919
+  genre: Oldtime
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Unbekannt — Echo (Internet Archive, w_moor_echo)
+  license: Public Domain
+  source_url: https://archive.org/download/w_moor_echo/w_moor_echo.mp3
+  checksum_sha256: 5389b1b5f77016082aa801921aaca2330a8cd3e5fc69f77ae15d875ad9935699
+- file: damaged/shellac_1920_karinbranzellsamson.mp3
+  duration_s: 192.131
+  sample_rate: 44100
+  material: shellac
+  era_year: 1920
+  genre: '[''Branzell'', ''contralto'', ''Opera'', ''Gram'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Karin BRANZELL - Alt — Sieh, mein Herz erschliesset sich (Internet
+    Archive, KarinBranzellSamson)
+  license: Public Domain
+  source_url: https://archive.org/download/KarinBranzellSamson/Karin%20Branzell%20Samson.mp3
+  checksum_sha256: ca57c860106aaf4feec4b2fcc1d0d7c22920f3112d182abe17cc25af1c231fdc
+- file: damaged/shellac_1920_wieihreunschuld.mp3
+  duration_s: 133.381
+  sample_rate: 44100
+  material: shellac
+  era_year: 1920
+  genre: '[''Mignon'', ''Ambroise Thomas'', ''Opera'', '''
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Bernhard BÖTEL - Tenor — Wie ihre Unschuld (Mignon) (Internet
+    Archive, wieihreunschuld)
+  license: Public Domain
+  source_url: https://archive.org/download/wieihreunschuld/Wie%20ihre%20Unschuld.mp3
+  checksum_sha256: 207afad9c4d7b60e41e4adf51cb624a25f057dda1e3b05ddf050153aa22e8998
+- file: damaged/shellac_1921_daniel_vigneau_ruggero_leoncavallo_paillasse_prologue_pathe.mp3
+  duration_s: 186.032
+  sample_rate: 44100
+  material: shellac
+  era_year: 1921
+  genre: '[''Daniel Vigneau'', ''Ruggero Leoncavallo'''
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: léo472 — Daniel Vigneau Ruggero Leoncavallo Paillasse Prologue
+    Pathé Saphir 0343 Enregistré Ca 1921 (Internet Archive, daniel-vigneau-ruggero-leoncavallo-pailla
+  license: Public Domain
+  source_url: https://archive.org/download/daniel-vigneau-ruggero-leoncavallo-paillasse-prologue-pathe-saphir-0343-enregistrement-ca-1921/Daniel%20Vigneau%20-%20Ruggero%20Leoncavallo%20-%20Paillasse%20-%20Prologue%20-%20Path%C3%A9%20Saphir%200343%20enregistr%C3%A9%20ca1921.mp3
+  checksum_sha256: 17b3ef72040f27c124d4a76f0ccf6a64b14a57fbd2ef3b77d2bd9720a046a0e4
+- file: damaged/shellac_1921_vox_3044_bilk_troubadour.mp3
+  duration_s: 230.844
+  sample_rate: 44100
+  material: shellac
+  era_year: 1921
+  genre: '[''Opera'', ''Troubadour'', ''Trovatore'', ''Ve'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: 'Jaques BILK - Bariton — Der Troubadour: Ihres Auges himmlisch
+    Strahlen (Internet Archive, vox-3044-bilk-troubadour)'
+  license: Public Domain
+  source_url: https://archive.org/download/vox-3044-bilk-troubadour/Vox%203044%20Bilk%20Troubadour.mp3
+  checksum_sha256: 51da8977c9eb5ee86c7a90f2f221d609d1c82635fd09bf1863b1fa931bd81c2b
+- file: damaged/shellac_1922_deman_liebesfreud.mp3
+  duration_s: 212.872
+  sample_rate: 44100
+  material: shellac
+  era_year: 1922
+  genre: '[''Classical Instrumental recording'', ''la'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Rudolf DEMAN - Violine, Otto URACK - Piano — Liebesfreud (Fritz
+    Kreisler) (Internet Archive, deman-liebesfreud)
+  license: Public Domain
+  source_url: https://archive.org/download/deman-liebesfreud/Deman%20Liebesfreud.mp3
+  checksum_sha256: c83aa66dab0a1a29236a0dcea5af5526760e244d19d32fe62b3f410cc7499130
+- file: damaged/shellac_1922_kaufman_eddie_leonard_blues.mp3
+  duration_s: 187.992
+  sample_rate: 48000
+  material: shellac
+  era_year: 1922
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Irving Kaufman — Eddie Leonard Blues (Internet Archive, 78rpm
+    Collection)
+  license: Public Domain
+  source_url: https://archive.org/download/78_eddie-leonard-blues_irving-kaufman-v-l-stanton_gbia0286489b/Eddie%20Leonard%20Blues%20-%20Irving%20Kaufman%20-%20V.%20L.%20Stanton.mp3
+  vocal: true
+  checksum_sha256: 7232cbd9457984134effbf32a9c0ad25e7f3e1493c0cf61d86e5acefe7175b1a
+- file: damaged/shellac_1922_othelloduettbohnenpattiera.mp3
+  duration_s: 273.006
+  sample_rate: 44100
+  material: shellac
+  era_year: 1922
+  genre: '[''as matrix-series'', ''late acoustic'', ''B'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Tino PATTIERA - Tenor, Michael BOHNEN - Bass — Othello Duett
+    Bohnen Pattiera (Internet Archive, OthelloDuettBohnenPattiera)
+  license: Public Domain
+  source_url: https://archive.org/download/OthelloDuettBohnenPattiera/Othello%20Duett%20Bohnen%20Pattiera.mp3
+  checksum_sha256: 1cdf1c8307b7bdb7aa3264ae33c6d0c8b4aeb1f56eb361fa57a42565e4c4f467
+- file: damaged/shellac_1923_bessie_smith_far_away_blues.mp3
+  duration_s: 183.641
+  sample_rate: 44100
+  material: shellac
+  era_year: 1923
+  genre: blues
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  source_attribution: Bessie Smith & Clara Smith — Far Away Blues (Internet Archive,
+    78rpm Collection)
+  license: Public Domain
+  source_url: https://archive.org/download/farawaybluesraw/Far%20away%20Blues%20raw.mp3
+  vocal: true
+  checksum_sha256: 50af240e00b5c138b8199490e34102592afd0f3b8f5af55a37b650b52410897e
+- file: damaged/shellac_1923_da382aufflugelndesgesanges.mp3
+  duration_s: 200.568
+  sample_rate: 44100
+  material: shellac
+  era_year: 1923
+  genre: '[''Hempel'', ''soprano'', ''Electrola'', ''late'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Frieda HEMPEL - Sopran — DA 382 Auf Flügeln Des Gesanges (Internet
+    Archive, da382aufflugelndesgesanges)
+  license: Public Domain
+  source_url: https://archive.org/download/da382aufflugelndesgesanges/DA%20382%20Auf%20Fl%C3%BCgeln%20des%20Gesanges.mp3
+  checksum_sha256: 4e8d00e1bd2a93829fab9db5d3e0c5beda1446824521c08891876f5468aa1ba6
+- file: damaged/shellac_1923_jolson_style_dirty_hands_dirty_face.mp3
+  duration_s: 198.216
+  sample_rate: 48000
+  material: shellac
+  era_year: 1923
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Bob Thomas (Jolson) — Dirty Hands! Dirty Face! (Internet Archive,
+    78rpm Collection)
+  license: Public Domain
+  source_url: https://archive.org/download/78_dirty-hands-dirty-face_bob-thomas-jolson-clark-leslie_gbia0086661a/Dirty%20Hands%21%20Dirty%20Face%21%20-%20Bob%20Thomas%20-%20Jolson.mp3
+  vocal: true
+  checksum_sha256: bff0a1479a2d8d2c9e2ff2d593253804f009647efba498a2677199eb1e461238
+- file: damaged/shellac_1924_fernand_ansseau_richard_wagner_lohengrin_ah_respirons_tous_d.mp3
+  duration_s: 183.38
+  sample_rate: 44100
+  material: shellac
+  era_year: 1924
+  genre: '[''Fernand Ansseau'', ''Richard Wagner'', ''L'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: léo472 — Fernand Ansseau Richard Wagner Lohengrin Ah Respirons
+    Tous Deux Gramophone DA 614 Enregistré Le 13 Mars 1924 (Internet Archive, fernand-ansseau-richard
+  license: Public Domain
+  source_url: https://archive.org/download/fernand-ansseau-richard-wagner-lohengrin-ah-respirons-tous-deux-gramophone-da-61/Fernand%20Ansseau%20-%20Richard%20Wagner%20-%20Lohengrin%20%20-%20Ah%20respirons%20tous%20deux%20-%20Gramophone%20DA%20614%20enregistr%C3%A9%20le%2013%20%20mars%201924.mp3
+  checksum_sha256: 7b2257dd338e2d284c94b4ea354adf725c01bf07a118f7f3a6c159db91a9729d
+- file: damaged/shellac_1924_nozzedifigarodb831.mp3
+  duration_s: 244.715
+  sample_rate: 44100
+  material: shellac
+  era_year: 1924
+  genre: '[''Nozze di Figaro'', ''Figaros Hochzeit'', '
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Toti DAL MONTE - Sopran — Nozze Di Figaro DB 831 (Internet Archive,
+    NozzeDiFigaroDB831)
+  license: Public Domain
+  source_url: https://archive.org/download/NozzeDiFigaroDB831/Nozze%20di%20Figaro%20DB%20831.mp3
+  checksum_sha256: b3ea765e3c26462dce170a8a02bfc716329eaf00a653120a386d84944bccbdeb
+- file: damaged/shellac_1924_schachmeister_slik_pinden.mp3
+  duration_s: 185.783
+  sample_rate: 44100
+  material: shellac
+  era_year: 1924
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  source_attribution: Efim Schachmeister Danse Orkester — Slik-pinden (Internet Archive,
+    78rpm Collection)
+  license: Public Domain
+  source_url: https://archive.org/download/78_slik-pinden-danse-orkester-efim-schachmeister-edward/Slik-pinden%20-%20Efim%20Schachmeister.mp3
+  vocal: false
+  checksum_sha256: 37eed9f6192215474368f1606eb18a82ab95988d751f5bafde078d15a90becce
+- file: damaged/shellac_1924_two_franks_rock_a_bye_blues.mp3
+  duration_s: 214.008
+  sample_rate: 48000
+  material: shellac
+  era_year: 1924
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: The Two Franks — Rock-A-Bye My Baby Blues (Internet Archive,
+    78rpm Collection)
+  license: Public Domain
+  source_url: https://archive.org/download/78_rock-a-bye-my-baby-blues_frank-wright-and-frank-bessinger-the-two-franks-hill-yoe_gbia0236696b/Rock-A-Bye%20My%20Baby%20Blues%20-%20Frank%20Wright%20and%20Frank%20Bessinger%20%28The%20Two%20Franks%29.mp3
+  vocal: true
+  checksum_sha256: 548339eaa104978674851b95f6c4ba40abf99aefae8ecf51d7c6ed2dfe35d59f
+- file: damaged/shellac_1924_virtuoso_string_quartet_op59_no2_mvt3.flac
+  duration_s: 260.881
+  sample_rate: 44100
+  material: shellac
+  era_year: 1924
+  genre: classical
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  source_attribution: Virtuoso String Quartet — Beethoven op. 59 Nr. 2, 3. Satz (Internet
+    Archive, 78rpm Collection)
+  license: Public Domain
+  source_url: https://archive.org/download/78_quartet-emin-op59-no2-3rd-mvt-allegretto_virtuoso-string-quartet/D_955_Cc_4690-3.flac
+  vocal: false
+  checksum_sha256: 66a905a5fc65f9e9d39cd4e456d0cf9532242bb01538c78310c372204d417513
+- file: damaged/shellac_1925_caruso_vesti_la_giubba.mp3
+  duration_s: 195.504
+  sample_rate: 48000
+  material: shellac
+  era_year: 1925
+  genre: opera
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: 'Enrico Caruso — Pagliacci: Vesti la giubba (Internet Archive,
+    78rpm Collection)'
+  license: Public Domain
+  source_url: https://archive.org/download/78_vesti-la-giubba_sig-caruso-leoncavallo_gbia7002950a/VESTI%20LA%20GIUBBA%20-%20SIG.%20CARUSO%20-%20Leoncavallo.mp3
+  vocal: true
+  checksum_sha256: d715cfae7b596f70065d6494fa1ed79717d8062e36b21e3d1afe4986bdd6b17d
+- file: damaged/shellac_1925_covent_garden_scheherazade_pt3.flac
+  duration_s: 263.835
+  sample_rate: 44100
+  material: shellac
+  era_year: 1925
+  genre: classical
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  source_attribution: 'Royal Opera House Orchestra — Rimski-Korsakow: Scheherazade
+    op. 35, Teil 3 (Internet Archive, 78rpm Collection)'
+  license: Public Domain
+  source_url: https://archive.org/download/78_scherazade-op35-pt3_royal-opera-house-orchestra-covent-garden/C_1288_CR_563-4.flac
+  vocal: false
+  checksum_sha256: 4b1bcc5eab7546bdf756d850218ef13d18e3a129191c56f2af6cda40457a78e3
+- file: damaged/shellac_1926_ulysses_lappas_amilcare_ponchielli_la_gioconda_cielo_emar_co.mp3
+  duration_s: 263.63
+  sample_rate: 44100
+  material: shellac
+  era_year: 1926
+  genre: '[''UlyssesLappas'', ''AmilcarePonchielli'', '
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: léo472 — Ulysses Lappas, Amilcare Ponchielli, La Gioconda, Cielo
+    EMar, Columbia L 1762 (Internet Archive, ulysses-lappas-amilcare-ponchielli-la-gioconda-cielo-e
+  license: Public Domain
+  source_url: https://archive.org/download/ulysses-lappas-amilcare-ponchielli-la-gioconda-cielo-emar-columbia-l-1762/UlyssesLappas%2CAmilcarePonchielli%2CLaGioconda%2CCieloEMar%2CColumbiaL1762.mp3
+  checksum_sha256: e4039d5ac163becbd4ee27956b39a3b01cad41fbf73314af6cfc22f2926c8e51
+- file: damaged/shellac_1927_fausttriodeduel.mp3
+  duration_s: 203.912
+  sample_rate: 44100
+  material: shellac
+  era_year: 1927
+  genre: '[''Faust'', ''Margarethe'', ''Opera'', ''Gounod'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: 'René MAISON - Tenor, Julien LAFONT - Bariton, Roger BOURDIN
+    - Bariton, Gustave CLOEZ - Dirigent — Faust: Trio de Duel (Internet Archive, fausttriodeduel)'
+  license: Public Domain
+  source_url: https://archive.org/download/fausttriodeduel/Faust%20Trio%20de%20Duel.mp3
+  checksum_sha256: 6c2ca67875f352763c02ca5d177c4bb464b3f9be2e70673c6abb321ea4d570e0
+- file: damaged/shellac_1927_weine_nicht_liu_o_7536.mp3
+  duration_s: 217.078
+  sample_rate: 44100
+  material: shellac
+  era_year: 1927
+  genre: '[''Kiepura'', ''tenor'', ''Turandot'', ''Puccin'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - surface_noise
+  - wow
+  - hiss
+  source_attribution: Jan KIEPURA - Tenor, Manfred GURLITT - Dirigent — O weine nicht,
+    Liu (Internet Archive, weine-nicht-liu-o-7536)
+  license: Public Domain
+  source_url: https://archive.org/download/weine-nicht-liu-o-7536/Weine%20nicht%20Liu%20O%207536.mp3
+  checksum_sha256: 8634612ff6711c44fae731321375d5bb2489562683b028e0ff4c3560e910b420

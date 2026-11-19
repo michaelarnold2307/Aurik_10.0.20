@@ -1,0 +1,14 @@
+# Härtefall: Massive Knister-/Kratzgeräusche (Crackle)
+medium: vinyl
+defects:
+  - severe_crackle
+  - noise
+  - sibilance
+policy:
+  prefer_ml: true
+  max_chain_length: 10
+  audit: true
+  quality:
+    min_hf_ratio: 0.7
+    max_loudness: -14.0
+    min_transparency: 0.75

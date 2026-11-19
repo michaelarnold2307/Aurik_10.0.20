@@ -1,0 +1,26 @@
+[
+  {
+    "channels": 1,
+    "duration_seconds": 3.0,
+    "file": "cassette_1980s_wow",
+    "peak": 0.800018,
+    "rms": 0.17733,
+    "sample_rate": 44100
+  },
+  {
+    "channels": 1,
+    "duration_seconds": 3.0,
+    "file": "cd_clipped_2000s",
+    "peak": 0.800018,
+    "rms": 0.566091,
+    "sample_rate": 44100
+  },
+  {
+    "channels": 1,
+    "duration_seconds": 3.0,
+    "file": "jazz_1950s_scratched",
+    "peak": 0.799988,
+    "rms": 0.195533,
+    "sample_rate": 44100
+  }
+]

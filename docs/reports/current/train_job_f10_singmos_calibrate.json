@@ -1,0 +1,24 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "f10_singmos-20261108T133832Z-e935e0",
+  "name": "f10_singmos_calibrate",
+  "phase": "f10_singmos",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/calibrate_singmos_music.py --musdb-root data/musdb18hq --out-dir models/singmos/calibration",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/calibrate_singmos_music.py --musdb-root data/musdb18hq --out-dir models/singmos/calibration",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 49.8,
+      "timed_out": false,
+      "output_tail": "viceManager: AMD ROCm erkannt — HIP 7.2.26015\nINFO backend.core.ml_device_manager: MLDeviceManager: ROCm ONNX Probe OK — ROCMExecutionProvider aktiv, Parität max rel=0.00e+00 (§III.9)\nINFO plugins.panns_plugin: PANNs ONNX: GPU-Inferenz angefordert (providers=[('ROCMExecutionProvider', {'device_id': 0, 'gpu_mem_limit': 21886079598, 'arena_extend_strategy': 'kSameAsRequested'}), 'CPUExecutionProvider'])\nINFO plugins.panns_plugin: panns_plugin: CNN14 ONNX model geladen (panns_wavegram_logmel_cnn14.onnx, device=cuda, fp16=True, §4.4 primary genre/tagging)\nINFO backend.core.plugin_lifecycle_manager: PluginLifecycleManager: initialisiert (RAM eviction Schwelle 75 %)\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 49152000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 49152000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 24576000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 24576000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [GetSolutionsFallback WTI] Solver <GemmFwdRest>, workspace required: 6144000, provided ptr: 0 size: 0\nMIOpen(HIP): Warning [IsEnoughWorkspace] [EvaluateInvokers] Solver <GemmFwdRest>, workspace required: 6144000, provided ptr: 0 size: 0\nINFO backend.core.ml_memory_budget: ml_memory_Grenze: 'VersaSingMOS' allocated 1.4 GB  →  total 2.1 / 10.4 GB used.\nINFO plugins.versa_plugin: ✅ VERSA SingMOS Pro ONNX geladen (singmos_pro.onnx, provider=CPUExecutionProvider)\nINFO __main__: Kalibrierung geschrieben: models/singmos/calibration/calibration.json (a=3.5562 b=-13.4352, Monotonie-Verletzungen=3)\nINFO __main__: KEIN Flag-Flip, KEINE Konsument-Verdrahtung (§V8 (copilot-instructions.md)) — Read-Side-Bedarf im Report dokumentieren\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/calibrate_singmos_music.py --musdb-root data/musdb18hq --out-dir models/singmos/calibration"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {},
+  "ergebnis": "erfolgreich"
+}

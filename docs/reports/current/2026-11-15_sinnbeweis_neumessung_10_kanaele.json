@@ -1,0 +1,37 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "datum": "2026-11-15",
+  "lauf": "sinn_beweis_neumessung_10_kanaele",
+  "titel": "Elke Best - Boogie Woogie Mama (1 Titel, 4 Rezepte — Symlink-Auswahl lieferte 1 Quelle)",
+  "n_paare": 4,
+  "n_besser": 2,
+  "vergleich_d_k3_95": {
+    "vinyl": {
+      "alt": "0,0 (nicht besser)",
+      "neu": "-0,030 defektlast (BESSER)",
+      "ursache": "Witness-Kopf-Kanaele aktiv"
+    },
+    "kassette": {
+      "alt": "-0,038 (besser)",
+      "neu": "-0,077 (besser, doppelt so stark)",
+      "ursache": "Witness-Kopf-Kanaele aktiv"
+    },
+    "clipping": {
+      "alt": "+0,024 (schlechter)",
+      "neu": "+0,036 (schlechter)",
+      "ursache": "Clipping ist kein k398-Defekt — zustaendig: Musik-Declip-Kopf (§4-Paket FERTIG)"
+    },
+    "mp3_128": {
+      "alt": "-0,125 (besser)",
+      "neu": "0,0 (No-Op)",
+      "ursache": "eigener mp3-Phasen-Befund — Folgeuntersuchung"
+    }
+  },
+  "fazit": "Die 10 Witness-Kopf-Kanaele verbessern vinyl und kassette auf dem haertesten Titel — die kassette-0/3-Luecke des Audits zeigt erste belegte Wirkung. clipping braucht den Declip-Kopf (§4-Paket bereit), mp3_128 hat einen eigenen Phasen-Befund.",
+  "quellen": [
+    "study_stimuli/sinn_beweis_neu/bewertung.json",
+    "docs/reports/current/2026-11-11_schadensbewertung.json"
+  ],
+  "status": "ueberholt_durch_v2",
+  "korrektur": "Der 4-Paar-Befund war ein Kontext-Artefakt — siehe 2026-11-15_sinnbeweis_v2_12_paare.json (0/12)."
+}

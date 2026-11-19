@@ -1,0 +1,14 @@
+{
+  "schema": "aurik.witness_kopf_gate/1",
+  "datum": "2026-11-16",
+  "seed": 42,
+  "klasse": "sticky_shed_residue",
+  "holdout_titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+  "checkpoint": "models/klassen_koepfe/witness_sticky_shed_residue_best.pt",
+  "n_regionen": 200,
+  "n_uebersprungen": 10,
+  "q_median": 0.9762,
+  "q_anteil_ge_0_5": 1.0,
+  "never_worsen_anteil": 1.0,
+  "gate_bestanden": true
+}

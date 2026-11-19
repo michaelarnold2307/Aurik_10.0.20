@@ -1,0 +1,92 @@
+{
+  "schema": "aurik.m9_gate/1",
+  "datum": "2026-11-15",
+  "seed": 42,
+  "segmente_s": 20.0,
+  "modell": "models/tf_gridnet_v2/tf_gridnet_quality.onnx",
+  "modell_sha256": "b7bb12f421409f2bc79bbdd33d886fe050be39587ca1bc7e2521fa542e386d62",
+  "tracks": [
+    "Al James - Schoolboy Facination",
+    "Bobby Nobody - Stitch Up",
+    "The Easton Ellises (Baumi) - SDRNR"
+  ],
+  "never_worsen": false,
+  "vorteile_rauscharm": 0,
+  "vorteile_min": 2,
+  "gate_bestanden": false,
+  "limitation": "Provenienz-Manifest der 25 Trainingspaare fehlt — Leak-Freiheit der Track-Auswahl nicht nachweisbar; Never-worsen auf MUSDB18HQ-Test-Split belegt.",
+  "messungen": [
+    {
+      "arm": "clean",
+      "track": "Al James - Schoolboy Facination",
+      "hnr_basis_db": -10.9471,
+      "hnr_m9_db": -10.825,
+      "delta_hnr_db": 0.1221,
+      "musik_mos_basis": 4.7103,
+      "musik_mos_m9": 4.6492,
+      "defektlast_basis": 0.4234,
+      "defektlast_m9": 0.4549,
+      "applied": true
+    },
+    {
+      "arm": "rausch",
+      "track": "Al James - Schoolboy Facination",
+      "hnr_basis_db": -10.9682,
+      "hnr_m9_db": -10.9682,
+      "delta_hnr_db": 0.0,
+      "musik_mos_basis": 4.0367,
+      "musik_mos_m9": 4.0367,
+      "defektlast_basis": 0.3334,
+      "defektlast_m9": 0.3334,
+      "applied": true
+    },
+    {
+      "arm": "clean",
+      "track": "Bobby Nobody - Stitch Up",
+      "hnr_basis_db": -9.1607,
+      "hnr_m9_db": -9.1353,
+      "delta_hnr_db": 0.0253,
+      "musik_mos_basis": 4.7977,
+      "musik_mos_m9": 4.7964,
+      "defektlast_basis": 0.4698,
+      "defektlast_m9": 0.4729,
+      "applied": true
+    },
+    {
+      "arm": "rausch",
+      "track": "Bobby Nobody - Stitch Up",
+      "hnr_basis_db": -9.1724,
+      "hnr_m9_db": -9.1724,
+      "delta_hnr_db": 0.0,
+      "musik_mos_basis": 4.8801,
+      "musik_mos_m9": 4.8801,
+      "defektlast_basis": 0.2375,
+      "defektlast_m9": 0.2375,
+      "applied": true
+    },
+    {
+      "arm": "clean",
+      "track": "The Easton Ellises (Baumi) - SDRNR",
+      "hnr_basis_db": -3.2098,
+      "hnr_m9_db": -3.2098,
+      "delta_hnr_db": 0.0,
+      "musik_mos_basis": 4.7615,
+      "musik_mos_m9": 4.7615,
+      "defektlast_basis": 0.4716,
+      "defektlast_m9": 0.4716,
+      "applied": true
+    },
+    {
+      "arm": "rausch",
+      "track": "The Easton Ellises (Baumi) - SDRNR",
+      "hnr_basis_db": -3.2357,
+      "hnr_m9_db": -3.2357,
+      "delta_hnr_db": 0.0,
+      "musik_mos_basis": 4.7818,
+      "musik_mos_m9": 4.7818,
+      "defektlast_basis": 0.4335,
+      "defektlast_m9": 0.4335,
+      "applied": true
+    }
+  ]
+}

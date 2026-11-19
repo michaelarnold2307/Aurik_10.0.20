@@ -1,0 +1,25 @@
+{
+  "version": "v10.800",
+  "pipeline": "canonical",
+  "max_seconds": 4.0,
+  "timestamp": "2026-10-07T17:31:32",
+  "summary": {
+    "improved": 0,
+    "degraded": 0,
+    "avg_snr_improvement_db": 0.0,
+    "total_files": 1
+  },
+  "results": [
+    {
+      "medium": "vinyl",
+      "file": "vinyl_blues_1950s_crackle.wav",
+      "snr_before_db": 21.75,
+      "snr_after_db": 21.75,
+      "snr_after_raw_db": 19.15,
+      "out_gain_db": -0.67,
+      "snr_improvement_db": 0.0,
+      "output_path": "/tmp/aurik_bench_canon/vinyl/vinyl_blues_1950s_crackle_restored.wav",
+      "verdict": "neutral"
+    }
+  ]
+}

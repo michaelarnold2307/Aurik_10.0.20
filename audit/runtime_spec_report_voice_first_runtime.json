@@ -1,0 +1,79 @@
+{
+  "checks": [
+    {
+      "evidence": "entries=1",
+      "id": "voice_first_snapshot_non_empty",
+      "passed": true,
+      "required": true,
+      "title": "Voice-First Snapshot enth\u00e4lt mindestens einen vokalen Lauf"
+    },
+    {
+      "evidence": "all required blockers true",
+      "id": "voice_first_blockers_runtime",
+      "passed": true,
+      "required": true,
+      "title": "Voice-First Runtime-Blocker vollst\u00e4ndig erf\u00fcllt"
+    },
+    {
+      "evidence": "causal_safe=True drift_bound=True decision_stability=True",
+      "id": "decision_quality_learning_guard",
+      "passed": true,
+      "required": true,
+      "title": "Decision-Quality-Guard: Kausalit\u00e4t, Drift, Stabilit\u00e4t"
+    },
+    {
+      "evidence": "fidelity telemetry absent (non-blocking)",
+      "id": "bridge_export_fidelity_guard",
+      "passed": true,
+      "required": false,
+      "title": "Bridge/Export Fidelity-Guards im sicheren Bereich"
+    },
+    {
+      "evidence": "interaction telemetry absent (non-blocking)",
+      "id": "interaction_guard_runtime",
+      "passed": true,
+      "required": false,
+      "title": "Interaction-Guard Runtime-Metadaten im sicheren Bereich"
+    },
+    {
+      "evidence": "ml guard telemetry absent (non-blocking)",
+      "id": "dsp_ml_guard_runtime",
+      "passed": true,
+      "required": false,
+      "title": "DSP/ML-Guard-Telemetrie im sicheren Bereich"
+    },
+    {
+      "evidence": "vocal/perceptual telemetry absent (non-blocking)",
+      "id": "vocal_perceptual_runtime",
+      "passed": true,
+      "required": false,
+      "title": "Vocal-Safety und Holistic-Perceptual-Gate im sicheren Bereich"
+    },
+    {
+      "evidence": "temporal/stereo telemetry absent (non-blocking)",
+      "id": "temporal_stereo_runtime",
+      "passed": true,
+      "required": false,
+      "title": "Temporal-Continuity und Stereo-Warnsignale im sicheren Bereich"
+    },
+    {
+      "evidence": "recovery/execution telemetry absent (non-blocking)",
+      "id": "recovery_execution_runtime",
+      "passed": true,
+      "required": false,
+      "title": "Recovery-/Execution-Signale im sicheren Bereich"
+    },
+    {
+      "evidence": "team/goal telemetry absent (non-blocking)",
+      "id": "team_goal_runtime",
+      "passed": true,
+      "required": false,
+      "title": "Team-Koordination und Goal-Recovery im sicheren Bereich"
+    }
+  ],
+  "compliance_ok": true,
+  "required_passed": 3,
+  "required_total": 3,
+  "snapshot_path": "audit/current_voice_first_audit.json",
+  "timestamp": "2026-05-21T04:17:53.656465"
+}

@@ -1,0 +1,24 @@
+[
+  {
+    "allowed": true,
+    "cas_delta": 0.01,
+    "confidence": 0.95,
+    "context": {
+      "medium_type": "digital",
+      "zone": "A"
+    },
+    "dcs": 0.05,
+    "musical_goals_scores": {
+      "bass_kraft": 0.7,
+      "brillanz": 0.7
+    },
+    "reason": "Conduct Check passed (mit 2 minor goal violations: ['brillanz', 'bass_kraft'])",
+    "timestamp": "2026-02-09T19:19:42.712753",
+    "violated_musical_goals": {
+      "bass_kraft": 0.7,
+      "brillanz": 0.7
+    },
+    "violated_principles": [],
+    "zone": "A"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "id": "D-K0-4",
+  "zeilen_index": 113,
+  "zeile": "| D-K0-4 | `models/miipher_dit/whisper_denoiser_best.pt` | K0 | musik | Trainingsskript `scripts/train_whisper_v2.py` → MUSDB18-HQ | offen | `use_whisper_denoiser=False` (deprecated) — Nutzen neu bewerten oder Artefakt archivieren **SOTA-M2** | — |",
+  "status_alt": "offen",
+  "quellen": [
+    "models/miipher_dit/whisper_denoiser_best.pt",
+    "scripts/train_whisper_v2.py"
+  ],
+  "ziel": "models/_archive_20261028/D-K0-4_models_miipher_dit_whisper_denoiser_best",
+  "ergebnis": "archiviert"
+}

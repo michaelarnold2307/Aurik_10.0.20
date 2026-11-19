@@ -1,0 +1,14 @@
+# SOTA DSP Module List YAML
+# Diese Datei dient als Platzhalter für die Tests und kann mit echten Modulen ergänzt werden.
+modules:
+  - name: deepfilternet
+    description: DeepFilterNet SOTA-Modul
+  - name: demucs
+    description: Demucs SOTA-Modul
+  - name: diffwave
+    description: DiffWave SOTA-Modul
+  - name: hifigan
+    description: HiFi-GAN SOTA-Modul
+  - name: flashsr
+    description: FlashSR SOTA-Modul
+# Weitere Module können hier ergänzt werden.

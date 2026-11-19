@@ -1,0 +1,116 @@
+{
+  "edge_cases": {
+    "clip_fullscale": {
+      "no_crash": true,
+      "no_nan": true,
+      "runtime_s": 0.001,
+      "shape_preserved": true
+    },
+    "dc_offset": {
+      "no_crash": true,
+      "no_nan": true,
+      "runtime_s": 0.0016,
+      "shape_preserved": true
+    },
+    "impulse": {
+      "no_crash": true,
+      "no_nan": true,
+      "runtime_s": 0.001,
+      "shape_preserved": true
+    },
+    "one_sample": {
+      "error": "The length of the input vector x must be greater than padlen, which is 21.",
+      "no_crash": false,
+      "runtime_s": 0.0
+    },
+    "silence_2s": {
+      "no_crash": true,
+      "no_nan": true,
+      "runtime_s": 0.003,
+      "shape_preserved": true
+    },
+    "step_function": {
+      "no_crash": true,
+      "no_nan": true,
+      "runtime_s": 0.001,
+      "shape_preserved": true
+    },
+    "stereo_correlation": {
+      "error": "The length of the input vector x must be greater than padlen, which is 21.",
+      "no_crash": false,
+      "runtime_s": 0.0
+    },
+    "sweep_20_20k": {
+      "no_crash": true,
+      "no_nan": true,
+      "runtime_s": 0.001,
+      "shape_preserved": true
+    },
+    "very_loud": {
+      "no_crash": true,
+      "no_nan": true,
+      "runtime_s": 0.001,
+      "shape_preserved": true
+    },
+    "very_quiet": {
+      "no_crash": true,
+      "no_nan": true,
+      "runtime_s": 0.0011,
+      "shape_preserved": true
+    }
+  },
+  "metadata": {
+    "sample_rate": 48000,
+    "test_signal_duration_s": 0.5
+  },
+  "parameter_matrix": {
+    "denoise_digital": {
+      "pqs": 67.33,
+      "runtime_s": 0.3715,
+      "success": true
+    },
+    "denoise_shellac": {
+      "pqs": 68.31,
+      "runtime_s": 3.49,
+      "success": true
+    },
+    "denoise_tape": {
+      "pqs": 67.92,
+      "runtime_s": 0.3814,
+      "success": true
+    },
+    "denoise_vinyl": {
+      "pqs": 66.54,
+      "runtime_s": 0.4877,
+      "success": true
+    }
+  },
+  "scenarios": {
+    "music_clean": {
+      "artifact_free": 0.9997,
+      "pqs": 99.99,
+      "runtime_s": 4.2199,
+      "timbre": 1.0
+    },
+    "music_noise_10dB": {
+      "artifact_free": 1.0,
+      "pqs": 98.85,
+      "runtime_s": 0.0015,
+      "timbre": 0.986
+    },
+    "music_noise_20dB": {
+      "artifact_free": 1.0,
+      "pqs": 99.92,
+      "runtime_s": 0.0007,
+      "timbre": 0.9987
+    },
+    "music_noise_6dB": {
+      "artifact_free": 1.0,
+      "pqs": 97.03,
+      "runtime_s": 0.0007,
+      "timbre": 0.9647
+    }
+  },
+  "timestamp": "2026-07-11T15:46:41.658108",
+  "version": "10.0.0-Phantom"
+}

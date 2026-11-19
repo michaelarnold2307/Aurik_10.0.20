@@ -1,0 +1,9 @@
+
+[project]
+name = "aurik-flashsr"
+version = "0.1.0"
+description = "Minimalistisches Python-Projekt für Docker-Build."
+authors = [
+	{ name = "Aurik Team" }
+]
+requires-python = ">=3.10.12,<3.11"

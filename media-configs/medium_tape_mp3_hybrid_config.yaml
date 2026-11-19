@@ -1,0 +1,50 @@
+profile:
+  name: tape_to_mp3_medium_offline_stereo
+  medium: tape_mp3_hybrid
+  mode: offline
+  channels: stereo
+
+analysis:
+  segment_length_sec: 2.0
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 12.0
+
+budgets:
+  artifact_budget: 0.10
+  identity_budget: 0.08
+  temporal_change_budget: 0.18
+  spectral_change_budget: 0.15
+  noise_change_budget: 0.08
+  stereo_change_budget: 0.08
+
+processing_order:
+  - declip
+  - wow_flutter_limited
+  - dropout_repair_hf
+  - codec_taming
+  - hiss_taming_optional
+  - sibilance
+  - stereo_guard
+  - finalize
+
+modules:
+
+  wow_flutter_limited:
+    detect:
+      wow_norm_min: 0.025
+      stereo_corr_min: 0.65
+    trial:
+      wow_strength_max: 0.25
+      flutter_strength_max: 0.15
+    commit:
+      forbid_warble_increase: true
+      forbid_pre_echo_increase: true
+
+  codec_taming:
+    trial:
+      smoothing_strength: 0.15
+      hf_tilt_db_at_10k: -1.2
+    commit:
+      min_anchor_gain: 0.015
+
+# Declip, Sibilance, Stereo Guard, Finalize wie im MP3-Profil

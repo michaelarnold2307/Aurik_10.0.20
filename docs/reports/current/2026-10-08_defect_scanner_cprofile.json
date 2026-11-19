@@ -1,0 +1,149 @@
+{
+  "datum": "2026-10-08",
+  "zweck": "P0-Performance (D-K3-38): cProfile-Zerlegung des Defekt-Scanners (30-s-Mix-Ausschnitt)",
+  "audio": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__mix.wav (30 s @ 44,1 kHz)",
+  "scan_s": 19.05,
+  "s_per_min": 38.1,
+  "top_cumulative": [
+    {
+      "fn": "scan:1997",
+      "ncalls": 1,
+      "tottime_s": 0.005,
+      "cumtime_s": 19.052
+    },
+    {
+      "fn": "annotate_defect_scores:255",
+      "ncalls": 1,
+      "tottime_s": 0.032,
+      "cumtime_s": 8.619
+    },
+    {
+      "fn": "estimate_residuum_salience:179",
+      "ncalls": 1245,
+      "tottime_s": 0.123,
+      "cumtime_s": 6.524
+    },
+    {
+      "fn": "_ureduce:3763",
+      "ncalls": 66737,
+      "tottime_s": 0.164,
+      "cumtime_s": 3.792
+    },
+    {
+      "fn": "wait:288",
+      "ncalls": 74,
+      "tottime_s": 0.0,
+      "cumtime_s": 3.64
+    },
+    {
+      "fn": "<method 'acquire' of '_thread.lock' objects>:0",
+      "ncalls": 294,
+      "tottime_s": 3.64,
+      "cumtime_s": 3.64
+    },
+    {
+      "fn": "_result_or_cancel:316",
+      "ncalls": 61,
+      "tottime_s": 0.0,
+      "cumtime_s": 3.638
+    },
+    {
+      "fn": "result_iterator:614",
+      "ncalls": 62,
+      "tottime_s": 0.0,
+      "cumtime_s": 3.638
+    },
+    {
+      "fn": "result:430",
+      "ncalls": 61,
+      "tottime_s": 0.0,
+      "cumtime_s": 3.637
+    },
+    {
+      "fn": "_to_bark_bands:128",
+      "ncalls": 2490,
+      "tottime_s": 0.465,
+      "cumtime_s": 3.551
+    },
+    {
+      "fn": "median:3845",
+      "ncalls": 64601,
+      "tottime_s": 0.071,
+      "cumtime_s": 3.334
+    },
+    {
+      "fn": "_median:3931",
+      "ncalls": 64601,
+      "tottime_s": 0.428,
+      "cumtime_s": 3.08
+    },
+    {
+      "fn": "_stft_magnitude_db:102",
+      "ncalls": 2490,
+      "tottime_s": 1.419,
+      "cumtime_s": 2.616
+    },
+    {
+      "fn": "_auto_detect_material:3467",
+      "ncalls": 1,
+      "tottime_s": 0.0,
+      "cumtime_s": 2.283
+    },
+    {
+      "fn": "_detect_stereo_material:3670",
+      "ncalls": 1,
+      "tottime_s": 0.006,
+      "cumtime_s": 2.283
+    },
+    {
+      "fn": "convolve:738",
+      "ncalls": 2309,
+      "tottime_s": 0.005,
+      "cumtime_s": 1.768
+    },
+    {
+      "fn": "<built-in method numpy.core._multiarray_umath.correlate>:0",
+      "ncalls": 2309,
+      "tottime_s": 1.762,
+      "cumtime_s": 1.762
+    },
+    {
+      "fn": "_detect_crackle:4287",
+      "ncalls": 3,
+      "tottime_s": 0.242,
+      "cumtime_s": 1.677
+    },
+    {
+      "fn": "_raw_fft:49",
+      "ncalls": 26869,
+      "tottime_s": 0.047,
+      "cumtime_s": 1.58
+    },
+    {
+      "fn": "rfft:320",
+      "ncalls": 25067,
+      "tottime_s": 0.033,
+      "cumtime_s": 1.556
+    },
+    {
+      "fn": "<built-in method numpy.fft._pocketfft_internal.execute>:0",
+      "ncalls": 26869,
+      "tottime_s": 1.522,
+      "cumtime_s": 1.522
+    },
+    {
+      "fn": "compute_masking_threshold:203",
+      "ncalls": 1245,
+      "tottime_s": 0.21,
+      "cumtime_s": 1.368
+    }
+  ],
+  "nachher_optimierung": {
+    "was": "_median_flat partition-Direktpfad in _to_bark_bands (bit-exakt, Vertragstest tests/unit/test_residuum_masking.py::test_median_flat_ist_bit_identisch_zu_numpy)",
+    "scan_s": 16.12,
+    "s_per_min": 32.2,
+    "median_tottime_s": 0.03,
+    "vorher_scan_s": 19.05,
+    "vorher_median_tottime_s": 3.33
+  }
+}

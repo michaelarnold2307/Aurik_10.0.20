@@ -1,0 +1,396 @@
+"""scripts/train_flashsr_f4.py — F4: FlashSR-Musik-Finetune (Hochband-Rekonstruktion).
+
+§SOTA-ML-V1/F4 (Roadmap TODOS_SOTA_ROADMAP.md): FlashSR (FastAudioSR,
+16 kHz → 48 kHz Sprach-Bandbreitenerweiterung, 132k Parameter) ist die
+gewählte Kandidaten-Basis (14× Echtzeit; VORAB-Benchmark 2026-09-13:
+beide Kandidaten unter der Never-worsen-Linie auf Musik — der Finetune
+ist die Voraussetzung). Der Finetune bildet 16-kHz-Crops auf die
+48-kHz-Originale ab (Hochband-Rekonstruktion > 16 kHz — der größte Hebel
+aus der Export-Analyse: bandwidth_loss/hf_remanence_loss conf≈0,99).
+
+Rezept (EAR-VAE-Muster, deterministisch §G5 (GEBOTE.md)):
+  - Loss: A1 + Multi-Resolution-STFT (n_fft ∈ {512, 1024, 2048} @ 48 kHz)
+  - Optimizer: AdamW lr=1e-4, Gradient-Clipping 1.0
+  - Validierung: 2 feste Test-Tracks, Early-Stop (Patience 5)
+  - Daten: MUSDB18-HQ train/ (44,1 kHz) → 48-kHz-Crops (3 s) → 16-kHz-Input
+  - Modell: models/flashsr/FastAudioSR/FASR (Checkpoint models/flashsr/models/upsampler.pth)
+
+Gate (NACH dem Lauf): MUSDB-ΔSDR ≥ +2 dB (Roadmap-F4-Gate) via
+Bandbreiten-Extensions-Messung (12-kHz-Basis → Rekonstruktion) — die
+Never-worsen-Bedingung gilt je Segment.
+
+Aufruf:
+  python scripts/train_flashsr_f4.py --smoke          # 3 Schritte, 1 Track
+  python scripts/train_flashsr_f4.py --epochs 30      # voller Lauf (GPU)
+  python scripts/train_flashsr_f4.py --epochs 30 --resume models/flashsr/checkpoint_latest.pt
+
+Resume-Anker: ``<out-dir>/checkpoint_latest.pt`` (Konvention aller Trainer
+im Repo, §G5 (copilot-instructions.md)) — wird seit 2026-11-08 nach jeder
+Epoche geschrieben. Vorher existierte der Anker nicht; der Kette-2-Resume-
+Befehl lief deshalb 61 s nach dem 6-h-Timeout in einen harten
+``FileNotFoundError`` (Beleg: ``docs/reports/current/train_job_d3_flashsr_musik.json``,
+Versuch 2).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import random
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+import torch
+
+from backend.core.training_artifacts import (
+    historie_zusammenfuehren,
+    report_historie_laden,
+    save_guarded,
+    write_text_guarded,
+    zeitbudget_erreicht,
+)
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger("train_flashsr_f4")
+
+SR_HI = 48000
+SR_LO = 16000
+CROP_S = 3.0
+CROP_N = int(CROP_S * SR_HI)
+IN_N = int(CROP_S * SR_LO)
+STFT_SIZES = [512, 1024, 2048]
+FLASHSR_DIR = "models/flashsr"
+
+
+def build_model(device: torch.device, checkpoint: Path) -> torch.nn.Module:
+    sys.path.insert(0, FLASHSR_DIR)
+    from FastAudioSR import FASR
+
+    fasr = FASR(str(checkpoint))
+    model = fasr.model
+    model = model.to(device)
+    return model
+
+
+def stft_mag(x: torch.Tensor, n_fft: int, hop: int, win: int) -> torch.Tensor:
+    if x.dim() == 1:
+        x = x.unsqueeze(0)
+    x = torch.nn.functional.pad(x, (n_fft // 2, n_fft // 2), mode="reflect")
+    X = torch.stft(
+        x,
+        n_fft=n_fft,
+        hop_length=hop,
+        win_length=win,
+        window=torch.hann_window(win, device=x.device),
+        return_complex=True,
+    )
+    return X.abs()
+
+
+def mr_stft_loss(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    sc = torch.zeros((), device=x.device)
+    mag = torch.zeros((), device=x.device)
+    for n_fft in STFT_SIZES:
+        hop = n_fft // 4
+        s_x = stft_mag(x, n_fft, hop, n_fft)
+        s_y = stft_mag(y, n_fft, hop, n_fft)
+        sc = sc + (torch.norm(s_y - s_x, p="fro") / (torch.norm(s_x, p="fro") + 1e-8))
+        mag = mag + torch.mean(torch.abs(torch.log(s_y + 1e-4) - torch.log(s_x + 1e-4)))
+    return sc / len(STFT_SIZES) + mag / len(STFT_SIZES)
+
+
+def load_track(path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """(track_48k, track_16k) — die 16-kHz-Basis wird EINMAL je Track resampelt
+    (Kaiser-Sinc, Produktions-identisch) statt je Crop (~0,2 s/Schritt gespart)."""
+    import librosa
+    import scipy.io.wavfile as wav
+
+    sr, data = wav.read(str(path))
+    if data.ndim == 2:
+        data = data.mean(axis=1)
+    data = data.astype(np.float32) / max(float(np.abs(data).max()), 1e-9)
+    if sr != SR_HI:
+        data = librosa.resample(data, orig_sr=sr, target_sr=SR_HI)
+    lo = librosa.resample(data.astype(np.float32), orig_sr=SR_HI, target_sr=SR_LO)
+    return data.astype(np.float32), lo.astype(np.float32)
+
+
+def crop_pair(track: tuple[np.ndarray, np.ndarray], rng: np.random.Generator) -> tuple[torch.Tensor, torch.Tensor]:
+    """(input_16k [IN_N], target_48k [CROP_N]) — deterministisch via rng.
+
+    Beide Bänder stammen aus dem EINMALIG resampelten Track-Paar — die naive
+    3:1-Dezimation würde HF-Anteile aliasieren und dem Modell die falsche
+    Aufgabe stellen; per-Crop-Resampling war der Laufzeit-Befund (~0,2 s).
+    """
+    hi_arr, lo_arr = track
+    s = int(rng.integers(0, max(1, len(hi_arr) - CROP_N)))
+    hi = hi_arr[s : s + CROP_N]
+    s_lo = int(s * SR_LO / SR_HI)
+    lo = lo_arr[s_lo : s_lo + IN_N]
+    return torch.from_numpy(lo), torch.from_numpy(hi)
+
+
+def val_loss(model: torch.nn.Module, device: torch.device, tracks: list[np.ndarray], rng: np.random.Generator) -> float:
+    model.eval()
+    total = 0.0
+    count = 0
+    with torch.no_grad():
+        for tr in tracks:
+            for _ in range(4):
+                lo, hi = crop_pair(tr, rng)
+                # ``reshape(-1)`` statt doppeltem ``squeeze(1)``: das Modell liefert
+                # [1, 1, N], der zweite squeeze greift nicht (N != 1) und l1_loss /
+                # MR-STFT bekamen [1, N] gegen [N] — Broadcasting-Warnung im Lauf
+                # (Manifest train_job_d3_flashsr_musik.json) bei identischem Wert.
+                y = model(lo.unsqueeze(0).unsqueeze(1).to(device)).squeeze(1).reshape(-1)
+                hi_g = hi.to(device)
+                n_min = min(hi_g.shape[-1], y.shape[-1])
+                y = y[..., :n_min]
+                hi_g = hi_g[..., :n_min]
+                loss = torch.nn.functional.l1_loss(y, hi_g) + 0.5 * mr_stft_loss(y, hi_g)
+                total += float(loss.item())
+                count += 1
+    model.train()
+    return total / max(1, count)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--smoke", action="store_true", help="3 Schritte auf 1 Track")
+    ap.add_argument("--epochs", type=int, default=30)
+    ap.add_argument("--batch-size", type=int, default=8)
+    ap.add_argument("--lr", type=float, default=1e-4)
+    ap.add_argument("--steps-per-epoch", type=int, default=2000)
+    ap.add_argument("--checkpoint", type=str, default="models/flashsr/models/upsampler.pth")
+    ap.add_argument("--data-dir", type=str, default="data/musdb18hq")
+    ap.add_argument("--out-dir", type=str, default="output/f4_flashsr")
+    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--resume", type=str, default="")
+    ap.add_argument(
+        "--max-seconds",
+        type=float,
+        default=0.0,
+        help="Zeitbudget je Prozess; stoppt an der Epochen-Grenze (Exit 75), 0 = unbegrenzt",
+    )
+    args = ap.parse_args()
+
+    t_prozessstart = time.perf_counter()
+
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        torch.backends.cudnn.benchmark = True  # Kernel-Autotuning (ROCm/MIOpen-Fallback-Fix)
+    logger.info("F4 FlashSR-Finetune — Gerät: %s", device)
+
+    data_root = Path(args.data_dir)
+    train_root = data_root / "train"
+    test_root = data_root / "test"
+    train_files = sorted(train_root.glob("*/mixture.wav"))
+    test_files = sorted(test_root.glob("*/mixture.wav"))
+    if args.smoke:
+        train_files = train_files[:1]
+    logger.info("Trainings-Tracks: %d, Test-Tracks: %d", len(train_files), len(test_files))
+    if not train_files:
+        logger.error("Keine MUSDB-Tracks unter %s gefunden", data_root)
+        return 2
+
+    checkpoint = Path(args.checkpoint)
+    if not checkpoint.exists():
+        logger.error("Checkpoint fehlt: %s", checkpoint)
+        return 2
+    model = build_model(device, checkpoint)
+    n_params = sum(p.numel() for p in model.parameters())
+    logger.info("Modell geladen (%d Parameter) aus %s", n_params, checkpoint)
+
+    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.8, 0.99), weight_decay=1e-2)
+    rng = np.random.default_rng(args.seed)
+    train_tracks = [load_track(p) for p in train_files]
+    val_tracks = [load_track(p) for p in test_files[:2]]
+
+    start_epoch = 0
+    best_val = float("inf")
+    patience_left = 5
+    history: list[dict] = []
+
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    if args.resume:
+        if not Path(args.resume).is_file():
+            logger.error(
+                "Resume-Checkpoint fehlt: %s — Lauf NICHT gestartet. Ein Resume ohne "
+                "Datei verbrennt GPU-Zeit (Befund 2026-11-08: Versuch 2 starb 61 s nach "
+                "dem 6-h-Timeout). Ohne --resume neu starten.",
+                args.resume,
+            )
+            return 2
+        res = torch.load(args.resume, map_location="cpu", weights_only=True)  # nosec B614
+        model.load_state_dict(res["model"])
+        opt.load_state_dict(res.get("optimizer", opt.state_dict()))
+        start_epoch = int(res.get("epoch", 0)) + 1
+        best_val = float(res.get("best_val", res.get("val_a1", best_val)))
+        # §G5 (copilot-instructions.md): RNG-Stand fortsetzen — der unterbrochene Lauf folgt derselben
+        # Crop-Reihenfolge wie ein durchgehender Lauf (Seed 42). Bit-Gleichheit
+        # garantiert das nicht (Backend-Kernel können zwischen Prozessen abweichen).
+        if "rng_state" in res:
+            rng.bit_generator.state = res["rng_state"]
+        if "torch_rng_state" in res:
+            torch.set_rng_state(res["torch_rng_state"])
+        history = report_historie_laden(out_dir, seed=args.seed)
+        logger.info(
+            "Resume ab Epoche %d (best_val=%.4f, Historie=%d Epochen, RNG=%s)",
+            start_epoch,
+            best_val,
+            len(history),
+            "fortgesetzt" if "rng_state" in res else "neu",
+        )
+
+    epochen_dieser_lauf = 0
+    letzte_epoche_s = 0.0
+    early_stopped = False
+
+    def _report(*, completed: bool, stop_reason: str) -> None:
+        """Schreibt den Beleg-Report atomar (Historie über Resume-Grenzen)."""
+        zusammengefuehrt = historie_zusammenfuehren(history)
+        report = {
+            "device": str(device),
+            "seed": args.seed,
+            "history": zusammengefuehrt,
+            "best_val_a1": round(best_val, 6),
+            "completed": completed,
+            "stop_reason": stop_reason,
+            "target_epochs": args.epochs,
+            "epochs_done": start_epoch + epochen_dieser_lauf,
+            "gate_hint": "MUSDB-ΔSDR ≥ +2 dB (Bandbreiten-Extension) NACH dem Lauf messen",
+        }
+        write_text_guarded(out_dir / "report.json", json.dumps(report, indent=2, ensure_ascii=False))
+
+    if start_epoch > args.epochs:
+        logger.error(
+            "Resume-Anker liegt hinter dem Ziel: start_epoch=%d > epochs=%d — inkonsistent "
+            "(fremder/zu hoher Anker), Lauf NICHT gestartet.",
+            start_epoch,
+            args.epochs,
+        )
+        return 3
+    if start_epoch == args.epochs:
+        # Kill zwischen letztem Checkpoint und Report ist kein No-Op-Fehler:
+        # der Anker belegt, dass alle Ziel-Epochen trainiert sind (D-K3-87).
+        _report(completed=True, stop_reason="ziel_epochen_bereits_erreicht")
+        logger.info(
+            "Ziel bereits erreicht: Anker steht auf Epoche %d/%d — kein GPU-Lauf nötig.",
+            start_epoch,
+            args.epochs,
+        )
+        return 0
+
+    steps_per_epoch = 3 if args.smoke else args.steps_per_epoch
+    model.train()
+    for epoch in range(start_epoch, args.epochs):
+        if zeitbudget_erreicht(
+            verstrichen_s=time.perf_counter() - t_prozessstart,
+            letzte_epoche_s=letzte_epoche_s,
+            max_seconds=args.max_seconds,
+        ):
+            _report(completed=False, stop_reason="zeitbudget")
+            logger.info(
+                "Zeitbudget %.0f s erreicht — Stopp an der Epochen-Grenze (Epochen in diesem "
+                "Versuch: %d). Resume: --resume %s",
+                args.max_seconds,
+                epochen_dieser_lauf,
+                out_dir / "checkpoint_latest.pt",
+            )
+            return 75
+        t0 = time.perf_counter()
+        run_a1 = 0.0
+        run_stft = 0.0
+        for step in range(steps_per_epoch):
+            tr = train_tracks[int(rng.integers(0, len(train_tracks)))]
+            lo_b, hi_b = [], []
+            for _ in range(args.batch_size):
+                lo, hi = crop_pair(tr, rng)
+                lo_b.append(lo)
+                hi_b.append(hi)
+            lo_t = torch.stack(lo_b).to(device)
+            hi_t = torch.stack(hi_b).to(device)
+            y = model(lo_t.unsqueeze(1)).squeeze(1)
+            n_min = min(hi_t.shape[-1], y.shape[-1])
+            y = y[..., :n_min]
+            hi_t = hi_t[..., :n_min]
+            a1 = torch.nn.functional.l1_loss(y, hi_t)
+            st = mr_stft_loss(y, hi_t)
+            loss = a1 + 0.5 * st
+            opt.zero_grad(set_to_none=True)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            opt.step()
+            run_a1 += float(a1.item())
+            run_stft += float(st.item())
+            if device.type == "cuda" and (step + 1) % 50 == 0:
+                torch.cuda.empty_cache()
+        run_a1 /= max(1, steps_per_epoch)
+        run_stft /= max(1, steps_per_epoch)
+        v_a1 = val_loss(model, device, val_tracks, rng)
+        dt = time.perf_counter() - t0
+        letzte_epoche_s = dt
+        epochen_dieser_lauf += 1
+        logger.info("Epoche %d fertig (%.1f s): A1=%.4f STFT=%.4f Val=%.4f", epoch, dt, run_a1, run_stft, v_a1)
+        history.append(
+            {
+                "epoch": epoch,
+                "train_a1": round(run_a1, 6),
+                "train_stft": round(run_stft, 6),
+                "val_a1": round(v_a1, 6),
+                "seconds": round(dt, 1),
+            }
+        )
+        ckpt = {
+            "model": model.state_dict(),
+            "optimizer": opt.state_dict(),
+            "epoch": epoch,
+            "val_a1": v_a1,
+            "best_val": best_val,
+            "rng_state": rng.bit_generator.state,
+            "torch_rng_state": torch.get_rng_state(),
+        }
+        save_guarded(out_dir / f"checkpoint_epoch{epoch}.pt", ckpt)
+        # Stabiler Resume-Anker (Konvention aller Trainer, §G5 (copilot-instructions.md)):
+        # die Ketten verweisen mit --resume auf genau diesen Pfad.
+        save_guarded(out_dir / "checkpoint_latest.pt", ckpt)
+        if v_a1 < best_val:
+            best_val = v_a1
+            patience_left = 5
+            save_guarded(out_dir / "best.pt", ckpt)
+            logger.info("Neues bestes Modell (Val=%.4f) gespeichert", v_a1)
+        else:
+            patience_left -= 1
+            if patience_left <= 0 and not args.smoke:
+                logger.info("Early-Stop nach Epoche %d (Val stagniert)", epoch)
+                early_stopped = True
+                break
+        _report(
+            completed=(epoch + 1) >= args.epochs,
+            stop_reason="ziel_epochen" if (epoch + 1) >= args.epochs else "laeuft",
+        )
+
+    ziel_erreicht = (not early_stopped) and (start_epoch + epochen_dieser_lauf) >= args.epochs
+    _report(completed=ziel_erreicht, stop_reason="early_stop" if early_stopped else "ziel_epochen")
+    logger.info(
+        "F4-Finetune beendet — %d/%d Epochen, bestes Val-A1: %.4f (Checkpoint: %s)",
+        start_epoch + epochen_dieser_lauf,
+        args.epochs,
+        best_val,
+        out_dir / "best.pt",
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

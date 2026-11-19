@@ -1,0 +1,30 @@
+{
+  "befund": "D-K0-5 RT-Beitrag gemessen (2026-10-08)",
+  "zweck": "Gate-Voraussetzung der SCNet-Aktivierung: RT-Beitrag gegen das Budget (§9.5) messen — Ersatz fuer die bisher unbelegte Angabe 'CPU ~7x langsamer als Demucs v4'",
+  "setup": {
+    "audio": "30,0 s stereo @ 48 kHz (output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__baseline_vocals.wav, 44,1k -> 48k resampled)",
+    "cpu_count": 16,
+    "env": "AURIK_MEM_GB=16, venv .venv_aurik, CPU-Pfad (kein GPU-EP fuer SCNet)",
+    "flag_mode": "use_scnet_music im Prozess auf True gesetzt — Datei-Messwert bleibt False (§V7 (copilot-instructions.md) unangetastet); Messung ist keine Aktivierung"
+  },
+  "messwerte": {
+    "scnet_chunked_produktivpfad_s": 102.99,
+    "scnet_chunked_rt_faktor": 3.43,
+    "scnet_ganzsegment_s": 66.04,
+    "scnet_ganzsegment_rt_faktor": 2.2,
+    "demucs_v4_s": 11.46,
+    "demucs_v4_rt_faktor": 0.38,
+    "ratio_scnet_chunked_vs_demucs": 8.99,
+    "scnet_warmup_s": 13.43,
+    "demucs_warmup_s": 3.3,
+    "budget_32x_grenze": 32.0,
+    "scnet_chunked_unter_32x_budget": true
+  },
+  "einordnung": {
+    "netto_bei_ersatz": "SCNet-Chunked statt Demucs: +3,05 RT-Punkte pro Song (3,43 - 0,38)",
+    "doppel_pfad": "SCNet als Never-worsen-Kandidat ZUSAETZLICH zu Demucs: +3,43 RT-Punkte pro Song",
+    "ist_kalibrierung": "Pipeline-Ist 2026-10-07: 60,1x RT Wand / 52,5x RT Engine (balanced) — SCNet-Ersatz wuerde den 32x-Guard nicht brechen, aber die Performance-Schuld vergroessern (Register D-K3-37)",
+    "haltung": "Messung schliesst die Vorbedingung 'RT-Beitrag vor Freigabe messen' ab; die Aktivierung bleibt gesperrt bis C4-Hoerstichprobe + Hoerordnungs-Sign-off (Runde 2: output_audio/mushra/thresholds_scnet_c4_fair_r2, 12 Trials)"
+  },
+  "datum": "2026-10-08"
+}

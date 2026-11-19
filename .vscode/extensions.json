@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "github.copilot-chat",
+    "github.copilot",
+    "charliermarsh.ruff",
+    "ms-toolsai.jupyter"
+  ],
+  "unwantedRecommendations": [
+    "continue.continue",
+    "jeroenv.github-copilot-with-context",
+    "hbenl.vscode-test-explorer",
+    "ms-python.pylint",
+    "ms-python.flake8",
+    "ms-python.mypy-type-checker"
+  ]
+}

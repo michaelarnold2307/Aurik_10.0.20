@@ -1,0 +1,545 @@
+{
+  "schema": "release_candidates_v1",
+  "seed": 20261027,
+  "smoke": false,
+  "seconds": 10.0,
+  "corpus": [
+    "test_audio/tape/cassette_1980s_wow.wav",
+    "test_audio/tape/reel_1940s_dropout.wav",
+    "test_audio/vinyl/jazz_1950s_scratched.wav"
+  ],
+  "kandidaten": [
+    {
+      "key": "scnet",
+      "flag": "use_scnet_music",
+      "defizit": "D-K0-5",
+      "stufe": "Separation (4Stems)",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 3,
+        "n_fehler": 0,
+        "mean_rms_delta_db": -2.603,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.866,
+        "fallback_count": 9,
+        "flag_freigabe": "blockiert (Fallback-Quote > 0, Pfeiler 5)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "shellac",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": -0.219076304032744,
+          "noise_floor_delta_db": -0.6698888658100159,
+          "stereo_corr_before": 0.8149190852109829,
+          "stereo_corr_after": 0.8664617482644121,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.4114628732204437,
+          "rms_delta_db": -5.868272044106073,
+          "noise_floor_delta_db": -6.38025691655227,
+          "stereo_corr_before": 0.9999999999999998,
+          "stereo_corr_after": 0.9999919198007943,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.5084457397460938,
+          "rms_delta_db": -1.720186964574024,
+          "noise_floor_delta_db": -1.151544566234513,
+          "stereo_corr_before": 1.0,
+          "stereo_corr_after": 0.9999999796994402,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/scnet/hoer_manifest.json",
+      "n_trials": 3
+    },
+    {
+      "key": "sgmse",
+      "flag": "use_sgmse_musik",
+      "defizit": "D-K0-3",
+      "stufe": "Denoise/Dereverb",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 3,
+        "n_fehler": 0,
+        "mean_rms_delta_db": -2.603,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.866,
+        "fallback_count": 9,
+        "flag_freigabe": "blockiert (Fallback-Quote > 0, Pfeiler 5)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "shellac",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": -0.219076304032744,
+          "noise_floor_delta_db": -0.6698888658100159,
+          "stereo_corr_before": 0.8149190852109829,
+          "stereo_corr_after": 0.8664617482644121,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.41412845253944397,
+          "rms_delta_db": -5.8683937872339795,
+          "noise_floor_delta_db": -6.408001407428351,
+          "stereo_corr_before": 0.9999999999999998,
+          "stereo_corr_after": 0.999991929271007,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.5084457397460938,
+          "rms_delta_db": -1.720186964574024,
+          "noise_floor_delta_db": -1.151544566234513,
+          "stereo_corr_before": 1.0,
+          "stereo_corr_after": 0.9999999796994402,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/sgmse/hoer_manifest.json",
+      "n_trials": 3
+    },
+    {
+      "key": "bigvgan_f3",
+      "flag": "use_bigvgan_f3_studio",
+      "defizit": "D-K0-1/D-K2-3",
+      "stufe": "Studio-Finisher",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 3,
+        "n_fehler": 0,
+        "mean_rms_delta_db": -2.603,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.866,
+        "fallback_count": 10,
+        "flag_freigabe": "blockiert (Fallback-Quote > 0, Pfeiler 5)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "shellac",
+          "status": "ok",
+          "fallbacks": 4,
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": -0.219076304032744,
+          "noise_floor_delta_db": -0.6698888658100159,
+          "stereo_corr_before": 0.8149190852109829,
+          "stereo_corr_after": 0.8664617482644121,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.41412845253944397,
+          "rms_delta_db": -5.8683937872339795,
+          "noise_floor_delta_db": -6.408001407428351,
+          "stereo_corr_before": 0.9999999999999998,
+          "stereo_corr_after": 0.999991929271007,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.5084457397460938,
+          "rms_delta_db": -1.720186964574024,
+          "noise_floor_delta_db": -1.151544566234513,
+          "stereo_corr_before": 1.0,
+          "stereo_corr_after": 0.9999999796994402,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/bigvgan_f3/hoer_manifest.json",
+      "n_trials": 3
+    },
+    {
+      "key": "bw_v5",
+      "flag": "use_bw_v5",
+      "defizit": "D-K1-5",
+      "stufe": "HF-Rekonstruktion",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 3,
+        "n_fehler": 0,
+        "mean_rms_delta_db": -2.603,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.866,
+        "fallback_count": 9,
+        "flag_freigabe": "blockiert (Fallback-Quote > 0, Pfeiler 5)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "shellac",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": -0.219076304032744,
+          "noise_floor_delta_db": -0.6698888658100159,
+          "stereo_corr_before": 0.8149190852109829,
+          "stereo_corr_after": 0.8664617482644121,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.41412845253944397,
+          "rms_delta_db": -5.8683937872339795,
+          "noise_floor_delta_db": -6.408001407428351,
+          "stereo_corr_before": 0.9999999999999998,
+          "stereo_corr_after": 0.999991929271007,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.5084457397460938,
+          "rms_delta_db": -1.720186964574024,
+          "noise_floor_delta_db": -1.151544566234513,
+          "stereo_corr_before": 1.0,
+          "stereo_corr_after": 0.9999999796994402,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/bw_v5/hoer_manifest.json",
+      "n_trials": 3
+    },
+    {
+      "key": "wf4",
+      "flag": "use_wf4_warp_head",
+      "defizit": "D-K4-7",
+      "stufe": "Warp-Schätzung",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 3,
+        "n_fehler": 0,
+        "mean_rms_delta_db": -2.603,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.866,
+        "fallback_count": 11,
+        "flag_freigabe": "blockiert (Fallback-Quote > 0, Pfeiler 5)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "shellac",
+          "status": "ok",
+          "fallbacks": 4,
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": -0.219076304032744,
+          "noise_floor_delta_db": -0.6698888658100159,
+          "stereo_corr_before": 0.8149190852109829,
+          "stereo_corr_after": 0.8664617482644121,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 4,
+          "finite": true,
+          "peak_out": 0.41412845253944397,
+          "rms_delta_db": -5.8683937872339795,
+          "noise_floor_delta_db": -6.408001407428351,
+          "stereo_corr_before": 0.9999999999999998,
+          "stereo_corr_after": 0.999991929271007,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.5084457397460938,
+          "rms_delta_db": -1.720186964574024,
+          "noise_floor_delta_db": -1.151544566234513,
+          "stereo_corr_before": 1.0,
+          "stereo_corr_after": 0.9999999796994402,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/wf4/hoer_manifest.json",
+      "n_trials": 3
+    },
+    {
+      "key": "tp_v2",
+      "flag": "use_tp_v2_phase",
+      "defizit": "D-K4-8",
+      "stufe": "Phasenschätzung",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 3,
+        "n_fehler": 0,
+        "mean_rms_delta_db": -2.603,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.866,
+        "fallback_count": 9,
+        "flag_freigabe": "blockiert (Fallback-Quote > 0, Pfeiler 5)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "shellac",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": -0.219076304032744,
+          "noise_floor_delta_db": -0.6698888658100159,
+          "stereo_corr_before": 0.8149190852109829,
+          "stereo_corr_after": 0.8664617482644121,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.41412845253944397,
+          "rms_delta_db": -5.8683937872339795,
+          "noise_floor_delta_db": -6.408001407428351,
+          "stereo_corr_before": 0.9999999999999998,
+          "stereo_corr_after": 0.999991929271007,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.5084457397460938,
+          "rms_delta_db": -1.720186964574024,
+          "noise_floor_delta_db": -1.151544566234513,
+          "stereo_corr_before": 1.0,
+          "stereo_corr_after": 0.9999999796994402,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/tp_v2/hoer_manifest.json",
+      "n_trials": 3
+    },
+    {
+      "key": "rt60",
+      "flag": "use_rt60_regressor",
+      "defizit": "D-K4-10",
+      "stufe": "Dereverb-RT60",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 3,
+        "n_fehler": 0,
+        "mean_rms_delta_db": -2.072,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.871,
+        "fallback_count": 9,
+        "flag_freigabe": "blockiert (Fallback-Quote > 0, Pfeiler 5)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "shellac",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": 1.374063186015252,
+          "noise_floor_delta_db": 1.4462019853205987,
+          "stereo_corr_before": 0.8149190852109829,
+          "stereo_corr_after": 0.8709632547596036,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.4114626944065094,
+          "rms_delta_db": -5.86827285034634,
+          "noise_floor_delta_db": -6.380261173542294,
+          "stereo_corr_before": 0.9999999999999998,
+          "stereo_corr_after": 0.9999919192139674,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.5117849707603455,
+          "rms_delta_db": -1.7205930081298502,
+          "noise_floor_delta_db": -1.1852585039048407,
+          "stereo_corr_before": 1.0,
+          "stereo_corr_after": 0.9999999794678471,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/rt60/hoer_manifest.json",
+      "n_trials": 3
+    },
+    {
+      "key": "aspade",
+      "flag": "use_aspade_declipper",
+      "defizit": "D-K4-1",
+      "stufe": "Declipper",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 3,
+        "n_fehler": 0,
+        "mean_rms_delta_db": -2.603,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.866,
+        "fallback_count": 9,
+        "flag_freigabe": "blockiert (Fallback-Quote > 0, Pfeiler 5)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "shellac",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": -0.219076304032744,
+          "noise_floor_delta_db": -0.6698888658100159,
+          "stereo_corr_before": 0.8149190852109829,
+          "stereo_corr_after": 0.8664617482644121,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.41412845253944397,
+          "rms_delta_db": -5.8683937872339795,
+          "noise_floor_delta_db": -6.408001407428351,
+          "stereo_corr_before": 0.9999999999999998,
+          "stereo_corr_after": 0.999991929271007,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.5084457397460938,
+          "rms_delta_db": -1.720186964574024,
+          "noise_floor_delta_db": -1.151544566234513,
+          "stereo_corr_before": 1.0,
+          "stereo_corr_after": 0.9999999796994402,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/aspade/hoer_manifest.json",
+      "n_trials": 3
+    },
+    {
+      "key": "tf_gridnet",
+      "flag": "use_tf_gridnet_quality",
+      "defizit": "D-K4-2",
+      "stufe": "Vollband-Denoise",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 3,
+        "n_fehler": 0,
+        "mean_rms_delta_db": -2.603,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.866,
+        "fallback_count": 12,
+        "flag_freigabe": "blockiert (Fallback-Quote > 0, Pfeiler 5)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "shellac",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": -0.219076304032744,
+          "noise_floor_delta_db": -0.6698888658100159,
+          "stereo_corr_before": 0.8149190852109829,
+          "stereo_corr_after": 0.8664617482644121,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 3,
+          "finite": true,
+          "peak_out": 0.41412845253944397,
+          "rms_delta_db": -5.8683937872339795,
+          "noise_floor_delta_db": -6.408001407428351,
+          "stereo_corr_before": 0.9999999999999998,
+          "stereo_corr_after": 0.999991929271007,
+          "clip_ratio": 0.0
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "material": "tape",
+          "status": "ok",
+          "fallbacks": 6,
+          "finite": true,
+          "peak_out": 0.5084457397460938,
+          "rms_delta_db": -1.720186964574024,
+          "noise_floor_delta_db": -1.151544566234513,
+          "stereo_corr_before": 1.0,
+          "stereo_corr_after": 0.9999999796994402,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/tf_gridnet/hoer_manifest.json",
+      "n_trials": 3
+    }
+  ],
+  "hinweis": "Kein Flag-Flip durch dieses Skript (§v10.802 (copilot-instructions.md)); Freigabe erst nach Hör-Verdikt + Wohlklang-Vertrag (Belege 1–6, .github/WOHLKLANG_CLAIMS.md)."
+}

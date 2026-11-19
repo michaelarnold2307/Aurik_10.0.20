@@ -1,0 +1,121 @@
+{
+  "build": "scnet_c4_fair_r2",
+  "task": "preference",
+  "seed": 20261008,
+  "question": "Welches der beiden Gesangs-Ergebnisse klingt klarer und natuerlicher — Stimme besser erhalten, weniger Artefakte?",
+  "note": "Runde 2 (2026-10-08): 12 echte Trials (4 ueberlappende Fenster x 3 Songs) + 2 Fangfragen — Ziel: pooled >= 12 nach min_trials des Fit-Gates; Runde 1 (2026-10-07) endete mit ZU_WENIGE_TRIALS (3 Trials, L02 per Fangfrage ausgeschlossen).",
+  "trials": [
+    {
+      "trial_id": "scnet_amcontra_w02",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__scnet_vocals.wav",
+      "start_s": 2.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_amcontra_w08",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__scnet_vocals.wav",
+      "start_s": 8.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_amcontra_w14",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__scnet_vocals.wav",
+      "start_s": 14.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_amcontra_w20",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__scnet_vocals.wav",
+      "start_s": 20.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_aljames_w02",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/Al_James_-_Schoolboy_Facination__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/Al_James_-_Schoolboy_Facination__scnet_vocals.wav",
+      "start_s": 2.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_aljames_w08",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/Al_James_-_Schoolboy_Facination__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/Al_James_-_Schoolboy_Facination__scnet_vocals.wav",
+      "start_s": 8.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_aljames_w14",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/Al_James_-_Schoolboy_Facination__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/Al_James_-_Schoolboy_Facination__scnet_vocals.wav",
+      "start_s": 14.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_aljames_w20",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/Al_James_-_Schoolboy_Facination__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/Al_James_-_Schoolboy_Facination__scnet_vocals.wav",
+      "start_s": 20.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_motortapes_w02",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/Motor_Tapes_-_Shore__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/Motor_Tapes_-_Shore__scnet_vocals.wav",
+      "start_s": 2.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_motortapes_w08",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/Motor_Tapes_-_Shore__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/Motor_Tapes_-_Shore__scnet_vocals.wav",
+      "start_s": 8.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_motortapes_w14",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/Motor_Tapes_-_Shore__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/Motor_Tapes_-_Shore__scnet_vocals.wav",
+      "start_s": 14.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "scnet_motortapes_w20",
+      "class": "scnet_vs_demucs4",
+      "reference": "output/scnet_ab_2026-10-06_fair/Motor_Tapes_-_Shore__baseline_vocals.wav",
+      "candidate": "output/scnet_ab_2026-10-06_fair/Motor_Tapes_-_Shore__scnet_vocals.wav",
+      "start_s": 20.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "fangfrage_r2_1",
+      "class": "catch",
+      "catch": true,
+      "reference": "output/scnet_ab_2026-10-06_fair/Motor_Tapes_-_Shore__gt_vocals.wav",
+      "start_s": 2.0,
+      "seconds": 8.0
+    },
+    {
+      "trial_id": "fangfrage_r2_2",
+      "class": "catch",
+      "catch": true,
+      "reference": "output/scnet_ab_2026-10-06_fair/AM_Contra_-_Heart_Peripheral__gt_vocals.wav",
+      "start_s": 14.0,
+      "seconds": 8.0
+    }
+  ]
+}

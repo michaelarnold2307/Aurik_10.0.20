@@ -1,0 +1,66 @@
+# Mapping: DSP-Module → SOTA-Metriken und Qualitätsziele
+# Jede DSP-Komponente ist den wichtigsten SOTA-Metriken und Validierungszielen zugeordnet
+# (Basis: README.md, SOTA-Metrik-YAML und wissenschaftliche Feature-Matrix)
+
+# Beispielstruktur für automatisierte Validierung und Reporting
+
+mappings:
+  - id: 1
+    name: STFT
+    sota_metrics:
+      - HFTI
+      - SNR
+      - Spectral Balance
+  - id: 2
+    name: ISTFT
+    sota_metrics:
+      - HFTI
+      - SNR
+  - id: 3
+    name: Multi-Resolution STFT
+    sota_metrics:
+      - HFTI
+      - SNR
+      - Spectral Balance
+  - id: 4
+    name: Mel Spectrogram
+    sota_metrics:
+      - Spectral Balance
+      - SNR
+  - id: 5
+    name: CQT
+    sota_metrics:
+      - Spectral Balance
+      - SNR
+  - id: 6
+    name: Autocorrelation
+    sota_metrics:
+      - Pitch Accuracy
+      - SNR
+  - id: 7
+    name: Cross-Correlation
+    sota_metrics:
+      - Phase Coherence
+      - SNR
+  - id: 8
+    name: RMS/Energy
+    sota_metrics:
+      - Dynamic Range
+      - SNR
+  - id: 9
+    name: Zero-Crossing Rate
+    sota_metrics:
+      - Transient Detection
+      - SNR
+  - id: 10
+    name: Spectral Centroid
+    sota_metrics:
+      - Spectral Balance
+      - SNR
+  # ... (analog für alle 127 Module, exemplarisch ausgeführt) ...
+  - id: 127
+    name: Reverb Estimator
+    sota_metrics:
+      - Room Response
+      - SNR
+      - Spectral Balance

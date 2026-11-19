@@ -1,0 +1,775 @@
+corpus_version: 1.0.0
+material: cassette
+description: 'Cassette-Untercorpus: Bestands-Einträge + 37 deterministische Synthetik-Proben
+  (D-K0-8, SOTA-M18, Seed 42). era_year ist die SIMULIERTE Ära (keine echte Provenienz,
+  Lizenz-unbedenklich).'
+entries:
+- checksum_sha256: a7d79ff68b176bf8c21fc4e31a52f338be82662a4170b4ec05f4454ce4684954
+  defect_types: []
+  duration_s: 10.0
+  era_year: 1985
+  file: clean/cassette_pop_1980s_clean.wav
+  genre: pop
+  license: CC0 (generated)
+  material: cassette
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+- checksum_sha256: ce61eb5a893b6082e5df3e0405932313889db8dc1a27567aedd207679224261a
+  defect_description: Starkes Hiss -20dB + Wow
+  defect_types:
+  - hiss
+  duration_s: 10.0
+  era_year: 1985
+  file: damaged/cassette_pop_1980s_hiss_wow.wav
+  genre: pop
+  license: CC0 (generated)
+  material: cassette
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  chain:
+  - cassette
+- checksum_sha256: 5e597db6df4f273ae36607e5105d6a5496df21c5e8e05bad6798641e594db1c1
+  defect_description: Hiss + Clicks + Dropouts
+  defect_types:
+  - clicks
+  - hiss
+  - dropout
+  duration_s: 10.0
+  era_year: 1985
+  file: damaged/cassette_pop_1980s_combined.wav
+  genre: pop
+  license: CC0 (generated)
+  material: cassette
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  chain:
+  - cassette
+- file: clean/cassette_rock_1990s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1992
+  genre: rock
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 82818f3ea354cc5180de345e163890a98519bf074d7d73319f877d53733020b8
+  defect_types: []
+- file: damaged/cassette_rock_1990s_hiss_wow.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1992
+  genre: rock
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: d668b979206402c5cf186c56090523fb6e8946617cf82fda0ad8563b12a889f6
+  defect_types:
+  - hiss
+  - wow
+  chain:
+  - cassette
+- file: damaged/cassette_rock_1990s_dropouts.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1992
+  genre: rock
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 05ebb4d96f16e996885eeb40e02c78d13cea1ab0227760efbf0faae4a7c750e7
+  defect_types:
+  - dropouts
+  chain:
+  - cassette
+- file: clean/cassette_hiphop_1980s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1987
+  genre: hiphop
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 7abf23606cec6f4dc86a82750ebc0d78047981cc420da6bb30623d261934abb9
+  defect_types: []
+- file: damaged/cassette_hiphop_1980s_hiss.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1987
+  genre: hiphop
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 5878e3ebafda09e428e12e85e1d0a3894d1947e059d158ab3ca8911459aa8f9e
+  defect_types:
+  - hiss
+  chain:
+  - cassette
+- file: damaged/cassette_hiphop_1980s_wow_flutter.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1987
+  genre: hiphop
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 9179ce3d6a9b91035b9dd92cd49fd7c7be940b17c9344e16e2cb4c5a32669d2e
+  defect_types:
+  - wow
+  - flutter
+  chain:
+  - cassette
+- file: damaged/cassette_1987_archive_20260930.mp3
+  duration_s: 74.371
+  sample_rate: 44100
+  material: cassette
+  era_year: 1987
+  genre: '[''Cassette'', ''Tape'', ''Noise-Arch'', ''Inde'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  - dropouts
+  source_attribution: Various Artists — Archive (Internet Archive, archive_20260930)
+  license: CC0
+  source_url: https://archive.org/download/archive_20260930/A%20View%20From%20Somewhere/13%20-%20Bryan%20Ruryk%20-%20Osler%20Incident.mp3
+  checksum_sha256: 996dcfd425fa687455e35bfcceb84a5038f60cc70f222bc2385de3cc5b2860a9
+- file: damaged/cassette_1988_rare_recordings.mp3
+  duration_s: 50.991
+  sample_rate: 44100
+  material: cassette
+  era_year: 1988
+  genre: '[''kidzone'', ''kids music'', ''nursery rhyme'
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  - dropouts
+  source_attribution: Kidzone — Rare Recordings (Internet Archive, rare-recordings)
+  license: CC0
+  source_url: https://archive.org/download/rare-recordings/Rare%20Recording%20of%20Jack%20and%20Jill%20by%20Kidzone.mp3
+  checksum_sha256: 4bfca410befb5eb7c7fbc0f43206b74841805e02a4f5fa331102ecc43fa7cd4e
+- file: damaged/cassette_2020_revolution_202004.mp3
+  duration_s: 212.54
+  sample_rate: 44100
+  material: cassette
+  era_year: 2020
+  genre: Experimental
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  - dropouts
+  source_attribution: Shavon Grass & Gypsy & Federico Balducci — Revolution (Internet
+    Archive, revolution_202004)
+  license: Public Domain
+  source_url: https://archive.org/download/revolution_202004/Revolution.mp3
+  checksum_sha256: 03d589b12cbb02870642d482696173d36f3c6f8b1928cf923c0b3965c66493a1
+- file: damaged/cassette_2020_word_wise.mp3
+  duration_s: 546.096
+  sample_rate: 48000
+  material: cassette
+  era_year: 2020
+  genre: Experimental
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  - dropouts
+  source_attribution: Anti Media Foundation — Word Wise (Internet Archive, word-wise)
+  license: Public Domain
+  source_url: https://archive.org/download/word-wise/Word%20Wise.mp3
+  checksum_sha256: d2929849e30a9f3bb66f5fb8a86068d584d9d12937afbee39825ad5c9602e339
+- file: damaged/cassette_synth_000_Fergessen - Nos Palpitants.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: jazz
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 4990090667590199b254f55bc06e2eb8290a9d7156d485d23929ec45d5783f81
+  synthetic: true
+- file: damaged/cassette_synth_001_Fergessen - The Wind.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: rock
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 4003a9b89fcc960f0163c1a78abc6a6535ca4c01ea338e33dc24c375a70e7305
+  synthetic: true
+- file: damaged/cassette_synth_002_Flags - 54.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: pop
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f526a47a011c04b3786c962a06660a6210b8629d8b4dfd07661583c181d6fff9
+  synthetic: true
+- file: damaged/cassette_synth_003_Giselle - Moss.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: blues
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 7bd08a36beceacd5ae1fe6e60b93639e26ac0260dcb8047357e6e72d9f587631
+  synthetic: true
+- file: damaged/cassette_synth_004_Grants - PunchDrunk.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: soul
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 9d83c769101216ac23ecb886624b76763529c68069d76a3310cac778b6eff7d7
+  synthetic: true
+- file: damaged/cassette_synth_005_Helado Negro - Mitad Del M.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: jazz
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 2e5ade9a5a1e93c43bc0060a96f73c9edf6ee38ffb318722cb6c5019decda4c5
+  synthetic: true
+- file: damaged/cassette_synth_006_Hezekiah Jones - Borrowed .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: rock
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 510d151a1c49242d7fa65275a75d89a11e1b67f7f9e500562e6936b4506e72ce
+  synthetic: true
+- file: damaged/cassette_synth_007_Hollow Ground - Left Blind.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: pop
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 2788cc39ff566994f306a9ca9cbd150b3f7048d979820c1abed2dada864dc3e4
+  synthetic: true
+- file: damaged/cassette_synth_008_Hop Along - Sister Cities.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: blues
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: c93f9a30777fac9ce495b358e287d07bbf7c1cf3228744056dbfb29bfffdb6c2
+  synthetic: true
+- file: damaged/cassette_synth_009_Invisible Familiars - Dist.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: soul
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: c57128e8f2d8e48571edef82abb82a3e20111f97d067c9b3eb7119c13fcaa728
+  synthetic: true
+- file: damaged/cassette_synth_010_James May - All Souls Moon.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: jazz
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a2f891be7849e2cbea65cc9cd4f202f4a59be0edb2f0aaec4c23bb3506dc7e47
+  synthetic: true
+- file: damaged/cassette_synth_011_James May - Dont Let Go.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: rock
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 61d6c9125882660720a54e596eae46e20d17e09135b2d2d1da46c71d8c436f88
+  synthetic: true
+- file: damaged/cassette_synth_012_James May - If You Say.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: pop
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 316cf1770ca6baa5774a45ddab0a560a0ad6ebde91465880cbb99f3fc181d7ab
+  synthetic: true
+- file: damaged/cassette_synth_013_James May - On The Line.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: blues
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 4c8541e6a5144c35494e165ecfa2331252474ea135c1f373dfd965ab886d3b24
+  synthetic: true
+- file: damaged/cassette_synth_014_Jay Menon - Through My Eye.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: soul
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: e63b63db6a243ee66d3d490b2f325454dbc0d4e3fbf485e4b70aa045e531214e
+  synthetic: true
+- file: damaged/cassette_synth_015_Johnny Lokke - Promises & .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: jazz
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 1087d80bb65ca2184d9280bc28c0daf747815384770bf40a1d5e9304043cb0ea
+  synthetic: true
+- file: damaged/cassette_synth_016_Johnny Lokke - Whisper To .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: rock
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 025051384a2ecf405f96a7c57bb34cce762c7121c4450c5dd44d19a380bcd0fa
+  synthetic: true
+- file: damaged/cassette_synth_017_Jokers, Jacks & Kings - Se.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: pop
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: bb60931d3356805c19aca41194aab132886cc67207a80805333d14371c37924f
+  synthetic: true
+- file: damaged/cassette_synth_018_Leaf - Come Around.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: blues
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 8c35dd7a03536384bfe22ebaad837fc4c8eac72930350ddfd286f6f303cf3553
+  synthetic: true
+- file: damaged/cassette_synth_019_Leaf - Summerghost.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: soul
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: ae6c4bad52e3a45eb7b0f5e4dab08c29ce53a20a97e77ab5900766061860b378
+  synthetic: true
+- file: damaged/cassette_synth_020_Leaf - Wicked.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: jazz
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: e7b1bc5bab7a7c8bb56be8bac6cf8bf67c05d691af14f972960b8528e7e36a4e
+  synthetic: true
+- file: damaged/cassette_synth_021_Lushlife - Toynbee Suite.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: rock
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5f40eecfeea1140c753da15115f72aeff517ca89266bbd3c5dd109c22e6e5214
+  synthetic: true
+- file: damaged/cassette_synth_022_Matthew Entwistle - Dont Y.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: pop
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 3e54517936edf40074a34e70db959676b059b77a4a3380d0889347f478182640
+  synthetic: true
+- file: damaged/cassette_synth_023_Meaxic - Take A Step.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: blues
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: b474ab1015159c702d93a0f13212b6ff50b60ebec2ad4f6d0a3812d10ff41eff
+  synthetic: true
+- file: damaged/cassette_synth_024_Meaxic - You Listen.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: soul
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5b8401adc64eef9876f04e1198f35c001cfbb8c40cfe3fae8e9d0441cba45f56
+  synthetic: true
+- file: damaged/cassette_synth_025_Music Delta - 80s Rock.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: jazz
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 369c1b475e02b4922ca1934b56bd53adc4e82159fa5316ed449cd9cb9e73ea32
+  synthetic: true
+- file: damaged/cassette_synth_026_Music Delta - Beatles.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: rock
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: d1e5d09f900d170ad3ac9d4f24093204e04a8af4f20570ce75ccb8cb6296b750
+  synthetic: true
+- file: damaged/cassette_synth_027_Music Delta - Britpop.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: pop
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: b4a2ece8be54c58fe85b5ddb4d98988af9a2fabb01d1816c2131089bdba65f55
+  synthetic: true
+- file: damaged/cassette_synth_028_Music Delta - Country1.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: blues
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 3fa4cd4dbd927315afd7d58f966086563f052f0f15f904f5805a206d33111e8b
+  synthetic: true
+- file: damaged/cassette_synth_029_Music Delta - Country2.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: soul
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 243ae5fc1ba51a82f52c9c3b19e1788228bb5ad6e52dab0872e5187b06e78e3e
+  synthetic: true
+- file: damaged/cassette_synth_030_Music Delta - Disco.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: jazz
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 21fcf8f2a35e440cf271140a4dc86ec450958306123f774b018ef8927840098f
+  synthetic: true
+- file: damaged/cassette_synth_031_Music Delta - Gospel.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: rock
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5b06bd958c5f844e2883c33bcf3d65d193db86867842b18426f9f124e306296b
+  synthetic: true
+- file: damaged/cassette_synth_032_Music Delta - Grunge.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: pop
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 0651f1af3f57aaac4c20dc2065803e681a889d7b27d011e3177841517d2db5fa
+  synthetic: true
+- file: damaged/cassette_synth_033_Music Delta - Hendrix.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: blues
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: afcc34614fbbbfb1833a6bc33ffe5bc7d52fb50361671b853339a1c7af6fec0e
+  synthetic: true
+- file: damaged/cassette_synth_034_Music Delta - Punk.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: soul
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 27b432cb517063231e857c83d1d161092d5854819a0d4f8deb310b3ee920c8a4
+  synthetic: true
+- file: damaged/cassette_synth_035_Music Delta - Reggae.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: jazz
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5e16d99c36f199477714842e1ec4cddfb54de0fab6dd5b8bc427c93f34880ed0
+  synthetic: true
+- file: damaged/cassette_synth_036_Music Delta - Rock.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: cassette
+  era_year: 1985
+  genre: rock
+  defect_types:
+  - hiss
+  - wow_flutter
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: e99771ab45a4aa549ba3bf5618ef299174c5ab0bc4da8e98f9dd941ef3ab59a2
+  synthetic: true

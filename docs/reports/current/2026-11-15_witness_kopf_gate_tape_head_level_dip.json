@@ -1,0 +1,14 @@
+{
+  "schema": "aurik.witness_kopf_gate/1",
+  "datum": "2026-11-15",
+  "seed": 42,
+  "klasse": "tape_head_level_dip",
+  "holdout_titel": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+  "checkpoint": "models/klassen_koepfe/witness_tape_head_level_dip_best.pt",
+  "n_regionen": 200,
+  "n_uebersprungen": 11,
+  "q_median": 0.9952,
+  "q_anteil_ge_0_5": 1.0,
+  "never_worsen_anteil": 1.0,
+  "gate_bestanden": true
+}

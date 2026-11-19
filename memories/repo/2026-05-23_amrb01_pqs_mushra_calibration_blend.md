@@ -1,0 +1,6 @@
+- Kontext: AMRB-01 zeigte reale Unterbewertung in `quick_pqs` (MFCC-cosine), obwohl MUSHRA klar hoeher war.
+- Fix: In `benchmarks/musical_restoration_benchmark.py` wurde PQS in `_run_scenario` mit `_calibrate_pqs_with_mushra(...)` nachkalibriert.
+- Formel: `pqs = (1-w)*quick_pqs + w*mushra_mos`, `mushra_mos = 1 + 4*(mushra/100)`.
+- Gewichte: `w=0.62` bei normaler MUSHRA-Berechnung, `w=0.35` bei MUSHRA-Fallback (Korrelationspfad).
+- Verifikation AMRB-01 (n=1): Restoration `82.6/3.91`, Passthrough `79.6/3.83`, Exceptions `0`.
+- Hinweis: Diese Kalibrierung reduziert AMRB-01-Unterbewertung, ohne Worker-Timeout/Failsafe-Logik zu veraendern.

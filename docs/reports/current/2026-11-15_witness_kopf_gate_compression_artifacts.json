@@ -1,0 +1,14 @@
+{
+  "schema": "aurik.witness_kopf_gate/1",
+  "datum": "2026-11-15",
+  "seed": 42,
+  "klasse": "compression_artifacts",
+  "holdout_titel": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320 ",
+  "checkpoint": "models/klassen_koepfe/witness_compression_artifacts_best.pt",
+  "n_regionen": 200,
+  "n_uebersprungen": 0,
+  "q_median": 1.0632,
+  "q_anteil_ge_0_5": 1.0,
+  "never_worsen_anteil": 1.0,
+  "gate_bestanden": true
+}

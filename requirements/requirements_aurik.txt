@@ -1,0 +1,267 @@
+# Aurik 9 – requirements_aurik.txt (bereinigt, PyPI-verifiziert)
+# Aktualisiert: 12. Juli 2026
+# Validierte Versionen – §13.4 Out-of-the-Box-Pflicht
+#
+# ============================================================================
+# SYSTEM-ABHÄNGIGKEITEN (einmalig vor pip install ausführen)
+# Ubuntu/Debian:
+#   sudo apt-get install -y libportaudio2 portaudio19-dev ffmpeg
+# Fedora/RHEL:
+#   sudo dnf install -y portaudio portaudio-devel ffmpeg
+# ============================================================================
+#
+# INSTALLATION:  bash scripts/install_aurik.sh
+#   (installiert torch+cpu separat mit korrektem Index, dann diese Datei)
+#
+# HINWEIS §13.4: torch wird via install_aurik.sh mit +cpu-Suffix installiert:
+#   torch==2.7.0+cpu  torchaudio==2.7.0+cpu
+#   --extra-index-url https://download.pytorch.org/whl/cpu
+#   → NICHT direkt in dieser Datei, da pip sonst die CUDA-Variante zieht.
+#   Sicherheitsfix: torch>=2.6.0 behebt CVE-2025-32434 (critical RCE/deserialization),
+#   CVE-2024-31580 (heap-based buffer overflow), CVE-2024-31583 (use-after-free).
+#
+# §v10.40c GPU-Stack (2026-09-09, AMD RX 7900 XTX / ROCm 7.2.4 — verifiziert):
+#   torch==2.11.0+rocm7.2  torchaudio==2.11.0+rocm7.2
+#   torchvision==0.26.0+rocm7.2  (P1-5: 0.22.0+cpu war ABI-inkompatibel →
+#   LAION-CLAP fiel auf PANNs-Heuristik zurück; 0.26+rocm7.2 läuft auf 2.11)
+#   --index-url https://download.pytorch.org/whl/rocm7.2
+#   onnxruntime-rocm==1.22.2.post3  (ERSETZT onnxruntime; ROCMExecutionProvider)
+#   MIGraphX: backend/core/migraphx_adapter.py + libmigraphx_bridge.so (ONNX-only)
+#   Per-Modell-GPU-Policy: backend/core/gpu_model_registry.json
+#     (scripts/onnx_gpu_compat_scan.py; Regel: GPU nur wenn strikt schneller,
+#      sonst CPU-Force — z. B. ApolloPlugin §v10.733).
+#   Determininismus: GPU-fp32 ist nicht bit-identisch → Referenzläufe (§G5)
+#   MÜSSEN mit AURIK_FORCE_CPU=1 laufen.
+#   Sicherheits-Trade-off: onnxruntime-rocm existiert nur bis 1.22.2.post3
+#   (die CPU-Builds 1.23.2+/1.24.1+ enthalten die SNYK-Fixes) — dokumentiert.
+# ============================================================================
+
+# --- Build/Packaging-Abhängigkeiten (pkg_resources-Kompatibilität) ---
+# setuptools>=70.0 behebt CVE-2024-6345 (arbitrary code execution via präparierte Pakete).
+# Untergrenze 70.3.0 = erster stabiler Patch nach dem Security-Fix.
+# Obergrenze <81: 80.x emittiert pkg_resources-Deprecation (resampy/librosa).
+setuptools>=70.3.0,<81
+
+# --- Backend-Hilfsbibliotheken ---
+requests>=2.32.5
+urllib3>=2.7.0
+idna>=3.15
+pyyaml==6.0.3
+python-multipart>=0.0.27
+python-dotenv>=1.2.2
+
+# --- Audio-Kernbibliotheken ---
+numpy==1.26.4
+scipy==1.15.3
+librosa==0.11.0
+soundfile==0.13.1
+soxr==1.0.0
+resampy==0.4.3
+audioread==3.1.0
+pyloudnorm==0.2.0
+webrtcvad==2.0.10         # Abhängigkeit von models/rezemblyzer (Resemblyzer VAD — §2.35c Singer-Identity)
+# resemblyzer==0.1.4      # LOKAL via: pip install -e models/rezemblyzer/  (§2.35c Singer-Identity)t)
+pyFFTW>=0.15.0            # Benötigt libfftw3 (apt: libfftw3-dev); Fallback: numpy.fft (automatisch wenn nicht installiert)
+
+# --- ONNX-Runtime (GPU-Variante je Plattform wählen — mutually exclusive!) ---
+# Standard CPU-only (Development / kein AMD-GPU):
+# onnxruntime>=1.24.1 ist laut Snyk der erste Fixstand fuer CVE-2026-Directory-Traversal,
+# steht aktuell jedoch nicht fuer Python 3.10 Wheels bereit.
+# Daher: sicherer Floor fuer >=3.11 und letzter verfuegbarer Stand fuer 3.10.
+onnxruntime>=1.24.1; python_version >= "3.11"
+onnxruntime==1.23.2; python_version < "3.11"
+#
+# AMD GPU Linux (ROCm 7.2.4): pip install onnxruntime-rocm  (statt onnxruntime)
+# AMD GPU Windows (DirectML):  pip install onnxruntime-directml  (statt onnxruntime)
+#
+# Hinweis: ml_device_manager.py erkennt automatisch welches Backend verfügbar ist.
+# Auf Systemen ohne passendes onnxruntime-Paket wird CPUExecutionProvider genutzt.
+
+# --- Audio-Qualitätsmetriken ---
+# ⚠ VERBOTEN als Musik-Metrik (§10.2, §4.4):
+#   pesq==0.0.4   → Telefonband 300–3400 Hz, strukturell ungeeignet für Vollband-Musik
+#   pystoi==0.4.1 → Sprachverständlichkeit 150–5000 Hz, sinnlos für Instrumentalmusik
+# Erlaubte Musik-Metriken: PEAQ, FAD, CDPAM, PQS-MOS, ViSQOL v3 (--audio), Musical Goals
+# pesq und pystoi dürfen NICHT als globale Musik-Qualitäts-Gates verwendet werden.
+
+# --- Rauschunterdrückung (primär gebündelt) ---
+# DeepFilterNet v3 – lokale ONNX-Modelle in models/deepfilternet/
+deepfilternet==0.5.6
+
+# --- Torchmetrics (kompatibel mit torch 2.2.2) ---
+torchmetrics==1.8.2
+
+# --- MOS-Metriken: SingMOS Pro via VERSA (versa_plugin) ---
+# s3prl stellt den wav2vec2-SSL-Backbone für SingMOS Pro bereit.
+# Modell-Cache: ~/.cache/s3prl/ (606 MB wav2vec2-large, Erstinstallation)
+# WICHTIG: s3prl install zieht librosa<=0.10 / TTS-Abhängigkeiten → NACH s3prl
+# sofort `pip install librosa==0.11.0 --force-reinstall` ausführen.
+s3prl==0.4.18
+# pysptk: Pflicht-Dependency für VERSA/SingMOS Pro (Pitch-Merkmale via SPTK-Bibliothek)
+# Ohne pysptk schlägt versa.utterance_metrics.pseudo_mos fehl → DSP-Fallback.
+pysptk>=1.0.1
+# bigvgan: Architektur-Paket für BigVGAN-v2 (Modell-Instanziierung aus State-Dict-Checkpoint)
+# Nur Architektur-Code — keine schweren Abhängigkeiten (--no-deps Installation).
+bigvgan
+
+# ZWINGEND nach s3prl: librosa 0.11.0 wiederherstellen (s3prl downgradet auf 0.10)
+# s3prl zieht via descript-audiotools / torchlibrosa librosa 0.10.0 → CQT-Segfault
+librosa==0.11.0
+# transformers>=4.46 required for MIIPHER-DiT, SGMSE+ and modern Wav2Vec2/MERT/AST loaders
+# (torch 2.7.0+cpu compatible; CVE-2025-32434 fix via torch>=2.6.0)
+transformers>=4.46,<4.52
+
+# --- Scientific Computing ---
+numba==0.64.0
+scikit-learn==1.7.2
+joblib==1.5.3
+
+# --- GUI (§11.3 PyQt5-Pflicht, §11.3 Frontend) ---
+PyQt5>=5.15.9
+
+# --- Audio-Verarbeitung ---
+pydub>=0.25.1
+sounddevice>=0.4.7        # Benötigt: sudo apt-get install libportaudio2
+
+# --- ML-Hilfsbibliotheken ---
+tqdm==4.67.3
+protobuf==6.33.5
+pydantic==2.12.5
+pydantic_core==2.41.5
+pydantic-settings>=2.0.0
+einops>=0.7.0
+easydict>=1.13
+safetensors>=0.4.0
+
+# --- HuggingFace-Ökosystem (für Modell-Caching §13.3) ---
+huggingface_hub>=0.24.0
+
+# --- Audio ML (offiziell auf PyPI verfügbar) ---
+crepe>=0.0.12
+encodec>=0.1.1
+
+# --- Vision / AV ---
+# pillow>=11.0.0 behebt zahlreiche CVEs in 10.x (heap-based buffer overflow,
+# arbitrary code execution, XML-Injection, Windows Device Name Handling,
+# Highly Compressed Data Amplification, Cross-site Scripting via SVG).
+pillow>=12.3.0
+ffmpeg-python>=0.2.0
+matplotlib>=3.8.0
+
+# --- Visualisierung / Reporting ---
+Jinja2==3.1.6
+mutagen>=1.47.0              # Audio metadata preservation (ID3/Vorbis/FLAC tags)
+rich>=14.0.0
+
+# --- Utilities ---
+coloredlogs>=15.0.1
+colorlog>=6.0.0
+loguru>=0.7.0
+click>=8.3.3
+psutil>=7.2.2
+filelock>=3.10.0
+python-dateutil>=2.9.0
+packaging>=23.0,<24.0
+
+# --- Testing ---
+pytest==9.0.2
+pygments>=2.20.0
+pytest-cov>=7.0.0
+pytest-xdist>=3.0.0
+pytest-timeout>=2.0.0
+pytest-asyncio>=1.3.0
+pytest-benchmark>=4.0.0
+anyio>=4.0.0
+hypothesis>=6.100.0
+coverage>=7.0.0
+
+# --- Code-Qualität ---
+black>=26.3.1
+flake8>=7.0.0
+mypy>=1.10.0
+pylint>=3.0.0
+bandit>=1.9.0
+
+# --- Pydantic-Ökosystem ---
+annotated-types>=0.6.0
+
+# ============================================================================
+# OPTIONALE GROSSPAKETE (§9.5 Lazy-Load, nur bei Bedarf installieren)
+# Diese Pakete sind NICHT Pflicht für den Grundbetrieb. Sie werden von
+# ModelDownloader / Plugins lazy geladen wenn der jeweilige Defekttyp erkannt
+# wird. Größe jeweils im Kommentar genannt.
+# Installation separat: pip install <paketname>
+# ============================================================================
+
+# --- Stem-Separation (§4.4 MDX23C – primär via ONNX in models/) ---
+# demucs>=4.0.0           # ~200 MB Modellgewichte, nur wenn kein ONNX vorhanden
+
+# --- LAION-CLAP / Transformers (§2.14 EraClassifier + §4.4 Audio-Tagging) ---
+# HINWEIS: transformers>=4.46,<4.52 kompatibel mit torch 2.7.0+cpu und modernen Modell-Loadern
+# (MIIPHER-DiT, SGMSE+, Wav2Vec2/MERT/AST); CVE-2025-32434 fix via torch>=2.6.0
+# transformers>=4.46,<4.52
+# tokenizers>=0.19.0
+# sentencepiece>=0.1.99
+# laion_clap wird als lokale Quelle unter models/clap/src/ geladen (kein PyPI-Paket)
+# Abhängigkeiten von laion_clap (alle auf PyPI verfügbar) — aktiviert Rev. 2026-08-17,
+# nachdem der Import empirisch verifiziert wurde (torchlibrosa 0.1.0 zieht mit
+# vorhandenem librosa 0.11.0 KEIN librosa 0.10 mehr nach; der alte
+# CQT-Segfault-Vorbehalt ist damit gegenstandslos):
+torchvision==0.22.0+cpu  # --extra-index-url https://download.pytorch.org/whl/cpu (muss torch-Version matchen: 2.7.0)
+# torchaudio==2.7.0+cpu    # --extra-index-url https://download.pytorch.org/whl/cpu
+torchlibrosa>=0.1.0
+# h5py>=3.8.0
+ftfy>=6.1.0
+regex>=2023.0.0
+braceexpand>=0.1.7
+webdataset>=0.2.86        # laion_clap-IMPORT verlangt es (ModuleNotFoundError, Rev. 2026-08-17)
+# ⚠ wandb: VERBOTEN (§13.4 100%-Offline-Pflicht) — macht aktive Internet-Calls beim Import
+# wandb>=0.15.0
+wget>=3.2
+# progressbar>=2.5
+
+# --- Matchering 2.0 (§Studio-2026 Reference Mastering, matchering_plugin.py) ---
+matchering>=2.0.6        # Multiband Mid/Side Wiener reference mastering
+patsy>=1.0.0             # matchering dep (statsmodels formula API)
+statsmodels>=0.14.0      # matchering dep (spectral Wiener filter)
+
+
+# --- FlashSR (§4.4 Bandbreiten-Erweiterung <8 kHz, 5.9 GB .safetensors) ---
+# flashsr>=1.0.0
+unidecode>=1.3.0        # Abhängigkeit von models/flashsr/ (phoneme_encoder/text/cleaners.py)
+timm>=0.9.0             # Abhängigkeit von models/flashsr/ (latent_diffusion/modules)
+
+# --- Phonemizer (§2.8 Vokal-Konsonanten-Erkennung) ---
+# phonemizer>=3.2.0
+
+# --- Madmom (§2.12 Beat-Tracking, Phrasen-Analyse) ---
+# madmom>=0.16.0          # RNNBeatTracker für GrooveMetric + InpaintingKontext
+
+# --- Spacy (NLP-Utilities) ---
+# spacy>=3.7.0
+
+# ============================================================================
+# PAKETE DIE NICHT AUF PYPI EXISTIEREN – als ONNX in models/ gebündelt
+# (§13.4 Verbotene-Praktiken: kein pip install für nicht-existente Pakete)
+# ============================================================================
+# ENTFERNT (waren alle nicht auf PyPI verfügbar, Aurik nutzt lokale ONNX):
+#   dnsmos-pytorch  → models/dnsmos/ (ONNX)
+#   nisqa           → Sprach-Modell, für Musik verboten (§10.2)
+#   diffwave        → models/diffwave/diffwave_model.onnx
+#   hifi-gan        → models/hifi_gan/hifi_gan.onnx
+#   dccrn           → models/dccrn/dccrn.onnx
+#   convtasnet      → nicht verwendet in Aurik 9
+#   gan-inpainting  → nicht verwendet in Aurik 9
+#   banquet         → models/banquet/ (Split-ONNX)
+# ============================================================================
+
+# --- Zusätzliche Abhängigkeiten (auto-installed by pip) ---
+pandas>=2.2.0             # Datenanalyse für Metriken
+scikit-image>=0.22.0      # Bildverarbeitung für Spektrogramme
+importlib-resources>=6.0.0 # Ressourcen-Management (Python 3.9+)
+msgpack>=1.0.0             # Serialisierung für Caching
+torchlibrosa>=0.1.0        # Librosa-kompatible Spektrogramme in Torch
+madmom>=0.16.0             # Beat-Tracking / Tempo-Erkennung (§v10.101: 0.17.dev0 lokal installiert)
+
+# --- Audio-Effekte ---
+pedalboard>=0.9.0         # Spotify Audio Effects (Limiters, EQ, Reverb, etc.)

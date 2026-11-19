@@ -1,0 +1,11 @@
+scenario_id,material,defect_class,mode,input_file,aurik_file,baseline_file,reference_file,anchor_file
+S1,tape,dropout,restoration,,,,,
+S2,vinyl,crackle,restoration,,,,,
+S3,shellac,noise,restoration,,,,,
+S4,cd_digital,clipping,studio2026,,,,,
+S5,mp3_low,codec,studio2026,,,,,
+S6,reel_tape,print_through,studio2026,,,,,
+S7,dat,jitter,restoration,,,,,
+S8,aac,artifact,studio2026,,,,,
+S9,wire_recording,dropout,restoration,,,,,
+S10,wax_cylinder,noise,studio2026,,,,,

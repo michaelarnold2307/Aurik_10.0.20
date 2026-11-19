@@ -1,0 +1,28 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "domain_adapt-20261114T141225Z-4ce7b5",
+  "name": "c2_cantus_domain",
+  "phase": "domain_adapt",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --batch-size 2 --grad-accum 4 --data data/cantus_real --resume models/cantus/checkpoint_latest.pt",
+  "resume_befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --batch-size 2 --grad-accum 4 --data data/cantus_real --resume models/cantus/checkpoint_latest.pt",
+  "timeout_s": 43200.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 3829.6,
+      "timed_out": false,
+      "output_tail": "htNorm.apply(module, name, dim)\nINFO backend.core.dsp.muq_mulan_torch_rocm: §SOTA-ML-V8 MuQ-MuLan-Audio-Turm auf ROCm geladen (Radeon RX 7900 XTX)\nINFO backend.core.ml_memory_budget: ml_memory_Grenze: 'FCPE' allocated 0.1 GB  →  total 0.1 / 10.4 GB used.\nINFO backend.core.ml_model_readiness: ml_model_readiness SELBSTTEST: 39/39 Checks validiert (0 Attribut-Fehler, 0 Import-Fehler)\nINFO backend.core.gpu_model_registry: §v10.40c GPU-Policy: fcpe.onnx → CPU erzwungen (Registry: cpu)\nINFO plugins.fcpe_plugin: fcpe_plugin: ONNX model geladen: fcpe.onnx (provider=CPUExecutionProvider)\nINFO backend.core.plugin_lifecycle_manager: PluginLifecycleManager: initialisiert (RAM eviction Schwelle 75 %)\nINFO backend.core.dsp.fcpe_torch_rocm: §SOTA-ML-V7 FCPE-Kern auf ROCm geladen (Radeon RX 7900 XTX)\nINFO __main__: epoch=1/20 val=3.0259 (best=inf)\nINFO __main__: epoch=2/20 val=2.8376 (best=3.0259)\nINFO __main__: epoch=3/20 val=2.9180 (best=2.8376)\nINFO __main__: epoch=4/20 val=2.9848 (best=2.8376)\nINFO __main__: epoch=5/20 val=2.9793 (best=2.8376)\nINFO __main__: epoch=6/20 val=2.9097 (best=2.8376)\nINFO __main__: epoch=7/20 val=2.7348 (best=2.8376)\nINFO __main__: epoch=8/20 val=2.5961 (best=2.7348)\nINFO __main__: epoch=9/20 val=2.5764 (best=2.5961)\nINFO __main__: epoch=10/20 val=2.9488 (best=2.5764)\nINFO __main__: epoch=11/20 val=2.9107 (best=2.5764)\nINFO __main__: epoch=12/20 val=2.4294 (best=2.5764)\nINFO __main__: epoch=13/20 val=2.7202 (best=2.4294)\nINFO __main__: epoch=14/20 val=2.6313 (best=2.4294)\nINFO __main__: epoch=15/20 val=2.4346 (best=2.4294)\nINFO __main__: epoch=16/20 val=2.8785 (best=2.4294)\nINFO __main__: epoch=17/20 val=2.9605 (best=2.4294)\nINFO __main__: epoch=18/20 val=2.4149 (best=2.4294)\nINFO __main__: epoch=19/20 val=3.4210 (best=2.4149)\nINFO __main__: epoch=20/20 val=2.6388 (best=2.4149)\nINFO __main__: Fertig: best_val=2.4149 — Report: /media/michael/Software 4TB/Aurik_Standalone/models/cantus/train_report_domain_adapt.json\nLoading weights from local directory\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=domain_adapt --preset=full --epochs=20 --batch-size 2 --grad-accum 4 --data data/cantus_real --resume models/cantus/checkpoint_latest.pt"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "cantus_dit.onnx": "ea2556b23dd511bb8e73eb231efd06bfdfd3128f4bf941f3550bdf5b6d7820cc",
+    "checkpoint_best.pt": "253a1a1cadb21144d75afe6fd57394a9a0d6d0db6168e525a9a8cfb0a0def261",
+    "checkpoint_latest.pt": "56ceca0b2990e7725e294a21d8c3b3afa1a9821216f2e16bdc995756d988b4c4"
+  },
+  "ergebnis": "erfolgreich"
+}

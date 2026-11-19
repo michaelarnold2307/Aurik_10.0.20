@@ -1,0 +1,273 @@
+"""Tests für das Residuum-basierte Bark-Masking (Hörordnung Ebene 2)."""
+
+from __future__ import annotations
+
+import numpy as np
+
+from backend.core.residuum_masking import ResiduumMaskingResult, estimate_residuum_salience
+
+
+def _noise(sr: int, dur_s: float, rms: float, seed: int) -> np.ndarray:
+    rng = np.random.default_rng(seed)
+    x = rng.standard_normal(int(sr * dur_s))
+    return (x / (np.sqrt(np.mean(x**2)) + 1e-12) * rms).astype(np.float64)
+
+
+def _click_at(audio: np.ndarray, sr: int, t: float, amp: float) -> np.ndarray:
+    idx = int(t * sr)
+    out = audio.copy()
+    n = max(1, int(0.002 * sr))
+    out[idx : idx + n] += amp
+    return out
+
+
+def test_loud_context_masks_quiet_click() -> None:
+    sr = 48000
+    base = _noise(sr, 6.0, rms=0.2, seed=1)  # lauter maskierender Kontext
+    audio = _click_at(base, sr, 3.0, amp=0.05)  # leiser Click (Residuum klein)
+    res = estimate_residuum_salience(audio, sr, 2.99, 3.01)
+    assert 0.0 <= res.salience <= 1.0
+    # Residuum klein gegenüber Kontext → überwiegend maskiert
+    assert res.salience < 0.7, f"salience={res.salience}"
+
+
+def test_silent_context_exposes_click() -> None:
+    sr = 48000
+    base = np.zeros(sr * 6, dtype=np.float64)  # stiller Kontext
+    audio = _click_at(base, sr, 3.0, amp=0.4)
+    res = estimate_residuum_salience(audio, sr, 2.99, 3.01)
+    assert res.salience >= 0.5, f"salience={res.salience}"
+
+
+def test_monotonicity_snr_decrease_raises_salience() -> None:
+    sr = 48000
+    base = _noise(sr, 6.0, rms=0.2, seed=2)
+    quiet = _click_at(base, sr, 3.0, amp=0.05)
+    loud = _click_at(base, sr, 3.0, amp=0.5)
+    s_quiet = estimate_residuum_salience(quiet, sr, 2.99, 3.01).salience
+    s_loud = estimate_residuum_salience(loud, sr, 2.99, 3.01).salience
+    # Lauterer Defekt bei gleichem Kontext → höhere Hörbarkeit
+    assert s_loud >= s_quiet, f"{s_quiet=} {s_loud=}"
+
+
+def test_deterministic() -> None:
+    sr = 48000
+    audio = _click_at(_noise(sr, 6.0, rms=0.15, seed=3), sr, 3.0, amp=0.2)
+    r1 = estimate_residuum_salience(audio, sr, 2.99, 3.01)
+    r2 = estimate_residuum_salience(audio, sr, 2.99, 3.01)
+    assert r1.salience == r2.salience
+    assert np.array_equal(r1.residuum_db_per_band, r2.residuum_db_per_band)
+
+
+def test_short_audio_conservative_exposed() -> None:
+    sr = 48000
+    short = np.zeros(sr // 10, dtype=np.float64)  # 0.1s: Kontext ums Event < N_FFT
+    res = estimate_residuum_salience(short, sr, 0.04, 0.06)
+    assert res.salience == 1.0  # konservativ: exponiert, kein Skip-Risiko
+
+
+def test_result_struct() -> None:
+    r = ResiduumMaskingResult(
+        salience=0.4,
+        residuum_db_per_band=np.zeros(24),
+        threshold_db_per_band=np.zeros(24),
+        audible_band_count=3,
+        band_count=24,
+    )
+    assert 0.0 <= r.salience <= 1.0
+    assert r.band_count == 24
+
+
+# ---------------------------------------------------------------------------
+# §2.46h (2026-09-06): Vektorisierung + Batch-Pfad
+# ---------------------------------------------------------------------------
+
+
+def test_stft_vectorization_bit_identical() -> None:
+    """§2.46h-1: Der strided-batch STFT liefert bit-identische Werte zum
+    alten Per-Frame-rfft (gleiche Fenster, gleicher pocketfft-Algorithmus)."""
+    from backend.core import residuum_masking as rm
+
+    sr = 48000
+    rng = np.random.default_rng(42)
+    x = rng.standard_normal(sr * 3).astype(np.float64)
+
+    hop = max(rm._N_FFT // 4, 1)
+    xx = np.pad(x, (0, rm._N_FFT - len(x))) if len(x) < rm._N_FFT else x
+    n_frames = 1 + (len(xx) - rm._N_FFT) // hop
+    freqs = np.fft.rfftfreq(rm._N_FFT, 1.0 / sr)
+    out = np.zeros((n_frames, len(freqs)), dtype=np.float64)
+    win = np.hanning(rm._N_FFT)
+    for f in range(n_frames):
+        seg = xx[f * hop : f * hop + rm._N_FFT] * win
+        out[f, :] = 20.0 * np.log10(np.abs(np.fft.rfft(seg)) + 1e-12)
+
+    new_frames, new_freqs = rm._stft_magnitude_db(x, sr)
+    assert np.array_equal(out, new_frames)
+    assert np.array_equal(freqs, new_freqs)
+
+
+def test_bark_bands_bit_identical() -> None:
+    """§2.46h-2: Gecachte Bin-Indizes liefern bit-identische Bark-Mediane."""
+    from backend.core import residuum_masking as rm
+
+    sr = 48000
+    rng = np.random.default_rng(43)
+    spec = rng.standard_normal((40, 2049)).astype(np.float64) * 20.0 - 60.0
+    freqs = np.fft.rfftfreq(rm._N_FFT, 1.0 / sr)
+
+    old = np.zeros(len(rm._BARK_CENTERS), dtype=np.float64)
+    for b in range(len(rm._BARK_CENTERS)):
+        mask = (freqs >= rm._BARK_EDGES_HZ[b]) & (freqs < rm._BARK_EDGES_HZ[b + 1])
+        old[b] = float(np.median(spec[:, mask])) if np.any(mask) else -120.0
+    new = rm._to_bark_bands(spec, freqs)
+    assert np.array_equal(old, new)
+
+
+def test_batch_deterministic_and_same_semantics() -> None:
+    """§2.46h-3: Der Batch-Pfad ist deterministisch, liefert [0,1]-Salienzen
+    und für einen einzelnen Event exakt den Per-Event-Wert (Fallback)."""
+    from backend.core.residuum_masking import estimate_residuum_salience_batch
+
+    sr = 48000
+    audio = _click_at(_noise(sr, 6.0, rms=0.2, seed=4), sr, 3.0, amp=0.2)
+    loc = (2.99, 3.01)
+
+    single = estimate_residuum_salience_batch(audio, sr, [loc])
+    assert set(single.keys()) == {loc}
+    assert single[loc].salience == estimate_residuum_salience(audio, sr, 2.99, 3.01).salience
+
+    locs = [(1.0, 1.01), (2.0, 2.01), (3.0, 3.01), (4.0, 4.01), (5.0, 5.01)]
+    r1 = estimate_residuum_salience_batch(audio, sr, locs)
+    r2 = estimate_residuum_salience_batch(audio, sr, locs)
+    assert set(r1.keys()) == set(locs)
+    assert all(0.0 <= r.salience <= 1.0 for r in r1.values())
+    assert all(np.array_equal(r1[loc].residuum_db_per_band, r2[loc].residuum_db_per_band) for loc in locs)
+
+
+# ---------------------------------------------------------------------------
+# §2.69d (2026-09-23): Moore & Glasberg-Spreizung auf ERB-Distanz
+# ---------------------------------------------------------------------------
+
+
+def test_mg_erb_asymmetry_upward_stronger_than_downward() -> None:
+    """§2.69d-1: Tiefer Masker maskiert höheres Band stärker als umgekehrt
+    (Aufwärts-Masking > Abwärts — Wegel & Lane 1924)."""
+    from backend.core import residuum_masking as rm
+
+    masker_db = np.full(len(rm._BARK_CENTERS), -120.0, dtype=np.float64)
+    low_band = rm.bark_band_index_of_freq(700.0)
+    high_band = rm.bark_band_index_of_freq(1000.0)
+    low_masker = masker_db.copy()
+    low_masker[low_band] = 20.0
+    high_masker = masker_db.copy()
+    high_masker[high_band] = 20.0
+    up = float(rm._spread_mask_threshold(low_masker)[high_band])
+    down = float(rm._spread_mask_threshold(high_masker)[low_band])
+    assert up > down, f"aufwärts {up:.1f} !> abwärts {down:.1f}"
+
+
+def test_mg_erb_monotonicity_both_sides() -> None:
+    """§2.69d-2: Schwelle fällt monoton beidseitig vom Masker (keine Lobes)."""
+    from backend.core import residuum_masking as rm
+
+    masker_db = np.full(len(rm._BARK_CENTERS), -120.0, dtype=np.float64)
+    mid = rm.bark_band_index_of_freq(1000.0)
+    masker_db[mid] = 20.0
+    thr = rm._spread_mask_threshold(masker_db)
+    for b in range(mid + 1, len(thr)):
+        assert float(thr[b]) <= float(thr[b - 1]) + 1e-9
+    for b in range(mid - 1, -1, -1):
+        assert float(thr[b]) <= float(thr[b + 1]) + 1e-9
+
+
+def test_mg_erb_level_dependence_dampens_downward_growth() -> None:
+    """§2.69d-3: Lauterer Masker (+20 dB) hebt die Abwärts-Schwelle weniger
+    als +20 dB — der steilere Hang (0.2·L) dämpft die Zunahme."""
+    from backend.core import residuum_masking as rm
+
+    quiet_masker = np.full(len(rm._BARK_CENTERS), -120.0, dtype=np.float64)
+    loud_masker = quiet_masker.copy()
+    m = rm.bark_band_index_of_freq(2000.0)
+    below = rm.bark_band_index_of_freq(1400.0)
+    quiet_masker[m] = 20.0
+    loud_masker[m] = 40.0
+    thr_q = float(rm._spread_mask_threshold(quiet_masker)[below])
+    thr_l = float(rm._spread_mask_threshold(loud_masker)[below])
+    assert thr_l < thr_q + 20.0, f"{thr_q=:.1f} {thr_l=:.1f}"
+
+
+def test_mg_erb_silence_floor_stable() -> None:
+    """§2.69d-4: Reine Stille → Schwelle am Floor, keine negativen Slopes/NaN."""
+    from backend.core import residuum_masking as rm
+
+    thr = rm._spread_mask_threshold(np.full(len(rm._BARK_CENTERS), -120.0, dtype=np.float64))
+    assert np.all(np.isfinite(thr))
+    assert np.all(thr >= -80.0 + rm._MASK_OFFSET_DB - 1e-6)
+    assert np.max(thr) <= -80.0 + rm._MASK_OFFSET_DB + 1e-6
+
+
+def test_median_flat_ist_bit_identisch_zu_numpy() -> None:
+    """§PERF (2026-10-08, D-K3-38): `_median_flat` ersetzt np.median **bit-exakt**.
+
+    64601 Median-Aufrufe je 30-s-Scan (17,5 % der Scanner-Zeit, cProfile
+    2026-10-08) laufen über den partition-Direktpfad ~2,5× schneller; der
+    Vertrag ist die Gleichheit auf allen Band-Formen inkl. dB-Bereich
+    (gleiche introselect-Auswahl, identische Mittelungs-Arithmetik;
+    §G5 copilot-instructions.md — Determinismus unverändert).
+    """
+    from backend.core.residuum_masking import _median_flat
+
+    rng = np.random.default_rng(42)
+    for shape in [(43, 80), (43, 79), (43, 81), (5, 13), (1, 1), (2, 2), (100, 7)]:
+        a = (rng.standard_normal(shape) * 60.0 - 120.0).astype(np.float64)
+        assert _median_flat(a) == float(np.median(a)), f"nicht bit-exakt bei {shape}"
+
+
+def test_to_bark_bands_bit_identisch_zur_fancy_index_referenz() -> None:
+    """§PERF-R20 (D-K3-38): Band-Mittelung mit EINEM Permutations-Copy statt 24.
+
+    Vorher kopierte jedes der 24 Bänder seinen Block per Fancy-Index; jetzt wird
+    die Spaltenreihenfolge einmal permutiert und jedes Band ist ein
+    zusammenhängender Slice. Der Median ist ordnungsunabhängig, die Element-Menge
+    je Band identisch ⇒ das Ergebnis MUSS bit-gleich bleiben (§G5 (copilot-instructions.md)
+    copilot-instructions.md). Geprüft über mehrere n_fft/SR-Kombinationen (die
+    Band-Masken hängen von beiden ab) sowie 1-D- und 2-D-Spektren.
+    """
+    from backend.core import residuum_masking as rm
+
+    rng = np.random.default_rng(42)
+
+    def referenz(spec: np.ndarray, freqs: np.ndarray) -> np.ndarray:
+        out = np.zeros(len(rm._BARK_CENTERS), dtype=np.float64)
+        for b in range(len(rm._BARK_CENTERS)):
+            idx = np.where((freqs >= rm._BARK_EDGES_HZ[b]) & (freqs < rm._BARK_EDGES_HZ[b + 1]))[0]
+            if idx.size > 0:
+                out[b] = rm._median_flat(spec[:, idx] if spec.ndim == 2 else spec[idx])
+            else:
+                out[b] = -120.0
+        return out
+
+    for n_fft, sr in [(4096, 44100), (2048, 16000), (256, 48000), (8192, 96000)]:
+        freqs = np.fft.rfftfreq(n_fft, 1.0 / sr)
+        for shape in [(1, len(freqs)), (31, len(freqs)), (len(freqs),)]:
+            spec = (rng.standard_normal(shape) * 60.0 - 120.0).astype(np.float64)
+            assert np.array_equal(referenz(spec, freqs), rm._to_bark_bands(spec, freqs)), (
+                f"nicht bit-identisch bei n_fft={n_fft}, sr={sr}, shape={shape}"
+            )
+
+
+def test_stft_vorbereitung_caches_bit_identisch_zu_numpy() -> None:
+    """§PERF-R20 (D-K3-38): gecachtes Hann-Fenster/rfftfreq == numpy-Original.
+
+    Die Caches ersetzen `np.hanning(_N_FFT)` und `np.fft.rfftfreq(_N_FFT, 1/sr)`,
+    die vorher bei JEDEM der ~2 200 STFT-Aufrufe im 33-s-Scan neu gebaut wurden.
+    """
+    from backend.core import residuum_masking as rm
+
+    assert np.array_equal(rm._hann_window(rm._N_FFT), np.hanning(rm._N_FFT))
+    assert np.array_equal(rm._rfftfreq(rm._N_FFT, 44100), np.fft.rfftfreq(rm._N_FFT, 1.0 / 44100))
+    # Identitaets-Cache: zweiter Aufruf liefert dasselbe Objekt (Fast-Path in
+    # _to_bark_bands haengt daran).
+    assert rm._rfftfreq(rm._N_FFT, 44100) is rm._rfftfreq(rm._N_FFT, 44100)
+    assert not rm._hann_window(rm._N_FFT).flags.writeable

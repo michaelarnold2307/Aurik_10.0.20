@@ -1,0 +1,25 @@
+{
+  "objects": {
+    "__root__": {
+      "children": [],
+      "cornerRadius": 0,
+      "fills": [],
+      "frameId": null,
+      "height": 0,
+      "id": "__root__",
+      "locked": false,
+      "name": "Root",
+      "opacity": 1,
+      "parentId": null,
+      "rotation": 0,
+      "strokes": [],
+      "type": "frame",
+      "visible": true,
+      "width": 0,
+      "x": 0,
+      "y": 0
+    }
+  },
+  "rootId": "__root__",
+  "version": 2
+}

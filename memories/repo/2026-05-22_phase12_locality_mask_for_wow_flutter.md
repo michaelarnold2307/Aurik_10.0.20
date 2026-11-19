@@ -1,0 +1,5 @@
+- Phase 12 used global stretch_factors even when DefectScanner had segment locations for wow/flutter-related defects.
+- Fix: _apply_defect_locality_to_stretch_factors masks stretch_factors to 1.0 outside defect_locations keys wow/flutter/wow_flutter/multiband_wow_flutter/scrape_flutter/flutter_spectral_sidebands, with 50 ms padding.
+- Metadata now records stretch_locality_coverage.
+- Tests: phase12_loudness_preservation verifies helper masking and process wiring by monkeypatching _calculate_stretch_factors and capturing stretch_factors passed into _phase_vocoder_timestretch.
+- Regression validated with phase12 unit tests and autonomous restoration engine.

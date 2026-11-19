@@ -1,0 +1,280 @@
+{
+  "files_with_skip_mechanisms": {
+    "tests/conftest.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/integration/test_aurik_denker_e2e.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 5,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/normative/test_all_phases_normative.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/normative/test_hybrid_release_mode.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 3,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/onnx/test_onnx_advanced.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/onnx/test_onnx_runtime.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/pitch_correction/test_pitch_correction_benchmarks.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/pitch_correction/test_pitch_correction_v8.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_adaptive_pipeline.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 0,
+      "skipif_decorators": 1,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_audit_log_export.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 2,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_authenticity.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 2,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_context_aware_deesser.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 5,
+      "skipif_decorators": 14,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_digital_restoration_specialist.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 0,
+      "skipif_decorators": 4,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_e2e_v9_10_41.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 4,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_full_chain_ml_hybrid.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_gui_integration.py": {
+      "pytest_importorskip_calls": 4,
+      "pytest_skip_calls": 0,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_madmom_plugin.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_mert_instrument_detector_plugin.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_ml_medium_detector.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_optimization.py": {
+      "pytest_importorskip_calls": 1,
+      "pytest_skip_calls": 0,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_optimization_integration.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_optimization_phase2.py": {
+      "pytest_importorskip_calls": 1,
+      "pytest_skip_calls": 0,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_phoneme_detector.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 0,
+      "skipif_decorators": 9,
+      "skipif_true_decorators": 0
+    },
+    "tests/test_processing_modes.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 2,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_all_phases_smoke.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_dac_plugin.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 3,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_denker/test_denker_init.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 5,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_denker/test_rekonstruktions_denker.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 9,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_denker/test_reparatur_denker.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 10,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_denker/test_tontraegerkette_denker.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 9,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_export_roundtrip.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 3,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_frontend_ux_spec_compliance.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 1,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_hypothesis_fuzzing.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 19,
+      "skipif_decorators": 9,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_i18n.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 2,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_micro_dynamics_envelope_morphing.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 3,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_noise_floor.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 4,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_passthrough_invariant.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 5,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_perceptual_embedder.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_phase_19_de_esser.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_temporal_quality_coherence.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 0,
+      "skipif_decorators": 1,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_unified_restorer_v3.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 2,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_v95_modules.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_v99_core_modules.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_vocal_chain_invariants.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 1,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    },
+    "tests/unit/test_vocal_chain_spec_compliance.py": {
+      "pytest_importorskip_calls": 0,
+      "pytest_skip_calls": 3,
+      "skipif_decorators": 0,
+      "skipif_true_decorators": 0
+    }
+  },
+  "summary": {
+    "pytest_importorskip_calls": 6,
+    "pytest_skip_calls": 117,
+    "skipif_decorators": 42,
+    "skipif_true_decorators": 0
+  }
+}

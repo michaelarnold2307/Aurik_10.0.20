@@ -1,0 +1,56 @@
+[
+  {
+    "policy": "MP3 Restoration",
+    "media": "mp3",
+    "audit_reports_found": 16,
+    "audit_reports_failed": 0,
+    "audit_required": true,
+    "audits_ok": true,
+    "failed_audits": []
+  },
+  {
+    "policy": "DAT Restoration",
+    "media": "dat",
+    "audit_reports_found": 0,
+    "audit_reports_failed": 0,
+    "audit_required": true,
+    "audits_ok": false,
+    "failed_audits": []
+  },
+  {
+    "policy": "Vinyl Restoration",
+    "media": "vinyl",
+    "audit_reports_found": 0,
+    "audit_reports_failed": 0,
+    "audit_required": true,
+    "audits_ok": false,
+    "failed_audits": []
+  },
+  {
+    "policy": "Tape Restoration",
+    "media": "tape",
+    "audit_reports_found": 0,
+    "audit_reports_failed": 0,
+    "audit_required": true,
+    "audits_ok": false,
+    "failed_audits": []
+  },
+  {
+    "policy": "Shellac Restoration",
+    "media": "shellac",
+    "audit_reports_found": 0,
+    "audit_reports_failed": 0,
+    "audit_required": true,
+    "audits_ok": false,
+    "failed_audits": []
+  },
+  {
+    "policy": "CD Restoration",
+    "media": "cd",
+    "audit_reports_found": 0,
+    "audit_reports_failed": 0,
+    "audit_required": true,
+    "audits_ok": false,
+    "failed_audits": []
+  }
+]

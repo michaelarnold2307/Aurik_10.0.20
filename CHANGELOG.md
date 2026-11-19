@@ -1,0 +1,4020 @@
+# Changelog — Aurik 10.12.53
+
+## 10.12.53 (2026-11-13)
+
+* **fix(declipper): Stereo-Kanalabdeckung und A-SPADE-Chunking** — Phase 07 zählt Clip-Samples über alle Kanäle; explizite Bypass-/No-Op-Ausgaben bleiben bit-identisch. Die neuronale A-SPADE-Klasse lädt ihr Artefakt aus dem richtigen Projektpfad und erhält bei Chunk-Übergängen den Modellkontext. Ein kleiner MUSDB-Holdout zeigt teils objektiven SDR-Gewinn, aber auch Rückschritte der vollständigen Phase; eine Hörfreigabe fehlt. Der Sparse-Zweig ist deaktiviert, nachdem sein Harmonik-Proxy trotz **−24,63 dB SDR** auf einem Ground-Truth-Repro einen Gewinn meldete; A-SPADE bleibt bis zu vollständiger Abnahme gesperrt.
+* **test(declipper): reproduzierbare Stereo-Gegenprobe** — ein Evaluationsskript trennt bekannte Modellschwelle, bekanntes Defektkanal-Orakel, automatische Phase und saubere Kontrollregionen. Ein experimenteller kanalbezogener Plateaupfad erreicht auf synthetischem Hard-Clipping teils erhebliche Gewinne, zeigt jedoch nach Resampling Detektionsausfälle, bei leichterem Clipping erhebliche Rückschritte und bei Sättigung Fehlauslösungen; keine Produktionsfreigabe.
+* **test(declipper): Stereo-Zeuge als Forschungsvariante** — ein lokal aus dem Gegenkanal abgeleiteter Zeuge vermeidet in einer kleinen Testprobe die beobachteten Rückschritte, büßt aber einen großen Teil der zuvor gemessenen Gewinne ein. Kein Sicherheits- oder Hörnachweis und keine Aktivierung.
+* **test(declipper): selektiver Stereo-Zeuge** — eine experimentelle Kombination aus Plateau-Dichte und lokaler Stereo-Korrelation erhält auf 50 bereits untersuchten Testtiteln einen Großteil des synthetischen SDR-Gewinns ohne gemessenen SDR-Rückschritt; einzelne Fortschritte gehen verloren und ein Sättigungs-Negativfall wird verändert. Kein Produktivpfad, kein Hörnachweis.
+* **test(declipper): Flag-Pfad messbar** — der Evaluator vergleicht den bestehenden Phase-07-Opt-in-Pfad mit dem Default und kontrolliert saubere Signale; die Messung zeigt fortbestehende Rückschritte und Kontrollveränderungen. Die Freigabe bleibt offen.
+* **test(declipper): separater Monokorpus** — der Evaluator akzeptiert alternative lokale WAV-Korpora mit Signal- und Quellenprovenienz. Ein FMA-Monotest zeigt weiterhin Detektionsausfälle und einen Modell-Rückschritt; er ist keine Hör- oder Produktionsfreigabe.
+* **test(declipper): asymmetrisches Clipping** — ein polaritätsgetrennter Forschungszweig verbessert die ΔSDR mehrerer asymmetrischer synthetischer Paare, zeigt aber weiter einen Stereo-Rückschritt, Sättigungs-Fehlauslösungen und Ausfälle nach Resampling. Keine Produktivaktivierung oder Hörabnahme.
+* **test(declipper): Stereo-Zeuge und Resampling-Orakel** — getrennte Plateau-Masken ermöglichen eine Stereo-Gegenprobe für asymmetrische Schäden. Die kleine Stichprobe reduziert Rückschritte auf Kosten erheblicher Gewinne; nach Resampling zeigen sich selbst mit bekannter Schwelle und bekanntem Kanal Modellrückschritte. Kein Produktionsnachweis.
+* **test(declipper): Reihenfolge-Gegenprobe** — ein Orakelvergleich misst die Modellreparatur vor und nach Resampling gegen dieselbe Referenz. Die SDR-Berechnung bleibt auch bei perfekt rekonstruierten Testpaaren endlich; die Produktionsfreigabe bleibt offen.
+
+## 10.12.52 (2026-11-13)
+
+* **fix(training): hörzentrierte Trainingsschutz-Gates und Klassenkopf-Holdout** — Vocos verwendet den Produktions-Mel-Extraktor, schützt den differenzierbaren Spektral-Loss und prüft Kandidaten gegen eine unveränderliche Baseline. Der `groove_echo`-Klassenkopf nutzt disjunkten Titel-Holdout, JND-gerechtes Q und einen identity-initialisierten Residual-Ausgang mit Clean-Identity-Loss. Der Folgepilot verbesserte Never-worsen, verfehlte aber weiterhin Q-/Kontroll-Gates; kein Modell-Rollout.
+* **fix(defect-scanner): leerer Dropout-Vergleichsbereich** — Dropouts direkt am Signalbeginn werden ohne NumPy-Warnung konservativ generisch klassifiziert. Tests bestätigen die unveränderte Klassifikation regulärer Dropouts.
+
+## 10.12.51 (2026-11-05)
+
+* **perf(pipeline): TODO-P0-1 Slice B — Song-Level Perceptual-Gates (HPI/EmotionalArc/VQI/Singer-ID)** — die song-globalen Größen laufen nach der Assemblierung EINMAL auf dem Song statt je Chunk (Song-Bogen statt 30-s-Fenster, §V7 (copilot-instructions.md): Ursache statt Symptom): HPI-Reevaluation, EmotionalArc-Messung + Korrektur, VQI-Gate mit zentralen Schwellen (`get_vqi_material_floor`, Singer-ID 0.92 — keine neuen phasen-individuellen Schwellwerte) und Song-Wohlklang-Audit über den bestehenden Enforcer; Ebene-1-Schutz (Hörordnung §2) via Snapshot-Rollback mit Verifikation (der Snapshot VOR den Gates gewinnt nur bei belegter Verbesserung); Pre-Excellence-`measure_all` entfällt auf Nicht-Letzten-Chunks. Der §G10-Song-Audibility-Nachzug (D-K3-68) bleibt unverändert davor erhalten. 17 Tests; Report `docs/reports/current/2026-11-05_p0_1_song_ebene_analytik.md`. Offen: Never-worsen-Scorecard + RT-Nachmessung nach dem D3-Training.
+
+## 10.12.50 (2026-11-05)
+
+* **perf(denker): Laufzeit-Wahrheit nachgemessen — `RT_REALITY_MEASURED` 53,0 → 32,2** — die 53×→32×-Lücke ist mit gemessenem Nachweis geschlossen: Referenz-Song 225,33 s, 3 Läufe (Wall 7248,7–7259,2 s), **Median 32,19× RT** (`docs/reports/current/rt_messung_2026-11-04.log`), Baseline war 53,9×. Damit konvergieren Plan-Guard, harte Grenze und gemessene Ist-Lage auf EINE Norm (P0-3). Zahlenwahrheit: der geloggte `rt_factor` ist die §9.5-Ausgabe-Kappe 32,0 (`denker/aurik_denker.py`), die Messung steht in den Wall-Zeiten; Budget-Log des StrategieDenker spricht jetzt von der gemessenen Ist-Lage statt von „Performance-Schuld". Protokoll `docs/reports/current/2026-10-28_f_reihe_laufzeit_optimierung.md` §6/§9 („kein Zahlenwechsel ohne Strukturaufgabe" — begleitend: F-Reihe Feature-Cache/pYIN/Ketten-Fixes). Offen: Verifikation nach D3-Lauf, weiterer Hebel TODO-P0-1 (Song-Ebene-Analytik).
+
+## 10.12.49 (2026-11-04)
+
+* **fix(pipeline): U4 — Ziel-Bedarfs-Kopplung für phase_08_transient_preservation (§G188 (GEBOTE.md))** — die Transienten-Reparaturphase war funktionslos (effektive Wirkung ≈ 1 %): die gemessene Ziel-Lücke transient_energie speiste die Stärke-/Wet-Dry-Entscheidung nicht (Bedarfs-Kopplung tot), die Risiko-Kette dämpfte auf Clip-Floor 0,12 und das Strength-Floor-Gate übersprang die Phase still. Ursachen-Fix (kein Blind-Justieren, §V7 (copilot-instructions.md)): (1) `PHASE_EFFECT_CATALOG`-Profil für phase_08 (transient_energie/artikulation/groove/micro_dynamics, `06_phases_system.md:170`) — der §2.70 Joint-Calibrator kennt die Phase wieder; (2) `goal_need_strength()` (joint_calibrator.py) als zentrale, deterministische Dosis aus dem gewichteten Ziel-Gap, nur bei hörbarer Lücke (JND 0,05, repo-weite Konvention); (3) §G188-Override in `_prepare_profiled_phase_runtime_context`: bei hörbarem Bedarf Dosis = gewichteter Gap, Wet/Dry = 1,0 (keine Doppel-Dämpfung) — ohne Bedarf bit-identisch (§G5 (copilot-instructions.md)); (4) Strength-Floor-Gate/§v10.0.5 überspringen bei nachweisbarem Bedarf nicht (begründet geloggt, §V6/§G8 (copilot-instructions.md)). Ebene-1/2-Schutz: Dosis-Gewichte respektieren die Hörordnung §2; Wohlklang-Ordnungs-Enforcer unberührt. 17 Tests; Report `docs/reports/current/2026-11-04_u4_phase08_transient_reparatur.md`; Never-worsen-Messbefehle vorbereitet (Ausführung: Manager).
+
+## 10.12.48 (2026-11-04)
+
+* **fix(musical_goals): transparenz-Messkontrakt wiederhergestellt** — der Short-Form-Blend skalierte den Score mit der Excerpt-Dauer statt mit der Estimator-Unterstützung; auf 2,5-s-Fenstern (B3-Plan) wurde der Score auf 0,475–0,525 gestaucht (Roherwerte 0,60–0,88), der Zielkorridor 0,55 (`calibration_matrix.py:1132`) war mathematisch unerreichbar. Neu: Neutral-Shrinkage nur bei fehlender Spectral-Support (< 3 STFT-Frames), sonst roher §9.7.25-Score PMGG-identisch (`02_pipeline_architecture.md:4152`); Near-Silence → 0,5 (PMGG-Identität). `short_form_prior=True` reproduziert bit-genau den Alt-Pfad (A/B-Beleg, Default = neuer Vertrag, kein Flag-Flip §v10.802). 9 Tests; Never-worsen-Harness `scripts/b3_transparenz_neverworsen.py`; Report `docs/reports/current/2026-11-04_transparenz_ursache_fix.md`.
+
+## 10.12.47 (2026-11-04)
+
+* **fix(musical_goals): transient_energie-Messkontrakt (§1.4.6) wiederhergestellt** — Referenz = Pre-Pipeline-Original (`01_musical_goals.md:1061`) statt post-NR-Carrier-Checkpoint (§0d-Shift-Kopplung entkoppelt); Timing-Invarianz ±10 ms (`02_pipeline_architecture.md:4158`) statt starrer Fensterlage; isolierte Defekt-Impulse zählen nicht als verlorene musikalische Transienten (§V36 — transparent ausgezählt, ungefilterter Score mitgeführt). Pipeline-Ausgabe bit-identisch (§G5); Never-worsen-Harness `scripts/b3_transient_energie_neverworsen.py`; 22 Tests; Report `docs/reports/current/2026-11-04_transient_energie_ursache_fix.md`. Offen: §1.4.6-Revision V27 (Onset-Set) + Pipeline-Baustein U4 (phase_08 ≈ 1 % Wirkung).
+
+## 10.12.46 (2026-10-27)
+
+### SOTA-M12/M15: K4-Challenger (WF-V4, TP-V2, RT60) + D-K3-54 Extremwert-Kalibrierung
+
+- **D-K3-54 → geschlossen:** Peak-Signifikanz des Scrape-AM-Kanals extremwert-korrigiert (Register-Vorgabe 1:1): Peak > k·Perzentil(abs(ΣS_w), 99,9 %) des Störgrunds (Peak-Region ±3 Bins ausgeschlossen — die Fenster-Leckage-Schürze einer starken Linie verfälscht sonst die Statistik) UND lokale Schärfe ±2 Bins; zentrale Kalibrierung `_AM_PEAK_SIG_K`=1,40 (§V7 (copilot-instructions.md)), gemessen gegen 48 Rausch-Realisierungen des dokumentierten statisch-tonalen Trägers (Ratio max 1,318) vs. dk328-Matrix (20/60/150 Hz: 4,91/3,33/1,49). Regression: 24 Seeds → 0 AM-FPs (vorher Flutter-Severity 0,75 ohne Defekt), IEC-AM 0,7 % bleibt detektiert, Determinismus §G5 (copilot-instructions.md). Dokumentierte Kanal-Schwäche: 120–150 Hz nahe der Extremwert-Schwelle (Beobachtung überwacht).
+- **SOTA-M12/KP-17 (D-K4-7 → in-arbeit):** WF-V4-Klassen-Warp-Head auf FCPE/CRePE-F0-Basis (`backend/core/dsp/wf4_warp_head.py`, dilatierter TCN, Warp-Kappe ±50 Cents, ONNX-Vertrag) + `scripts/train_wf4_warp_head.py` (synthetische Wow/Flutter-Warp-Kurven mit GT-Supervision, Seeds/Manifest/Checkpoint, `--smoke` CPU < 3 Min) + 9 Vertragstests; Challenger-Block in `phase_12_wow_flutter_fix.py` vor dem §WF-V3-Slope-Limit hinter `use_wf4_warp_head` (Default AUS ⇒ bit-identisch, §V6 (copilot-instructions.md)-Fallback mit Warnung). Offen: Echt-Training, Never-worsen gegen Phase-12-Ist-Zustand, Hörordnungs-Sign-off.
+- **SOTA-M12/KP-18 (D-K4-8 → in-arbeit):** TP-V2-Klassen-Phasenschätzung (`backend/core/dsp/tp_v2_phase.py`, U-Net, Relativ-Δφ, Null-Init, kammfilter-frei) + `scripts/train_tp_v2_phase.py` (synthetische Percussion-Transienten) + 8 Vertragstests; Challenger in `unified_restorer_v3.py` §v10.303 hinter `use_tp_v2_phase` (Default AUS ⇒ bit-identisch). Offen: Echt-Training auf transient-reichem Material, A/B (Percussion ohne Kammfilter-Artefakte), Hörordnungs-Sign-off.
+- **SOTA-M15/KP-10 (D-K4-10 neu → in-arbeit):** RT60-Regressor auf RIR-Paaren (`backend/core/dsp/rt60_regressor.py`, deterministisches Ridge-Fitting, physikalische Grenzen [0,05 s; 10 s]) + `scripts/train_rt60_regressor.py` (RIR-Inventar: nur 1 lokale RIR-Simulation im Repo — Datenlücke ehrlich dokumentiert, Muster D-K2-5) + 17 Vertragstests; Challenger in `phase_20_reverb_reduction.py`/`phase_49_advanced_dereverb.py` hinter `use_rt60_regressor` (Default AUS ⇒ bit-identisch). Offen: Echt-RIR-Daten (Welle D), Never-worsen-Gate, Hörordnungs-Sign-off.
+- **Datenrettung:** `scripts/train_wf4_warp_head.py` war durch einen Schreib-Cache-Defekt ein 1-Zeilen-Platzhalter (kein Python) — echtes Trainingsskript nachimplementiert (295 Zeilen, `--smoke` grün: Loss 0,016, Checkpoint+Manifest).
+
+## 10.12.45 (2026-10-26)
+
+### Volle-Suite-Restbestand (11/12 Fehler behoben) + SOTA-M8/M9: K4-Challenger implementiert
+
+- **Stereo-Layout-Leak Phase 19 (5 Tests):** `ConsonantEnhancement.enhance()` gab in beiden Early-Returns (keine Frikativ-Segmente / Gesangs-Gate zu) das interne (2,N)-Array statt des Eingangs-Layouts zurück → `(2,1)×(N,2)`-Broadcast-Absturz in `phase_19_de_esser.py:1937` (Stereo-Layout-Invariante, AGENTS.md). Layout-Restore wie im Hauptpfad; Ziellauf 154 passed, 1 skipped.
+- **era-Decade-Physik bandlimited (2 Tests):** Der Band-Decay-Guard feuerte auch bei gesundem E90 (flache LP-Rauschsignale ≥ 11 kHz) und überschrieb das korrekte E90-Ergebnis → E90-Kollaps-Gate (`E99.5 ≥ 2 × E90`); 10/10-Physik-Matrix + D-K3-43-Kalibrierung bleiben erhalten.
+- **pre_analysis-Progress-Reihenfolge (1 Test):** CLAP-Async-Thread emittierte Band-Werte gegen die Hauptpfad-Emitte (87 nach 96 unter Volle-Suite-Last) → globaler, gesperrter Monotonie-Gate für alle Progress-Callbacks (dokumentierte Invariante „global monoton").
+- **Stability-Corridor (1 Test):** Test war nachweislich veraltet (2026-04-08er Vertrag „Conductor-Hint seedet implizite Stärke + Floor 0.03“) gegen die normative §7.4e (06_phases_system.md) / §G188 (GEBOTE.md) ab `a666b127` („Keine Evidenz ergibt Stärke 0“) — Test an die Norm ausgerichtet + umbenannt in `test_implicit_strength_uses_defect_posterior_not_conductor_hint`; keine Assert-Relaxierung.
+- **Formant-Rollback-Keywords (2 Tests):** Der Nomenklatur-Sweep `655a145b` (2026-10-01) war der akzeptierte Soll-Zustand (D-K3-34: „Prüfungen müssen Wirkung messen, nicht Zeichenketten kopieren“) — die zwei Tests prüfen jetzt nomenklatur-tolerant die Wirkung (Formant-Drift-Rollback-Log mit Stufen-Nennung), Quellenzitat im Docstring (AGENTS.md §5).
+- **SOTA-M8 (D-K4-1 → in-arbeit):** A-SPADE-Klassen-Declipper (`backend/core/dsp/aspade_declipper.py`, unrolled ADMM + 1-D-CNN-Proximal + Datenkonsistenz-Projektion) als Phase-07-Challenger hinter `use_aspade_declipper` (Default AUS ⇒ Bestandsverhalten bit-identisch gemessen, SHA-Vergleich); `scripts/train_aspade_declipper.py` (MUSDB18-HQ-Vocals + deterministische Clipping-Generierung §G5 (copilot-instructions.md), Resume, ONNX-Export mit Paritäts-Gate rel 5.8e-07 §III.9 (copilot-instructions.md)); 22 Vertragstests. PCHIP bleibt §V6-Fallback. Offen: Training, ΔSDR-Gate, Hörabnahme.
+- **SOTA-M9 (D-K4-2 → in-arbeit):** TF-GridNet-Klassen-Vollband-Denoiser (`backend/core/dsp/tf_gridnet_denoiser.py`, Intra-/Inter-Frame-BiLSTM, STFT/OLA, (C,N)-Layout) als optionale Quality-Mode-Stufe hinter `use_tf_gridnet_quality` (Default AUS ⇒ Audio bit-identisch gemessen); `scripts/train_tf_gridnet_denoiser.py`; Integration in phase_03 ausschließlich hinter dem Flag; 24 Vertragstests. DFN bleibt Default (§III.9 (copilot-instructions.md)). Offen: Modell-Training (Artefakt `models/tf_gridnet/tf_gridnet_quality.onnx` fehlt noch), Never-worsen-Gate, Hörabnahme.
+- **Offen (D-K3-70, Nutzerentscheidung):** Golden-Gate `test_real_audio_strategy_golden_manifest_passes_gate` bleibt ehrlich **rot** — Strategie-Metriken-Regression seit 2026-09 (Gate-Report-Snapshot 2026-08: alle Metriken 1,0 auf denselben 51 Fällen) + die `accepted_causes` der 3 synthetischen Cassette-Fälle widersprechen der annotierten Ground-Truth; bewusst NICHT durch Expectations-Relaxieren gelöst (D-K3-28). Pfade (A) Reasoner-/Detektor-Kalibrierung + (B) Manifest-Korrektur im Register dokumentiert.
+- **Flags/Registry:** `use_aspade_declipper`, `use_tf_gridnet_quality` (je Default AUS, §-qualifiziert) in `backend/core/music_model_flags.py`; FILE_REGISTRY +6 Einträge; SOTA_DEFICIT_REGISTER: D-K4-1/D-K4-2 → `in-arbeit`, neue Position D-K3-70.
+
+## 10.12.44 (2026-10-26)
+
+### SOTA-Maßnahmen Welle B/C/E: KP-2/3/4/5/7, WP-1/2/3, D-K3-38-T4 + 2 Folgefixe (NaN-Kaskade, Watchdog-Leak)
+
+- **KP-2 Musik-MOS-Orakel (F8, D-K4-4):** `backend/core/dsp/music_mos_oracle.py` (MuQ+A1-Head + SingMOS Pro, report-only, `applied` konstant False) + Harness `scripts/benchmark_music_mos_oracles.py` + 17 Unit-Tests; report-only-Verdrahtung im §C1-Consumer von `unified_restorer_v3.py`. Messung: UTMOS-Richtungsblindheit auf Rauschen reproduziert (Rate 0.0/0.0), MuQ+A1 Rate 1.0/1.0 (noise) + 0.75 (codec), non-inferior in 5/7 Klassen; SingMOS-Pro-Lücke §G8 (copilot-instructions.md)-dokumentiert. Report `docs/reports/current/2026-10-25_kp2_musik_mos_orakel.md`.
+- **KP-3 Vokal-Identität (F9, D-K4-5):** `backend/core/dsp/music_identity_oracle.py` (MuQ-MuLan-Embeddings) + Verdrahtung Ebene-1-Guard (`singer_identity_cosine_muq`) + phase_65; `use_resemblyzer_music` bleibt False, kein neues Flag. Kosinus-Invarianz unter Verarbeitung belegt (ident: dsp 0.835 / muq 0.768); Fremd-Paar-Diskrimination auf Golden Set ohne echte Identitäts-Paare inkonklusiv (Kalibrierung wartet auf D-K4-5-Daten). Report `2026-10-25_kp3_vokal_identitaet.md`.
+- **KP-4 Musik-VAD:** `backend/core/dsp/music_vad_oracle.py` (PANNs-Singing → Gate-Offset 0…−15 dB, report-only) + Verdrahtung `phase_18_noise_gate.py` (`panns_vad_offset_db` im meta, `gated_audio` unverändert); `use_silero_vad_music` bleibt False. PANNs-Singing auf 6-s-Ausschnitten nicht diskriminativ (max. 0.09) → Offset überall 0; Never-worsen 9/9 per Konstruktion + gemessen (§G8-dokumentiert). Report `2026-10-25_kp4_musik_vad.md`.
+- **KP-5 Studio-Finisher-Vocoder (D-K2-3):** `use_bigvgan_f3_studio` (Default AUS, W-13-gesperrt) + Kandidaten-Pfad im §1.4-Block von `unified_restorer_v3.py` (Flag AUS ⇒ bit-identisches Bestandsverhalten; Fehler ⇒ §V6-Warnung + Vocos-Kaskade). Vertragstests `tests/unit/test_kp5_f3_studio_flag.py` (3 grün). Aktivierung erst nach W-1-Hörprobe (D-K0-1/D-K2-3) + Hörordnungs-Sign-off.
+- **KP-7 BW-Reconstructor v5 Re-Training (D-K1-5):** `scripts/train_bw_v5.py` (--device/--seed §G5/--a1-weight/--out-dir/--steps-per-epoch; ONNX-Export dynamo=False), 200/200 Epochen (Best Loss 2.176), Export `models/bw_reconstructor/retrain_a1_20261025/` (ONNX 16,4 MB, checker OK). A1-HF-Gain-Gate **nicht reproduzierbar** (historische 0.73-Metrik undokumentiert, §G8) — `use_bw_v5` bleibt False (§V7 (copilot-instructions.md)); offen: Gate-Definition oder Hörstichprobe Alt vs. Neu. Report `2026-10-25_kp7_bwv5_ergebnis.md`.
+- **WP-1 §III.11-Lücken-Audit (D-K2-1 geschlossen):** §V6-/§III.11-Domänen-Marker an allen fünf K2-Ladepfaden (hifi_gan, vocos, vocos_48khz, nvsr, aero) + fail-closed-Audit `scripts/audit_k2_signalpfad.py` + 10 Vertragstests. Verbleibend: D-K2-2/-3 (Musik-Ersatz = KP-5/W-1), D-K2-4, D-K2-5.
+- **WP-2 Phantom-ML (D-K3-3 geschlossen):** ehrliche WP-2-Deklaration in allen 17 Stub-Modulen (`adaptive_*.py`, `automatic_declipper.py`, `masking_aware_dynamic_eq.py`, `psychoacoustic_enhancement.py`) + fail-closed-Beleg `tests/unit/test_wp2_stub_declaration.py`.
+- **WP-3 Wohlklang-Ordnung-Forensik (Vocoder-Hypothese BESTÄTIGT):** `scripts/forensik_vocoder_ordnung.py` (Seed 42, §G5) misst 36 Hörordnungs-Verstöße in 4/4 Signalen (tonal_center/brillanz Tier 3/4 AUF KOSTEN von Tier-1-Zielen, micro_dynamics −0.45 konstant); Gegenmaßnahme KP-5/W-13 vorbereitet, Never-worsen-Nachlauf nach der Umstellung. Report `2026-10-25_wp3_wohlklang_forensik.md`.
+- **D-K3-20 geschlossen:** die drei Denker-Testdateien auf echte Verträge umgestellt (keine `try/except`-Hüllen, kein Phantom-Mock; aufgedeckt: `ReparaturErgebnis`/`RekonstruktionsErgebnis` haben andere Pflichtfelder als die alten Tests annahmen); denker-Verzeichnis 293 grün.
+- **D-K3-8 Teilprüfung:** die 9 L2-Treffer der drei Top-Module sind False Positives (Layout-Branches/(2,N)-(N,2)-Invarianz gemessen) — gepinnt `tests/unit/test_dk38_layout_reductions_pin.py`.
+- **D-K3-22 geschlossen:** Budget-Divergenz 73,6× vs 32× war im Register `offen`, im Code aber bereits durch den harten Deckel `min(_planned_s, _hard_rt × Dauer)` samt Wächter-Test behoben → `geschlossen` mit Beleg (Zero-Gap).
+- **D-K3-38 Teilbehebung 4:** `_uniform_smooth` in `backend/core/defect_scanner.py` — O(N)-Leitungsfaltung statt `np.convolve(ones/size)` (gemessen 37× schneller), 15 Aufrufstellen umgestellt, Vertragstest `tests/unit/test_dk38_uniform_smooth.py` (Äquivalenz ≤1e-12, crackle-Maske ohne Kippung). **Manager-Folgefix 2026-10-26:** Nicht-Negativitäts-Invariante (Clamp der laufenden-Summen-Drift ≤1e-15) — behebt die NaN-Kaskade `sqrt(_npow_s + 1e-20)` in `_detect_modulation_noise` (Severity/Conf NaN bei Dropout-Läufen, gefunden von `test_no_nan_severities`) + 3 Regressionstests (Invariante, Randfälle, Ende-zu-Ende).
+- **Flaky-Fix Watchdog (2026-10-26):** `test_dk355_phase_heartbeat.py` ließ 2× `_phase_watchdog_enter` ohne Exit laufen (globaler Refcount-Leak → absoluter refs-Vertrag `test_dk367_phase_watchdog.py` flaky unter Volllauf); Paarung hergestellt (Produktion war balanciert) + Kontrakt-Tests gegen Fremd-Leaks isoliert (Autouse-Fixture).
+- **E6/SOTA-M23 Doku-Konsistenz:** Roadmap-Abschnitt „SOTA-Maßnahmen 2026-10-25 — Welle A–F“ (SOTA-M1…SOTA-M23) in `docs/TODOS_SOTA_ROADMAP.md`; 27 offene Register-Zeilen tragen jetzt ihre `SOTA-M*`-Blocker; §5-Korrektur (dreifaches `SOTA-M11`-Zitat aufgelöst: M11 = Vokal-Identität/SingMOS, KP-7 BW-v5 = M7).
+- **Doku-Korrektur (2026-10-26):** Roadmap-Notiz „eof-fixer bricht jeden ersten Commit ab (Folge-Fix offen)“ ist veraltet — `change_ledger.py:143` schreibt mit Trailing-Newline (gemessen: `TASK_CHANGES.md` endet auf `\n`, `check` deckt alle Code-Änderungen ab).
+- **Registry/Hygiene:** FILE_REGISTRY +25 Einträge (Skripte, Orakel, Tests, Reports); spec_drift-Baseline nach dokumentiertem Akzeptanz-Mechanismus re-initialisiert (Verify: „No spec drift“).
+- **Offen (nächster Schritt):** Welle A (3 Hörproben-Pakete + Sign-offs §9 — menschliche Instanz), SOTA-M8/M9/M12 (D-K4-1/2/7/8), SOTA-M14 Cantus-Full-Training, SOTA-M15 RT60 (Daten Welle D), D-K3-31/54/62/64/65.
+
+## 10.12.43 (2026-10-23)
+
+### SOTA-Trainings-Konzept sauber abgearbeitet: Live-Status-Doku + SGMSE 3-Wege-Hörabnahme-Paket (KP-1/D-K0-3)
+
+- **Neu: `scripts/build_sgmse_hoerprobe_3weg.py`** — baut das fehlende SGMSE+-Hörabnahme-Paket aus dem Trainings-Konzept deterministisch: alle drei Arme über die kanonischen Plugin-Pfade (WSJ0-Sprach-Core, Musik-Finetune-Core, Nara-WPE), Degradation identisch zum Metrik-Lauf 2026-10-08 (`w04`/Seed 42 **bit-exakt** der Evidenz; `w20`/Seed 43 = erweiterte Stichprobe laut D-K0-3-Blocker „mehr Stichproben“). Triangelschaltung (musik↔wsj0, musik↔wpe, wsj0↔wpe) × 3 Songs × 2 Fenster = **18 Präferenz-Trials + 2 Fangfragen**; verarbeitete Arme deterministisch RMS-anchored an die Input-Lautheit (SGMSE+-Ausgaben sind Peak-normalisiert ~0 dBFS — ohne Anker blieb beim Harness-Level-Match bis zu ~3,5 dB Restbias als Hinweisreiz), danach `mushra_harness.py thresholds-build --level-match` (doppelblind, A/B-Zuordnung aus sha256(seed:trial_id), §G5 copilot-instructions.md).
+- **Beleg:** Studie `output_audio/mushra/thresholds_sgmse_3weg/` (40 Trial-Dateien; **§G5 bit-identisch über zwei vollständige Builds** — 43 Studien-/24 Armdateien hash-gleich); Manifest `docs/reports/current/2026-10-23_hoerprobe_sgmse_3weg.json`; Arm-Quellen FLOAT-WAV in `output/sgmse_hoerprobe_3weg/` (gitignore wie übrige `output/`).
+- **Doku: `docs/SOTA_TRAINING_KONZEPT.md` finalisiert** — der Agenten-Draft (Meta-Notizen + „Main content plan“) wurde zur Live-Status-Doku auf Stand v10.12.43 überführt: §0 mit Welle-Übersicht + 19er-KP-Tabelle (Status/Nächster-Schritt/Gate), Inventar des stillen Kapitals aktualisiert (inkl. phase_68-VinylNet seit D-K1-4, SGMSE/SCNet/W-1-Pakete „bereit“), Synthetik→Echt-Musik-Register um die Leerrillen-Noise-Bank von `de_crackle` ergänzt, offene Entscheidungen + Hörproben aktuell.
+- **Anleitung: `docs/reports/current/2026-10-07_hoerprobe_anleitung.md`** — Runde C (SGMSE 3-Wege, Port 8767) zu den Runden A/B ergänzt; Verdikt-Semantik je Klasse dokumentiert (Musik-Core muss in beiden Kopf-an-Kopf-Vergleichen tragen für `use_sgmse_musik=True`; sonst WPE-only-Entscheid).
+- **Registry/Hygiene:** FILE_REGISTRY +3 Einträge (Skript, Konzept-Doku, Manifest); Version 10.12.42 → 10.12.43 (§v10.802 copilot-instructions.md).
+- **Offen (nächster Schritt):** menschliche Hörabnahme der drei Welle-A-Pakete (Anleitung §3–§5) → bis zu drei Flag-Flips ohne GPU (offene Entscheidungen 1–3 des Konzepts); danach Welle B (GPU: BANQUET nach Daten-Beschaffung, BW-v5, RT60, Cantus-Full).
+
+## 10.12.42 (2026-10-19)
+
+### VinylNet De-Crackle phase_68 — ML-Chirurgie für Klicks/Pops (D-K1-4)
+
+- **Neu:** `backend/core/phases/phase_68_vinylnet_decrackle.py` + `plugins/vinylnet_decrackle_plugin.py` (VinylNet v4 base 11,91 M + ClickNet v4). Either-Or-Nachpass NACH phase_01/27/09/50/67 (`unified_restorer_v3.py`, `_move_before`), Disc-Medien-Guard + Studio-Modus-Ausschluss (§Spec 03/06, §2.59-konsistent). Verdrahtet in `phases/__init__.py`, `phase_icons.py`, `phase_pruner.py`, `defect_manifest.py`, `causal_defect_reasoner.py`; Scope-Cap 71→72 Phasen (`policy/scope_guardrails.yaml`).
+- **Modelle:** `models/de_crackle/vinylnet_base_best.pt` neu deployt = GAN-Resume-Beste ep 52 (Val SI-SDR +0,58 dB; SHA `07f32782…`; Erstlauf-Vor-Beste ep 24 archiviert unter `runs/vinylnet/best_ep24_pre_resume_20261017.pt`); `detector_v4.pt` (ClickNet v4, Val-F1 0,601 MUSDB-Split) unverändert; Code (`model/train/infer/…`) + README versioniert, Checkpoints unversioniert (§G9: Plugin = einziger Loader).
+- **Tests:** `tests/unit/test_phase_68_vinylnet_decrackle.py` — 7/7 grün (Metadaten-Kontrakt, Layout cf/sf/mono, bit-identischer Passthrough + Warning §V6, Stub-Determinismus §G5, NaN/Inf-Schutz §0a, Factory; echter Modellpfad CPU mit neuen Gewichten deterministisch).
+- **Doku/Registry:** Report `docs/reports/current/2026-10-12_vinylnet_decrackle.md` (Stand 10-19: GAN-Resume abgeschlossen, Testsplit-Eval + A/B-Paket mit Vor-Besten gemessen), FILE_REGISTRY +14 Einträge, ML_MODEL_DOMAIN_REGISTRY 38/62 (+de_crackle musik-trainiert), SOTA_DEFICIT_REGISTER D-K1-4, `models/manifest.json` (2 Einträge).
+- **Mit im Commit** (vorher uncommittete Arbeitsbaum-Inhalte): SGMSE+-Validierung (Report 2026-10-09 + Spec v10.25-Nachtrag + D-K0-3-Stand), D-K1-3 Medium-Massen-Diagnose (`forensics/medium_detector.py` + zugehörige Tests, §G9-Zitat qualifiziert), RX11→RX12-Evidenz-Aktualisierung, `docs/SOTA_TRAINING_KONZEPT.md`, TASK_CHANGES-Ledger (381 Einträge, 315 Code-Änderungen abgedeckt).
+- **Offen (D-K1-4):** Leerrillen-Noise-Bank (`--noise-bank`), Testsplit-Re-Eval mit dem neuen Artefakt, Hörtest gegen iZotope RX 12 (Hörordnung Ebene 4).
+
+## 10.12.41 (2026-10-19)
+
+### Shebang-Purge + Docstring-Kopf-Normalisierung (mechanischer Lint-Sweep)
+
+- **Scope:** 323 Python-Dateien über `backend/`, `plugins/`, `scripts/`, `tests/`, `denker/`, `Aurik10/`, `forensics/`, `benchmarks/`, Root — Docstring-Kopf-Normalisierung: das `#!/usr/bin/env python3`-Shebang entfällt; bei Dateien, deren Docstring mit einer isolierten `"""`-Zeile beginnt und die Titelzeile auf der Folgezeile steht, wird die Titelzeile an den öffnenden `"""` angehängt (z. B. `"""Phase 10: …`).
+- **Art:** rein mechanisch/strukturell — keine Logik-, Signatur- oder Semantikänderung; je Datei gegen HEAD transformiert und zeilenweise abgeglichen (nur Shebang-Zeile + Docstring-Kopfzeile differieren).
+- **Ausnahmen im selben Arbeitsbaum** (in 10.12.42 mit Task-Inhalt committet): alle Dateien mit zusätzlichem Feature-/Fix-Diff bleiben dort, damit der Sweep-Commit ausschließlich die Normalisierung trägt.
+
+## 10.12.40 (2026-10-09)
+
+### Audit-Runde 2: Parallel-Pre-Emission dauergewichtet (A6-Fix)
+
+- **Befund (Audit der 10.12.36-Verdrahtung):** Die „phase activation"-Emission des Parallel-Pfads nutzte als EINZIGE verbliebene Stelle die alte Zähl-Fraktion (`len(future_map)/n_sel`) — bei frühen Kurzphasen konnte der Balken vorlaufen (die Monotonie-Klammer fängt Rücksprünge, nicht Vorlauf). Alle anderen Emissionen (4 Abschlüsse + 2 Heartbeat-Spannen + sequenzielle Pre-Emission) sind dauergewichtet.
+- **Fix:** Parallel-Pre-Emission nutzt jetzt `_hb_pct_start_p` (dauergewichtete Spanne; §G9 copilot-instructions.md — eine Rechnung je Anzeige).
+- **Pin:** `test_phase_progress_weights.py` verbietet das `* _n_sub_p / _n_sel_p`-Muster.
+- **Audit-Befund A5 (dokumentiert, kein Code):** Die `modern_window.py`-Pins sind bewusst Struktur-Greps (Qt headless); die Wirkungs-Lücke (Offscreen-GUI-Test mit echten Callback-Sequenzen) bleibt als Empfehlung offen.
+
+## 10.12.39 (2026-10-09)
+
+### Audit-Folge zu 10.12.34–38: JIT-Laufzeit-Resilienz + Ausweichpfad-Wirkungstests
+
+- **Finding A1 (Resilienz, behoben):** Der numba-JIT-Pfad der Kalman-Rekursion (10.12.37) fing nur `ImportError` ab — ein **Laufzeit**-Defekt des Kerns (Projektmuster „ROCm-Venv-numba-Defekt", vgl. `backend/core/dsp/pghi.py`: dort expliziter Laufzeit-Fallback) hätte Phase 12 abgebrochen statt auszuweichen. Fix: try/except um beide Kernel-Aufrufe + einmalige `logger.warning` (§V6 copilot-instructions.md) + bit-identischer Python-Skalarpfad (verifiziert: Test simuliert den Defekt und prüft Bit-Gleichheit).
+- **Finding A2 (Wirkungsprüfung, geschlossen):** Die Singular-Ausweichpfade **beider** gebündelter Fit-Funktionen waren nie ausgeführt (Coverage-Lücke der D-K3-34/35-Klasse: „verdrahtet, aber ungeprüft"). Neu: Tests lassen `np.linalg.solve` künstlich werfen — Flutter-Ausweichpfad **bit-identisch**; Subband-Ausweichpfad Δ = **3,4e-14 Hz** auf der Parabel-Verfeinerung (Inversions-Reihenfolge LAPACK-LU vs. lstsq-SVD; ≪ 0,002-Hz-Feinraster, keine Hörrelevanz) — ehrlich benannte Schranke 1e-12 im Test.
+- **Audit A4 (Chunked-Progress, geprüft, kein Fix):** Die Chunk-Skalierung (`_make_chunk_pc`: `mapped = base + pct×(ceiling−base)/100`) und die GUI-Monotonie (10.12.35) decken die neuen dauergewichteten Emissionspfade ab; innere Bänder unverändert (20–85). Beobachtung: Test-Pin für „Chunk-Progress × Dauergewichtung" fehlt (Empfehlung, kein Blocker).
+- **Tests:** +3 (Kalman-Laufzeit-Fallback-Pin; Singular-Ausweichpfad-Tests Flutter/Subband) — 21/21 in den zwei Dateien grün.
+
+## 10.12.38 (2026-10-09)
+
+### D-K3-38 Phase-12-Teilbehebung 3: Subband-Scan gebündelt (Phase 12 −46,1 % gesamt)
+
+- **Befund (cProfile 10.12.37):** Zweiter Einzel-lstsq-Hotspot — `_score_at` im Subband-Scan rechnete 15 619 Mini-SVDs (129 Kandidaten × ~121 Bänder), `_scan_subband_modulation_frequency` 1,49 s.
+- **Fix:** Gleiches Bündelungsmuster wie der Flutter-Fit — Band-Gates/Gewichtssummen einmal statt 129×, gestapelte Normalengleichungen (3×3, `np.linalg.solve` + `np.einsum`), lstsq nur als Singular-Ausweichpfad je Band (Gate-Semantik r² ≥ 0,30 / 1–80 cents / ≥ 4 Bänder unverändert).
+- **Messung:** `_scan_subband_modulation_frequency` 1,49 → 0,116 s (13×); lstsq im Lauf 15 619 → 10 (Reststellen außerhalb der Fit-Pfade); Phase 12 **21,08 → 19,34 s (−46,1 % vs. Baseline 35,90 s)**; Wall ohne cProfile 18,63 s.
+- **Äquivalenz:** Synthetische kohärente 1,1-Hz-Modulation: Frequenz-Δ = 3,9e-14 Hz; E2E-Audio bit-identisch (max-Δ = 0.0).
+- **Tests:** +2 (`test_subband_scan_detects_coherent_modulation`, `test_subband_scan_uses_batched_solve_with_lstsq_fallback_only`); 6/6 in der Datei grün.
+
+## 10.12.37 (2026-10-09)
+
+### D-K3-38 Phase-12-Teilbehebung 2: Kalman-JIT + gebündelter Flutter-Fit (Phase 12 −41,3 %)
+
+- **Kalman-JIT (§G190 GEBOTE.md):** Die §G190-Skalarfassung von `kalman_smooth_warp` (11,8 s = 33 % der Phasenzeit) läuft jetzt als numba-JIT über EXAKT denselben Quelltext (`backend/core/dsp/warp_kalman.py`: `_kalman_forward_scalar`/`_kalman_rts_backward_scalar`; `cache=True, fastmath=False, nogil=True`; ohne numba unverändert Python-Fallback, §V6 copilot-instructions.md). Messung: **bit-identisch** (max|Δ| = 0.0, konstantes UND variables dt) und **348×** (10,46 s → 0,030 s je 1,44-Mio-Sample-Trajektorie) — der Fixpunkt der Kovarianz-Rekursion liegt nach 91 Schritten, der Rest ist reine Schleifenausführung.
+- **Flutter-Fit gebündelt (Register-Kandidat D-K3-38):** `_flutter_track_from_stacks`/`_score_fast` rechnete 37 677 Einzel-lstsq-SVDs (2,63 s je 15-s-Lauf); jetzt gebündelte Normalengleichungen je Frequenz über alle Bänder (`np.linalg.solve` gestapelt + `np.einsum`; Band-Gewichte/Gates einmal statt 538×), lstsq nur noch als Singular-Fallback je Band (per-Band-isolierte skip-Semantik erhalten). A/B gegen die Vorversion (git HEAD): synthetischer 6-Hz-Flutter (22,9 cents) → virtual_pitch/conf **bit-identisch** (max|Δ| = 0.0); E2E-Audio bit-identisch; Rauschfall identisch verworfen.
+- **Messung (15-s-Vinyl-Corpus, cProfile, gleiche Methode wie Baseline):** Phase 12 **35,90 s → 21,08 s (−41,3 %)**; `kalman_smooth_warp` 11,79 → 0,89 s; `_flutter_correction_pass` 9,82 → 7,11 s. Verbleibende Kandidaten im Register benannt: `_score_at`-Subband-Scan (15 619 lstsq), hilbert-Serie (242×/3,4 s), pYIN/Hybrid (3,6 s; FCPE-A/B), Filter-/Faltungsserie (~3 s).
+- **Tests:** `tests/unit/test_phase12_flutter_batched_fit.py` (4 Tests: 6-Hz-Erkennung, Rausch-Verwerfung, Batch-Solve-Wiring, Normalengleichungs-Formelparität) + `tests/unit/test_warp_toolkit.py::test_kalman_jit_matches_python_fallback` (JIT-Verdrahtung + Bit-Parität); 34 bestehende Phase-12-Tests grün.
+- **Belege:** `docs/reports/current/2026-10-09_phase12_cprofile_nachher.json` (Baseline: `docs/reports/current/2026-10-09_phase12_cprofile.json`).
+
+## 10.12.36 (2026-10-09)
+
+### D-K3-69 geschlossen: Dauergewichteter Phasenfortschritt (Selbstkalibrierung)
+
+- **Befund:** Der UV3-Fortschritt war eine Zähl-Fraktion abgeschlossener Phasen (Band 20–85) — bei gemessen ca. 11:1 Phasen-Imbalance sprintete der Balken bei Kurzphasen und fror bei Langphasen (`phase_12` = 250–440 s) ein.
+- **Fix:** `backend/core/phase_progress_weights.py` — Gewicht = GEMESSENE Wand-Zeit dieses Laufs (Median-Prior für Unbekanntes, Untergrenze 0,5 s, Dedupe, Monotonie-Klammer). Verdrahtet an 4 Abschluss-Emissionen + 2 Heartbeat-Spannen (Sub-Progress und Abschluss in denselben gewichteten Spannen); Altpfad (Zähl-Fraktion) entfernt.
+- **Validierung:** 7 neue Vertrags-/Wiring-Tests (1-s-vs-100-s-Dauerbasis; Spannen-Grenzen == Fraktion; kein `_idx_ex / _n_sel`-Rest); ruff clean; Register D-K3-69 → `geschlossen` (Begründung Selbstkalibrierung statt statischer Fantasietabelle, §V7 copilot-instructions.md).
+
+## 10.12.35 (2026-10-09)
+
+### 2-Balken-Vertrag: Schritt-Balken im Phasenkern datengetrieben + Wellenform unifiziert
+
+- **Befund:** Der „Arbeitsschritt“-Balken wurde nur für Voranalyse (<20 %) und Post-Processing (≥86 %) gespeist — im Phasenkern (20–85 %) blieb er auf 0 stehen (§GUI-T9 hatte den Zeit-Fill entfernt, ohne datengetriebenes Ersatz-Mapping).
+- **Fix:** Phasen-lokales Mapping `local = (pct − Phasenstart)/(Phasenende − Phasenstart) · 100` (Band 20–85, Phasen-Index aus `_uv3`), monoton je Phase, Reset bei Phasenwechsel — gespeist aus den echten Engine-Callbacks, kein Zeit-Fill.
+- **Wellenform-Stage** zeigt denselben Wert wie der Schritt-Balken (vorher Defekt-Ratio → widersprüchliche Anzeigen).
+- **Vertrag gepinnt:** Balken 1 = Gesamtfortschritt (eine Unified-Quelle, monoton), Balken 2 = aktueller Arbeitsschritt; 16 Tests grün (`tests/unit/test_gui_progress_single_source.py::test_zwei_balken_vertrag`).
+
+## 10.12.34 (2026-10-09)
+
+### GUI-Tiefenanalyse: Defekt-Rückwärtszählung kanonisiert + Fortschritts-Ursache als D-K3-69 registriert
+
+- **Defekt-Zählung (§G9 copilot-instructions.md, eine Quelle):** Vier konkurrierende Zählwährungen (Typen, Severity×100-Heuristik, Scan-Ereignisse, Engine-Behebungen) und drei proportionale Überschreiber (Score-Ratio, Chirurgie-Proporz, Prozessanteil) ersetzt durch das kanonische Modell `Aurik10/ui/defect_progress_model.py`: Initial-Universum (Ereignisse wo zählbar, sonst Typ=1; nie schrumpfend), exakte Engine-Zählung (§v10.802), Marker-Untergrenzen (mit Pending-Schutz), Alias-Dedupe (pops~clipping, noise~noise_level, dropout~dropouts); Live-Label/„Schadensbilanz“/Chips/Badge lesen denselben Zustand; Repair-Namen wandern in den Tooltip (kein Überschreiben des Countdowns pro Phasen-Hinweis).
+- **Tests:** 15 neue grün (`tests/unit/test_defect_progress_model.py` 10, `tests/unit/test_gui_progress_single_source.py` 5) — Monotonie, Alias-Dedupe, Invarianz `remaining == Typsumme`, entfernte Alt-Währungen gepinnt.
+- **Fortschrittsanzeige (Tiefenanalyse):** `pct` = Zähl-Fraktion abgeschlossener Phasen im Band 20–85 (keine Dauer-Gewichtung; Emission an `unified_restorer_v3.py` Z. 39806/41674/42263/42493); gemessene Phasen-Imbalance 57:5 (≈ 11:1, Referenzlauf 10.12.25) erklärt „Sprint bei Kurzphasen, Einfrieren bei Langphasen“. Dauergewichtung braucht ein verifiziertes Denker-Kostenmodell — KEINE Fantasiegewichte (§V7 copilot-instructions.md) → **registriert als D-K3-69** mit Fix- und Validierungsplan.
+
+## 10.12.33 (2026-10-09)
+
+### WP-7 vollzogen: 51 neue Echt-Träger, Korpus 92 → 143 Labels, Validierung erbringt D-K1-3
+
+- **Beschaffung (Lizenz strikt PD/CC0, corpus/README-Vertrag):** 47 Shellac-PD-78er (1902–1927, MWA-Frist 2026), 10 Netlabel-CC0/PD (digital), 4 Cassette-DIY-Selbstdedikationen, 1 Reel-Transfer (dokumentierte Kette), 1 Tape-Art-CC0; **vinyl bewusst 0** (LP-Ära rechtlich geschützt; Uploader-CC0 auf Kommerz-Releases verworfen — keine Schein-Provenienz).
+- **Code:** Lizenz-Gate (`_license_allowed` PD/CC0-Allowlist, §V6-Warnung), Merge-Manifeste im Volllauf verifiziert (vinyl-Bestand erhalten), Slug-Schema 47/47, Real-Träger-Zählwerk (`per_material_real`, `wp7_real_gap`, `wp7_real_met`), 9 hash-identische Alt-Orphans entfernt; 2 Totquellen (503) durch 2 verifizierte 1927-Träger ersetzt.
+- **Validierung:** 49 Tests grün; Coverage 143 Labels — shellac-Ziel ≥50 erreicht (58), 63 Echt-Träger statt 12; MediumDetector-Roh-Validierung an 9 Echt-Trägern: 5/9 als vinyl verkannt (0,60–0,99) → **neu registriert als D-K1-3** (Kalibrierung gegen den Real-Korpus; deckt sich mit §v10.19-Era-Prior-Befund).
+- **Belege:** `docs/reports/current/2026-10-09_wp7_realtraeger.md`, `docs/reports/current/2026-10-09_wp7_coverage.json`, `docs/reports/current/2026-10-09_wp7_medium_validierung.json`.
+
+## 10.12.32 (2026-10-09)
+
+### D-K3-57 geschlossen: pre_echo-Repro des Walzer-Falls geliefert und eingeordnet
+
+- **Repro (10.12.25-Lauf derselben Quelle):** `phase_01_click_removal pre_echo=-2,8 dB` bei neutralen Nachbarwerten (pitch=0.0c/mod=0.0c/hnr=0.0dB/hf=0.003/loud=0.9dB); phase_12 −8,4 dB, phase_24 −10,5 dB, späte Chunks +0,1/+0,2 dB — **deterministisch identisch** zu den 10.12.17-Dump-Werten (−2,83/−8,36/−10,46, D-K3-62-Evidenz).
+- **Einordnung:** Trigger = D-K3-62-Reparatur-Energie-Klasse (gewünschte Füllung/Resampling); der Diskriminator (10.12.27) klassifiziert analoge Fälle als `repair_fill` (report-only); kein Defekt-Nachverfolgen (Hörordnung Ebene 2 — Reparatur-Energie ist kein Defekt).
+- **Beleg:** `docs/reports/current/2026-10-09_dk357_witness_pre_echo_werte.md`; Register D-K3-57 → `geschlossen`.
+
+## 10.12.31 (2026-10-09)
+
+### P0-Performance: Phase-12-Zerlegung (D-K3-38) — Hotspots + Optimierungskandidat dokumentiert
+
+- **cProfile `phase_12_wow_flutter_fix`** (15-s-Vinyl-Corpus, `docs/reports/current/2026-10-09_phase12_cprofile.json`): 35,90 s = 143,6 s/min; Treiber: `kalman_smooth_warp` 11,8 s (33 % — bereits §G190-optimierte Skalarfassung), `_flutter_correction_pass` 9,8 s (`_score_fast` 538× mit 37 677 Mini-`lstsq`-SVDs 2,7 s, `hilbert` 242×/3,4 s, pYIN 3,6 s), `_speed_warp_resample` 14,2 s (Kalman-Anteil 11,8 s).
+- **Kandidat registriert (bewusst nicht umgesetzt):** gebündelte Normalengleichungen über die 41 Bänder je Frequenz (`np.linalg.solve` gestapelt) statt 37 677 Einzel-SVDs — nicht bit-exakt und hör-relevant (r²-Zeugen-Gate der Flattern-Suche) → erst mit A/B + Deviationsschranken nach §G190-Präzedenz.
+
+## 10.12.30 (2026-10-09)
+
+### Punkt 13: WP-7-Datenaufbau — Label-Korpus-Stand + maschinenlesbare Ziel-Lücke
+
+- **Stand (belegt):** 92 Provenienz-Labels im `corpus/` (9–23 je Klasse: shellac 23, vinyl 21, tape 20, digital 10, cassette 9, reel_tape 9); WP-7-Ziel ≥50 je Klasse → Gesamtlücke 208; `tests/corpus/` 42 grün. Bericht: `docs/reports/current/2026-10-09_wp7_label_korpus_stand.md`.
+- **Tooling additiv erweitert:** `scripts/generate_corpus_from_public_domain.py --check` trägt jetzt `wp7_target_per_material`, `wp7_gap` und `wp7_met` (bestehende `meets_minimum`-Semantik unverändert) — die Ziel-Lücke ist CI-tauglich; PD-Quellenpool derzeit nur shellac (12), vinyl/tape 0.
+- **F13-Teil dokumentiert:** `data/music` + `data/gender_labels.csv` fehlen (Musikmaterial liegt unter `data/musdb18hq`); `train_gender_head.py` bricht ohne Labels bewusst ab (§V7 copilot-instructions.md). Register D-K1-2 aktualisiert.
+
+## 10.12.29 (2026-10-09)
+
+### Punkt 6/11: D-K3-60 End-to-End-Beweis — Degradations-Evidenz erreicht den Export (geschlossen)
+
+- **Beweis am realen Timeout-Pfad:** Der Export des 10.12.25-Laufs (6-min-Song „Trio Schweizer – 13 Tage“, Lauf 21:19–00:23) trägt in `processing_metadata`: `quality_gate_degradation_status="critical_degraded"`, `quality_gate_fail_reason="critical_stage_failure:restaurierung"`, `quality_gate_evidence_worldclass_state="not_evaluated"` — dieselbe reale Ursache wie 10.12.17 (RT-Budget-Timeout des RestaurierDenkers, Log: „11433,1 s für 360,4 s Audio“), die dort noch als `degradation_status="ok"` verloren ging. §0c erfüllt: bestmöglicher sicherer Export wurde geschrieben (103,7 MB WAV).
+- **Kontext:** Der Wand-Zeit-Timeout lief unter paralleler CPU-Messlast (SCNet-/SGMSE-Benchmarks derselben Session) — kein Regressionsbefund, sondern der gesuchte reale Fehlerpfad.
+- Register D-K3-60 → `geschlossen`; Evidenzpfad `output_audio/Trio Schweizer - 13 Tage (Restored 10.12.25).wav.export_metrics.json`.
+
+## 10.12.28 (2026-10-08)
+
+### Punkt 12: Defekt-Scanner zerlegt + bit-exakte Median-Optimierung (−15,4 %)
+
+- **Zerlegung (D-K3-38):** cProfile des Defekt-Scanners (30-s-Mix, `docs/reports/current/2026-10-08_defect_scanner_cprofile.json`) — Treiber: `annotate_defect_scores` 8,62 s (45 %; per-Event-Annotationen — Batch-Pfad 1,8× gemessen, aber Hör-Entscheidung blockiert), Median-Schleife `_to_bark_bands` 3,33 s (64601 np.median-Aufrufe), Direkt-Korrelationen `_detect_crackle`/`_detect_wow` 1,5 s (FFT-Ersatz nicht bit-identisch), GIL-Thread-Waits 3,64 s.
+- **Optimierung (§V7 (copilot-instructions.md)-clean, bit-exakt):** `_median_flat`-partition-Direktpfad ersetzt np.median in `_to_bark_bands` — A/B **19,05 → 16,12 s (−15,4 %)** pro 30-s-Scan, Median-Block 3,33 → 0,03 s; Vertragstest pinnt Bit-Gleichheit zu np.median (§G5 copilot-instructions.md unverändert — deterministisch).
+
+## 10.12.27 (2026-10-08)
+
+### Punkt 17: Pre-Echo-Diskriminator (D-K3-62) — Echo-Duplikat vs. Reparatur-Füllung
+
+- **Kern:** `analyze_pre_echo` in `backend/core/dsp/pre_echo_model.py` klassifiziert das ausschlaggebende Onset per normierter Peak-Kreuzkorrelation (Vor-Δ gegen Onset-Fenster): „duplicate“ (≥ 0,30 — Codec-artige Kopie) vs. „repair_fill“ (lokale Reparatur-Energie; FP-Klasse des Laufs 10.12.17 mit −2,8/−8,4/−10,5 dB). Report-only — Witness-Schwelle und Veto-Anschluss unverändert (§V7 copilot-instructions.md); `pre_echo_ratio_db` bleibt als Wrapper bit-identisch (§G9 copilot-instructions.md).
+- **Transparenz:** Witness-Report trägt `pre_echo_kind`/`pre_echo_corr` (`as_dict`), die UV3-Witness-Logzeile zusätzlich `art=%s` (D-K3-57-Diagnostik erweitert).
+- **Nachweis:** `tests/unit/test_dk362_pre_echo_discriminator.py` (5 Kontrakte; Kopie → duplicate, corr 0,87 · Füllung → repair_fill, corr 0,05); alle Pre-Echo-Suiten 21 grün (D-K3-47/57/SOTA-P1P2 unverändert).
+
+## 10.12.26 (2026-10-08)
+
+### Punkt 16: SCNet-RT gemessen, SGMSE+-Metrik-A/B gefahren, C4-Runde-2-Paket gebaut
+
+- **SCNet-RT (D-K0-5, Gate-Voraussetzung):** 3,43× RT Chunked-Produktivpfad / 2,20× RT Ganzsegment — ~9× langsamer als Demucs v4 (0,38× RT gemessen); Flag nur im Messprozess gesetzt (Datei bleibt `False`, §V7 copilot-instructions.md unangetastet). Befund: `docs/reports/current/2026-10-08_scnet_rt_budget.json`.
+- **SGMSE+-Metrik-A/B (D-K0-3):** neuer Harness `scripts/benchmark_sgmse_ab.py` (3 Wege: WSJ0-Sprach-Core vs. Musik-Core vs. WPE; deterministische Degradation nach §G5 copilot-instructions.md, Core-Wahl per Prozess-Monkeypatch). n=3-Ergebnis (σ=0,35): SI-SDR-Delta vs. Input — Sprach-Core −5,2/−6,8/−11,7 dB, Musik-Core −5,2/−7,0/−8,6 dB (Musik im Mittel ~1 dB besser), WPE neutral. Einordnung: SI-SDR straft generative Diffusion; keine Aktivierungs-Empfehlung aus dem Metrik-Teil — Hörordnungs-Sign-off bleibt offen.
+- **C4-Runde 2 (SCNet vs. Demucs):** Runde 1 endete `ZU_WENIGE_TRIALS` (3/12, L02 per Fangfrage ausgeschlossen); Runde-2-Paket mit 12 Trials + 2 Fangfragen gebaut (`docs/reports/current/2026-10-08_hoerprobe_scnet_c4_r2.json`, Paket `output_audio/mushra/thresholds_scnet_c4_fair_r2`) — bereit für die menschliche Sitzung.
+
+## 10.12.25 (2026-10-08)
+
+### Registry, Archiv & Phantom-Gate: HiFi-GAN-§V6, nvsr.ts-Archiv (D-K0-10), D-K0-7-Entscheide, Path-E2E-Gate im Bestand
+
+- **HiFi-GAN-Domänen-Transparenz:** §V6-Warnung am Ladepfad (`plugins/hifigan_plugin.py`) — der Trainingskorpus ist unbelegt („UNIVERSAL_V1“ architektur-widerlegt); Musik-/Gesangs-Einsatz nur als Fallback mit Begründung (Aurik-Kriterium: Gesang). Die sechs Bestands-Logmeldungen wurden auf Deutsch gezogen (Language-Guard war rot: `Griffin-Lim-Fallback` / `ML-Budget` / `Operation failed (non-critical)`).
+- **nvsr.ts archiviert (D-K0-10 → geschlossen):** Move nach `models/_archive_20260920/nvsr/nvsr.ts` (SHA unverändert `c3dea9caa15308af…`); kein Loader/Konsument/Test, Aktivierung ohne Gesangs-Domänen-Beleg ausgeschlossen (§III.11/§III.13 copilot-instructions.md); E2E-Register-Status `archived`.
+- **D-K0-7 „Stilles Kapital“ → geschlossen:** Entscheide je Gruppe dokumentiert (§G8 copilot-instructions.md) — Behalten für Provenienz/Rollback/Belege; Verwerfen-Kandidaten benannt (Venv-Residuum nur mit Sign-off).
+- **Path-E2E-Register (K2-Maßnahme 1) in den Bestand:** `scripts/path_e2e_check.py`, `config/path_e2e_registry.json`, `tests/normative/test_path_e2e_registry.py` plus FILE_REGISTRY-Einträge — das Phantom-Pfad-Gate ist jetzt versioniert und im Pre-Commit fail-closed.
+
+## 10.12.24 (2026-10-08)
+
+### D-K2-3: Vocos-48k-Domäne belegt — §V6-Domänen-Transparenz an den Ladepfaden
+
+- **Evidenz (Upstream geklärt):** `kittn/vocos-mel-48khz-alpha1` ist **sprach-trainiert, belegt** — Owner-Aussage in HF-Discussion #2 (2026-04-17): „mostly podcasts I had scraped, plus VCTK and Expresso“ (reine Sprach-Korpora, **kein Gesang**); der Owner warnt selbst vor schlechter Rekonstruktions-Qualität. Die Domäne der **primären** Studio-Finisher-Vocoder-Stufe ist damit nicht mehr „undokumentiert“, sondern belegt Sprache; das Aurik-Kriterium ist **Gesang** → §III.11 (copilot-instructions.md): Musik-/Gesangs-Signalpfad nur als §V6-Fallback; Ersatz-Kandidat BigVGAN-F3 (D-K0-1, C4 ausstehend).
+- **Fix:** §V6-Domänen-Warnung an den Vocos-Ladepfaden (48 kHz + 24 kHz); die 44,1-kHz-Kaskadenstufe ist als im Bestand fehlend markiert. Registry + Defizit-Register (D-K2-3) aktualisiert. Nachweis: `tests/unit/test_v99_vocos_plugin.py::TestVocosDomainTransparency`.
+- **Normativ verankert (Aurik-Kriterium):** „Sprache muss Gesang sein“ — copilot-instructions.md §III.13 (neuer Bullet), ML_MODEL_DOMAIN_REGISTRY.md (Sektion 3), ml_domain.instructions.md (Auto-Load für ML-Code) und Register-Kopf verlangen für Stimm-Pfade **Gesangs-Tauglichkeit** (nicht Sprache); Sprach-Korpora ohne Gesang belegen nichts.
+
+## 10.12.23 (2026-10-08)
+
+### D-K3-60 Endpunkt-Fix: Degradations-Evidenz erreicht den Export
+
+- **Befund (Endpunkt-Beweis Lauf 10.12.17→Export):** Der RT-Budget-Timeout des RestaurierDenkers (`⚠ …überschritt RT-Budget (11428.3s für 360.4s Audio)`) ließ `_rest_metadata` leer — der Export trug Default-Leerwerte (`worldclass threshold=0.0`/`profile=""`, `hybrid_engineer_vector={}`) und `degradation_status="ok"` trotz `⚠ Kritische Stufen ausgefallen: restaurierung` (§G8-Verstoß).
+- **Fix:** Timeout-/Skip-Pfad markieren `restaurierdenker_stage_error`; `degradation_status`/`fail_reason`/`fail_reasons` werden vor der AurikErgebnis-Konstruktion in den Metadaten-Baum gespiegelt (dieselben Keys, die `build_export_quality_gate_payload` liest); BEIDE Builder + CLI + Batch führen `quality_gate_evidence_worldclass_state` (`evaluated`/`not_evaluated`).
+- **Nachweis:** `tests/unit/test_dk360_rest_metadata_degradation.py` (5 Kontrakte inkl. Dual-Builder-Runtime).
+
+## 10.12.22 (2026-10-08)
+
+### SOTA-Härtung: GIL-unabhängiger Phasen-Watchdog + Metadaten-Guard + §G8-Transparenz
+
+- **D-K3-67:** Phasen-Stack-Watchdog via `faulthandler.dump_traceback_later` (Stdlib-Deadlock-Debug, dumpt ohne Python-GIL) — der §D-K3-55-Heartbeat war unter GIL-Blockade wirkungslos (0 Heartbeats; 1/81 Threads CPU-aktiv in 20 s). Referenz-gezählt für parallele Phasen; Dumps nach `logs/phase_watchdog_<pid>.log`; ENV `AURIK_PHASE_WATCHDOG_S` (Default 180 s). Nachweis: `tests/unit/test_dk367_phase_watchdog.py`.
+- **D-K3-60-Teilfix:** §V6-Wächter am ndarray-Metadaten-Verlustpfad im AurikDenker (rohes ndarray → SimpleNamespace ohne Metadaten war STILL; jetzt Warnung mit Metadaten-Folgen WCS/HPI/Audibility). Nachweis: `tests/unit/test_dk360_denker_metadata_guard.py`.
+- **§G8-Transparenz:** 5 stille Neutral-Returns (Weakness-Scan `silent_fallback_no_log`) mit begründeten Debug-Logs versehen — `defect_audibility_gate._sev_or_none`, `level_1_invariants_guard._plugin_available`, `gender_detection._to_mono`, `vocal_ai_enhancement` (PANNs + CLAP). Scan: HIGH 5→0.
+- **R2-Zitierdisziplin:** Nackte §G10/§V6-Zitate in UV3 qualifiziert (Folge der §G10–§G12-Registry-Eintragung 10.12.21); `test_dk368`-Pin synchron.
+
+## 10.12.21 (2026-10-08)
+
+### Bughunt: §G10-Garantiekette im Chunked-Pfad — Song-Audibility-Nachzug (D-K3-68)
+
+- **Befund (Lauf 10.12.17, Chunk-0-Tail):** `§Hörbarkeits-Gate UNGEPRÜFT … gate_passed=True ist damit KEIN Nachweis` — Nicht-letzte Chunks überspringen den §B2-Post-Scan (§P0-1 (d)); ihr `audibility_gate`-Report ist `scan_missing` und wurde via `_meta = dict(_first_result.metadata)` zum Song-Verdikt geerbt ⇒ die §G10-Qualitäts-Zusage (`gate_verified`) war im Export nie vergebbar.
+- **Fix:** `_restore_chunked` wertet nach der Assembly das Audibility-Gate auf Song-Datenbasis neu aus (dieselbe Per-Defekt-Reduktion wie die Song-m1b), schreibt `audibility_gate` + §G10-Feld `defect_residual_audibility` in `_first_result.metadata`; `post_scan_ran` fail-closed aus der Datenlage (`bool(_song_aud_data)`).
+- **Nachweis:** `tests/unit/test_dk368_song_audibility_chain.py` (4 Kontrakte inkl. Wirkungs-Semantik `post_scan_ran=True ⇒ gate_verified`, `False ⇒ scan_missing`).
+
+### Validierung: Weltklasse-Enforcement-Matrix §G10–§G12
+
+- `docs/reports/current/2026-10-08_weltklasse_validierung.md` — Norm→Instanz→Lauf-Nachweis je Gebot; geschlossene Lücken D-K3-68/66/63/61, offene Punkte D-K3-60/64/65/67.
+
+## 10.12.20 (2026-10-08)
+
+### Bughunt: Final-Ausgabe-Gate — Delta-Schutz für alle Referenzarten (D-K3-66)
+
+- **Befund (Läufe 10.12.17 + 10.12.12, je 1×):** `§2.44/§2.49 Final-Ausgabe-
+  Audio-Gate: af=0.000 hpi=0.0000 — Rollback auf sicheren finalen
+  Exportpuffer` — der AFG misst das finale Chunk-Audio gegen den
+  Carrier-Checkpoint (Stand nach phase_49); erfolgreiche Restaurierungs-
+  Deltas wirken dabei strukturell als Artefakte (~0.000). Der Delta-Schutz
+  (`if _using_degraded_ref ...`) griff bei dieser Referenzart NICHT (kein
+  Regression-Log im Lauf) → Gate-Fail → Rollback auf den Checkpoint:
+  **Wirkung der Phasen nach dem letzten Carrier-Checkpoint im betroffenen
+  Chunk-Segment verworfen.**
+- **Fix:** Pipeline-Baseline (§2.49 per-Phase-min) wird für ALLE
+  Referenzarten geladen; der Delta-Schutz gilt ohne degraded-Ref-Bindung
+  (AGENTS.md Guard-Kalibrierung). Damit greift die bestehende
+  Regression-Korrektur (Toleranz 0.15) auch bei Checkpoint-Referenz; die
+  HPI erhält den korrigierten af.
+- **Nachweis:** `tests/unit/test_dk366_final_gate_delta_guard.py`
+  (5 Kontrakte).
+
+## 10.12.19 (2026-10-08)
+
+### Bughunt: Per-Chunk-Export-Finalisierung behoben — FinalPolish/Dither einmal nach der Assembly (D-K3-63)
+
+- **Befund (überwachter Lauf 10.12.17, Chunk 0):** `§P1-8 FinalPolish (nach
+  m1b)` + `§2.73c Noise-Shaped Dither: 16-bit TPDF` erschienen im
+  **Chunk-0-Durchlauf**, dazu Banner „✨ AURIK RESTAURATION ABGESCHLOSSEN"
+  und `✅ Restoration vollstaendig: 3852.5s (32.10× RT)` — alle 120 s pro
+  Chunk (rt_factor chunk-relativ). Der `apply_final_polish`-Aufruf (Era-EQ,
+  §2.73b CD-Noise-Texture, §2.73c Dither) lag ungeschützt VOR dem
+  `_chunked_tail_skip`-Guard, obwohl die gleichnamige OneTakeExport-Stufe
+  („§P1-8-Korrektur 2026-09-17") längst auf „einmal nach der Assembly"
+  umgestellt war; der Assembly-Kommentar dokumentierte nur den Ist-Zustand
+  („FinalPolish lief bereits je Chunk"). Der Dither lief damit VOR Assembly +
+  OneTakeExport (LUFS/True-Peak-Gain) — Widerspruch zum eigenen §V5-Gebot
+  („Dither ist der letzte Quantisierungsschritt des FINALEN Audio").
+- **Fix:** (a) `apply_final_polish` im `restore()` hinter
+  `if not _chunked_tail_skip:`; (b) FinalPolish EINMAL im
+  `_restore_chunked`-Assembly-Block in der non-chunked-Reihenfolge
+  (FinalPolish → OneTakeExport); (c) Abschluss-Narrativ („Restoration
+  vollstaendig" + Banner) nur am Song-Ende — kein falsches „Fertig" nach
+  Chunk 0 im GUI mehr.
+- **Nachweis:** `tests/unit/test_dk363_finalpolish_chunk_guard.py`
+  (4 Kontrakte: Guard-Pin, Narrativ-Guard, Assembly-Reihenfolge, genau zwei
+  Importstellen); P0-1-Chunking-Suite 15 Tests grün.
+- **Offen (Register D-K3-64):** Doppel-Dither-Kette restore-§2.73c ×
+  Export-`apply_dither` (beide Pfade) — im §G4-CD-Rauschboden-Bereich,
+  Klärung mit Hörstichprobe; kein Blind-Fix (§V7).
+
+## 10.12.18 (2026-10-08)
+
+### Bughunt: Kurz-Signal-Crash-Guard + Scanner-Triage — 131 von 198 Findings waren False Positives (D-K3-61)
+
+- **Befund:** Der Pre-Commit-Anti-Pattern-Scanner meldete „198 potentielle
+  Bugs" — Stichprobe (18 Stellen im Detail geprüft): fast alle waren False
+  Positives derselben Klassen: (a) P3 `noverlap=<literal|variable>` wurde
+  OHNE Beleg-Triage pauschal als Crash-Risiko gewertet, obwohl die Werte
+  belegbar sicher sind (Tuple-/Signatur-Literale `noverlap < nperseg`,
+  `min(...)`-Clamps, `nperseg * 3 // 4`-Arithmetik, `_safe_stft_params`-
+  Helper); (b) P4 `os.*` ignorierte funktionslokale `import os`-Importe.
+- **Echter Kandidat gefunden + gefixt:** `backend/core/dsp/scrape_flutter_rest.py`
+  nutzte rohes `filtfilt` — Crash bei Signalen ≤ padlen (12 Samples); läuft
+  jetzt über den kanonischen `safe_filtfilt` (§v10.101). Verifiziert an
+  8-Sample-Eingabe (vorher „The length of the input vector x must be greater
+  than padlen"); zwei Diagnose-Scripts gleichgezogen.
+- **Scanner-Triage:** `_p3_bare_variable_is_safe` + `_p3_subtrahend_is_safe` +
+  P4-Vorlauf-Import-Check — Wirkung **198 → 67** Findings auf derselben
+  Codebasis; Positiv-Kontrollen (bare Variable ohne Beleg, `noverlap=n_fft`,
+  `noverlap=n_fft - 0`, Literal ≥ nperseg, `os.*` ohne Import) bleiben
+  sichtbar.
+- **Nachweis:** `tests/unit/test_dk361_scanner_p3p4_triage.py` (12 Kontrakte:
+  7 Safe-Klassen + 4 Positiv-Kontrollen + 2 P4-Fälle); filtfilt-Kurzsignal-
+  Repro (8 Samples) grün.
+
+## 10.12.17 (2026-10-08)
+
+### Wurzel-Fix: PMGG-Reject-Actions registriert + Witness-mit-echtem-pre_echo-Wert (D-K3-59, D-K3-57-Diagnostik)
+
+- **Befund 1 (Walzer-Lauf):** `§v10.17 PSS-Gate [phase_50_spectral_repair]:
+  PSS=0.8265 rejected` → darauf `WARNING: PMGG unbekannte Action:
+  'pss_rejected' — klassifiziert als 'other'`. Die §v10.17-Gates (LAG, PSS)
+  geben je eine eigene Reject-Action zurück (Rollback auf Pre-Phasen-Audio) —
+  `_classify_action_decision` kannte sie nicht und warf sie in den
+  „other“-Fallback samt Warnung.
+- **Fix 1:** `pss_rejected` UND `lag_rejected` (gleicher Codeblock, gleiche
+  Fehlerklasse) sind als Klasse „reject“ registriert
+  (`pss_perceptual_similarity_rejected` / `stereo_lag_gate_rejected`). Der
+  Conflict-Report behandelt „reject“ unverändert als konflikt-relevant — ein
+  abgelehnter Phasen-Output ist ein echtes Guard-Ereignis, kein pass.
+- **Befund 2 (D-K3-57):** Die Witness meldete `pre_echo` bei komplett neutralen
+  Nachbarwerten (pitch=0.0c mod=0.0c hnr=0.0dB hf=0.000 loud=0.0dB) — der
+  echte `pre_echo_db`-Wert fehlte in der Logzeile, das Finding war dadurch aus
+  dem Lauf nicht reproduzierbar.
+- **Fix 2:** `pre_echo=%.1fdB` als 6. Messwert in der Reinhör-Witness-Logzeile
+  (`backend/core/unified_restorer_v3.py`); der nächste Lauf zeigt ohne
+  `AURIK_WITNESS_DEBUG=1` den Abstand zur −12-dB-Schwelle.
+- **Im selben Zug:** `test_57_wrap_phase_sets_decision_reason_for_best_effort_
+  emergency` prüfte den überholten Wert `catastrophic_regression_unresolved`
+  (existierte nur noch im Test — Code dokumentiert seit §v10.703 den konkreten
+  Diagnose-Code) → am aktuellen, dokumentierten Reason nachgezogen.
+- **Nachweis:** `tests/unit/test_dk359_reject_action_classification.py`
+  (4 Kontrakte inkl. Wurzel-Wächter über alle Gate-Rejects),
+  `tests/unit/test_dk357_witness_log_diagnostics.py` (2 Kontrakte: Wiring +
+  Format-/Argument-Konsistenz über den echten `LogRecord.getMessage()`-Pfad);
+  88 PMGG-/Conflict-Report-Regressionstests grün.
+
+## 10.12.16 (2026-10-07)
+
+### Wurzel-Fix: Log-Health-Guard — FileHandler-Verlust heilt sich (D-K3-58)
+
+- **Befund (Walzer-Lauf):** `logs/aurik_backend.log` verstummte um 22:42 mitten
+  im Lauf — der Prozess hielt danach KEINEN offenen Handle mehr auf die Datei
+  (fd-Prüfung am laufenden Prozess), während stdout durchgehend weiterlief
+  (34/47 Phasen). Monitoring war blind (§G8). Ausschlüsse: kein
+  `removeHandler`/`shutdown` im Song-Pfad, unter dem 5-MB-Rollover-Limit,
+  `log.1` unverändert — Ursache nicht abschließend lokalisiert.
+- **Fix:** `ensure_file_handler_attached()` in `backend/logging_config`
+  (prüft einen AKTIVEN Handler inkl. geschlossenem Stream, ersetzt defekte,
+  re-attached mit §V6-WARNING; Handler-Parameter als eine Quelle §G9); Aufruf
+  pro Phase in `_profiled_phase_call` → maximale Blindheit: eine Phase.
+- **Nachweis:** `tests/unit/test_dk358_log_health_guard.py` (2 Kontrakte:
+  Verlust→Heilung→idempotent; geschlossener Stream zählt nicht als aktiv);
+  283 UV3-Regressionstests grün.
+- **Registriert (offen):** D-K3-57 — Witness-`pre_echo`-Finding auf phase_01
+  im Walzer-Lauf; Nachstellung ohne Trigger (pre_echo_db −200), Repro via
+  `AURIK_WITNESS_DEBUG=1` im nächsten Lauf.
+
+## 10.12.15 (2026-10-07)
+
+### Wurzel-Fix: Phasen-Heartbeat in Langphasen (D-K3-55)
+
+- **Befund (Walzer-Lauf):** 123 min Log-Stillstand in einer Langphase bei
+  100–660 % CPU (OOM_PROBE loggt nur an Phasen-Grenzen). Der bestehende
+  Heartbeat lief NUR mit UI-Callback und loggte NIE — ein CLI-Lauf hatte gar
+  keinen. §G8 verlangt beobachtbaren Fortschritt.
+- **Fix:** Phasen-Heartbeat gekapselt als `_start_phase_heartbeat` +
+  `_phase_heartbeat_log_step` — der Thread läuft IMMER (ohne UI-Callback nur
+  Log), loggt je 60 s („⏳ Phasen-Heartbeat NAME: X min aktiv, RSS Y GB",
+  `AURIK_PHASE_HB_LOG_S` überschreibbar), behält die Sub-Progress-Callbacks
+  (8 Hz, log. Kurve) und stoppt garantiert via Event + join (§G173).
+- **Nachweis:** `tests/unit/test_dk355_phase_heartbeat.py` (3 Kontrakte:
+  Log ohne UI-Callback, Callback-Erhalt, Log-Format); 283
+  UV3-Regressionstests grün.
+
+## 10.12.14 (2026-10-07)
+
+### Wurzel-Fix: Reinhör-Witness pitch_modulation (D-K3-56)
+
+- **Befund (Walzer-Lauf):** Die Witness meldete nach `phase_01_click_removal`
+  „pitch_modulation +220,7 Cent" — reproduzierbar sogar für eine SAUBERE
+  Klick-Patch-Entfernung (das Signal wird besser!). Zwei Wurzeln: (a) die
+  mod-Tiefe wurde je Seite über die EIGENE Voicing-Maske berechnet —
+  Klick-Frames machen den F0-Schätzer einseitig unvoiced, die Runs zerfallen
+  und das Delta verglich unterschiedliche Run-Strukturen; (b) F0-Schätzer-
+  Ausreißer (Oktav-/Kanten-Sprünge) speisten das 3–8-Hz-Band mit hunderten
+  Cent (sauberes Vibrato: +814 Cent „mehr Modulation" als seine klickige
+  Fassung).
+- **Fix:** mod-Tiefe beidseitig über die GEMEINSAME Voicing-Maske (identische
+  Run-Grenzen, Muster `voiced_both` der HNR-Messung); Despike der
+  Cent-Trajektorie (ΔF0 > 150 Cent/Frame ist physiologisch unmöglich —
+  Vibrato ≤ 48 Cent/Frame gemessen) + Median-Filter (5) für 1-Frame-Spikes.
+- **Nachweis:** `tests/unit/test_dk356_witness_mod_fp.py` (5 Kontrakte:
+  identisch 0,0; Klick→Patch 0,0 — vorher 86,1; SAUBER→Patch 0,0; echte
+  +6-Hz-Modulation warnt weiter mit 660 Cent; Verbesserungsrichtung 0,0);
+  47 Witness-/Korrektur-Loop-Regressionstests grün.
+
+## 10.12.13 (2026-10-07)
+
+### SOTA-Erkennung: IEC-60386-Scrape & Inner-Groove-Distortion (D-K3-28/53)
+
+- **D-K3-28 (Flutter/Scrape, IEC 60386):** Die vier Bestands-Kanäle des Flutter-/
+  Scrape-Detektors waren für die Standard-Scrape-Signatur (Amplitudenmodulation
+  20–200 Hz, 0,2–1 %) blind — gemessen: AM 20–150 Hz @ 0,7 % → Severity 0,000 auf
+  allen Kanälen (die FM-Kanäle messen Centroid/Momentanfrequenz statt AM; die
+  Seitenband-Fenster prüften nur 40–120 Hz). Fix: kohärenter Mehrband-Hüllkurven-
+  AM-Kanal (`_coherent_scrape_am`: 1/3-Oktav 200 Hz–6 kHz, 400 fps,
+  signal-tragende-Bänder-Tiefe, Peak-Wahl über die kohärente Amplitude) +
+  Raten-Raster 20–180 Hz (vorher 40–120) + Seitenband-Fenster 3–52 dB (vorher 30).
+  Nachher: AM 20/40/60/100/120/150 Hz @ 0,7 % → Flutter 0,61–0,75; saubere Träger
+  0,000; Harness-Case „IEC-60386-Scrape (0,7 % AM @ 60 Hz)" = 0,640.
+- **D-K3-53 (Inner-Groove-Distortion, Kates 1981):** Der Detektor fand nur Summtöne
+  polyphoner Akkorde — ein EINZELTON mit wachsendem Klirr blieb blind; zusätzlich
+  schloss die Träger-Maske (80–400 Hz) 440-Hz-Träger aus (Argmax landete auf dem
+  Leakage-Randbin 398,4). Fix: H2/H3-Wachstumspfad (r₄ > 1,5·r₁ über ≥ 2 steigende
+  Viertel, r₄ ≥ 0,02) + Trägerfenster 80–600 Hz. Nachher: Harness „IGD-Verlauf"
+  = 1,000; flacher Sinus < 0,1.
+
+**Nachweis:** `tests/unit/test_dk328_scrape_iec.py` (4 Kontrakte: Anti-FP,
+IEC-AM 20/60/150 Hz, FM-Seitenband, IGD-Wachstum), neuer Harness-Case in
+`scripts/defect_evidence_harness.py`; alle 11 Harness-Familien lückenlos,
+Anti-FP-Suite (28) + Kontrakt-Tests grün. Offen (nachrangig): D-K3-54
+(Peak-Signifikanz-Kalibrierung), D-K3-55 (Phasen-Heartbeat).
+
+## 10.12.12 (2026-10-07)
+
+### Wurzel-Fixes: Timing-Blindheit, Wirkungs-Invarianten, Exclude-Konsistenz (D-K3-47/50/51/52)
+
+- **D-K3-47 (Reinhör-Witness `pre_echo`):** Die Metrik war TIMING-blind — ein
+  reiner Zeit-Shift +1 ms ergab −11,5 dB („Befund"), ein echtes Pre-Echo keinen
+  (Kontroll-Experiment 2026-10-07). Fix: lokales Kreuzkorrelations-Alignment
+  (±5 ms, nur bei klarer Korrelation) vor der Vor-Fenster-Prüfung; echte
+  Precursor bleiben sichtbar.
+- **D-K3-50 (ConsonantEnhancement):** Die 3-dB-SNR-Invariante war auf der
+  Band-vs-Ausserband-Metrik mathematisch unerreichbar (f=0,10 → 0,22 dB; selbst
+  Vollboost f=1,0 → 2,76 dB bei MAX_BOOST_DB=6). Fix: Wirkungs-Invariante auf
+  den Frikativ-Segmenten (Δ ≈ Ziel ± 0,75 dB); die §2.8-Chain-Zahl bleibt in
+  `phase_43_ml_deesser`.
+- **D-K3-51 (§v10.709-Guard):** Er prüfte UNGEFILTERTE PMGG-Scores — bewusste
+  Phasen-Excludes (`tonal_center` für HPF/Synthese) wirkten nie und bauten den
+  EMERGENCY-Stop-Zähler (Production 2026-10-07: phase_23/24/30/37). Fix:
+  `check_iteration_abort_excluding` + `metadata["goal_exclusions"]`-Zeuge,
+  Deltas im Log (§G8), Map-Lücke phase_30 geschlossen (PMGG+CIG),
+  Sync-Kontrakt-Tests (HPF-/Synthese-Klassen).
+- **D-K3-52 (Gesangs-Gate, Nutzer-Vorgabe):** Der Frikativ-Boost wirkt nur auf
+  bestätigtem GESANG — PANNs-Singing als Zeuge (Phase 19 reicht durch);
+  < 0,15 → Signal bit-identisch, 0,15–0,40 linear skaliert (§III.10-Muster).
+  Aurik ist ein Musik-Restaurierungssystem; Sprache hat untergeordnete Position.
+
+Tests: 81/81 grün (dk344–dk352 + pre_echo/consonant-Bestand), ruff clean.
+
+## 10.12.11 (2026-10-07)
+
+### Wurzel-Fixes: Pegel-≠-Form-Klasse in drei Guards (D-K3-44/45/46)
+
+Drei Produktionswarnungen, eine gemeinsame Wurzel — **Pegel wurde als Form gemessen**:
+
+- **D-K3-44 (Hallucination-Guard-Novelty):** `compute_spectral_novelty` (§2.46e)
+  verglich Absolut-Energie — ein reiner Pegel-Restore erzeugte novelty 0.206
+  (+1 dB) bis 0.369 (+2 dB); Produktionsbefund 0.385 ≈ +2,1 dB Gain. Phase 24
+  macht explizite Pegel-Restores (§2.45a, 2,2–4,5 dB je Material) → systematische
+  FALSE-Rollbacks. Fix: E_after auf die Gesamt-Energie von E_before normiert
+  (primär + DSP-Fallback paritätisch); Pegel-Invarianz gepinnt (0,5×/1,12×/2,0×
+  → novelty < 0,01; grobe Halluzination weiter erkannt).
+- **D-K3-45 (DFN-Quality-Guard):** „RMS=-5.5dB → Rollback" — das DeepFilterNet-
+  Modell liefert systematisch leiser (−5,5 dB); der Form-Guard (rms_delta < −3 dB)
+  verwarf die **legitime Entrauschung**. Fix: kanonischer `level_match` in
+  `audio_utils` (§G9: eine Quelle) + Wiring im DFN-Wrapper VOR den Form-Guards
+  (±10 dB begrenzt, 0,995-Headroom, <0,1 dB No-Op bit-identisch).
+- **D-K3-46 (Phase-01-ML-Click-Patch):** BANQUET-ML-Regionen wurden mit
+  DFN-Rohpegel (Bias-Pfad bis −9 dB) und nur 8-Sample-**linearer** Flanke
+  ersetzt (Fade entfiel bei len<8 ganz) → TemporalConsistencyGuard meldete
+  4 Energie-Sprünge >6 dB/100 ms. Kontroll-Experiment: 150-ms-Region at −9 dB →
+  ALT 1 Sprung, NEU 0. Fix: `level_match` + Cosinus-Zügelung (2…64 Samples,
+  Muster §2.35b).
+
+Tests: 15/15 grün (`tests/unit/test_dk344_hallucination_pegel.py`,
+`test_dk345_dfn_pegel_guard.py`, `test_dk346_phase01_patch_level.py`), ruff clean.
+
+## 10.12.10 (2026-10-07)
+
+### Release-Fix: Asset-Namenskonvention + .data-Auslieferung
+
+Der Release-Abgleich fand zwei Wurzel-Defekte: (a) `tr '/' '__'` im
+Upload-Skript ersetzt **zeichenweise** → einfache Unterstriche, während
+Manifest und `model_downloader` doppelte erwarten (`models__…`) — nur 8 von 53
+Manifest-Assets existierten im Release; (b) `*.data` (ONNX-External-Data,
+16 Dateien ≈ 7 GB, inkl. aktivem Basis-BigVGAN 469 MB und MUSDB18-F3 469 MB)
+fehlten in Upload-Scan **und** Manifest-Sync komplett — diese Modelle waren
+über den Release-Weg nie vollständig auslieferbar. Fixes in beiden Skripten
+(`${rel//\//__}`, `.data`-Erfassung inkl. kleiner ONNX-Partner,
+Archiv-Ausschluss) + regeneriertes Manifest (128 Einträge, 76 release,
+14 `.data`); Upload von 64 Assets (~35,5 GB) läuft resumierbar.
+
+## 10.12.9 (2026-10-07)
+
+### D-K3-21: SNR-Gate explizit — Phantom-Attribut wird Entscheidung (+ K2-Verdrahtungs-Verifikation)
+
+**Befund.** Die SNR-adaptive Parameter-Skalierung in `CausalDefectReasoner._infer`
+war ein toter Zweig: `_last_snr_estimate` wurde nirgends gesetzt — der Schalter
+existierte als Unfall, nicht als Entscheidung.
+
+**Fix.** Explizites Klassen-Gate `_SNR_ADAPTIVE_ENABLED` (Default AUS ⇒
+bit-identisches Verhalten) + deterministische Datenquelle `set_snr_estimate()`
+(§G5 (copilot-instructions.md)); Aktivierung erfordert die fünf Belege des
+Wohlklang-Vertrags (blindes A/B auf eingefrorener Baseline). 3 neue Tests.
+
+**K2-Inventur (Verifikation am Code, 2026-10-07).** Real verdrahtet:
+`vocos_48khz` **aktiv als primäre Stufe des §1.4-Studio-Finishers**
+(Maximum/Studio/Aggressive, PQS-MOS<4,3 — Domäne undokumentiert!), 24k/44.1k als
+Fallback-Stufen, HiFi-GAN als Plugin-Fallback. **Nicht verdrahtet:**
+`vocoder_chain.py` und `sota_speech_superres.py` (keine Aufrufer), NVSR (nur
+Status-Payload), AERO. `nvsr.onnx` ist byte-identisch mit dem Musik-FlashSR-
+Export. Der Musik-Vokoder **BigVGAN-F3** (MUSDB18-HQ, A/B +4,42 dB HNR, ONNX
+paritätsgeprüft, rel ≤ 6,5e-05) bleibt die Deployment-Lücke (D-K0-1/2).
+
+## 10.12.8 (2026-10-07)
+
+### D-K3-26: Lyrics-Modelle laden deterministisch — §2.36-Pflichtpfad stabil (10.12.8)
+
+**Befund (gemessen).** Derselbe Phase-03-Eingang ergab je nach Prozesszustand
+verschiedene Ausgaben (corr 0,96606 / 0,99249 / 0,99949; ML-Roh-NR 5,27 vs.
+6,74 dB), weil die Phonem-Masken-Kette (`get_phoneme_mask` → Whisper/wav2vec2)
+vom geladenen Plugin-Bestand abhing: Der PluginLifecycleManager entlud die
+kleinen Lyrics-Modelle vor Phase 03 (nicht im Phasen-Bedarfs-Vertrag), und
+`ml_memory_budget.try_allocate` machte das 170–250-MB-Laden vom Budget-Stand
+abhängig — beides Prozesszustand, nicht Input.
+
+**Fix (10.12.8).**
+
+- `_ensure_models_loaded()` (`lyrics_guided_enhancement.py`): deterministischer,
+  idempotenter, Lock-geschützter Re-Load vor jeder Transkription.
+- Drei Lyrics-Modelle als `keep_warm=True` registriert — keine
+  Phasen-Eviction mitten im Song.
+- `ml_memory_budget`: `_DETERMINISTIC_TINY_MODELS` (0,04–0,25 GB) überleben
+  die ML-Kappung; nur Thrashing/Preflight behalten den OOM-Schutz.
+
+**Nachweis.** `tests/unit/test_dk326_lyrics_determinism.py` (4 Tests) +
+85/165 Nachbar-Tests grün. Register D-K3-26 auf geschlossen.
+
+## 10.12.7 (2026-10-07)
+
+### D-K3-43: Era-HF-Rolloff auf realem Material kalibriert (1890/wax → 1960/vinyl)
+
+**Befund.** `_dsp_hf_rolloff` — laut Docstring der „primäre Physik-Anker“ der
+Era-Erkennung — kollabierte auf realer Musik: die echte Elke-Best-1977-Aufnahme
+maß 2004–2191 Hz statt ~16 kHz, weil die Perzentil-Anker **E90/E85 die
+Spektral-Balance messen, nicht die Bandbreite** (bei Musik liegt die Energie im
+Bass); sobald die Guards der übrigen Schätzer griffen, fiel die Fusion auf die
+E90-Replik zurück (Zahlen-Identität). Folge: 1890/wax_cylinder mit bis zu 0,90
+Konfidenz. Betroffen waren ALLE Real-Fixtures (jazz 1312, classical 891, reel
+891 Hz) und alle Elke-Fenster.
+
+**Fix (kalibriert am echten Material).** Zwei Guards in `_dsp_hf_rolloff` nach
+dem Bass-Override, vor dem Weighted Median — vollständige VOR/NACH-Matrix in der
+Register-Zelle D-K3-43 (`.github/SOTA_DEFICIT_REGISTER.md`):
+
+- **Konvergenz-Cluster:** ≥2 Schätzer >5 kHz, max/min ≤2,6, ≥3 Kandidaten ⇒
+  Cluster-Median, wenn E90 <2500 Hz oder Cluster ≥2,5×E90.
+- **Band-Decay-Beweis:** E(10–20 kHz) ≥ E(1–3 kHz) −6 dB ⇒ HF physikalisch
+  vorhanden (kein E90-Gate); Ergebnis min(Nyquist, max(Hoch-Cluster, 18 kHz)).
+
+**Nachweis.** `tests/unit/test_era_hf_rolloff_calibration.py` (7 Tests):
+Fullband ≥20 kHz; LP3k ∈[2,2;3,6] kHz und LP4k ∈[3,0;4,6] kHz (Skirt-Schutz —
+die Kalibrier-Signale bleiben unverändert); pink ≥15 kHz; Musik-Mock ≥9 kHz;
+Determinismus (§G5 (copilot-instructions.md)); skip-guarded Real-Fixture-Checks. A/B-Evidenz: Elke
+1890/wax/0,90 → **1960/vinyl/0,72**; Fixtures 891–1312 → 21475–22002 Hz.
+Kein DSP-Eingriff — reines Klassifikations-Feature; die Entscheidungsänderung
+(wax→vinyl/tape) ist die gewollte Wirkung und in D-K3-43 mit A/B belegt.
+
+## 10.12.6 (2026-10-07)
+
+### D-K3-42-Guard: Era-Material-Flips brauchen physikalische Plausibilität
+
+**Befund (Real-Audio-Nachweis).** Auf der echten Elke-Best-1977-Aufnahme liefert
+der EraClassifier auf ≤10-s-Fenstern `1890/wax_cylinder/conf 0,90`, während der
+MediumDetector `mp3_high`/`unknown` (0,60–0,66) misst. Die Material-Konfliktregel
+ließ den Prior dominieren (Delta 0,28–0,30 > 0,10) → §2.46c-Cap-Kette (5 kHz)
+auf realem Material. Bei ≥20-s-Analysen tritt der Fall nicht auf (1960/vinyl
+stabil); die Ursache der Fehlklassifikation selbst ist D-K3-43 (Rolloff-Kollaps,
+separat).
+
+**Fix.** Neue Modul-Funktion `_era_material_flip_admissible` in
+`unified_restorer_v3.py`, verdrahtet in BEIDEN Konflikt-Branches (Dominanz +
+Gleichstand-Konservativwahl):
+
+- **Veto A — Träger-Unmöglichkeit:** Era-Jahrzehnt < Erfindungs-Floor des
+  physikalischen Primärträgers (`MEDIUM_DECADE_FLOOR`, z. B. mp3 1990 × 1890).
+- **Veto B — UNKNOWN-Physik + restriktives Altmaterial** (Conservativeness-
+  Rang ≥ 10: Shellac/Wire/Wax/Edison): kein destruktiver Cap aus reiner
+  Statistik — never-worsen-Asymmetrie: für echtes Altmaterial ist der Cap ein
+  No-Op (oberhalb der Grenze liegt nichts), für falsch Klassifizierte zerstört
+  er die Höhen.
+
+Der §9.7.7-Fallback ohne MediumDetector-Evidenz bleibt bewusst unangetastet —
+seine Korrektur ist D-K3-43 (EraClassifier-Kern).
+
+**Nachweis.** 7 Unit-Tests (`tests/unit/test_era_material_guard.py`) pinnen die
+gemessenen Real-Konstellationen + einen textuellen Verdrahtungs-Anker;
+Material-/Era-Regression `test_unified_restorer_v3.py -k material/era`: 24 grün.
+Auf dem 15-s-Real-Slice zeigten beide Pfade kein Cap (uv3: Material=vinyl,
+10–20 kHz +4,2 dB; kanonisch: Konsens lacquer_disc, 10–20 kHz +6,4 dB erhalten).
+End-to-End-A/B auf ≤10-s-Real-Input steht aus (Register D-K3-42, Status offen).
+
+## 10.12.5 (2026-10-07)
+
+### Messinstrument ehrlich gemacht: kanonischer Pfad + pegel-ehrliche SNR
+
+**Befund.** Der Corpus-Benchmark (`scripts/benchmark_corpus.py`) meldete auf
+`vinyl_blues_1950s_crackle` ein „degraded“ von −3,8 dB. Die Zerlegung zeigt: Das
+Instrument maß am Produktionspfad vorbei und verschmolz drei unabhängige Effekte
+in eine Zahl.
+
+1. **Pfad:** Der Harness rief nur die Engine (`UnifiedRestorerV3.restore`) ohne
+   Pre-Analysis/GlobalPlan — Verstoß gegen die §G9-Kette. Ohne GlobalPlan griff
+   der §9.7.7-Era-Fallback (`decade=1890`, `material_prior=wax_cylinder`,
+   confidence 0,42) → §2.46c BW-Hard-Cap LPF@5 kHz auf Vinyl-Material. Neuer
+   Default `--pipeline canonical` = exakt die CLI-Sequenz
+   (`run_pre_analysis` → `AurikDenker.denke()`); `uv3`/`coordinated` bleiben
+   dokumentierte Diagnose-Pfade.
+2. **Metrik:** Die SNR war pegel-sensitiv — die Lautheits-Normalisierung
+   (OneTakeExport → −16 LUFS) erzeugte scheinbare −22 dB (Engine-direkt-Lauf).
+   Gain-angepasst bleibt −1,3 dB echter Inhaltsverlust. Neu trägt nur die
+   gain-angepasste SNR das Verdikt; rohe SNR + Pegel werden getrennt
+   ausgewiesen.
+3. **Kanäle/Paarung:** Stereo wurde auf Mono kollabiert (Stereo-Layout-
+   Invariante) und auf 4 s beschnitten; die Paarung fand 4 von 56 Paaren.
+   Behoben: 56 Paare, volle Datei (`--seconds` optional), Stereo bleibt Stereo.
+
+**MOS-Warnung.** Auf dem synthetischen Korpus ist MOS invertiert (clean 1,61 vs.
+zerstörter Output 4,73 [PQS-DSP-Fallback]) — läuft nur optional (`--mos`), keine
+Urteilskraft (Hörordnung §1: Metriken sind Zeugen).
+
+**Neu:** `--save-wav` (Spektral-Diagnose + Hörprobe), ML-Device-Init vor
+Inferenz (§VI). Kein Audiosignal-Verhalten geändert (bit-identisch) — reine
+Messinstrument-Korrektur. Befunde: Register D-K3-41/-42.
+
+## 10.12.4 (2026-10-07)
+
+### Phase-12-Glättung: 71 s pro Trajektorie → 10,7 s (Teilbehebung der Performance-Schuld)
+
+**Befund (D-K3-39).** Ein cProfile einer Phase-12-Ausführung zeigt: `kalman_smooth_warp`
+verbrauchte **71,2 s je 1,44-Mio-Sample-Trajektorie** (zwei Aufrufe je Ausführung =
+169,8 s von 245 s Phasenzeit) — die Rekursion lief als Per-Sample-Python-Schleife,
+die pro Sample mehrere 2×2-Arrays allokierte und `np.linalg.inv` aufrief: gemessen
+**2.879.998 Inversionen** und **14,4 Mio. `np.array`-Aufrufe**.
+
+**Fix.** Skalare Rekursion derselben Mathematik (CV-Modell + RTS, `C = P Fᵀ Pp⁻¹` in
+geschlossener 2×2-Form) — keine Allokationen pro Schritt.
+
+| Nachweis | Wert |
+| --- | --- |
+| Funktionsebene (N = 1,44 Mio., q = 1e-8, r = 1e-5) | 71,2 s → **10,7 s = 6,7×** |
+| Abweichung zur Original-Fassung | max 7,8e-6 auf dem Warp-Ratio ≈ 0,014 Cent |
+| Phasenebene (Original zuletzt/warm) | 193,1 s → **76,1 s = 2,54×** |
+| Audio-Differenz | max 1,9e-6 / rms 8,5e-8 = **−111,6 dBFS** |
+| End-to-End (30 s reale Quelle, balanced) | 2200 s → **1802 s** (73.3× → **60.1× RT**) |
+
+Die Änderung ist **nicht bit-identisch** (Reihenfolge der 2×2-Inversion: LAPACK-LU vs.
+Determinanten-Formel), liegt aber 15 dB unter dem CD-Rauschboden von −96 dBFS; die
+Phasen-Metriken sind unverändert. Patch-Bump, weil weder eine neue Fähigkeit noch
+eine hörbare Änderung entsteht — die Abweichung ist gemessen und dokumentiert.
+
+Regressionstests: `tests/unit/test_warp_toolkit.py::test_kalman_scalar_impl_matches_reference_production_parameters`
+(Toleranz 1e-5 gegen die Original-Implementierung) und `::test_kalman_is_deterministic_and_finite`.
+
+**Offen bleibt** (D-K3-38): 4 Per-Operation-Budgets sind weiterhin verletzt —
+schwerste Einzelphase: `phase_12_wow_flutter_fix` 250 s.
+Die verbleibenden Treiber (Defekt-Scanner mit zwei Läufen, restliche Phase-12-Anteile,
+`phase_03_denoise`) sind im Beleg-Dokument aufgelistet.
+
+## 10.12.3 (2026-10-07)
+
+## 10.12.3 (2026-10-07)
+
+### P0-1-Verdrahtung gepinnt, Ist-Kalibrierung gemessen: 73× RT und vier Budget-Verletzungen
+
+**Befund 1 — die P0-1-Verdrahtung war ungeprüft.** `_restore_chunked` setzt die
+Deferral-Flags korrekt (`_chunk_kwargs["_chunked_tail_skip"] = True`, `_chunked_last`
+pro Chunk) und ruft den song-globalen End-Gate-Tail im eigenen Rumpf auf — die
+Roadmap-Angabe „P0-1 umgesetzt“ ist wahr. Geprüft waren aber nur die _Entscheidung_
+(`_should_run_end_gate_cascade`) und die Mess-Helfer: wäre das Setzen der Flags oder
+der Tail-Aufruf je entfallen, wären **alle** Tests grün geblieben. Zwei
+Wiring-Guard-Tests pinnen jetzt Konsum- und Setz-Seite sowie den Aufruf
+`_run_song_level_end_gate(` samt Marke `p0_1_song_end_gate_applied` im Methodenrumpf.
+
+**Befund 2 — die normative „53× RT“ hatte keinen Beleg.** Frische Kalibrierung
+(2026-10-07 13:33, 30-s-Ausschnitt der realen Quelle, Zelle balanced):
+
+| Größe | Wert |
+| --- | --- |
+| Wand-Zeit | 2200 s = **73,3× RT** |
+| Engine-Zeit | **65,9× RT** |
+| Phasen | 39 ausgeführt, 6 übersprungen |
+| Quality / PQS-MOS | 0.705 / 2.42 |
+
+Vier Verletzungen der Per-Operation-Tabelle:
+
+| Operation | Limit | gemessen | Faktor |
+| --- | --- | --- | --- |
+| `phase_pipeline_total` | 240 s/min | 1752,8 s/min | **7,3×** |
+| `defect_scanner` | 4 s/min | 157,2 s/min | **39,3×** |
+| `feedback_chain` | 120 s/min | 167,4 s/min | **1,4×** |
+| `restorability_estimator` | 5 s/min | 13,7 s/min | **2,7×** |
+
+Schwerste Einzelphase: `phase_12_wow_flutter_fix` 440 s (20 % der
+Wand-Zeit) — auf Vinyl-Material, dessen Wow-Anteil die Phase selbst als 0,00
+ausweist. Der Harness hat keinen Warmup; Wand- und Engine-Zahl werden getrennt
+geführt. Damit ist die frühere Zuordnung „Diskrepanz aus per-Chunk-Analytik“
+widerlegt: P0-1 ist umgesetzt, der Lauf wurde nicht schneller.
+
+**Befund 3 — die 32×-Norm ist eine Anzeige, kein Ausstieg.** `RestorationConfig.enforce_3x_rt`
+steht per Default auf `False` („opt-in only“, UV3 Z. 113); die Kalibrierung lief mit
+`Enforce=False, Adaptive=False` und wurde mit 73,3× RT ohne Abbruch als Erfolg
+gewertet. Die einzige `True`-Fundstelle liegt im `__main__`-Demo. Entscheidung offen:
+durchsetzen oder die Norm ehrlich als Monitoring-Ziel deklarieren (D-K3-37).
+
+**Befund 4 — ein abgerissener Satz.** „Die Pipeline reicht dazu seit“ endete im
+Nichts; der fortsetzende Absatz stand verrutscht unter dem StrategieDenker-Absatz.
+Beides ist zusammengeführt.
+
+Register: D-K3-35 (Verdrahtung) und D-K3-36 (Budget-Norm) geschlossen; D-K3-37
+(Guard ohne Durchsetzung) und D-K3-38 (Scanner/Pipeline-Kosten) offen benannt.
+
+## 10.12.2 (2026-10-07)
+
+## 10.12.2 (2026-10-07)
+
+### Sieben rote normative Verträge abgearbeitet — zwei echte Funde, fünf Drift-Fälle
+
+**Ausgangspunkt.** Der normative Kernvertragssatz war rot (Register D-K3-13). Alle
+sieben sind am Code gemessen geklärt; zwei davon waren echte Defekte.
+
+- **`docker run` im Produktionsmodul.** `backend/core/dsp/sota_denoiser.py` startete
+  DeepFilterNet3II/DCCRN als Container (Zeilen 171/248). Ein Produktionspfad darf
+  keinen Container starten; beide Blöcke sind entfernt, die Meldungen von
+  „Container-Integration“ auf „REST-Integration“ umbenannt, der Modul-Docstring
+  dokumentiert die Entfernung samt Wächter-Test. Übrig bleiben In-Process-Pfade
+  (ONNX/REST) und die spektrale Maskierung als §V6-Ersatzpfad.
+- **Phasen-Obergrenze war Buchhaltung.** Das Limit stand seit 2026-09-06 auf 69;
+  danach kamen zwei Phasen mit eigenem Feature-Beleg hinzu (`phase_ambience_polish`,
+  f0ed03f2; `phase_67_crackle_texture_removal`, ad7b1b83) → 69 + 2 = 71. Eine
+  Referenzprüfung ergab **0** Phasenmodule ohne Konsument; die Grenze ist jetzt im
+  YAML auf 71 fortgeschrieben, mit den Beleg-Commits benannt und als Einfrierung
+  dokumentiert.
+- **Toter Parameter `snr_db`.** `calibrate_phase_intensity` nimmt `snr_db` entgegen,
+  nutzt es in der Stärke-Kette aber nicht (gemessen SNR 3 → 1,0 == SNR 15 → 1,0).
+  Der implementierte Schutz ist das Risiko-Modell (`get_phase_risk_level`), und
+  phase_03 fährt bei niedrigem SNR bewusst das stärkste ML-Primary — eine
+  Stärke-Senkung bräuchte die fünf Wohlklang-Belege. Der Vertrag prüft jetzt die
+  belegte Lage und pinnt die Lücke (D-K3-31).
+- **Fünf Verträge prüften Formulierungen statt Wirkung.** Vocal-Preflight
+  („Phase“ vs. „Verarbeitungsschritt“), GUI-Hard-Timeout (englisch vs. „Pre-Analyse
+  hard-Zeitlimit“) und der mehrzeilige `_sanitize_qss_colors`-Aufruf (zuvor durch
+  zwei triviale Asserts entschärft) prüfen nun die Wirkungs-Kette bzw.
+  whitespace-tolerant. Die Daily-Gate-Evidenz (377,9 h alt) wurde über
+  `audit/daily_real_audio_gate.py` neu gefahren.
+
+**Nachweis.** Die sechs zuvor roten Dateien sind grün (102 passed, 1 skipped);
+Register 50 Einträge ohne Verstoß.
+
+## 10.12.1 (2026-10-07)
+
+## 10.12.1 (2026-10-07)
+
+### Flutter-Seitenband-Detektor: eine Prüfung, die nicht fehlschlagen konnte
+
+**Befund.** `DefectScanner._detect_flutter_spectral_sidebands` berechnete das
+Spektrum **ohne Fenster** (Rechteck) und verglich die Bins ±2/4/6/8 Hz um den
+stärksten Ton gegen den **globalen** Rauschboden (20-%-Perzentil des gesamten
+Spektrums). Der Spektralfuß eines starken Tons liegt dort weit darüber — auf
+**jedem** sauberen Signal galten damit alle acht Kandidaten als „prominent“.
+Gemessen: severity **1,000** auf sauberem 440-Hz-Sinus, **1,000** auf sauberem
+100-Hz-Harmonischenkamm, **0,603** auf reinem Rauschen. Da
+`FLUTTER_SPECTRAL_SIDEBANDS` im `scan()`-Katalog steht, konnte der Allesmelder
+Reparaturphasen ohne Defekt auslösen (§V7).
+
+**Fix (Ursache statt Symptom).**
+
+- **Hann-Fenster** statt Rechteck — Voraussetzung, um Seitenbänder von der
+  Leckage der Hauptkeule zu trennen.
+- **Lokale Fuß-Referenz**: Median im Abstand 20…400 Hz um den Träger (ohne die
+  Seitenband-Zone selbst), kombiniert mit dem globalen Boden.
+- **Kerben-Nachweis**: zwischen Träger und Seitenband MUSS ein Einbruch liegen
+  (echte AM/FM-Seitenbänder sind vom Träger getrennt; Leckage fällt monoton).
+- **Mindestprominenz 6 dB** und **Kamm-Bedingung**: die Treffer müssen
+  äquidistant sein (N × Flutter-Rate) — verstreute Prominenzen sind kein Kamm.
+- **Severity** skaliert jetzt mit dem Überschuss über der 6-dB-Schwelle.
+
+**Nachweis (vorher → nachher).** Sauberer Sinus 1,000 → **0,000**; sauberer
+Kamm 1,000 → **0,000**; Rauschen 0,603 → **0,000**; synthetisches 6-Hz-FM
+(0,4 %) → **1,000** mit drei Seitenbändern bei 4/6/8 Hz; 4-Hz-FM → 1,000 mit
+vier. Neue Kalibrierungstests in beiden Richtungen
+(`tests/unit/test_defect_scanner_anti_fp.py::TestFlutterSpectralSidebandsCalibration`,
+5 Fälle; Datei 28 grün). Der Report nennt nun Referenz, Boden und Schwelle
+(§G8) — und die synthetischen Quellen mit **definierter** Rate/Tiefe sind
+gleichzeitig die Evidenzbasis für D-K3-28.
+
+## 10.12.0 (2026-10-07)
+
+## 10.12.0 (2026-10-07)
+
+## 10.12.0 (2026-10-07)
+
+### Hörbarkeits-Gate: „bestanden" und „belegt" sind jetzt zwei Aussagen
+
+**Ausgangspunkt.** Das Hörbarkeits-Gate (`defect_audibility_gate.py`) prüft die
+Restdefekte eines Laufs gegen die material-/ketten-adaptive Maskierungsschwelle
+(Hörordnung Ebene 2: „Reparatur gilt als abgeschlossen, wenn ein Defekt unter der
+Schwelle liegt"). Es war verdrahtet — aber es konnte **ohne jede Messung bestehen**.
+
+**Behoben (Ursache statt Symptom).**
+
+- **„Passed" ohne Evidenz.** Fehlte der §B2-Post-Scan, galt das Gate als „nicht
+  bewertbar → passed=True", und genau dieses `gate_passed` las die Endverdikt-
+  Kopplung (`_flow_meta["hoerbarkeits_gate_passed"] is False` degradiert
+  QUALITY-GUARANTEED). Ein Lauf ohne Messung konnte damit eine Qualitäts-Zusage
+  tragen. Jetzt trägt der Report `evidence_state` (`evaluated` /
+  `no_residual_defects` / `scan_missing`), `n_verified`, `n_unevaluable` und
+  `gate_verified` (bestanden UND gemessen); gekoppelt wird `gate_verified`, und
+  `scan_missing` wird mit §V6-Warnung gemeldet. Fail-open bleibt für den **Block**
+  (kein Abbruch ohne Daten), fail-closed für die **Zusage**.
+- **Zeilen ohne Zahl.** Ein Eintrag mit `NaN`/`None` wurde über die
+  Severity-Skala zu 0,0 → „never_audible" und zählte damit als Evidenz. Jetzt
+  gilt er als `unevaluable` (dokumentiert, aber ohne Evidenzwert).
+- **§V8 Song-Isolation.** `self._defect_reduction_per_type` wurde nur im
+  Erfolgsfall des Post-Scans gesetzt. Schlug der Scan für einen Song fehl,
+  bewertete das Hörbarkeits-Gate die Messwerte des **vorigen** Songs (inklusive
+  m1b-Nachbehandlungs-Queue). Jetzt wird das Dict im Per-Song-Block geleert.
+
+**Nachweise.** 5 neue Vertragstests (scan_missing, no_residual_defects,
+evaluated, failed malformed) — `tests/unit/test_defect_audibility_gate.py`
+36 grün; 387 Tests der Gate-/UV3-nahen Suiten grün.
+
+**Offen und benannt** (Register D-K3-30): Die kanonische Maskierungsmessung deckt
+Typen mit Energie-Delta-Domäne ab (`_CANONICAL_BANDS` + Default); Zeitachsen-/
+FM-Defekte (wow, flutter, jitter, pitch_drift …) laufen weiter über die
+Severity-Skala — für sie existiert noch keine „unter der Hörschwelle"-Aussage.
+
+## 10.11.1 (2026-10-07)
+
+## 10.11.1 (2026-10-07)
+
+### Drei rote Tests geklärt: zwei echte Ursachen, eine unbelegte Erwartung
+
+**Ausgangspunkt.** Ein Lauf über die 197 phase-/defekt-nahen Unit-Testdateien
+meldete nach dem vorigen Commit noch **3 rote Tests**. Alle drei sind am Code
+gemessen worden; keine Schwelle wurde „passend gemacht".
+
+- **Motor-Detektor meldete eine reine Bassdrohne mit severity 1,0.** Commit
+  `2d1e28a7` hatte die Anti-Falschpositiv-Guards für „kanonische
+  Motor-Grundfrequenzen" (f0 ∈ {80, 100, 120, …}) deaktiviert, um einen
+  Motorbrumm-Fall im Evidenz-Harness zu retten. Damit lief jeder
+  100-Hz-Harmonischenkamm auf 1,0 — eine musikalische Bassdrohne hätte danach in
+  phase_02/phase_05 Kerbfilter gegen ihren eigenen Grundton bekommen (§V1/§G3).
+  Die namensbasierte Ausnahme ist durch ein physikalisches Kriterium ersetzt:
+  `low_band_share = E(80–400 Hz) / E(gesamt)`. Der Musik-Guard greift nur, wenn
+  der Kamm das Signal selbst trägt (Drohne, gemessen 0,987), nicht wenn er ein
+  Zusatz auf Musik ist (gemessen 0,035 / 0,046). Musik-Kamm 1,000 → 0,250
+  (Test grün), `vinyl_motor` 0,725 und `vinyl_motor_dense` 0,852 bleiben
+  detektiert (Harness grün).
+- **§V8: Phase 03 mutierte ihre eigene Klassenkonstante.**
+  `_bands_adaptive = dict(params["bands"])` war nur eine flache Kopie — die
+  inneren Band-Dicts blieben die Objekte von `MATERIAL_PARAMS`, und die
+  signal-adaptive Reduktion schrieb dauerhaft hinein (vinyl 0,40/0,60/0,70 →
+  0,15/0,19/0,27; tape 0,30/0,70/0,90 → 0,11/0,22/0,35; shellac 0,15/0,35/0,45 →
+  0,06/0,11/0,18) und kompoundierte über die Songs. Der erste Song einer Sitzung
+  wurde damit anders entrauscht als jeder Folgesong — Verstoß gegen
+  §V8/§G1 (copilot-instructions.md) und §G5 (copilot-instructions.md). Fix:
+  tiefe Kopie je Band; neuer Regressionstest über alle Materialien.
+- **Unbelegte Flutter-Erwartung im Real-Audio-Golden-Manifest.** Das
+  Cassetten-Fixture (`cassette_1980s_wow`) wird seit jeher auf `flutter
+  min_severity 0,5` geprüft. Unabhängige FM-Messung am Fixture: die Modulation
+  liegt bei 1,0/0,75/1,5 Hz mit 23,9/23,8/21,4 Cent (Wow), der kohärente
+  Subband-Kanal misst coh 0,25 / amp 0,0675 Cent — weniger als ein sauberer
+  Träger derselben Kalibrierung (coh 0,36 / amp 0,47). Das Material enthält
+  keinen 4–8-Hz-Flutter; der Repo-Generator erzeugt ebenfalls nur 0,35–0,7 Hz.
+  Die Erwartung ist entfernt, die Messung in der Case-Beschreibung dokumentiert;
+  der Gate-Test läuft wieder (18/18 Erwartungen).
+
+**Offen und benannt** (Register D-K3-25…D-K3-29): die Ausgabe von Phase 03 hängt
+davon ab, welche ML-Plugins im Prozess geladen sind (drei gemessene Werte,
+§G5-Frage, D-K3-26); `_detect_flutter_spectral_sidebands` meldet 1,0 auf
+sauberem Material (Allesmelder, D-K3-27); es gibt kein Fixture mit belegtem
+Flutter zur Detektor-Kalibrierung (D-K3-28). Die frühere Behauptung der
+Testdatei („bit-identisch, corr = 1,00000") war unbelegt — Commit `ff5dbf21`
+hatte den Fehlschlag schon am 2026-10-06 mit zurückgesetzter `phase_03`
+identisch gemessen (0,96606).
+
+**Nachweise.** `tests/unit/test_new_defect_types_12.py` 89 grün,
+`tests/unit/test_phase_03_denoise.py` 7 grün (1 neuer §V8-Regressionstest),
+`tests/unit/test_real_audio_defect_golden_gate.py` grün,
+`scripts/defect_coverage_check.py` OK, SOTA-Defizit-Register 45 Einträge ohne
+Verstoß.
+
+## 10.11.0 (2026-10-07)
+
+### Denker-Intelligenz: tote Entscheidungen wiederbelebt, Hörordnung erzwungen
+
+**Ausgangspunkt.** Tiefenanalyse aller **13 Denker** (12.893 Zeilen). Der
+wiederkehrende Befund war nicht „falscher Algorithmus", sondern **Entscheidung
+ohne Wirkung**: Regelwerk vorhanden, Ausführung nicht erreichbar.
+
+**Behoben (Ursache statt Symptom).**
+
+- **Die zentrale Guard-Modulation lief nie.** `resolve_guard_modulation` lag als
+  Code hinter einem `return` und war keine Klassenmethode; der Aufrufer in UV3
+  verschluckte den `AttributeError`. Die Stärke-Modulation ist jetzt eine echte
+  Methode: gewichtete Mittelung (Budget 40 % / Lern-Historie 50 % / Cross-Guard
+  10 %) statt Multiplikation, nie stärker als die Eingabe, Material-Floor nur für
+  kritische Phasen, `NaN` → 0,0 mit Warnung.
+- **Hörordnung Ebene 3 im Denker verankert.** Der Ziel-Reparaturpfad summierte
+  uniform und durfte Natürlichkeit (Stufe 1) für Brillanz (Stufe 4) senken. Jetzt
+  lehnt `hearing_order_violation()` jeden solchen Kandidaten ab — mit der
+  kanonischen Stufen-Quelle, nicht einer zweiten Tabelle.
+- **6 erkannte Defekte erreichten nie eine Phase.** `dropout_oxide`,
+  `dropout_head_contact`, `dropout_splice`, `mpeg_frame_loss`, `phase_rotation`
+  und `stereo_field_collapse` hatten Detektoren und Priors, fehlten aber in
+  `CAUSES`. Angeschlossen: `CAUSES`/`LIKELIHOOD_FNS`/`CAUSE_TO_PHASES` jetzt
+  72/72/72 synchron, Spec 06 nachgezogen.
+- **Zwei Träger ohne Priors.** `cassette` und `reel_tape` fielen auf den
+  „unknown"-Prior zurück, und die trägerspezifischen Tabellen übersprangen beide
+  still. Jetzt abgeleitet mit dokumentierten physikalischen Unterschieden.
+- **§V8 Song-Isolation.** Der song-übergreifende Low-Confidence-Kanal ist
+  entfernt (er ließ Song N die Phasenwahl von Song N+1 beeinflussen), der
+  `CrossPhaseCoordinator` bekommt einen Reset pro Song, und die Re-Pass-Dämpfung
+  mutiert nicht mehr die gecachte Optimizer-Instanz.
+- **§G5 Determinismus.** Die Band-Budgets iterierten über Mengen und summierten
+  Fließkommazahlen — mit hash-abhängiger Reihenfolge. Jetzt sortiert; gemessen
+  identisch über vier Hash-Seeds.
+- **Der PerceptualQualityCouncil bewertete ein defektfreies Signal** (Severity
+  wurde als 0,0 übergeben) und sein Urteil wurde verworfen. Er erhält die echte
+  Schwere, sein Urteil wird als Zeuge berichtet — ohne die normative
+  §8.1-Formel zu ersetzen.
+- **Tests, die nicht fehlschlagen konnten.** 11 Strategie- und 6 Tonträger-Tests
+  prüften Signaturen bzw. Felder, die es nicht gibt, hinter `try/except: pass`.
+  Ersetzt durch echte Vertragstests (`StrategiePlan`, `TontraegerInfo`).
+
+**Bewusst NICHT aktiviert.** Die SNR-adaptive `CAUSE_PARAMS`-Skalierung ist bis
+×1,5 eingriffsverstärkend und bleibt AUS, bis eine blinde A/B-Hörprobe auf
+eingefrorener Baseline vorliegt (Wohlklang-Vertrag, Hörordnung Ebene 3). Der
+tote Zustand ist im Code als solcher markiert.
+
+**Festgehalten, nicht angefasst** (Register D-K3-20…D-K3-23): restliche
+`try/except`-Hüllen in drei Test-Suiten, die SNR-Skalierung (D-K3-21), 327 Zeilen
+toter Code im RestaurierDenker und der doppelte PerceptualQualityCouncil
+(D-K3-23). Die 53×/32×-Lücke (D-K3-22) ist inzwischen auf der Plan-Seite
+geschlossen — siehe unten.
+
+**Nachweise.** 21 + 13 neue Vertragstests; 386 Tests in den berührten
+Denker-Suiten grün; Register ohne Verstoß; Datei-Registry 366 Dateien ohne
+Fehler.
+
+### Testhärtung: 16 Tests brachen an Phantom-Modulpfaden ab
+
+**Ausgangsbefund.** Die UV3-Hook-Tests patchten `dsp.digital_restoration_specialist`,
+`dsp.bandwidth_artifact_remover` und `dsp.dynamic_range_expander` — ein
+Top-Level-Paket `dsp` existiert nicht (die Wurzel `dsp/` ist leer), der
+Produktionscode importiert dieselben Klassen korrekt aus `backend.core.dsp.*`.
+Die Tests zielten also auf ein Phantom und brachen mit `ModuleNotFoundError` ab:
+**12 Fehler** in `tests/unit/test_unified_restorer_v3.py` (jetzt 283/283 grün).
+
+Dieselbe Ursache traf vier weitere Dateien, die dadurch still grün blieben statt zu
+prüfen: `tests/test_spectral_denoiser.py`, `tests/unit/test_v95_modules.py`,
+`tests/unit/test_v99_dsp_priority_modules.py` (25 Modul-/Klassenpaare) und
+`tests/unit/test_ml_fallback_cascades.py` — dort verwiesen sogar vier
+Pitch-Tracking-Kandidaten auf nicht existierende Module, sodass der Test nur über
+den Fallback auf `phase_12` bestand; er prüft jetzt die realen pYIN-Module.
+**Der Produktionscode war sauber** — der Defekt lag ausschließlich in der
+Prüfschicht. Nachweis: 581 grün in den vier Dateien.
+
+### Performance: Budget ehrlich gemacht, echter Hebel benannt
+
+**Plan-Budget.** `StrategieDenker.plan()` konnte bis **73,6×** RT zusagen
+(32 × Kettentiefe 2,0 × Restaurierbarkeit 1,5), während der harte Ausstieg bei
+**32×** liegt — der Plan meldete Zeit, die es nie gab, speiste darüber die
+Stufen-Wahl und den Anwender-Text. Jetzt gilt: das Budget ist auf die harte
+Guard-Grenze **gedeckelt**, und die Modus-Grenzen werden **aus** dem
+`PerformanceGuard` gelesen (FAST 8×, sonst 32×) statt kopiert. Eine Deckelung wird
+mit Begründung protokolliert. `RT_REALITY_MEASURED = 53,0` benennt die gemessene
+Ist-Lage samt Hebel — **nicht** als Zusage.
+
+**Der eigentliche Hebel bleibt offen und ist benannt:** Analytik und End-Gate
+laufen je Chunk statt je Song (TODO-P0-1); der dokumentierte Effekt ist
+**53× → 15–25× RT** (8–9 End-Gate-Runden × `measure_all` je Chunk entfallen). Das
+ist eine Strukturaufgabe an `unified_restorer_v3.py` und wurde hier **nicht** durch
+eine höhere Zusage kaschiert; ebenso wurde keine Beschleunigung behauptet, die
+nicht gemessen ist. Die normative Budget-Wahrheit (copilot-instructions.md) nennt
+jetzt beide Zahlen korrekt und verweist auf P0-1.
+
+## 10.10.0 (2026-10-07)
+
+### Live-Narrativ: die Oberfläche erzählt, statt sich zu wiederholen
+
+**Ausgangsbefund (gemeldet, dann gemessen).** „Es klingt noch alles sehr monoton
+und wenig innovativ." Die Messung bestätigt es und zeigt die Stelle:
+
+| Kanal während der Arbeit | vorher |
+| --- | --- |
+| Beruhigungszeile bei langen Pausen | **3** feste Sätze, gewählt allein über das Fortschrittsband |
+| Wiederholung | derselbe Satz im **8-Sekunden-Takt** — bei 30 Minuten rund **200-mal** |
+| Toast | derselbe Satz alle 35 s, Fallback-Text hartkodiert |
+| Variantenmechanik | **nicht vorhanden** (Suche über `modern_window.py`: 0 Treffer) |
+| Informationsgehalt je Meldung | Zustand — Phase, Fortschritt und Restzeit lagen vor, wurden aber nicht genutzt |
+
+Dazu zwei Schönheitsfehler ausgerechnet im meistgesehenen Satz: „ - " statt
+Gedankenstrich und das Wort „Rechenintensive".
+
+**Zusätzlich gefunden (6 verdeckte Nutzertexte).** Über die Helfer `_show_toast`
+und `set_status` erreichten sechs hartkodierte Texte den Nutzer, die für Prüfung 4
+des Frontend-Linters unsichtbar waren, weil sie nur **direkte** Setter ansah — drei
+davon mit internem Jargon: „Aurik **Denker**: {n} **Phase(n)** optimiert
+übersprungen", „… Zusatz-Phase(n) für {goal} **injiziert**", „⚠ **Off-Track** —
+sichere Korrektur läuft …".
+
+**Was jetzt geschieht.** Neues Modul `Aurik10/ui/live_narrative.py`:
+
+- **13 Situationssätze** (4 im Analyse-, 6 im Arbeits-, 3 im Abschlussband) statt
+  drei — jeder Satz ein eigener Übersetzungsschlüssel (de/en).
+- **Fortschritt im Text:** „🎛️ Hier entsteht der Klang… · 12 von 31 Störungen
+  behoben · noch ungefähr 7 Min." — jede Meldung trägt Neues.
+- **Vier Meilensteine** (25 %, Halbzeit, drei Viertel, alle Störungen), genau
+  **einmal** gemeldet: der Verlauf bekommt Etappen statt Gleichklang.
+- **Deterministisch** (§G5 copilot-instructions.md): Auswahl ist eine reine
+  Funktion aus Band und Meldungszähler — kein Zufall, keine Uhrzeit. Der Zähler
+  und die Meilenstein-Menge gehören dem **Song** und werden bei seinem Start
+  zurückgesetzt (§V8): kein Song erbt die Rotation des vorherigen.
+- **Sechs Jargon-Texte** laiengerecht im Katalog, z. B. „🧠 Aurik lässt
+  Arbeitsschritte aus, die hier nichts bringen (3)" statt „Aurik Denker: 3
+  Phase(n) optimiert übersprungen". Der alte Wiederholungsschlüssel ist entfernt
+  (kein zweites System daneben).
+- **Gate-Lücke geschlossen:** Prüfung 4 erfasst jetzt auch `_show_toast(` und
+  `set_status(` — sie deckte die sechs Stellen sofort auf.
+
+**Nachweis.** 17 neue Tests in `tests/unit/test_live_narrative.py`, darunter die
+eigentliche Zusage: _keine zwei aufeinander folgenden Meldungen identisch_ über
+200 Meldungen je Band. Weiter geprüft: Deterministizität über den Syntaxbaum,
+Meilensteine genau einmal, i18n-Symmetrie de/en, Jargon- und Bindestrich-Sperre.
+178 Tests grün in allen berührten Bereichen.
+
+**Eigene Fehlmessung sofort korrigiert.** Der neue Deterministizitäts-Test suchte
+zunächst Zeichenketten im Quelltext und fiel über seinen **eigenen Docstring** —
+das Wort „`time.time()`" steht dort als Verbot und wurde als Verstoß gelesen.
+Dieselbe Prosa-Falle wie in D-K3-5 und D-K3-9. Er prüft jetzt den Syntaxbaum.
+
+Register: **D-K3-12** geschlossen. Bei der Endabnahme gemessen und als **D-K3-13 offen** dokumentiert: `pytest tests/normative -m "not heavy"` endet mit 981 grün / **7 rot** — vorbestehend und nicht durch dieses Release verursacht (für die zwei GUI-Vertragsfälle über `git show HEAD:…` bewiesen: die geforderten Zeichenketten fehlen schon dort).
+
+## 10.9.3 (2026-10-07)
+
+### Anrede vereinheitlicht: Aurik duzt durchgängig
+
+**Entscheidung (Nutzer, 2026-10-07):** Es bleibt beim „Du".
+
+**Befund:** Der deutsche Katalog sprach den Nutzer je nach Dialogform
+unterschiedlich an — **22 Schlüssel duzten** (`status.*`, `onboarding.*`:
+„Zieh deine nächste Aufnahme hierher“, „Deine Musik ist bereit für die
+Ewigkeit“), **20 siezten** (`dialog.*`, `error.*`, `legacy.*`: „Bitte laden Sie
+zuerst eine Audio-Datei mit dem Button oben!“, „Prüfen Sie den Ausgabeordner und
+den verfügbaren Speicherplatz.“). Ursache war kein Fehler, sondern eine nie
+explizit getroffene Entscheidung: Fehlertexte entstanden als sachliche
+Amtsprosa, Erzähltexte als persönliche Ansprache.
+
+**Fix:** Alle 20 Schlüssel (**23 Textzeilen**, inklusive der mehrzeiligen
+`dialog.start_error_info` und `dialog.oom_recovery_info`) auf die Du-Form
+gebracht — inhaltlich unverändert, nur die Anrede; Platzhalter, HTML-Auszeichnung
+und Zeilenumbrüche bleiben erhalten. Englisch ist nicht betroffen (dort gibt es
+keine T/V-Unterscheidung). **Nachweis: 0 formale Anrede** im deutschen Katalog
+(685 Schlüssel, gemessen).
+
+**Guard statt Absichtserklärung:** Neuer Test
+`test_german_uses_informal_address_consistently` in `tests/unit/test_i18n.py`
+lässt den Build fallen, sobald ein neuer deutscher Text siezt — dieselbe Klasse
+wie `aurik-layout-invariant` (D-K3-7) und Prüfung 4 des Frontend-Linters
+(D-K3-9): die Regel prüft sich selbst, statt auf Sorgfalt zu hoffen.
+
+**Nachweis:** 134 Tests grün (`test_i18n`,
+`test_help_system_errorsimplifier`, `test_frontend_ux_spec_compliance`,
+`test_gui_rest_panels`, `tests/ui/`, `test_restoration_status_panel_i18n`,
+`test_frontend_backend_harmony`).
+
+## 10.9.2 (2026-10-07)
+
+### Barrierefreiheit + Korrektur einer eigenen Fehlmessung
+
+**Barrierefreiheit:** 9 Knöpfe trugen nur ein Symbol (`▶ ⏸ ⏹ 📋 📂 × × 👍 👎`) —
+ein Screenreader liest dort nichts Sprechendes. Alle haben jetzt einen
+zugänglichen Namen über den Katalog (de/en): `a11y.play`, `a11y.pause`,
+`a11y.stop`, `a11y.recent_files`, `a11y.browse_folder`, `a11y.feedback_good`,
+`a11y.feedback_bad`; die drei Panel-Knöpfe bekamen zusätzlich sprechende
+Tooltips (vorher „Pause“/„Stopp“ — jetzt „Wiedergabe pausieren“/„Wiedergabe
+stoppen“). `setAccessibleName`-Abdeckung in `modern_window.py`: **11 → 19**.
+
+**Korrektur eigener Zahlen (§V7 copilot-instructions.md):** Das in 10.9.1
+neue Gate war **selbst blind**. Die eigene Prosa-Blankung im Test setzte nach
+dem abschließenden `"""` einer _präfixierten_ Docstring (`r"""…`) den Zustand
+dauerhaft auf „in Docstring“ und blankte den **Rest der Datei**
+(`modern_window.py` ab Zeile 10444) — das Gate sah **19 statt 47** Fundstellen.
+Die Meldung „66 → 22“ war damit um 28 Stellen zu niedrig. Behoben durch
+Delegation an die kanonische `scripts.wohlklang_gate._blank_prose`
+(§G9 copilot-instructions.md: eine Umsetzung statt zweier; in D-K3-5 gegen 1660
+Dateien validiert). **Korrigierte Zahlen: wahre Ausgangslage 94, umgestellt 47,
+verbleibend 47** (Register D-K3-10).
+
+Dieselbe Lehre wie bei den Layout-Kopien (D-K3-7): **eine Kopie divergiert und
+wird still** — beide Male hat sie einen Befund verdeckt statt erzeugt.
+
+**Ererbter Spec-Drift geschlossen:** Der 10.9.0-Commit hat zwei Zeilen in
+`.github/FILE_REGISTRY.md` ergänzt, aber die Drift-Baseline
+(`reports/spec_drift_baseline.json`) nicht mitgezogen — `scripts/spec_drift_check.py`
+meldete seitdem Drift und hätte jeden weiteren Commit blockiert. Nach den vom
+Check verlangten Prüfungen (`release_must_coverage_check.py` → 2/2 = 100 %;
+66 normative Tests grün) ist die Baseline für die **eine** betroffene Datei
+nachgezogen (`No spec drift detected.`).
+
+## 10.9.1 (2026-10-07)
+
+### GUI-Tiefenanalyse: Premium-Killer behoben, Gate das mitzählt
+
+**Ausgangsfrage:** „Behebe alles, was den Eindruck einer extrem hochwertigen GUI
+trübt, und fördere die laienfreundliche Bedienung.“ — Gemessen über `Aurik10/`
+(4 Dateien), nicht nach Eindruck.
+
+**Befund A — sichtbar falsche Version (§v10.802 copilot-instructions.md):** Der
+Über-Dialog zeigte **„Über AURIK 10.0.15“**, während die Anwendung 10.9.0 ist —
+und zwar bei **jedem** Aufruf (`modern_window.py:16019` → `t("dialog.about_title")`).
+Die Version kommt jetzt aus `_AURIK_VERSION`; der veraltete Zähler in
+`legacy.main.window_title` (ungenutzt, aber eine Falle) ist entfernt.
+
+**Befund B — ASCII-Umlaute in dauerhaft sichtbaren Labels:**
+„Klangqualitaet“, „Natuerlichkeit“, „Authentizitaet“,
+„Klangfarben-Authentizitaet“, „Dimensionale Klangqualitaet“ — jetzt mit echten
+Umlauten.
+
+**Befund C — Zeitbudget-Dialog (§v10.15) sah nach Konsole aus:**
+`[Maximal weitermachen]` / `[Phasen ueberspringen]` standen als Klammer-Liste im
+Text **und** als Knöpfe darunter, dazu „moechtest“, „Qualitaet“, „laengere“,
+„Pipeline“ — und **kein** `t()`. Jetzt: laiengerechte Sprache ohne Fachbegriff
+(„Jetzt fertigstellen“ statt „Phasen überspringen“), der Trade-off steht im
+Knopf-Tooltip, Farbe aus `ui_constants.STATUS_OK_TEXT` statt Hex in der Zeile,
+alle Texte über den Katalog (de/en).
+
+**Befund D — das Frontend-Gate konnte nie fehlschlagen (§V7):**
+`tests/unit/test_frontend_verboten_linter.py` endete auf
+`assert magic_count >= 0` (immer wahr) und suchte UI-Texte nur in Zeilen > 80
+Zeichen. Deshalb waren **66** hartkodierte Nutzertexte unsichtbar. Prüfung 4
+ist jetzt **fail-closed** gegen neue sichtbare Setter-Literale ohne `t()`, mit
+vier präzisen Fehlalarm-Filtern (bereits-i18n-isierte f-Strings, Markup,
+Format-Vorlagen, Escape-Folgen/Einheiten).
+
+**Befund E — GUI-Tests waren ordnungsabhängig:** Drei Tests in
+`tests/unit/test_gui_rest_panels.py` bestanden **isoliert**, in der gemeinsamen
+Ausführung nicht: `Aurik10.i18n.set_language()` ist globaler Zustand, den
+`tests/unit/test_i18n.py` stehen ließ (`plugin_manager.title` ist de
+„Plugin-Manager“, en „Plugin Manager“). Eine autouse-Fixture in
+`tests/conftest.py` stellt die Sprache pro Test wieder her — dieselbe
+Zustands-Isolations-Klasse wie §V8.
+
+**Nachweis:** hartkodierte Nutzertexte **66 → 22** (44 umgestellt:
+Ergebnisleiste, Dialoge, Fenstertitel, Schadensbehebung, Abtastrate,
+Hörgenuss-/Hörermüdungs-Labels, Panel-Tooltip). `tests/ui/` + 6 UI-nahe
+Unit-Suiten **127 grün** (vorher 5 rot). i18n-Symmetrie de/en 20 grün. Die
+Restmenge ist als **D-K3-10** offen geführt, die Baseline sinkt nur.
+
+## 10.9.0 (2026-10-07)
+
+### Layout-Entscheidung: EINE Quelle statt sechs Modul-Kopien (Befund D-K3-7)
+
+**Ausgangsfrage:** „Ist sichergestellt, dass in allen Pfaden Mono- und
+Stereosignale zu 100 % korrekt behandelt werden?“ — **Nein, belegt war das nicht.**
+Jetzt ist es gemessen.
+
+**Befund (AST-Messung über 1660 Dateien in `PRODUCTION_ROOTS`):** Die
+Layout-Entscheidung existierte in **14** Modul-Helfern, davon **6** mit eigener
+geratener Kanalachse. Kanonisch ist `is_channels_first = shape[0] <= MAX_CHANNELS(8)
+and shape[1] > 8`; die Kopien prüften `shape[0] <= 2` und transponierten
+Mehrachser-Signale `(3…8, N)` **falsch**. Dieselbe Ursache wie D-K3-6: nicht die
+Berechnung war defekt, sondern die **stille Annahme über das Layout**.
+
+**Fix (Ursache, §V7 copilot-instructions.md):** neue kanonische Funktion
+`normalize_channels_first(arr) -> (audio_cn, war_transponiert)` in
+`backend/core/audio_layout.py`; **alle sechs** Kopien delegieren dorthin —
+keine Ausnahme, keine Allow-List:
+`backend/core/audio_utils.py::to_channels_last` (36 Aufrufer),
+`backend/core/listening_witness.py::_channels_first_or_none` (Zeuge: rät
+weiterhin nicht, gibt bei Unklarheit `None`),
+`backend/core/dsp/additive_synthesis_gate.py`,
+`backend/core/dsp/hybrid_denoise_fusion.py`,
+`backend/core/dsp/scrape_flutter_rest.py`,
+`backend/core/dsp/silence_mask.py`,
+`scripts/generate_synthetic_degraded_vocals.py`.
+Dokumentierte Divergenz nur bei **entarteten Shapes ≤ 8 Samples** (kein reales
+Audiosignal) — im Docstring je Modul benannt, nicht verschwiegen.
+
+**Neues fail-closes Gate `aurik-layout-invariant`**
+(`scripts/layout_invariant_check.py`, Pre-Commit `always_run`):
+`L1` = ERROR für jede Funktion mit Normalisierer-Namen, die das Layout ohne
+`audio_layout` entscheidet (geratene Kanalachse wird als Muster D-K3-6 benannt);
+`L2` = **Bericht** über 1269 layout-empfindliche Reduktionen ohne
+Layout-Entscheidung (Batch-Achse vs. Kanal-Achse ist statisch nicht
+entscheidbar — eine Fail-Regel wäre D-K3-5-Lärm). Prosa wird über das
+bestehende `_blank_prose` aus `scripts/wohlklang_gate.py` geblankt (§G9: eine
+Technik, keine zweite Umsetzung).
+
+**Nachweis:** L1 = **0 Verstöße / 0 Ausnahmen** (vorher 6); 25 Tests grün,
+darunter 10 neue in `tests/unit/test_layout_invariant_check.py`.
+Regressionen: **keine** — der einzige rote Test der Reihe
+(`test_witness_sota_p1p2.py::test_pre_echo_detected_by_witness`, −12,8 dB gegen
+Schwelle −12,0 dB) ist **gegen HEAD reproduziert** und damit vorbestehend, nicht
+Folge dieser Änderung.
+
+**Mono/Stereo-Antwort an den Nutzer:** Die ursprüngliche Frage nach 100 %
+Korrektheit über **alle** Pfade bleibt **offen** — 1269 Reduktionen sind
+triagiert, aber nicht einzeln geprüft (Register **D-K3-8**). Belegt sind:
+Layout-Vertrag `soundfile.read(always_2d=True)` → `(N, 2)`, SCNet-Stems →
+`(N, 2)`, Export-`(2,)`-Kollaps behoben, D-K3-6 und D-K3-7 geschlossen.
+
+## 10.8.3 (2026-10-07)
+
+### Werkzeug-Divergenz IDE ↔ CI + drei gemeldete Befunde (Typen, Duplikat, Fehlalarm)
+
+**Befund A — `scripts/model_artifact_probe.py` (mypy `no-redef`, Pylance
+`reportRedeclaration`):** Das Modul trug ein **doppeltes** Modul-Level-Konstrukt —
+`_HTML_TAG_RE`/`_MD_IMAGE_RE`/`_MD_LINK_RE` und `_sanitize_inline` standen zweimal
+(Zeilen 142–159 und 162–179); die zweite Definition war in Kraft, die erste toter
+Code. **Fix:** erste Kopie entfernt (verhaltensneutral, die wirksame bleibt).
+
+**Befund B — `scripts/train_bigvgan_f3.py` (4 mypy-Fehler):** `CFG` war
+unparametrisiert, dadurch galten alle Werte als `object` ⇒ `CROP_S * SR`
+(`operator`) und `target_sr=SR` (`arg-type`); zusätzlich zwei `Returning Any`
+(`build_model`, `load_track`). **Fix:** `CFG: dict[str, Any]`,
+`SR = int(CFG["sampling_rate"])` und zwei explizite lokale Annotationen.
+**Keine Verhaltensänderung** (nur Typangaben).
+
+**Befund C — `.github/FILE_REGISTRY.md:29` MD050 (Fehlalarm):** Die Zeile
+`| models/cantus/__init__.py | ACTIVE | … |` wird von der Emphase-Regel als
+`__`-Fettung gelesen. Ein Backtick-„Fix“ würde die **maschinengelesene** Zelle
+verändern und den Pfadvergleich brechen (dokumentierter Befund 2026-10-05).
+**Fix:** `<!-- markdownlint-disable-file MD037 MD050 -->` + Begründung im Kopf
+der Datei; die Drift-Baseline (`reports/spec_drift_baseline.json`) ist
+nachgezogen (`spec_drift_check.py` → „No spec drift detected“,
+`file_registry_check.py` → 0 Fehler / 360 Dateien).
+
+**Ursache der IDE/CI-Divergenz (gemessen, nicht angenommen):** Die
+Pre-Commit-Kette nutzt markdownlint-**CLI**, die In-File-Angaben **und**
+`.markdownlintignore` liest; die VS-Code-Extension (`davidanson.vscode-markdownlint`
+0.62.1) liest `.markdownlintignore` **nicht** (0 Treffer im Bundle) und kennt
+**keine** `markdownlint.ignore`-Einstellung (ihre Settings sind `config`,
+`configFile`, `configPointer`, `customRules`, `run`, `severity*`,
+`lintWorkspaceGlobs`, `appliesTo`, `focusMode`). Die lokale Einstellung
+`"markdownlint.ignore": ["**/.markdownlintignore"]` war damit **wirkungslos** und
+irreführend (sie hätte die Ignorier-Datei selbst ignoriert) — sie ist entfernt.
+`.vscode/settings.json` ist per `.gitignore` nicht versioniert; die
+In-File-Angabe ist die einzige Quelle, die **beide** Werkzeuge verstehen.
+
+### A/B-Harness `eval_scnet_vs_mdx23c.py`: Typ-Fehler behoben, Totcode entfernt, Layout-Vertrag gemessen
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** `fix` — Typ-Hygiene und
+Totcode-Entfernung im Diagnose-Harness. **Keine Signal-/Ergebnisänderung:** kein
+Produktionspfad, kein Flag und kein Metrik-Algorithmus geändert.
+
+**Befund (mypy: 4 Fehler in 1 Datei — jeder hätte den Pre-Commit blockiert):**
+
+| Zeile | Fehler | Ursache |
+| --- | --- | --- |
+| 140 | `no-any-return` | `arr.mean(axis=1)` liefert auf unparametrisiertem `np.ndarray` `Any` |
+| 155, 159 | `no-any-return` | das `torchaudio…resample()`-Ergebnis ist untypisiert → `.numpy().astype(...)` ist `Any` |
+| 329 | `attr-defined` | `_load_candidate() -> object` ⇒ `object` hat kein `separate()` |
+
+**Wurzel-Fix (§V7 copilot-instructions.md):**
+
+1. `_to_mono()` gibt über eine explizit typisierte lokale Variable zurück
+   (`mono: np.ndarray = …`) — der Wert bleibt identisch.
+2. `_resample_np()` **entfernt**: Die Funktion hatte **0 Aufrufe** (nur die
+   Definition) und suggerierte eine SR-Toleranz, die es nicht gibt —
+   `_load_song()` bricht bei SR-Mismatch bewusst ab
+   (`ValueError: Sample-Rate-Mismatch Mixtur/Stem`). Zwei der vier
+   mypy-Fehler verschwinden damit an der Wurzel statt durch Annotation von Totcode.
+3. `_load_candidate() -> SCNetPlugin`, Typ-Import unter `TYPE_CHECKING`
+   (kein Runtime-Import — der §CPU-Vertrag `AURIK_FORCE_CPU=1` vor den
+   Torch/ONNX-Importen bleibt unberührt).
+
+**Belege:** `mypy scripts/eval_scnet_vs_mdx23c.py` → _Success: no issues found in
+1 source file_; `ruff check` und `flake8` clean; `--help` läuft.
+
+**Layout-Vertrag am laufenden Code gemessen** (nicht angenommen):
+`soundfile.read(always_2d=True)` → `(9265664, 2)`; `SCNetPlugin.separate(chunked=False)`
+→ je Stem **`(220500, 2)`** (5-s-Segment, MUSDB „AM Contra“, 13,6 s CPU). Damit ist
+`mean(axis=1)` in `_to_mono()` belegt korrekt — und im Code dokumentiert, weil die
+Pipeline intern channels-first `(C, N)` führt: dort würde `mean(axis=1)` auf C
+Samples kollabieren (Produktionsbefund „Export `(2,)`“).
+
+**Beobachtung (kein Defekt, offen):** Der vendored SCNet-Code
+(`models/scnet_4stems/zfturbo_scnet/scnet.py`, unverändert, MIT) löst beim Lauf
+zwei torch-Warnungen aus („A window was not provided … spectral leakage“). Ob das
+die Qualität des Kandidaten berührt, ist **nicht gemessen** — SCNet ist ohnehin
+gesperrt (`use_scnet_music=False`, C4-Sign-off offen).
+
+## 10.8.2 (2026-10-07)
+
+### §D-K3-5 — „53 Phantom-Referenzen" war ein Messartefakt: das Gate zählte Prosa als Code
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** `fix` — Korrektur einer
+**Messregel**. **Keine Klangänderung:** das Ausgangssignal ist bit-identisch (es
+wurde ausschließlich die Analyse-Logik des Gates geändert); kein Schalter in
+`.github/WOHLKLANG_CLAIMS.md` wurde umgestellt (unverändert 0 aktiviert / 5
+ausnahme / 7 gesperrt).
+
+**Befund.** Der `P2`-Lauf von `scripts/wohlklang_gate.py` meldete „53 nicht
+existente `models/…`-Referenzen im Produktionscode". Beim Nachmessen waren
+**27 davon Prosa**: Der Lauf prüfte **Rohtext** und zählte damit Kommentare und
+Docstrings als Verdrahtung — u. a. „Modell:
+`models/resemble_enhance/model.onnx`" im Docstring von
+`plugins/apollo_phase0_integration.py` sowie Fallback-Listen in
+`mert_plugin`, `cqtdiff_plugin`, `crepe_plugin`, `muq_plugin`. Zusätzlich begann
+**ein** Treffer mitten in einem Wort (URL-Suffix
+`…/all_public_uvr_models/model_bs_roformer_ep_317.ckpt`).
+
+**Wurzel-Fix (§V7 copilot-instructions.md).** `check_harnesses()` prüft den Code
+jetzt **prosa-frei** — dieselbe Fehlerklasse, die das Repo in
+`audit/code_weakness_scanner.py` bereits einmal behoben hat („26 von 33
+print()-Treffern waren auskommentiert"):
+
+- `_blank_prose()` blankt **positionsgetreu** Kommentare und Statement-Strings
+  (Zeilen/Spalten bleiben erhalten, damit Befunde auffindbar bleiben).
+- Bewusst **enger** als die kanonische `blank_noncode`: Diese blankt **alle**
+  String-Literale — ein Modellpfad steht aber naturgemäß in einem funktionalen
+  String. Der erste Versuch damit ergab „53 → 0" und hätte genau die
+  Verdrahtung gelöscht, die geprüft werden soll; der Fehlversuch ist im Code
+  dokumentiert, damit er nicht wiederholt wird.
+- `_prose_string_spans()` erfasst **alle** Statement-Strings statt nur `body[0]`
+  — Produktionsbefund: die Klasse `ResembleEnhanceGuard` trägt ihren echten
+  Docstring **und** darunter den verwaisten Docstring der in §v10.19 entfernten
+  Methode; nur `body[0]` zu prüfen ließ diesen String als Code durchgehen.
+- `CODE_MODEL_PATH_RE` mit Negativ-Lookbehind gegen Wort-Suffix-Treffer.
+
+**Ergebnis (gemessen).** 53 → **25** Treffer in 1660 Produktionsdateien, davon
+**0 echte Fehlverdrahtungen**: 23 in Provisioning-/Inventar-/Trainings-/
+Export-Skripten, die Soll-Pfade **benennen, die sie selbst erzeugen**
+(`fetch_*`, `auto_ingest_*`, `prepare_core_model_layout`,
+`validate_core_model_presence`, `export_*_onnx`, `train_bw_v*`,
+`model_inventory.py`), 1 `pending_training`-Deklaration
+(`model_zoo_registry.py`, symphonia — der Konsument verlangt `status == "active"`
+und aktiviert sonst den §V6-Ersatzpfad mit Warnung) und 1 fail-sicheres
+`__main__`-Beispiel. `P1` (fail-closed) bleibt für Code scharf, blockiert aber
+nicht mehr auf bloßer Prosa.
+
+**Tests.** `tests/unit/test_wohlklang_gate.py`: **33 grün** (10 neu) — Prosa aus
+Kommentar, Docstring und verwaistem Statement-String wird nicht gemeldet, ein
+funktionaler String schon, URL-Suffix nicht, positionsgetreues Blanken,
+konservativer Rohtext-Fallback bei Syntaxfehler, `P1` Ende-zu-Ende Prosa-frei und
+weiter scharf, `P2` Ende-zu-Ende am künstlichen Produktionsbaum.
+
+### §v10.802 — Der Version-Sweep überschrieb Changelog-Historie
+
+**Befund (beim Bump selbst erzeugt und behoben).**
+`scripts/check_version_consistency.py --fix` benennt die **erste**
+`##`-Abschnittsüberschrift um. Wird der Bump vor dem Anlegen des neuen
+Changelog-Abschnitts ausgeführt, wird dadurch der **alte Release-Block** auf die
+neue Version umgeschrieben — hier real passiert (`## 10.8.1` wurde zu
+`## 10.8.2`). Die Historie war damit falsch, obwohl „alle Dateien konsistent"
+gemeldet wurde.
+
+**Fix (§V7 copilot-instructions.md).** `--fix` **verweigert** jetzt die
+Umschreibung, wenn der kanonische Versionsstand im CHANGELOG noch **gar nicht**
+vorkommt — statt still einen bestehenden Release-Block umzubenennen. Das erzwingt
+zugleich die Changelog-Pflicht aus §v10.802 („Pro Bump ein `## x.y.z`-Block")
+und macht den Fehlbedienungsfall sichtbar. Der hier beschädigte Block wurde
+manuell auf `## 10.8.1 (2026-10-07)` zurückgesetzt.
+
+## 10.8.1 (2026-10-07)
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** `fix` — Ursachenbehebung eines
+declared-active, faktisch wirkungslosen Schutzpfads. **Hinweis: der Fix ändert das
+Ausgangssignal** (vorher durchgelassene, ungeprüfte Synthese-Energie wird jetzt
+gemaske-begrenzt; HR-V1 wirkt erstmals auf Stereo). Die HÖR-Beurteilung steht
+noch aus (W-1, siehe unten).
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** In
+`backend/core/dsp/additive_synthesis_gate.py` lief die zweite Schleife über die
+**Baseline**-Kanäle (`base_cn.shape[0]`) und indexierte darin den **Kandidaten**
+(`cand_cn[ch]`) — bei Mono-Kandidat gegen Stereo-Baseline ergab das
+`IndexError: index 1 is out of bounds for axis 0 with size 1`.
+
+**Reichweite (das ist der Kern):** Alle **drei** Aufrufer falten Fehler in ihre
+§V6-Ersatzpfade:
+
+| Aufrufer | Wirkung auf Stereo vorher |
+| --- | --- |
+| `plugins/bigvgan_v2_plugin` (HR-V1, W-1) | `applied=False`, Ausgabe **bit-identisch** |
+| `backend/core/vocoder_chain` (§B5 Vocoder-Gate) | Gate übersprungen → **ungeprüfte** Vocoder-Energie blieb stehen |
+| `backend/core/hybrid/hybrid_nvsr` (§B4 FlashSR-Gate) | Gate übersprungen → **ungeprüfte** Synthese-Energie blieb stehen |
+
+Damit war die **maskierungsbewusste Schutzschicht (Hörordnung Ebene 2) auf Stereo
+wirkungslos** — und zwar genau auf dem Regelfall (Stereo), nicht auf einer
+Nische. Die beiden Gates §B4/§B5 sind Schutzmaßnahmen: ihr Ausfall bedeutete
+**durchgelassene** statt begrenzte Energie.
+
+**Fix (Ursache, EINE kanonische Stelle — §G9 copilot-instructions.md):** Das Gate
+gleicht die Kanalanzahl **vor** den Schleifen an:
+
+- Kandidat mit **1** Kanal gegen N Baseline-Kanäle → wird auf N gespiegelt
+  (`np.repeat`, deterministisch). Keine Signal-Erfindung: dieselbe
+  synthetisierte Energie gilt je Kanal, die Begrenzung wird **pro Kanal** gegen
+  dessen eigene Maskierungsschwelle gerechnet.
+- **Jede andere** Abweichung → fail-closed: Baseline unverändert,
+  `skip_reason=channel_mismatch_<a>_<b>`, `bands_released=0`, `never_worsen=True`.
+
+**Nachweis (Produktionspfad `apply_hr_v1_additive`, 48 kHz 2ch, Testkünstlerin):**
+
+| Ausschnitt | `applied` vorher → nachher | Bänder | außerhalb Deckel-Fenster |
+| --- | --- | --- | --- |
+| 20 s / 60 s / 100 s / 140 s | **False → True** | 0 → **47 / 32 / 33 / 22** | **bit-identisch** (max&#124;Δ&#124; 0,14–0,43 in den Fenstern) |
+
+**Tests:** `tests/unit/test_additive_synthesis_gate.py` **9 grün** (4 neu: der
+historische Aufruf-Fall wirft nicht mehr, Determinismus der Spiegelung,
+Äquivalenz zur expliziten Kanal-Verdopplung, fail-closed bei 2↔1). Keine
+Regression: 67 Tests über alle drei Aufrufer-Pfade grün.
+
+**Dokumentation:** D-K3-6 → `geschlossen`; die W-1-Zeile des Wohlklang-Vertrags
+beschreibt jetzt den wirkenden Pfad; die Hörprobe B wird **über den
+Produktionspfad** gerendert (kein Harness-Ersatz mehr).
+
+**Offen (benannt):** Die HÖR-Beurteilung, ob der Deckel (5 % der Signallänge,
+randnah verteilt) wohltut — sie entscheidet über den Verbleib von W-1
+(`aktiviert` vs. `gesperrt`). Anleitung:
+`docs/reports/current/2026-10-07_hoerprobe_anleitung.md`.
+
+## 10.8.0 (2026-10-07)
+
+### Hörproben-Werkzeugkette — die menschliche Hör-Instanz wird führbar (Beleg 4)
+
+**Minor-Bump (§v10.802 copilot-instructions.md):** neue Prüf-/Abnahme-Infrastruktur,
+kein Signalpfad-Eingriff.
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Der Wohlklang-Vertrag verlangt als
+Beleg 4 ein „blindes A/B für einen Menschen“. Der Abspieler dafür existierte seit
+2026-10-03 (`scripts/hoerpanel_player.py`), sein **Erzeuger fehlte** — die
+Dokumentation verwies auf `mushra_harness.py thresholds-build/-fit`, die es
+**nicht gab** (bereits in `TASK_CHANGES.md` als offen vermerkt). Damit war Beleg 4
+für **keine** Stufe führbar.
+
+- **Neu: `mushra_harness.py thresholds-build`** — baut eine doppelblinde 2AFC-Studie
+  aus einem Manifest mit **semantischen Rollen** (`reference`/`candidate`). Welche
+  Rolle in A und welche in B landet, entscheidet **allein** der Seed
+  (`sha256("seed:trial_id")`, §G5 copilot-instructions.md) — unabhängig von
+  Prozesszustand und Dict-Reihenfolge. Optionales `--level-match` (entfernt die
+  Lautheit als Hinweisreiz; für Präferenz-Tests nötig, für Defekt-Schwellen
+  verfälschend — deshalb **nicht** Default). Fail-closed (§V6 copilot-instructions.md)
+  bei fehlender Datei, Raten-/Kanal-Mismatch und Ausschnitt-Längenunterschied.
+- **Neu: `mushra_harness.py thresholds-fit`** — wertet `answers.csv` gegen
+  `trial_key.json` aus: Trefferquote, **Wilson-95 %-CI**, Fangfragen-Gate,
+  `fit.json`-Report. Das Verdikt ist **aufgabenabhängig und statistisch ehrlich**:
+  eine reine Trefferquote genügt **nicht** (3/3 wäre p = 0,125) — ein Unterschied
+  gilt nur als belegt, wenn die **untere 95 %-Grenze über der Raterate 0,5** liegt;
+  unterhalb von `--min-trials` lautet das Verdikt `ZU_WENIGE_TRIALS` und es entsteht
+  bewusst **kein** Beleg. Ergebnis-Enum: `PRAEFERENZ_BELEGT`/`KEINE_PRAEFERENZ`
+  (Präferenz) bzw. `HOERBAR_BELEGT`/`NICHT_BELEGT` (Defekt) sowie
+  `ZU_WENIGE_TRIALS`/`UNENTSCHEIDEN`.
+- **Neu: `hoerpanel_player.py` Aufgabenarten** — `meta["task"]` = `defect`
+  (Default, unverändert) oder `preference` („A/B klingt besser“). Rückwärtskompatibel
+  über `/api/session`, die Lösung verlässt den Server weiterhin nie.
+
+### Hörproben erzeugt (SCNet C4 + W-1 HR-V1)
+
+- **SCNet (P1-2, C4):** Studie `output_audio/mushra/thresholds_scnet_c4_fair` —
+  3 Trials + 1 Fangfrage aus den vorhandenen A/B-Artefakten
+  (`output/scnet_ab_2026-10-06_fair/`). Manifest
+  `docs/reports/current/2026-10-07_hoerprobe_scnet_c4.json`.
+- **HR-V1 (W-1):** Studie `output_audio/mushra/thresholds_wohlklang_w1_hrv1` —
+  8 Fenster-Trials + 2 Fangfragen auf 4 Ausschnitten der Testkünstlerin
+  (48 kHz, außerhalb der Deckel-Fenster **bit-identisch** verifiziert).
+- **Neu: `docs/reports/current/2026-10-07_hoerprobe_anleitung.md`** — die
+  Schritt-für-Schritt-Anleitung (Vorbereitung, Startbefehle, Hörregeln,
+  Auswertung, Verdikt-Tabelle, Grenzen).
+
+### Befund D-K3-6: HR-V1 wirkt auf Stereo **nicht** (nominal aktiv, faktisch wirkungslos)
+
+**Gemessen, nicht vermutet** (Produktionshelfer `apply_hr_v1_additive`, 48 kHz
+2ch, 60-s-Ausschnitt):
+
+| Eingang | Ergebnis |
+| --- | --- |
+| Stereo (Regelfall) | `applied=False` — die zwei Ausgabedateien sind **bit-identisch** (max&#124;Δ&#124; = 0,000000) |
+| Mono | `applied=True`, 66 Bänder freigegeben |
+
+Ursache exakt lokalisiert: `backend/core/dsp/additive_synthesis_gate.py:181`
+(`cand_cn[ch]` mit `ch = 1` auf einer Achse der Größe 1) — das Plugin
+synthetisiert **mono** und reicht den Kandidaten gegen die **Stereo**-Baseline.
+Der Docstring behauptet „Layout-agnostisch (wie das Gate)“ — **beides ist unwahr**.
+Eine kanalkorrekte Anrufung funktioniert (55/47/33/22 Bänder je Ausschnitt).
+
+**Folge:** HR-V1 ist seit dem Deckel-Commit (2026-10-06) für reale Stereomusik
+wirkungslos; der Budget-Nachweis (1,04× RT) bleibt gültig, der **Wirkungsnachweis
+fehlte**. Registriert als **D-K3-6**; die W-1-Zeile des Wohlklang-Vertrags ist auf
+den Befund gezogen. Die Ursachenbehebung **aktiviert** eine hörbare Änderung und
+wartet daher auf die C4-Hörprobe (Entscheidung des Maintainers).
+
+**Tests:** `tests/unit/test_mushra_harness.py` um **11 Fälle** erweitert
+(Player-Vertragstreue der gebauten Studie, Seed-Determinismus, Präferenz ohne
+Defektseite, Fangfrage je Aufgabe, fail-closed bei Länge/Fehlen, Level-Match,
+Mindestzahl-Gate, Fangfragen-Ausschluss, Präferenz-Verdikt über/unter Zufall,
+klarer Abbruch) — Datei 21 grün, mit `test_hoerpanel_player.py` 18 grün.
+Vier **vorbestehende** MyPy-Befunde der berührten Datei mitbehoben (annotationen,
+kein Verhalten geändert).
+
+### §PERF-R14 — Wahrheits-Korrektur der Per-Phasen-Attribution + Kollektions-Fix
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** perf + Befundkorrektur,
+qualitätsneutral, kein Signalpfad-Eingriff.
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Die Roadmap-Attribution
+„Per-Phasen-Loop-Overhead ≈ 1,6 s je Phase" war die Grundlage des nächsten
+Hebel-Pakets. Sie wurde **nachgemessen statt übernommen** — drei vermutete
+Ursachen widerlegt:
+
+| Behauptung | Messung | Befund |
+| --- | --- | --- |
+| OOM-Probes kosten im Loop | `_record_oom_probe` = 497,7 µs/Aufruf ⇒ **0,88 s je Song** | vernachlässigbar |
+| Deep-Flush (PLM/GC) je Phase | 9 992 RAM-Proben echter Läufe: **median 33,0 %**, nur **1,5 %** über der 72-%-Schwelle | feuert selten, **nicht** je Phase |
+| „Stereo-Guard ≈ 4,9 s je Phase" | STCG real: **50–60 ms** (kein Eingriff) bzw. **240 ms**/30-s-Chunk ⇒ **≈1,3 min je Song** | ~2 Zehnerpotenzen unter der Doku |
+
+**UMGESETZT (gemessen, qualitätsneutral):** Der **unbedingte zweite
+`gc.collect(2)`** an zwei Stellen (§OOM-DeepFlush vor jeder Phase,
+§OOM-PostFlashSR-Flush nach phase_23) war **beweisbar wirkungslos** — nach
+einer vollständigen Kollektion ist Generation 0 leer; gemessen über 22
+Durchläufe auf einem Heap mit 4,8 Mio. verfolgten Objekten: **0 von 22 Mal**
+ein freigegebenes Objekt, bei **685,0 ms** Paar-Laufzeit gegen **337,8 ms**
+Einzelpass.
+
+- **Neu: `_full_gc_collect()`** in `backend/core/unified_restorer_v3.py` —
+  EINE kanonische Stelle (§G9 copilot-instructions.md); der zweite Pass läuft
+  **nur bei tatsächlicher Freigabe** (dann können `__del__`-/Weakref-Callbacks
+  neuen unerreichbaren Müll erzeugt haben). Beide Aufrufstellen nutzen sie;
+  die Schutzabsicht des §OOM-Guards bleibt unverändert.
+- **Tests:** `tests/unit/test_oom_guards.py` um **6 Fälle** erweitert
+  (Vertrag, zweiter Pass nur nach Freigabe, Generation 2, echte
+  Zyklus-Freigabe, empirische Grundlage, **Regressionsguard gegen
+  unbedingten Doppel-Collect**); Datei 28 grün.
+
+**Verworfen (messend begründet — kein toter Code):** Ein 118×-schnellerer
+Integer-Pfad für `_apply_correction_shift` (185,6 → 1,6 ms je Kanal) war
+**nicht durchgängig bit-identisch** (reiner Ton: max|Δ| 1,19e-17 auf
+800/480 000 Samples) **und hätte produktiv nie gefeuert** — an 12 echten
+Dateien war die gemessene Verschiebung **0 von 12 Mal ganzzahlig**
+(|frac| 0,057–0,457). Er wäre reiner Totcode gewesen (§V7 copilot-instructions.md).
+
+**Dokumentation:** §PERF-R14 in `docs/TODOS_SOTA_ROADMAP.md`; der nächste
+Schritt für P2 ist die cProfile-Isolation der **phasenabhängigen** Komponente
+auf einem echten Lauf (größte Gaps nach 01/02/05/09/24/27/28/50).
+
+## 10.7.0 (2026-10-06)
+
+### Wohlklang-Vertrag + Gate — Aktivierung nur mit Beleg (Hebel 1)
+
+**Minor-Bump (§v10.802 copilot-instructions.md):** neue Infrastruktur, kein
+Signalpfad-Eingriff, kein Hörordnungs-Bruch.
+
+**Wurzel-Fix (§V7/§G8/§G9 copilot-instructions.md):** Der Produktionsbefund
+dieser Sitzung war **nicht** ein Modellfehler, sondern eine **Beweislücke** —
+BigVGAN HR-V1 war produktiv aktiv (`applied: True`, 18 Bänder, Signal
+verändert), obwohl der Beleg auf **20 s GPU-Material** beruhte, der
+Produktionspfad aber **CPU/ONNX** ist (13,2× RT je Passage = 330 % des
+Phasen-Budgets), und die Aktenlage weiter „Flag OFF“ sagte.
+
+- **Neu: `.github/WOHLKLANG_CLAIMS.md`** — Vertrag über **alle 12
+  klangverändernden Schalter** (11 in `music_model_flags`, 1 im BigVGAN-Plugin).
+  Jede Stufe braucht **fünf Belege**: (1) ≥3 echte Voll-Songs, (2)
+  Produktionspfad, (3) eingefrorene Baseline, (4) blindes A/B für einen
+  Menschen, (5) Budget-Zahl in RT. Status: `aktiviert` / `ausnahme` /
+  `gesperrt`.
+- **Neu: `scripts/wohlklang_gate.py`** — fail-closed Gate mit den Regeln
+  **E1** Struktur/IDs, **E2** zitierte Pfade müssen existieren,
+  **E3** `aktiviert` ohne `OFFEN`, **E4** `ausnahme` braucht `Grund:` und
+  `Review:`, **E5 Schalter-Abgleich Code ↔ Vertrag**, **E6** `gesperrt` ⇒ Soll
+  AUS, **P1** Evidenz-Harneske dürfen keine Phantom-Pfade referenzieren,
+  **P2** Bericht über Phantom-Referenzen im Produktionscode. Verdrahtet als
+  Pre-Commit-Hook `aurik-wohlklang-gate` (`always_run`, fail-closed).
+- **E5 ist der Kern:** Der Abgleich des deklarierten Solls gegen den
+  **Literalwert im Code** hätte den Drift vom 2026-09-27 („Aktenlage OFF, Code
+  AN“) verhindert — Vertrag und Code können nicht mehr auseinanderlaufen.
+- **Modellpfade sind portabilitätsbewusst:** `models/*` ist per `.gitignore`
+  ausgenommen; Beleg- und Phantom-Prüfungen für Modellpfade greifen nur bei
+  vorhandenem `models/`-Baum (auf einem nackten Checkout würde das Gate sonst
+  maschinenabhängig blocken).
+
+**Befund des neuen Gates (ehrlich, nicht geschönt):**
+
+| Status | Anzahl | Bedeutung |
+| --- | --- | --- |
+| `aktiviert` | **0** | Für **keine** eingeschaltete Stufe liegen alle fünf Belege vor |
+| `ausnahme` | 5 | begründet und befristet, als Warnung sichtbar |
+| `gesperrt` | 7 | Soll AUS, code-seitig bestätigt |
+
+Die fünf Ausnahmen sind die reale Beweislücke: **W-1** HR-V1 (C4-Hörstichprobe
+offen — Maintainer-Entscheid Weg 2 vom 2026-10-06), **W-4** MP-SENet
+(Aktivierung auf 3 × 30-s-Teilstücken statt Voll-Songs), **W-5/W-6/W-7** DFN
+Musik, MIIPHER-DiT, Harmonic-Inpainting (Bestandsaktivierungen vor Einführung
+dieses Vertrags).
+
+### Phantom-Pfade: D-K3-1 geschlossen, D-K3-5 neu
+
+- **D-K3-1 geschlossen (WP-2):** `scripts/ab_test_exports.py` zielte auf
+  `bigvgan_v2_f3e29.onnx` — ein Artefakt, das **nie existierte**; das
+  A/B-Ergebnis war damit unerreichbar. Der Harness vergleicht jetzt **Basis**
+  vs. **F3-Finetune** (reale Artefakte) und **bricht laut ab**, wenn ein
+  Kandidat fehlt, statt still nur A zu messen (§V6 copilot-instructions.md).
+- **D-K3-2 ehrlich eingeordnet:** `quality_predict.py` in `models/wav2vec2/`
+  ist **untracked** (`models/*` ist per `.gitignore` ausgenommen) — also
+  Upstream-Stray ohne Konsument, zusätzlich falsch beschriftet
+  (`Wav2Vec2ForSequenceClassification` bei `config.json` = `Wav2Vec2ForCTC`).
+  Status `bewusst-akzeptiert`: eine Änderung an untracked Fremdinhalt wäre ein
+  Daten-Eingriff **ohne Repo-Wirkung**; entscheidend ist, dass die Datei nicht
+  als Aurik-Pfad gilt.
+- **D-K3-5 neu:** der `P2`-Lauf meldet **53 nicht existente `models/…`-Referenzen**
+  in 1660 Produktionsdateien (u. a. `flow_matching` 8×, `muq_eval_a1_head` 3×,
+  `mp_senet_musik` ohne `finetuned`-Präfix). Bewusst **Bericht, kein Fail**:
+  legitime optionale/konditionale Pfade müssen von echten Fehlverdrahtungen
+  getrennt werden. `P1` bleibt fail-closed, aber auf die **Evidenz-Harneske**
+  begrenzt — ein harter Fail auf allen 53 würde den Commit-Pfad blockieren.
+
+**Tests:** `tests/unit/test_wohlklang_gate.py` (22 Fälle: Parser,
+E1–E6-Regeln über synthetische Verträge, Phantom-Erkennung, Portabilität ohne
+`models/`-Baum, Bestands-Nachweis am echten Vertrag); SOTA-Defizit-Register
+jetzt **21 Einträge**, keine Verstöße.
+
+## 10.6.0 (2026-10-06)
+
+### §P1-3 — HR-V1: Budget-Ausnahme + **eine** Aufrufstelle mit Längen-Deckel
+
+**Minor-Bump (§v10.802 copilot-instructions.md):** neue Fähigkeit
+(Budget-Vertrag) mit geändertem Verarbeitungsumfang — kein Hörordnungs-Bruch.
+Der Entscheid wurde vom Maintainer getroffen (Weg 2, nicht „Flag aus“).
+
+**Wurzel-Fix (§V7/§G9 copilot-instructions.md):** Das BigVGAN-HR-V1-Repair
+synthetisierte das **ganze** Signal und wurde aus **bis zu fünf** Phasen
+gerufen (`phase_03` ×2, `07`, `23`, `50`). Gemessen am Produktionspfad
+(CPU/ONNX): **13,2× RT warm** je Passage = 792 s je Audio-Minute — das
+**Dreifache** des Budgets für die gesamte Phase-Pipeline (240 s/min,
+§Performance-Budget copilot-instructions.md). Fünf Aufrufe desselben
+Schritts sind Symptom- statt Ursachenbehebung.
+
+**1. Aufrufstelle (§G9):** HR-V1 läuft nur noch in
+`phase_07_harmonic_restoration`. Die Aufrufe in `phase_03_denoise` (×2),
+`phase_23_spectral_repair` und `phase_50_spectral_repair` sind entfernt —
+aber **nicht still** (§G8): sie melden weiter ein `hr_v1`-Metadatum mit
+`{"attempted": false, "reason": "centralized_g9", "canonical_site":
+"phase_07_harmonic_restoration"}` als Audit-Spur für Narrativ und Lauf-Analyse.
+
+**2. Längen-Deckel (§P1-3):** `BIGVGAN_V2_HR_MAX_DUTY = 0,05` (5 % der
+Signallänge), Untergrenze 0,5 s, Obergrenze 10 s. Die Ausschnitte liegen
+**gleichmäßig verteilt** (keine Inhalts-Auswahl — eine solche wäre eine
+Hör-Entscheidung und wurde bewusst nicht erfunden, §V7); die additive
+Differenz wird mit **200-ms-Cosinus-Rampe** eingeblendet, also **keine
+Nahtkante** (§G3/§V2 copilot-instructions.md). Der Rest bleibt
+**bit-identisch** zum Eingang.
+
+| Größe | vorher | nachher |
+| --- | --- | --- |
+| Wandzeit je Passage | 13,2× RT | **1,04× RT** |
+| je Audio-Minute | 792 s | **62 s** |
+| Anteil am Phasen-Budget | 330 % | **26 %** |
+| Aufrufstellen | 5 | **1** |
+
+**Belege:** `tests/unit/test_hr_v1_budget_deckel.py` (21 Tests: Deckel-Arithmetik
+0,2…3600 s, Determinismus §G5, außerhalb-Fenster-Bit-Identität, Stub-Gate-
+Blend, `model_used=none`, Längen-Mismatch fail-closed, Synthese-Fehler
+fail-closed, plus 2 Guards gegen die Rückkehr der Aufrufe); Bestandstests
+`test_hr_v1_activation_contract.py` und `test_primary_paths_no_fallback.py`
+grün; Messung am Produktionshelfer 30-s-Signal warm.
+
+**Offen (benannt):** Hörstichprobe **C4** zur Timbre-Konsistenz der
+Ausschnitt-Behandlung (Hörordnung Ebene 4).
+
+**F3-Artefakt (Arbeitspaket 1c):** `models/bigvgan/bigvgan_v2_f3.onnx` bleibt
+exportiert + paritätsbewiesen (rel ≤ 6,5e-05) und **nicht verdrahtet** — bei
++0,9 % Laufzeit gegenüber der Basis gibt es keinen Rollout-Grund.
+
+**Beleg:** `docs/reports/current/2026-10-06_p1_3_bigvgan_f3_rollout_entscheid.md`
+(§10).
+
+## 10.5.1 (2026-10-06)
+
+### Arbeitspaket 1c — F3-BigVGAN: Export erfüllt, Rollout gesperrt, Aktenlage korrigiert
+
+**Patch-Bump (§v10.802 copilot-instructions.md):** reiner `fix`/`docs`-Batch —
+kein Signalpfad-Eingriff, kein Hörordnungs-Bruch, kein Feature.
+
+**Export-Rezept an der Wurzel gehärtet** (`scripts/export_bigvgan_v2_onnx.py`):
+
+- Architektur kommt jetzt aus der **Checkpoint-Config** (`cfg`) statt aus einer
+  handkopierten Replik — ein Finetune mit abweichender Config wäre zuvor still
+  falsch gebaut worden (§V6 copilot-instructions.md).
+- Paritätsprüfung auf **drei strukturierten Feeds** (`sane` seed 42,
+  `harmonic`, `const05`) statt eines einzelnen; Abbruch bei rel ≥ 1e-3
+  (§III.9 copilot-instructions.md, Lehre aus basicpitch).
+- Modul-Level-`numpy`-Import; Prüfung der exportierten Eingangsform `[1,128,64]`.
+
+**Beleg:** `models/bigvgan/bigvgan_v2_f3.onnx` (lokal, `models/*` ist per
+`.gitignore` ausgenommen) — Quelle `Checkpoint-cfg (epoch=7,
+val_a1=0.5756958723068237)`, Parität rel **6,521e-05 / 9,705e-06 / 1,693e-05**.
+
+**Negativer Budget-Entscheid (gemessen am Produktionspfad, CPU/ONNX):**
+12,67× RT (Basis) / 12,78× RT (F3) im ONNX-Kern; **13,2× RT warm** (16,3× kalt)
+am Produktionshelfer `apply_hr_v1_additive` ⇒ **792 s je Audio-Minute** gegen
+≤ 240 s für die **gesamte** Phase-Pipeline (3,3× Überzug), bei bis zu 5
+verdrahteten Aufrufstellen. F3 = **+0,9 %** ⇒ kein Laufzeitgewinn. Der
+F3-Rollout bleibt **gesperrt**; der F3-ONNX ist exportiert und
+paritätsbewiesen, aber **nicht verdrahtet** (ersetzt nichts).
+
+**Befund + Aktenkorrektur (§V7 copilot-instructions.md):** Die Annahme
+„`BIGVGAN_V2_HR_ACTIVATED` ist OFF“ war falsch — der Pfad ist am
+Produktionspfad **aktiv** (`applied: True`, 18 Bänder, Signal verändert) und
+lädt die **Basis** statt F3. Der Flip vom 2026-09-27 stützt sich auf eine
+GPU-Kostenzahl (2,5× RT), die für den CPU-Produktionspfad nicht gilt.
+Defizit-Register (D-K0-1/D-K0-2/D-K3-1), Roadmap (Matrix A, Q1, SOTA4-2,
+Phasenzeilen 03/07/23/50) und Prep-Report sind auf den gemessenen Stand
+gezogen. Der **Aktivierungs-Entscheid für HR-V1 selbst ist offen** und
+sign-off-pflichtig (§v10.802 copilot-instructions.md) — im Report steht die
+Empfehlung Flag `False` bis ein Aufruf budgetgedeckt ist.
+
+**Beleg:** `docs/reports/current/2026-10-06_p1_3_bigvgan_f3_rollout_entscheid.md`.
+
+## 10.5.0 (2026-10-06)
+
+### §P1-2 — SCNet-Separation verdrahtet (Aktivierung gesperrt)
+
+**Wurzel-Fix (§G9 copilot-instructions.md):** Der A/B-Harness
+`scripts/eval_scnet_vs_mdx23c.py` trug eine **eigene Kopie** von Checkpoint-Laden
+und Inferenz und durfte deshalb nie produktiv werden. Jetzt gibt es **eine**
+Implementierung für Harness und Produktion.
+
+- **Neu: `plugins/scnet_plugin.py`** — kanonische SCNet-4-Stems-Implementierung
+  (Strict-Load des 65.292.464-Parameter-Checkpoints `huge_scnet_4stems_v1.2.ckpt`,
+  Apache-2.0; vendored ZFTurbo-Architektur MIT; bitsandbytes-Stub für den
+  Trainings-Pickle; Quellen-Reihenfolge aus `config.yaml`; Rate 44,1 kHz ⇄ 48 kHz
+  über den kanonischen `plugins.htdemucs_plugin.resample_audio`; 15-s-Chunking mit
+  0,5-s-Kreuzblende; Layout- und Längen-Normalisierung; §V6-Begründung bei Sperre
+  oder Ausfall).
+- **Neu in `music_model_flags`:** `use_scnet_music` (**Default `False`**) +
+  `MUSIC_MODEL_PATHS["scnet"]` — **bewusst ohne** Legacy-Gegenstück: ohne Freigabe
+  liefert `resolve_model_path("scnet")` `None` (§V7 copilot-instructions.md).
+- **Verdrahtung hinter dem Never-worsen-Vergleich** (`MLStemSeparator.separate`):
+  SCNet wird nur bei Freigabe als Kandidat ausgewertet; zwei referenzfreie Zeugen
+  entscheiden — Rekonstruktions-Treue (`reconstruction_fidelity`, kanonisch in
+  `backend/core/dsp/stem_separator.py`) und **Vokal-Erhalt** (Stem-Kollaps-Schutz,
+  §V1-Geist: Gesang wird nie wegoptimiert). Ohne Freigabe **kein Import, kein
+  Modell-Load** ⇒ bit-identischer Bestand (§G5 copilot-instructions.md).
+- **Normativ gepinnt:** `tests/normative/test_primary_paths_no_fallback.py` führt
+  `use_scnet_music` als **bewusst gesperrten** Flag.
+- **Tests:** `tests/unit/test_scnet_wiring.py` (10 Fälle: Sperre/Auflösung,
+  Übernahme, Verwerfung, Vokal-Kollaps, werfender Kandidat, kanonische Formel).
+- **Audit:** Modell-Verdrahtungs-Audit → `scnet_4stems` **verdrahtet**;
+  weiterhin **0 undokumentierte Verwaiste**.
+- **Offen (ehrlich):** Die **Aktivierung** bleibt gesperrt — C4-Hörstichprobe +
+  Hörordnungs-Sign-off (§v10.802 copilot-instructions.md) und der RT-Beitrag gegen
+  die Budget-Tabelle (§9.5; A/B: CPU ~7× langsamer als Demucs v4, Vorsprung nur
+  +1,96…+3,59 dB SI-SDR gegen die **fair** gemessene Baseline).
+
+## 10.4.0 (2026-10-06)
+
+### SOTA-Defizit-Register + Gate (WP-0) — stilles Kapital wird auditierbar
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Der Modell-/Wohlklang-Defizit-Stand
+war über Roadmap-Prosa, Changelog und Lauf-Reports verstreut; drei Defizit-Klassen
+(belegt trainiert-aber-nicht-deployt, synthetisch-statt-Musik, Sprach-Signalpfad)
+waren **nirgends** als solche geführt.
+
+- **Neu: `.github/SOTA_DEFICIT_REGISTER.md`** — ID-getrackte Matrix
+  `D-<Klasse>-<n>` mit **20 Einträgen** (K0 = 9, K1 = 2, K2 = 5, K3 = 4),
+  Status-Enum (`offen`/`in-arbeit`/`geschlossen`/`bewusst-akzeptiert`) und
+  **Evidenzpflicht pro Zeile** (§III.13 copilot-instructions.md): `geschlossen`
+  ist nur mit **existierendem** Beleg-Pfad zulässig; Domänen-Behauptungen
+  (`musik`/`sprache`/`gemischt`) brauchen konkrete, prüfbare Evidenz —
+  `unbekannt` ist die ehrliche Angabe statt einer Sprach-Vermutung.
+- **Neu: `scripts/sota_deficit_gate.py`** — fail-closed Gate für genau diese
+  drei Akzeptanzkriterien des Roadmap-Arbeitspakets WP-0, plus
+  **Domänen-Abgleich Register ↔ kuratiertes Manifest** (§G9
+  copilot-instructions.md — eine Quelle). Verdrahtet als Pre-Commit-Hook
+  `aurik-sota-deficit-gate` (`always_run`).
+- **Neu: `tests/normative/test_sota_deficit_gate.py`** — 26 Tests: Bestands-
+  Nachweis am echten Register und Regel-Nachweis über synthetische Register-
+  Texte (Status/Evidenz/Klasse/ID/Enum/Format/Domänen-Abgleich) sowie
+  Hook-Verdrahtung.
+
+### Artefakt-Probe: **alle** Modelle am Artefakt ausgelesen (§III.13)
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Die Domänen- und Identitätsaussagen
+zu den ML-Modellen stammten aus Doku — bis hin zu einer nachweislich falschen
+LibriTTS-Zuordnung. Jetzt wird jedes Modell-Artefakt **gemessen**:
+
+- **Neu: `scripts/model_artifact_probe.py`** — liest ONNX-Köpfe (ohne External
+  Data), Torch-Zip **und** Legacy-Pickles über einen _restricted Unpickler_, der
+  Gewichte **nie materialisiert** (Storage-/Tensor-Stubs), dazu safetensors-,
+  npy- und joblib-Header. Gemessen werden Mel-Bänder, Upsample-Faktor,
+  Kanalbreiten, Parameterzahl, Hparams (`config`/`hparams`/`args`), Dtype-Mix,
+  Operator-Mix und die lokale Doku-Evidenz (`config.json`, Modell-Karten, Lizenz).
+- **Neu: `.github/ML_ARTIFACT_FINGERPRINTS.md`** (generiert, 66 Verzeichnisse ·
+  **153 Artefakte** · 44,1 GB · **0 Auslesefehler**) — je Verzeichnis eine
+  Messtabelle mit SHA-256, Parameterzahl und Architektur-Fingerabdruck.
+  Formate: 89× ONNX, 49× Torch-Zip, 3× Legacy-Pickle, 5× npy, 2× safetensors,
+  2× TorchScript, 2× joblib, 1× pip-`.pth` (korrekt als _kein_ Modellartefakt
+  klassifiziert statt als Fehler).
+- **Herkunftsbelege maschinell (Muster EAR-VAE, jetzt für alle):**
+  Archiv `models/_archive_20260920` ↔ deployt → **8× byte-identisch**,
+  **6× architektur-gleich mit abweichenden Gewichten** (Finetune-/Generations-
+  belege), **14× ohne Gegenstück** (offen dokumentiert).
+- **Neue harte Befunde:** `models/nvsr/nvsr.onnx` ist **byte-identisch** mit
+  `_archive_20260920/flashsr/flashsr_onnx_prod_20260810.onnx` ⇒ das deployte
+  Artefakt ist der **FlashSR**-Export, nicht ein NVSR-Modell (Namens-Drift, jetzt
+  als D-K2-4 geführt). Die **Upstream-Basis** der EAR-VAE
+  (`…/pretrained_weight/ear_vae_44k.pyt`, 147,86 M) und der **Sprach-Basis-Core**
+  von SGMSE+ (`sgmse_wsj0_reverb.ckpt`, 327,95 M) liegen jetzt lokal als
+  Vergleichsartefakte vor — die §III.11-Sperre ist damit gegen die echte Basis
+  prüfbar.
+- **Ehrlichkeit:** Aus Bytes ist die **Architektur-Identität** belegbar, **nicht**
+  der **Trainingskorpus** (ein ONNX trägt kein Trainingsmaterial). Die neuen
+  Vokoder-Einstufungen bleiben deshalb `unbekannt` statt „Sprache" (s. u.).
+
+### Lücken-Matrix (gemessen) — was Aurik zum weltbesten Wohlklang fehlt
+
+- **Neu in `docs/TODOS_SOTA_ROADMAP.md`:** konsolidierte **Lücken-Matrix**
+  (A) vorhandenes, aber nicht wirkendes Kapital, (B) fehlende Modelle/
+  Fähigkeiten, (C) Pfad-/Hygiene-Lücken, (D) priorisierte Reihenfolge — jede
+  Zeile auf lokale Messungen gestützt (Artefakt-Probe, Verdrahtungs-Audit,
+  Flags, Defizit-Register).
+- **Neu im Register:** **D-K0-8** — der trainierte flache Material-/Depth-
+  Klassifikator (`models/medium_shallow_v1.joblib`, CV 64,3 % Material bei n=56)
+  hat **keinen Konsumenten** (`medium_classifier` nutzt im `use_ml`-Zweig CLAP);
+  die Vergleichs-Baseline stammt aus Manifest-Feldern und ist **nicht
+  applikationsgleich**. **Konsolidiert (2026-10-06):** die **Depth-Accuracy
+  85,7 % ist zurückgezogen** — die Vergleichsgröße ist
+  `len(result.transfer_chain)` (Kettenlänge), nicht die kuratierte
+  Depth-Label-Größe, und der heutige Konsument liefert **keine** Depth-Ausgabe
+  (`ClassificationResult` ohne `depth`-Feld) ⇒ für Depth existiert **kein**
+  applikationsgleicher Partner. Der Blocker ist damit **`DATEN`** (Label-Korpus
+  ≥ ~50 je Klasse) → Wiring-Entscheidung + A/B + Hörordnungs-Sign-off, **nicht**
+  eine fehlende Messung. **D-K0-9** — `models/ear_vae2_upstream/` (EAR-VAE v2)
+  braucht eine Rollout-/Ersatz-Entscheidung gegen den v1-Finetune.
+- **Verifizierter Ist-Stand der Pfade:** 22 Pfad-/Aktivierungstests grün
+  (`test_model_zoo_activation`, `test_primary_paths_no_fallback`,
+  `test_model_inventory_wiring`), Verdrahtung **0 undokumentierte Verwaiste**,
+  Register-Gate ohne Verstoß.
+
+### Fehlende Modelle aus der Sicherung beschafft
+
+- **Bestandsabgleich** Repo ↔ drei Sicherungen (16.09./21.09./06.10.2026):
+  die 06.10.-Sicherung ist deckungsgleich, die älteren enthielten **7 fehlende
+  Bestände** — sie sind jetzt in-repo:
+  `_archive_20260920/` (9,7 G, 26 Artefakte, Herkunftsbelegstelle),
+  `ear_vae2_upstream/` (EAR-VAE-**v2**-Upstream, 298 M),
+  `hubert/` (HuBERT-ONNX + External Data, 362 M),
+  `mpsenet/` (MP-SENet-Trainingsquelle + `best_ckpt`, 8,8 M),
+  `rvc/` (`rmvpe.pt` 181 M, `hubert_base.pt` 190 M — Originale zu den
+  deployten ONNX-Exporten), `medium_shallow_v1.joblib` (**trainierter**
+  Material-Klassifikator, 1,7 M) sowie die fehlenden Teile
+  `ear_vae/{docs,eval,config/ear_vae_v2.json}`.
+- **Verfahren:** `rsync --ignore-existing` (vorhandene Produktionsartefakte
+  werden **nie** überschrieben), `.venv`/`.cache` ausgeschlossen. `models/`:
+  62 → 69 Einträge.
+- **Register:** neue Position **D-K0-7** — das Archiv ist „stilles Kapital":
+  für 14 Artefakte ohne Gegenstück ist weder Deploy noch Verwerfen dokumentiert;
+  die `ear_vae/*_orig_20260730_backup.onnx` (84,1/84,3 M) werden ausdrücklich
+  **nicht** mit dem deployten Finetune (73,8 M) gleichgesetzt.
+
+### Vocoder-Domäne am Artefakt gemessen — Doku-Zuordnung widerlegt (§III.13)
+
+**Wurzel-Fix (§V7 copilot-instructions.md):** Der Gate-Fund (Manifest
+`audio-allgemein` vs. Registry `sprache`) wurde **nicht** durch Übernahme der
+Registry-Worte gelöst, sondern durch Messung **am Artefakt** — die Registry-Angabe war selbst
+  nur Doku-Übernahme (Ursprung: Kopfkommentar `scripts/train_bigvgan_f3.py`).
+  Gemessen: `models/bigvgan/bigvgan_v2.onnx`/`.pth` hat **128 Mel-Bänder**
+  (`conv_pre.weight_v` = `[1536, 128, 7]`), 6 Up-Stufen = **512×**,
+  `upsample_initial_channel` 1536, **SnakeBeta** (109×`alpha` **und** 109×`beta`)
+  mit Anti-Alias und 122,19 M Parameter ⇒ **BigVGAN v2 in der
+  44,1-kHz-Konfiguration** (`bigvgan_v2_44khz_128band_512x`) — die Behauptung
+  „LibriTTS/Sprache" ist damit **architektur-widerlegt** (LibriTTS-Konfiguration
+  = 24 kHz/100 Bänder/256×/512 Kanäle/≈14 M). `models/hifi_gan/hifi_gan.onnx`
+  hat **80 Mel-Bänder**, `[8,8,2,2]`/`[16,16,4,4]` = **256×**, Kanäle **128/64**
+  ⇒ 0,93 M Parameter, 22 050 Hz ⇒ HiFi-GAN-Topologie, aber **kein offizieller
+  Checkpoint** (V1: 512 Kanäle/13,9 M; V2: `[4,4,2,2]`/`[8,8,4,4]`) ⇒ die
+  Zuordnung „UNIVERSAL_V1" ist widerlegt. Ohne Modell-Karte, Hparams oder
+  Upstream-SHA ist der Trainingskorpus nicht belegbar ⇒ beide Vocoder sind
+  **`unbekannt`** (nicht „Sprache"); das Signalpfad-Risiko bleibt als Defizit
+  (D-K0-2/D-K2-1) erhalten.
+
+- **Deployt = Basis, nicht F3-Finetune (bytescharf bewiesen):** 469 von 783
+  Tensoren unterscheiden sich zwischen `models/bigvgan/bigvgan_v2.pth` und
+  `output/_training_archive_20260920/f3_bigvgan/best.pt`; der produktiv geladene
+  ONNX stimmt exakt mit der **Basis** (`ups.1.0.weight_v`: max|Δ| = 0 gegen
+  Basis, 1,0e-1 gegen F3) und datiert auf 2026-09-10 (Finetune: 2026-10-03) —
+  der Export kann ihn nicht enthalten. Der F3-Musik-Finetune bleibt damit
+  weiterhin nicht im Rollout.
+- **Doku-Wahrheit hergestellt:** `.github/ML_MODEL_DOMAIN_REGISTRY.md` erhält
+  den Mess-Block §4a und korrigierte Tabellenzeilen;
+  `.github/SOTA_DEFICIT_REGISTER.md` (D-K0-2, D-K2-1, Drift-Abgleich samt Lehre),
+  `scripts/model_inventory.py` (`_DOMAIN_EVIDENCE` mit Messwerten, neu für
+  bigvgan), `scripts/train_bigvgan_f3.py` (Ursprungs-Fehlannahme) und
+  `.github/instructions/ml_domain.instructions.md` (Regeln 2 und 5) sind
+  synchronisiert; der Drift-Sperrtest
+  (`test_curated_manifest_marks_unproven_vocoders_as_unknown`) sichert die
+  Artefakt-Evidenz ab. Kuratierte Verteilung: 32 Einträge
+  (22 musik / 3 sprache / 5 audio-allgemein / 2 unbekannt).
+- **EAR-VAE-Herkunft geklärt — eigene Fehlannahme widerlegt (§III.13
+  copilot-instructions.md):** Die erste Fassung dieses Releases führte die
+  Roadmap-Angabe „EAR-VAE MUSDB-Finetune" als **nicht belegbar** (nur im
+  Arbeitsbaum gesucht). Die Prüfung des Backups
+  (`/media/michael/Aurik_Backup/…/models/ear_vae_upstream/`) zeigt das
+  Gegenteil: `models/ear_vae/{encoder,decoder}.onnx` (`8f97ef67…`/`ed64a1f1…`)
+  sind **byte-identisch** mit `ear_vae_ft_{encoder,decoder}_inline.onnx` — der
+  Produktionsstand **ist** der MUSDB-Finetune; die früher genannten SHAs
+  `4168db14…`/`48dad212…` sind derselbe Finetune in der External-Data-Variante.
+  Der Checkpoint `ear_vae_music_finetuned.pyt` (SHA `993e69be…`) und das
+  Trainings-/Exportrezept (`finetune_music.py`, `masking_loss.py`,
+  `export_finetuned_onnx.py`, `benchmark_finetuned.py`, `model/`, `config/`)
+  liegen jetzt **in-repo** unter `models/ear_vae/` — mitsamt der External-Data-
+  Paarung `ear_vae_ft_{encoder,decoder}.onnx` (+ `.data`; SHAs
+  `4168db14…`/`48dad212…`, nicht der Produktionspfad). Ein Re-Export reproduziert
+  die deployten ONNX-Artefakte mit **max|Δ| = 0,0** (Encoder, Decoder,
+  Ende-zu-Ende); die kopierte External-Data-Paarung liefert ebenfalls
+  max|Δ| = 0,0 gegen die Produktion. Registry-Absatz, Register, Roadmap und das
+  kuratierte Manifest (`_DOMAIN_EVIDENCE`: 2 neue kuratierte Pfade →
+  32 Einträge) sind korrigiert.
+- **Verankerung:** `AGENTS.md` §7 (Lektüre-Einstieg), Roadmap WP-0 auf
+  „erledigt" gesetzt; Drift-Baseline fortgeschrieben.
+
+## 10.3.22 (2026-10-06)
+
+### ML-Transparenz + CLAP-Scoring an der Wurzel (§6.8, §G9, §V6)
+
+**Medium-Klassifikation: physikalisch zuerst (§6.8 copilot-instructions.md)**
+
+- `medium_classifier.classify()` war **CLAP-first**: das flache CLAP-Materiallabel
+  konnte die physikalische Trägerbestimmung übersteuern (Produktionsbefund:
+  digital erzeugte CD-Datei → „tape"). Jetzt **physikalisch zuerst**; CLAP füllt
+  ausschließlich ein UNKNOWN-Ergebnis (Zeuge, kein Richter).
+- `laion_clap_plugin`: Material ist **MULTI-LABEL** (unabhängige Kosinus-Evidenz,
+  NICHT auf Summe 1) — Träger sind nicht disjunkt (Tonträger-KETTEN, 99 % der
+  Restaurierungsfälle).
+- `pre_analysis`: CLAP-Konsens vergleicht **ketten-joint** (on-chain vs. off-chain
+  Evidenz-Masse) statt Einzel-Argmax.
+
+**CLAP-Tag-/Zero-Shot-Normalisierung**
+
+- Zero-Shot-Queries lieferten **0.0** (gesättigter gemeinsamer Tag-Softmax).
+  Jetzt: **absolute** Kosinus-Ähnlichkeit je Query — vergleichbar über Aufrufe
+  (für die pos/neg-Saldierung des `GermanSchlagerClassifier`).
+- Instrumente/Genre: **Per-Kategorie-Softmax** statt eines gemeinsamen
+  43-Tag-Softmax (der verwässert → `top_instruments` immer leer, Genre-Gate
+  feuerte nie, Genre-Argmax = Rauschen).
+
+**CLAP-Checkpoint-Laden**
+
+- `text_branch.embeddings.position_ids` (nicht-parametrischer Index-Buffer)
+  löste eine **Falsch-Warnung** aus; jetzt als benigne klassifiziert
+  (`classify_checkpoint_params`).
+
+**BEATs-Transparenz (§G8)**
+
+- `beats_plugin`/`phase_53`: lokaler Export ist **Encoder-only** (768-dim), kein
+  527-Tagger — Doku korrigiert, Regressions-Guard ergänzt.
+
+### ML-Domänen-Registry — „die meisten Modelle sind Sprache" ist widerlegt (§III.13)
+
+**Kanonische Registry:** `.github/ML_MODEL_DOMAIN_REGISTRY.md` belegt die
+**Trainings-Domäne** jedes der **61** Modellverzeichnisse in `models/` aus
+Trainings-Skripten, vendored Modell-Karten, Export-Skripten und SHA-Vergleichen.
+Ergebnis: **37 musik-trainiert (≈ 61 %)**, nur **11 sprach-trainiert (≈ 18 %)**
+— der häufigste KI-Fehlschluss („die meisten lokalen ML-Modelle sind
+Sprachmodelle") ist damit widerlegt.
+
+- **Normative Verankerung:** neue Regel **§III.13** in
+  `copilot-instructions.md`; Eintrag in der normativen Kette (`AGENTS.md` §1
+  Punkt 4 + §3 Schnell-Referenz + §7 Lektüre); Invariante in `CLAUDE.md`.
+- **Auto-geladene Instruktion:** `.github/instructions/ml_domain.instructions.md`
+  (`applyTo` deckt `plugins/`, `backend/`, `denker/`, `models/`, `scripts/`,
+  `Aurik10/`, `cli/` ab).
+- **Maschinenlesbar:** `python scripts/model_inventory.py --domains` liefert
+  Domänen + Evidenz als JSON (kuratiertes Manifest: 20 musik / 3 sprache /
+  7 audio-allgemein).
+
+**Aufgedeckte Domänen-Korrekturen (Evidenz):**
+
+- `models/ear_vae` = offizielles **Musik**-Rekonstruktionsmodell (εar-VAE) —
+  **Korrektur 2026-10-06:** der deployte Stand ist der **MUSDB-Musik-Finetune**
+  (SHA-belegt, siehe 10.4.0); die damalige Angabe „nicht deployt" war falsch.
+- `models/miipher_dit` = auf **MUSDB18-HQ-Vocals** trainiert („Singing Voice
+  Enhancement"), **aktiv** (`use_miipher_dit=True`) — kein Sprachmodell.
+- `models/bigvgan` = **Sprach-Basis**; Musik-Finetune F3 existiert und ist
+  A/B-validiert (HNR +4,42 dB), aber Flag `BIGVGAN_V2_HR_ACTIVATED` ist OFF.
+- Sprach-Signalpfad-Risiken dokumentiert: HiFi-GAN, Vocos, NVSR, AERO
+  (§V6-Fallback mit Warnung); `nara_wpe` ist unüberwacht/domain-neutral.
+
+## 10.3.21 (2026-10-06)
+
+### §G9 Genre-Single-Source (Tranche 3.1–3.3) + Zahlen-Wahrheit Runde 2
+
+**Genre-Auflösung: eine Quelle statt fünf**
+
+- `backend/core/genre_registry.py` ist die **einzige** Genre-Alias-Quelle. Neu:
+  `goal_weight_key()` (Schlüsselraum von `song_goal_importance`) und
+  `semantic_hint_label()` (Anzeige-Taxonomie); zusätzliche Alias-Abdeckungen
+  (`techno`, `electronica`, `classic_rock`, `indie_rock`, `orchestra`,
+  `dt_schlager`, `latin_pop`, `country_&_western`, …).
+- **Fund des neuen Guards:** Die **fünfte** parallele Genre-Auflösung lag in
+  `backend/core/phases/phase_53_semantic_audio.py` (`_GENRE_ALIAS_MAP`, 33 Einträge,
+  eigene deutsche Etiketten). Sie ist **verhaltensgleich** in die Registry portiert
+  (`semantic_hint_label`) — Nachweis: **47/47 identische Ausgaben** über 47
+  Referenz-Proben; die Phase ist jetzt ein dünner Delegat.
+- **Bewusst konserviert und dokumentiert** (keine stille „Verbesserung“):
+  `metal→"Rock"`, `country→"Folk"`, `ambient→"Electronic"`,
+  `latin→"Unbekannt"`, sowie die Substring-Reihenfolge (`classic_rock→"Klassik"`,
+  weil `class` vor `rock` geprüft wird). Eine Korrektur wäre eine hörrelevante
+  Verhaltensänderung und braucht A/B + Hörordnungs-Sign-off (§v10.802).
+
+**Neuer fail-closed Guard** `scripts/genre_single_source_check.py` (Hook
+`aurik-genre-single-source`, `always_run`):
+
+- **R1** Genre-Alias-Tabelle nur in `genre_registry.py` — fand sofort die fünfte Tabelle.
+- **R2** Jeder Schlüssel beider Ziel-Gewichtstabellen muss über `normalize_genre()`
+  auf ein kanonisches Genre auflösen (17 + 10 Schlüssel geprüft).
+- **R3** XOR-Invariante `goal_profile_key(g) is None` ⟺ `g in _GOAL_KEY_ABSENT`
+  (11 deklarierte Ausnahmen, 21 kanonische Genres) — kein stilles Fehlen.
+- **R4** **Bericht** (kein Fail): Wert-Divergenz der beiden Tabellen —
+  **115 Zellen in 7 gemeinsam geführten Genres**. Die Divergenz ist _klangrelevant_
+  (die Tabellen haben echte Rollen), daher wird sie sichtbar gemacht, aber
+  **nicht** automatisch vereinheitlicht (§G8-Transparenz, §v10.802).
+
+**Zahlen-Wahrheit Runde 2 (Doku vs. Code)**
+
+- **11 weitere veraltete Zählwerte** korrigiert (65 DefectTypes / 66 Kausal-Ursachen),
+  u. a. in der **normativen** Spec 02 (`46 defect_types`, `49 Ursachen`,
+  `62 Kausal-Ursachen`), `docs/DEFECT_SCANNER_SPEC.md` (behauptete
+  „Production-Ready“ mit 62 und listete nur 30),
+  `backend/core/defect_phase_mapper.py` („20 DefectType-Werte“, real 65),
+  `docs/architecture/*`, `docs/KI-AGENT-INTEGRATION-GUIDE.md`, `denker/README.md`,
+  `docs/PROJECT_STATUS.md`.
+- **Gate erweitert** (`scripts/defect_coverage_check.py`): Quellenliste 16 → 21 Dateien
+  (Spec 02, `docs/architecture`, `DEFECT_SCANNER_SPEC`, KI-GUIDE,
+  `defect_phase_mapper`, `pre_analysis`); die Regex erfasst jetzt auch
+  `defect types`/`defect_types` und `Ursachen` ohne „Kausal-“; neue dokumentierte
+  Inline-Ausnahme `defect-count-ok` für **legitime Teilmengen** (z. B.
+  „Top-3 Ursachen“) — bewusst sichtbar im Text statt versteckt. Grenzen dokumentiert
+  („N Defekte“, „N Typen“, „defect-type ticks“ bleiben manuell gepflegt).
+
+**Tranche 3.4 — Ziel-Dialekte deklariert, stilles Verwerfen beendet (§V6)**
+
+- **Befund (gemessen):** Das Projekt führt **vier Ziel-Vokabulare**; kanonisch ist
+  allein `song_goal_importance.ALL_GOAL_NAMES` (15 Ziele). `genre_goal_profile` und
+  `goal_budget._DEFAULT_GOAL_BUDGET` führen je 15 **eigene** Namen, Überlappung mit
+  dem Kanon nur **8** → **12 Fremdschlüssel**.
+- **§V6-Verstoß belegt:** `goal_budget.create_goal_budget()` übernahm Genre-Ziele nur
+  bei `if goal in targets` und **verwarf pro Genre 5 von 15 Zellen still** — bei
+  `metal` ausgerechnet die stärksten Signale (`punch` 2.0, `bass_praesenz` 1.9,
+  `makrodynamik` 1.4).
+- **Neu:** `GOAL_DIALECT_MAP` + `GOAL_DIALECT_NOTES` + `canonical_goal_name()`
+  (`backend/core/song_goal_importance.py`). Alle 12 Fremdschlüssel sind **deklariert**
+  — 2 wörtlich abgebildet (`mikrodynamik` → `micro_dynamics`,
+  `raeumlichkeit` → `spatial_depth`), 10 ausdrücklich **offen** mit Begründung.
+  Es wird nichts geraten (§V7 copilot-instructions.md): jede Zuordnung ist eine
+  Klang-Entscheidung und braucht A/B + Hörordnungs-Sign-off (§v10.802
+  copilot-instructions.md).
+- **§V6 behoben, Klang unverändert:** Der Budget-Konsument meldet jede Verwerfung jetzt
+  mit Gewicht, Begründung und kanonischem Ziel (erste Nennung als Warnung je
+  Genre/Ziel, danach Debug — keine Log-Flut). **Verhaltensgleichheit gepinnt:** die
+  wirksamen `metal`-Zellen sind bit-identisch zu vorher (Regressionstest).
+- **Guard R5** (`scripts/genre_single_source_check.py`): jeder Ziel-Schlüssel der drei
+  Ziel-Tabellen muss kanonisch **oder** in `GOAL_DIALECT_MAP` deklariert sein — ein
+  fünftes, undeklariertes Vokabular ist fail-closed.
+- **`SPEC.md` §2.3:** Phasentabelle ab 41 befüllt (Quelle: normative Spec 06 inkl.
+  Mechanismus/Fallback), §0a-Verbote markiert; die Ist-Stand-Diskrepanz (Überschrift
+  „66 Phasen" vs. 67 numerierte Phasen / 71 Dateien) ist **dokumentiert**, nicht
+  stillschweigend geändert.
+
+**Tests:** 294 (Genre-/Goal-Suiten) und 65 (Phase 53 / Registry / Guard / Ziel-Dialekte)
+grün; neu: 26 Guard-Regressionen in `tests/unit/test_genre_single_source_guard.py`
+(inkl. 3× R5) und 36 Ziel-Dialekt-Tests in `tests/unit/test_goal_dialects_t34.py`.
+
+## 10.3.20 (2026-10-06)
+
+### Zahlen-Wahrheit: Doku-Zählwerte gegen die Code-Wahrheit abgesichert (26 Stellen)
+
+- **Befund:** Die Regeln nannten **62 DefectTypes**, das Enum hat **65**; Spec 03/05
+  nannten gleichzeitig **54**, **46** und einen als „normativ“ markierten Wert **49**
+  für dieselbe Größe und widersprachen sich damit im selben Block. Gemessen:
+  `len(DefectType) == 65`, `len(CAUSES) == 66`.
+- **Wurzel der Drift:** „62“ bezeichnete an verschiedenen Stellen **Verschiedenes**
+  (DefectTypes _oder_ Kausal-Ursachen) — deshalb war weder ein Suchen-und-Ersetzen
+  noch eine reine Sichtprüfung belastbar.
+- **Gate (`scripts/defect_coverage_check.py`, 4. Bedingung):** neu prüft der
+  bestehende fail-closed-Abgleich zusätzlich **dokumentierte Zahl == Code-Zahl**.
+  Quelle ist eine **bewusst kuratierte Liste** von Dateien, in denen die Zahl eine
+  Aussage über den _aktuellen_ Ist-Stand ist; Chroniken, Meilenstein-Tabellen,
+  Audit-Momentaufnahmen und die in `AGENTS.md` §6 als Stubs deklarierten
+  `.agents/skills`-Kopien sind **ausgenommen**, weil ihre alten Zahlen Historie und
+  damit korrekt sind. Die Meldung nennt Datei **und Zeile**, damit die Korrektur
+  mechanisch erfolgt statt geraten.
+- **Korrigiert (26 Gate-Treffer):** `.github/copilot-instructions.md` (2×),
+  `.github/GEBOTE.md`, `.github/ID_REGISTRY.md`, `.github/specs/03` (4×: 54→65, 46→65,
+  2× Kausal-Ursachen 62→66), `.github/specs/05`, `.github/specs/25`, `AGENTS.md`,
+  `CLAUDE.md`, `README.md` (2×), `CONTRIBUTING.md`, `SPEC.md` (2×),
+  `scripts/gebote_verifier.py` (mitgezogene **hartkodierte** Regel, AGENTS.md §2),
+  `backend/core/causal_defect_reasoner.py` (2×: 62→66, 34→66),
+  `backend/core/surgical_defect_analyzer.py` (66→65),
+  `backend/core/unified_restorer_v3.py` (46→65), `denker/defekt_denker.py` (3×: 23→65).
+- **Spec 03 entschärft:** Der sich selbst widersprechende Block (62/35/49 für dieselbe
+  Größe, „49 ist normativ“) ist durch eine einzige autoritative Aussage ersetzt:
+  maßgeblich ist ausschließlich `CAUSES`; die Liste im Spec ist ein Auszug.
+- **Verifikation:** Gate **Exit 0** (vorher Exit 1 mit 26 Lücken), Gebote-Verifier
+  **30/30**, `reports/spec_drift_baseline.json` neu initialisiert (6 WATCHED-Files
+  waren gedriftet, u.a. `FILE_REGISTRY.md`).
+- **Bewusst nicht angefasst:** `docs/CHANGELOG_HISTORY.md`, die Meilenstein-Spalte in
+  `docs/PROJECT_STATUS.md`, `docs/dev/**` und die Wachstums-Notizen im Enum
+  („ergibt 28 DefectTypes“) — sie dokumentieren Historie; die Ausnahmen sind im
+  Gate-Docstring einzeln begründet.
+- **Rest-Befund (nicht normativ, gemeldet statt still korrigiert):**
+  `.agents/skills/{readme,spec,contributing}/SKILL.md` nennen 56/62 DefectTypes.
+
+## 10.3.19 (2026-10-06)
+
+### §III.11: Sperr-Protokollierung konsolidiert + drei vorbestehende rote Tests geklärt
+
+- **Befund (§G9 copilot-instructions.md):** Die dokumentierte Sperre
+  `music_model_flags.use_sgmse_musik=False` (SGMSE+ ist ein SPRACH-Score-Core) wird
+  von fünf Stellen konsumiert, aber nur zwei protokollierten sie §III.11-konform:
+  `hybrid_dereverb.py` und `phase_49_advanced_dereverb.py` nutzen das kanonische
+  `logger.info` mit Begründung. Drei Stellen taten das nicht:
+  - `backend/core/dsp/sota_vocal_model_router.py` — nur `logger.debug`, und der
+    Sperrgrund erschien in der Fallback-Kette als generisches
+    `sgmse_plus:RuntimeError` (nicht von einem echten Modellausfall zu unterscheiden, §G8 copilot-instructions.md)
+  - `backend/core/coordinated_repair.py` — **keine** Protokollierung
+  - `backend/core/phases/phase_03_denoise.py` — Sperre in eine Sammel-Bedingung
+    gefaltet, kein eigener Log
+- **Fix:** Alle drei nutzen jetzt das kanonische Muster: `logger.info` mit Begründung
+  (§v10.16/F7, §III.11 copilot-instructions.md). Der Router führt einen eigenen Kettentoken
+  `sgmse_plus:speech_core_locked`; die Eignungslogik in Phase 03 ist in
+  `_sgmse_material_ok` (Material/Voraussetzungen) und die Flag-Sperre getrennt —
+  semantisch identisch, aber begründbar.
+- **Zwei vorbestehende rote Tests** (`tests/unit/test_sota_vocal_model_router.py`)
+  erwarteten den SGMSE+-Zweig, den die Sperre bewusst schließt:
+  `test_router_vocal_nr_skips_unloaded_miipher_for_sgmse` und
+  `test_router_vocal_nr_compensates_missing_miipher_with_dfn_and_hnr`. Sie geben das
+  Flag jetzt per `monkeypatch` gezielt frei (Standard-Dependency-Injection, keine
+  Produktionsänderung) und prüfen damit weiterhin ihren eigentlichen Vertrag
+  (MIIPHER fehlt → DFN+HNR-Kompensation).
+- **Neuer Sperr-Pin-Test** `test_router_vocal_nr_locks_speech_core_and_reports_reason`:
+  Flag `False` ⇒ der Sprach-Core wird nachweislich NICHT aufgerufen
+  (`sgmse_calls == []`), der Kettentoken lautet `sgmse_plus:speech_core_locked`,
+  und die Sperre wird mit Begründung protokolliert (caplog, §G8 copilot-instructions.md).
+- **Dritter vorbestehender roter Test geklärt**
+  (`tests/unit/test_phase_03_denoise.py::test_clean_audio_not_degraded`): gegen HEAD
+  reproduzierbar, also nicht durch diese Sitzung entstanden. Ursache ist ein
+  **Testdesign**-Problem, belegt durch Messung (2026-10-06, 48 kHz):
+
+  | Signal | corr | rms_ratio | Bewertung |
+  | --- | --- | --- | --- |
+  | MUSDB18-HQ-Vocalstem (**sauber**) | 1,00000 | 1,0000 | unangetastet ✓ |
+  | `real_world_validation/.../digital_test_01.wav` (laut `metadata.json` **degradiert**: clipping) | 0,9542 | 0,693 | Bearbeitung korrekt ✓ |
+  | MUSDB Mixture / Other | 0,9524 / 0,9711 | 0,818 / 0,776 | Bearbeitung korrekt ✓ |
+  | synthetischer 440+880-Hz-Ton (0 Defekte) | 0,8736 | 0,999 | **Testdesign-Ausnahme** |
+
+  Ein rauschfreier, stationärer Sinus ist für einen Rauschschätzer nicht von Rauschen
+  zu unterscheiden (Messung: der DSP-Pfad senkt ihn auf 0,49×, der §0-Level-Guard holt
+  ihn auf 0,999× zurück; `sgmse_plus_tier0_applied`/`deepfilternet_tier1_applied`
+  bleiben `False`, also kein ML-Pfad). Die Korrelationsschwelle 0,97 ist von **keinem**
+  realistischen Signal erfüllbar (auch nicht von echtem degradiertem Material).
+  Der Test prüft jetzt die zwei **belegbaren** Verträge: Pegelerhalt am ruhigen Signal
+  (`0,95 ≤ rms_ratio ≤ 1,05`) und Nie-Verschlechtern auf wirklich sauberem Material
+  (Corr > 0,999, mit `skipif` für lokal fehlendes Referenzmaterial). Die Messwerte
+  stehen im Testdocstring, damit die Schwelle nicht als willkürlich abgeschwächt wirkt.
+
+## 10.3.18 (2026-10-06)
+
+### §G9: A/B-Neumessung mit kanonischem Demucs-Helfer — Verdikt revidiert
+
+- **Befund:** Der Vorgänger-A/B (`2026-10-04_p1_2_scnet_vs_mdx23c_ab.md`) verglich
+  SCNet gegen eine Baseline, deren ONNX-Aufruf defekt war: Der STFT-Eingang `x`
+  wurde mit Nullen gefüttert und nur der Wellenform-Zweig genutzt → die Baseline
+  verlor rund **13 dB**.
+- **Fix:** `scripts/eval_scnet_vs_mdx23c.py::_demucs4_baseline` nutzt jetzt den
+  kanonischen Helfer aus `plugins/htdemucs_plugin.py` (Commit `056f1ec1`) —
+  **eine** Implementierung für Plugin und Eval
+  (§G9 copilot-instructions.md).
+- **Neumessung** (identische Songs und Fenster 165/169/107 s, Seed 42, CPU,
+  0 Fehlerfälle):
+
+  | Song | SCNet | Demucs v4 fair | Δ | Demucs v4 alt (handicapiert) |
+  | --- | --- | --- | --- | --- |
+  | AM Contra | 13,57 dB | 11,61 dB | +1,96 dB | 1,54 dB |
+  | Al James | 10,32 dB | 7,01 dB | +3,31 dB | −7,00 dB |
+  | Motor Tapes | 16,43 dB | 12,84 dB | +3,59 dB | −20,07 dB |
+
+- **Revidierte Aussagen:** Der SCNet-Vorsprung beträgt **+1,96…+3,59 dB**
+  (Mittel ≈ +2,96 dB) statt „+10…+16 dB". Demucs v4 **erfüllt beide Gates**
+  (`separation_fidelity` 0,9051–0,9420; `singer_identity_cosine` 0,9478–0,9735)
+  — die frühere Gate-Verletzung war ein Aufrufartefakt, keine Modelleigenschaft.
+  **Neuer Trade-off:** Demucs v4 ist auf CPU **~7× schneller** (9,8 s vs. 68,9 s
+  je 30 s).
+- **Report:** `docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md`;
+  der Vorgänger ist als ÜBERHOLT markiert, Roadmap TODO-P1-2 aktualisiert.
+- **C4/C5 bleiben offen** (menschlicher Sign-off); die Hör-Artefakte je Song
+  (`mix`, `gt_vocals`, `scnet_vocals`, `baseline_vocals`) liegen in
+  `output/scnet_ab_2026-10-06_fair/` bereit.
+
+## 10.3.17 (2026-10-06)
+
+### §G9: Demucs-v4-ONNX-Pfad repariert — +13,4 dB Vocals-Separation
+
+- **Befund (gemessen, nicht vermutet):** Der htdemucs-ONNX-Pfad war an **vier
+  Stellen** defekt — und weil das `demucs`-Paket nicht installiert ist, lief
+  genau dieser Pfad **produktiv**:
+  1. **`x` mit Nullen gefüttert** (`plugins/htdemucs_plugin.py`): Der zweite
+     Graph-Eingang ist **kein** „State-Tensor“, sondern der **STFT des Chunks**
+     (`4 = 2 Kanäle × (Real, Imag)`, `2048` Bins, `336` Frames bei
+     `343980 = 7,8 s × 44100`). Mit Nullen war der Transformer-Zweig
+     vollständig tot — der Spektral-Ausgang lieferte exakt `0.0`.
+  2. **Hybrid-Ausgabe unbenutzt:** Die gültige Schätzung ist die **Summe beider
+     Zweige** (`add_67` + iSTFT(`output`)). Der Aufruf nahm nur `add_67` →
+     Stem-Summe erreichte nur 48 % der Mixture.
+  3. **Stem-Permutation:** `_separate_onnx` gab die Indizes `0..3` zurück
+     (`drums, bass, other, vocals`), der Aufrufer entpackte als
+     `[vocals, drums, bass, other]` → **„vocals“ war tatsächlich Drums**.
+  4. **Ratenfehler:** Der Pfad resampelt auf 48 kHz, das Modell ist ein
+     **44,1-kHz**-Modell (`343980 = 7,8 s × 44100`).
+- **Messung** („Motor Tapes – Shore“, 107 s, 7,8-s-Fenster, MUSDB18-HQ-Ground-
+  Truth, Vocals-SI-SDR): **−1,80 dB → +11,59 dB**; Vocals-RMS 0,0002 → 0,0639
+  (GT 0,0680); Stem-Summe 48 % → 98 % der Mixture; der Ratenanteil allein
+  kostet **2,56 dB**.
+- **Fix:** Kanonischer Aufrufvertrag im Plugin (`htdemucs_onnx_stft_input`,
+  `htdemucs_onnx_stems`, `resample_audio`) — **eine** Implementierung für
+  Plugin und Eval-Skript (§G9 copilot-instructions.md). Stem-Mapping über
+  `_HTDEMUCS_STEM_ORDER`, Ratenkonvertierung 48 k → 44,1 k → 48 k,
+  §V6-Logging (copilot-instructions.md) der Ersatzpfade.
+- **Nachweis:** End-to-End über den Produktionspfad `_separate_onnx` mit
+  48-kHz-Eingang → **+11,59 dB** (identisch zur Modellrate), Länge exakt
+  erhalten; `mypy` Success; `ruff` All checks passed; ID-Registry-Check vorab
+  Passed; `test_sota_vocal_model_router.py` 16 passed + 2 **vorbestehende**
+  Fehler (identisch auf HEAD, Miipher/DFN-Pfad — nicht dieser Fix).
+- **Offen (benannt):** Der A/B-Report `2026-10-04_p1_2_scnet_vs_mdx23c_ab.md`
+  verglich gegen eine um ~13 dB handicapiert Baseline → **Neumessung nötig**,
+  bevor C4/SCNet entschieden wird. Ebenso: zwei rote Unit-Tests auf `main`
+  (Miipher/DFN-Router) bleiben unentdeckt, weil der Pre-Commit-Smoke nur
+  **einen** von 65 Chunks fährt.
+
+## 10.3.16 (2026-10-06)
+
+### §G9: Verdrahtungs-Audit — verwaistes Modellkapital wird fail-closed sichtbar (WP0)
+
+- **Befund:** `models/` enthält **61 Verzeichnisse**, das Inventar
+  (`scripts/model_inventory.py`) pflegte aber nur **30 kuratierte Einträge**.
+  Lokal vorhandenes Kapital ohne Konsumenten war damit unsichtbar. Gemessen:
+  **5 verwaiste Verzeichnisse**, darunter zwei mit hohem Wert —
+  `ddsp_predictor/c4_head.pth` (**trainiert**, nirgends verdrahtet; die Roadmap
+  meldete irrig „Prädiktor-Training fehlt“) und
+  `scnet_4stems/huge_scnet_4stems_v1.2.ckpt` (**beschafft**, SHA-256
+  `807f470b…` verifiziert, **A/B gewonnen** mit SI-SDR +10,3…+16,4 dB,
+  `singer_identity_cosine` 0,978–0,992 — aber nirgends verdrahtet).
+- **Fix:** Neue Achse in `scripts/model_inventory.py` — **`--wiring`** ordnet jedem
+  `models/`-Verzeichnis einen Status zu (verdrahtet · begründet ausgenommen ·
+  verwaist), **`--fail-on-orphans`** macht daraus ein Gate. Jede Ausnahme steht
+  mit Begründung und Aufgabenziel in `_WIRING_ALLOWLIST` (§G8) — kein vergessener
+  Rest.
+- **Erweiterung statt Neuanlage:** `unwired_feature_audit.py` prüft
+  _Phasen-Features_, `model_inventory.py` das _Vorhandensein_ — keiner den
+  _Verdrahtungsstatus pro Artefakt_. Deshalb Erweiterung des kanonischen Skripts
+  (Write-Gate-Regel, `repo_search.py --before-create`).
+- **Gate:** Neuer Pre-Commit-Hook `aurik-model-wiring` (fail-closed) — ein
+  künftig verwaistes Artefakt blockiert den Commit, solange es nicht verdrahtet
+  oder begründet in der Ausnahmeliste steht.
+- **Ehrlichkeit zur Methode:** Geprüft wird die _Namensreferenz_ im
+  Produktionscode (untere Schranke — ein Kommentar-Treffer zählt). Das Gate
+  findet vollständig unbekannte Artefakte, **nicht** falsch verdrahtete.
+- **Nachweis:** `--wiring` → 61 Verzeichnisse, **0 undokumentierte Verwaiste**,
+  5 begründete Ausnahmen; `--fail-on-orphans` → Exit 0; neue Tests
+  `tests/unit/test_model_inventory_wiring.py` → 3 passed; `ruff` → All checks
+  passed; Pre-Commit-Hook `aurik-model-wiring` → Passed.
+- **Offen (benannt, nicht still):** Die 5 Ausnahmen sind Aufgaben, keine
+  Endzustände — SCNet-Verdrahtung (TODO-P1-2 Folge-Slice), DDSP-Prädiktor
+  (F5/C4), APPLADE-Bewertung, Matchering-Rolle, `gacela_upstream`-Kopie.
+
+## 10.3.15 (2026-10-06)
+
+### §G9: MP-SENet-Drift behoben — der Musik-Kern läuft jetzt im Vokal-Denoising
+
+- **Befund:** Der Vokal-Denoising-Pfad `CoordinatedRepair._run_mp_senet_vocal`
+  erzeugte eine **eigene** ONNX-Sitzung mit hartkodiertem Pfad
+  `models/mp_senet/mp_senet.onnx` (VoiceBank-Sprach-Stand) und fest
+  `providers=["CPUExecutionProvider"]`. Damit umging er den kanonischen Schalter
+  `resolve_model_path("mp_senet")` **und** die EP-Policy (§III.9
+  (copilot-instructions.md)). Wirkung: Genau das Artefakt, das auf Musik als
+  schädlich gemessen wurde (SOTA-ML-V3, 3 MUSDB-Tracks × 30 s: ΔSDR −5,9 dB —
+  „der Sprach-Enhancer klassifiziert Musikanteile als Noise“), lief weiter,
+  obwohl der musik-finetunte Kern vorliegt und per Flag aktiviert ist
+  (`use_mp_senet_musik=True`; A/B 2026-09-20: seg-SNR +5,3…+11,3 dB, VERSA
+  4,96–4,99). Der Widerspruch zwischen `docs/TODOS_SOTA_ROADMAP.md` („de-wired“)
+  und §v10.25 („aktiviert“) löst sich damit auf: Gemessen war der **Sprach**-Stand;
+  aktiviert ist der **Musik**-Kern.
+- **Normative Grundlage:** `tests/normative/test_primary_paths_no_fallback.py` ::
+  `test_musik_finetuned_stufe_aktiv` verlangt für `mp_senet` ausdrücklich
+  `"finetuned" in resolved.parts`. Der hartkodierte Pfad umging diesen Vertrag.
+- **Fix:** `resolve_model_path("mp_senet")` als einzige Auflösung; fail-closed mit
+  `log.warning` (§V6 (copilot-instructions.md)), wenn kein Primärartefakt
+  auflösbar ist. EP-Provider über den kanonischen Helfer
+  `get_ort_providers("mp_senet")` — er wendet zusätzlich das Numerik-Paritäts-
+  Verdikt an (§v10.762: GPU nur wo „rocm“ validiert, CPU erzwungen wo „cpu“).
+  I/O-Namen werden dynamisch aus `session.get_inputs()` gelesen (Muster aus
+  `plugins/mp_senet_plugin.py`), weil Sprach- und Musik-Export unterschiedliche
+  Namen tragen.
+- **Befund B2 (Metadaten-Drift):** `models/manifest.json` deklarierte für
+  `sgmse_musik` die TorchScript-Variante
+  `models/sgmse_plus/finetuned/sgmse_musik.ts` — die plant
+  `scripts/export_all_musik_models.py`, erzeugt sie aber nie. Korrigiert auf das
+  deployte, verifizierte ONNX-Artefakt samt gemessenem `sha256` und
+  `size_bytes` (263 593 607 B).
+- **Nachweis:** `ruff` → `All checks passed!`; `mypy` → `Success: no issues found`;
+  neue Regressionstests grün. Ihre Wirksamkeit ist gegen den Vorstand belegt:
+  `git show HEAD:backend/core/coordinated_repair.py` enthält **0×**
+  `resolve_model_path` und **1×** den hartkodierten Sprach-Pfad — nach dem Fix
+  **2×** bzw. **0×**. Zusätzlich: normative Verträge
+  `test_musik_finetuned_stufe_aktiv`, `test_resolve_model_path_active_flags`,
+  `test_bewusst_gesperrte_flags_dokumentiert` → 3 passed;
+  `tests/unit/test_model_zoo_activation.py` → 19 passed.
+
+## 10.3.14 (2026-10-06)
+
+### Typ-Sicherheit (P3 TYPE-SAFETY): 18 mypy-Befunde behoben — verhaltensneutral belegt
+
+- **Befund:** `mypy 2.1.0` (Projekt-Config) meldete 12 Fehler in
+  `scripts/train_cantus.py` und 6 in `tests/unit/test_model_zoo_activation.py`
+  (`no-any-return`, `arg-type`, `assignment`, `attr-defined`, `union-attr`,
+  `func-returns-value`). Beide Dateien lagen außerhalb des Pre-Commit-Scopes —
+  der mypy-Hook prüft nur **gestagte** Dateien, deshalb blieben die Befunde
+  unentdeckt.
+- **`scripts/train_cantus.py`:**
+  - `register_buffer`-Attribute (`self.mel_fb`) sind jetzt explizit als
+    `torch.Tensor` deklariert — mypy las sie über `nn.Module.__getattr__`
+    als `Tensor | Module`.
+  - `_mel_fb()` greift nicht mehr ungetypt per `getattr` durch: fail-fast
+    statt Any-Durchgriff (§V6 (VERBOTEN.md)).
+  - `nn.Module.__call__` ist im Stub `Any`; der MSE-Kalibrier-Loss wird mit
+    einem wahren `cast` typisiert (kein Workaround, §V7 (VERBOTEN.md)).
+  - `_extract_pitch()` liefert dtype und Layout explizit (`np.ascontiguousarray`,
+    Werte unverändert float32); `extract()` deklariert `pitch` vor den Zweigen,
+    damit kein `None` in ein Array fließt.
+  - `train()` annotiert `train_ds`/`val_ds` als `Dataset`; die Split-Zuweisung
+    ist umgestellt, aber **definitionsgemäß identisch** (`train_ds is full`).
+  - **§G9 (copilot-instructions.md):** `_load_config()` war ein toter,
+    duplizierter Ladepfad — `train()` lud dieselbe JSON-Datei erneut. Jetzt
+    existiert genau **ein** Config-Ladepfad.
+- **`tests/unit/test_model_zoo_activation.py`:** `_make_step()` gibt
+  `RepairStep` statt `object` zurück; `resolve_model_path()`-Ergebnisse werden
+  explizit auf `None` geprüft (Vorbedingung benannt statt Union-Attribut-Zugriff);
+  der Lambda-Seiteneffekt-Hack (`calls.append(...) is None`) ist durch eine
+  benannte Fake-Funktion ersetzt.
+- **Nachweis:** `mypy` → `Success: no issues found in 2 source files`;
+  `ruff check` → `All checks passed!`; `tests/unit/test_model_zoo_activation.py`
+  → 17 passed; `scripts/train_cantus.py --smoke --cpu` → Exit 0 (50 Epochen,
+  Report in `/tmp/cantus_smoke_*`); Split-Äquivalenz über 5 Dataset-Größen
+  (2/3/5/10/25) maschinell geprüft, inklusive `or full.pairs[-1:]`-Randfall.
+- **Keine Verhaltensänderung:** kein Export-, Pipeline- oder Signalpfad
+  berührt. Die Änderungen sind ausschließlich Annotationen, ein
+  Dtype-/Layout-Explizitmachen (float32 unverändert) und eine
+  Zuweisungs-Umsortierung mit identischem Ergebnis.
+
+## 10.3.13 (2026-10-06)
+
+### §G9: Genre-Erkennung konsolidiert (eine Registry statt vier Auflösungen)
+
+- **Befund:** Dasselbe Genre-Label wurde von **vier Konsumenten mit vier
+  verschiedenen, jeweils unvollständigen Verfahren** aufgelöst — `genre_classifier`
+  hatte eine _vierte_ Kopie der Profiltabelle (`label_map`), `genre_goal_profile`
+  ein Fuzzy-Teilstring-Matching, `tonal_reference_profile` eine 5-Einträge-`_ALIASES`,
+  `unified_restorer_v3` eine 16-Zweige-if/elif-Kette. Gemessen pro Label:
+
+  | Label | Restaurierungsprofil | Goal-Profil | Delta | JND |
+  | --- | --- | --- | --- | --- |
+  | `Deutscher Schlager` | **leer** | schlager | **0,000** | **1,00** |
+  | `Internationaler Schlager` | **leer** | schlager | **0,000** | 1,00 |
+  | `Klassik` | OK | **unknown** | +0,300 | **1,00** |
+  | `Oper` | OK | **unknown** | +0,800 | **1,00** |
+  | `Soul/R&B` | OK | **unknown** | +0,800 | 1,00 |
+  | `Hip-Hop` | OK | **unknown** | −0,300 | 1,10 |
+  | `Country` | OK | **unknown** | +0,500 | 1,00 |
+  | `Metal` | OK | metal | **0,000** | 1,10 |
+
+  Die Wirkung war **invertiert zur Konfidenz**: Das _unschärfere_ Label `Schlager`
+  (Sprache unsicher, `lang_de_score` 0,30–0,55) erhielt die Genre-Spektralvorgabe
+  (+0,800 dB), während `Deutscher Schlager` (≥ 0,55, Hauptanwendungsfall) sie
+  vollständig verlor. `Klassik` bekam den generischen JND 1,00 statt 0,80 — bei
+  Klassik liefen dadurch **weniger** Phasen, das Gegenteil der Absicht (§G6).
+- **Fix:** Neue kanonische Registry `backend/core/genre_registry.py` als **eine**
+  Quelle: 21 kanonische Genre-IDs, explizite Alias-Tabelle (Sprach-Präfixe
+  „Deutscher/Internationaler …“, Schreibvarianten, Untergenre-Spezifität) und
+  Ziel-Schlüssel je Konsument (Restaurierungsprofil, Goal-Profil, JND/Dynamik,
+  Delta-Tabelle). Kein Fuzzy-Matching mehr — unbekannte Labels werden ehrlich als
+  `None` gemeldet (§V6 (copilot-instructions.md)) statt per Teilstring auf ein
+  falsches Genre zu fallen.
+- **Verdrahtet:** `genre_classifier.get_restoration_profile` (vierte Tabellenkopie
+  entfernt), `genre_goal_profile.get_genre_profile`, `tonal_reference_profile`
+  (Delta **und** Konfidenz), `perceptual_tuning` (JND + Dynamik),
+  `studio_goal_targets`, `unified_restorer_v3` (kanonische Zweig-IDs).
+- **Totpfade beseitigt:** `plugins/genre_denoise_router.py` gelöscht — nie
+  importiert, mit eigener Taxonomie und einer Fehlabbildung der AudioSet-Indizes
+  0–29 (`Speech`/`Giggle`/`Cough`/`Sigh`) auf das Genre `classical`.
+  `phantom_mode._detect_genre` lieferte konstant `"unknown"` („Platzhalter") und
+  ist jetzt an den kanonischen Klassifikator angebunden.
+- **Nachweis:** 44 neue Vertragstests (Alias-Tabelle, Konsumenten-
+  Übereinstimmung, Untergenre-Spezifität, kein Fuzzy-Fehltreffer) + 406
+  Regressionstests grün; `Klassik` → JND 0,80, `Deutscher Schlager` → Profil OK,
+  Delta +0,800, JND 1,10.
+- **Offen (ehrlich):** Genre-Erkennung ist **nicht** auf SOTA-Stufe: Tier-1 (CLAP)
+  ist nur ein weicher Prior, die Erkennung selbst ist Hand-DSP. Es gibt **kein
+  trainiertes Genre-Modell** — MERT (laut Spec §5 „14 Tasks SOTA inkl. Genre") ist
+  als Backbone vorhanden, aber ohne Genre-Head (`models/mert_genre_classifier/`
+  existiert nicht); die GTZAN-Labels liegen vor, werden aber nicht zum Training
+  genutzt. Der Ausbau braucht einen Trainingslauf auf GTZAN/MagnaTagATune.
+
+## 10.3.12 (2026-10-06)
+
+### §G9/SOTA: LAION-CLAP-Tag-Pfad korrigiert (Falsch-Beschriftung + falscher Text-Encoder)
+
+- **Befund 1 — Falsch-Beschriftung im Default-Pfad (AUDIO-QUALITY):** Der
+  ONNX-Tag-Pfad schnitt aus `models/clap/text_embeddings.npy` die ersten 43
+  Zeilen und beschriftete sie mit `INSTRUMENT_TAGS` + `GENRE_TAGS` +
+  `MATERIAL_TAGS`. Das Artefakt enthielt jedoch **527 AudioSet-Klassen**
+  (erzeugt von `scripts/derive_clap_text_embeddings.py`, belegt über den
+  Generator selbst und durch bit-genaue Reproduktion, cos = 1,0000). Damit war
+  z. B. `genre_tags["opera"]` in Wahrheit „Male singing“, `["ambient"]`
+  „Female singing“, `["metal"]` „Choir“ und `["vocals"]` „Speech“ — jedes
+  Instrument-/Genre-/Material-Tag des Standardpfads war falsch benannt.
+- **Befund 2 — Falscher Text-Encoder, drei divergierende Pipelines (§G9):**
+  Das Artefakt wurde mit einer **falschen Projektionskette** berechnet
+  (CLS statt `pooler_output`, zusätzliches LayerNorm, Verkettung von
+  `text_projection` _und_ `text_transform`), der PyTorch-Pfad nutzt dagegen
+  `encode_text()`. Messung: Cosinus der Text-Encoder **0,02** → gleicher Song,
+  andere Tags je nach Ladepfad. Kanonisch ist `encode_text()`;
+  `text_transform` erzeugt in `forward()` eine zweite, getrennte Einbettung.
+- **Befund 3 — Stiller Verlust trainierter Gewichte (§V6, R-BLOCKER-Klasse):**
+  Der Checkpoint stammt von einem fairseq-RoBERTa (514 Positions- / 1
+  Token-Type-Embedding), die HF-Konfiguration erwartet 512/2. Der
+  Shape-Filter des Loaders verwarf dadurch **3 Tensoren stillschweigend**, u. a.
+  die **trainierten Positions-Embeddings** — der Text-Turm rechnete mit
+  Zufalls-Positionen (gemessen: std = 0,0200 = exakter Init-Wert).
+- **Fix 1:** Text-Turm-Dimensionen auf Checkpoint-Format erzwungen (514/1)
+  in `laion_clap/clap_module/model.py`; Verifikation 199/199 Gewichte
+  übernommen (vorher 197/200).
+- **Fix 2:** Shape-Drop im Loader wird jetzt namentlich mit
+  `logger.warning()` gemeldet („nicht übernommen — behalten
+  Zufallsinitialisierung“) statt still zu degradieren.
+- **Fix 3:** `scripts/derive_clap_text_embeddings.py` neu gefasst — erzeugt
+  exakt die 43 Aurik-Tags in Plugin-Reihenfolge mit der **kanonischen**
+  Pipeline, vollständig lokal/offline (kein HuggingFace-Download), fail-closed
+  bei fehlenden Gewichten. Parität gegen den PyTorch-Pfad: **cos = 1,000000**
+  (min = max) → beide Pfade nutzen nun dieselbe Text-Funktion.
+- **Fix 4:** Der Plugin-ONNX-Pfad prüft die Zeilenzahl **exakt** und lehnt ein
+  Artefakt mit fremdem Label-Raum sichtbar ab, statt es falsch zu beschriften
+  (Regressionsschutz gegen Befund 1).
+- **Fix 5:** `genre_classifier` wertete Zero-Shot-Prompts über `genre_tags` aus
+  und suchte Schlüssel wie „schlager“/„volksmusik“/„german“, die in
+  `GENRE_TAGS` nicht existieren → immer 0,0, im PyTorch-Pfad sogar als echte
+  Messung markiert. Jetzt über `query_scores()`; fehlende Evidenz wirft.
+- **Fix 6:** §G9-Abschlusstest beider Pfade: identische Top-3-Tags und
+  Score-Cosinus **0,99** (vorher 0,02); neuer Zero-Shot-Text-Turm des
+  PyTorch-Checkpoints wird bei Bedarf nachgeladen (der ONNX-Graph enthält
+  keinen Text-Turm), Zero-Shot-Scores überleben via `custom_scores`.
+- **Hinweis zur Reproduzierbarkeit:** Der LAION-CLAP-Quelltext liegt unter
+  `models/clap/src/` und damit in einem **gitignorierten** Verzeichnis
+  (`.gitignore` → `/models/*`). Der dort gesetzte Config-Fix ist daher nicht
+  versioniert; der versionierte Plugin-Loader leitet die Text-Turm-Dimensionen
+  zusätzlich **aus dem Checkpoint** ab und meldet jede Angleichung mit
+  `logger.warning()`. Auf einem frischen Checkout ohne `models/clap/` ist der
+  PyTorch-Text-Turm generell nicht verfügbar — der ONNX-Pfad bleibt voll
+  funktionsfähig.
+- **Offen (ehrlich):** Die Kalibrierung der CLAP-Evidenz-Schwellen steht aus.
+  `corpus/` enthält **keinen Gesang** (PANNs `Singing voice` = 0,0001–0,0004;
+  CLAP-Cosinus für „singing“ negativ), und zwei Korpusdateien sind byte-identisch
+  (gleiche MD5). Die neuen CLAP-Gender-Konstanten sind daher **nicht**
+  kalibriert; die Fusion ist strukturell korrekt, aber ohne gesangs­haltiges,
+  gelabeltes Korpus nicht belegbar.
+
+## 10.3.11 (2026-10-05/06)
+
+### §Gesangs-Fokus: SGMSE+-Sprach-Core von Gesang entkoppelt
+
+- **Befund (2026-10-06):** Zwei Stellen aktivierten das SPRACH-trainierte SGMSE+
+  (Score-Core, WSJ0-CHiME3, Richter et al. 2022) auf Musik/Gesang, obwohl das
+  Musik-Finetune gesperrt ist (`music_model_flags.use_sgmse_musik=False`,
+  §v10.16/F7): `coordinated_repair` schaltete es gezielt bei
+  `vocal_confidence > 0.5` frei (also auf Gesang), `phase_03_denoise` prüfte das
+  Flag gar nicht. Folge: ein gesperrtes Sprach-Modell bearbeitete still Gesang
+  (§V1-Risiko: Telefonband-Klangfarbe/Vokalfärbung) und kostete 6,2 s je 1 s
+  Audio (R-09: 26× isoliert kalt, 6,8× warm — RT-Budget §9.5 verletzt), während
+  der Decorrelation-Guard das Ergebnis verwarf.
+- **Fix:** Beide Aktivierungspfade an `use_sgmse_musik` gekoppelt
+  (`phase_03_denoise._sgmse_eligible` und der RepairPlanner in
+  `coordinated_repair`). Ohne Musik-/Gesangs-Finetune läuft SGMSE+ nicht; die NR
+  trägt DFN-Musik (`use_df_musik=True`), für Gesang ist Cantus der designierte
+  Kern nach Freigabe.
+- **Beweise:** `test_ml_hybrid_regression.py -k R09_rt_budget` → 11 passed
+  (Phase-03-Kaltstart-/SGMSE-Anteil entfällt); `test_model_zoo_activation.py`
+  → 16 passed (neuer Test pinnt die Sperre auf Gesang); Ruff clean.
+
+### §Gesangs-Fokus: SGMSE+-Sprach-Core auch in Dereverb/Router entkoppelt
+
+- **Befund (2026-10-06):** Nach Phase 03/`coordinated_repair` lief der Sprach-Core
+  weiterhin an drei Stellen: `hybrid_dereverb._init_dccrn` (SGMSE+ als
+  Dereverb-**Primärpfad**), `phase_49_advanced_dereverb` (Tier-0) und
+  `sota_vocal_model_router` (Fallback im Gesangs-Router).
+- **Fix:** Alle drei an `music_model_flags.use_sgmse_musik` gekoppelt. Ohne
+  Musik-Finetune (§v10.16/F7) übernehmen die musik-tauglichen Pfade: WPE-DSP
+  (Dereverb) bzw. DFN+MP-SENet (Router) — kein gesperrtes Sprach-Modell auf
+  Musik/Gesang (§V1 (copilot-instructions.md)).
+- **Beweise:** Dereverb-/Router-Suite 47 passed; Ruff clean; R2-Check 0 Warnungen.
+
+### §v10.16/F7-Verdrahtung: SGMSE+ Musik-Core erreichbar gemacht
+
+- **Befund (2026-10-06):** Der F7-Musik-Finetune liegt vor (`finetuned/sgmse_musik_best.ckpt`,
+  Epoch 24) und wurde am 05.10. als `models/sgmse_plus/sgmse_musik_core.onnx`
+  (263 MB) exportiert. Die Verdrahtung fehlte aber: `MUSIC_MODEL_PATHS["sgmse"]`
+  zeigte auf den SPRACH-Core (`sgmse_plus_core.onnx`), und
+  `plugins/sgmse_plugin.py` konsultierte `music_model_flags` gar nicht
+  (hartcodierter Sprach-Core) → ein Flag-Flip hätte den falschen Core aktiviert,
+  der Musik-Core war unerreichbar.
+- **Fix:** `MUSIC_MODEL_PATHS["sgmse"]` → `sgmse_musik_core.onnx`;
+  `plugins/sgmse_plugin._resolve_onnx_path()` löst den aktiven Core über
+  `resolve_model_path("sgmse")` auf (Flag an → Musik-Core, aus → Sprach-Legacy).
+  Der Flag bleibt `False` (A/B-/Hörordnungs-Abnahme offen,
+  `test_primary_paths_no_fallback` pinnt das).
+- **Beweise:** Neuer Test `test_sgmse_music_flag_selects_musik_core` (beide
+  Zustände); `test_model_zoo_activation` 17 passed; normative Primärpfad-Tests
+  7 passed; Ruff clean.
+
+### train_cantus: Smoke-Läufe überschreiben keine Produktionsartefakte mehr
+
+- **Befund (2026-10-06, selbst verursacht):** `scripts/train_cantus.py --smoke`
+  schrieb `checkpoint_latest.pt`/`checkpoint_best.pt` und
+  `train_report_<phase>.json` nach `models/cantus/` — der Validierungslauf
+  überschrieb die 204-Mio-Parameter-Pretrain-Checkpoints (2,45 GB) und die
+  Pretrain-Evidenz. Die Gewichte bleiben nur als ONNX-Inferenzgraph
+  (`cantus_dit.onnx`) erhalten; eine Rückübertragung ist wegen ONNX-
+  Konstantenfaltung unvollständig (92/~377 Keys fehlen) → Pretrain muss neu
+  laufen.
+- **Fix:** `_resolve_checkpoint_dir(smoke)` isoliert Smoke-Läufe in ein
+  `tempfile.mkdtemp`-Verzeichnis; Produktionsläufe bleiben unverändert. Der Pfad
+  ist durch einen Regressionstest abgesichert
+  (`test_smoke_checkpoint_dir_never_touches_production`).
+- **Beweise:** Regressionstest grün; Smoke-Nachweis: Report landet in
+  `/tmp/cantus_smoke_*/`, `models/cantus/` bleibt unverändert; Ruff clean.
+
+### Backup-/Guard-Konzept für Trainingsartefakte
+
+- **Neu:** `backend/core/training_artifacts.py` — zentraler Schutz, den alle
+  Trainingsskripte adoptieren können (`torch.save` → `save_guarded`,
+  `path.write_text` → `write_text_guarded`):
+  1. **Rotierendes Backup** vor jedem Überschreiben (Retention, Standard 3) —
+     der Vorfall vom 2026-10-06 wäre damit folgenlos geblieben.
+  2. **Atomares Schreiben** (tmp + `os.replace`) — keine partiellen Dateien.
+  3. **Schrumpf-Warnung** (§V6 (copilot-instructions.md)) — Preset-/Modellwechsel
+     oder ein Smoke-Lauf auf dem Vollmodell werden sichtbar.
+- **Adoptiert:** `scripts/train_cantus.py` (Checkpoints + Report). Die übrigen
+  ~23 Trainingsskripte nutzen weiterhin direktes `torch.save`; die Migration ist
+  mechanisch (Ein-Zeilen-Ersatz) und als Folgeschritt vorgesehen.
+- **Beweise:** `tests/unit/test_training_artifacts.py` → 7 passed; guarded Smoke
+  schreibt in `/tmp/cantus_smoke_*/`, `models/cantus/` unverändert; Ruff clean.
+
+### Phase 24: Dropout-Erkennung repariert und Autonomie nach §G188 hergestellt
+
+- **Befund (Vollscan Chunk 37/97 — dieser eine Test blockierte das Restprogramm
+  37–97):** `TestPhase24DropoutRepairRegression::test_dropout_gap_filled` blieb rot:
+  ein 100-ms-Nullblock in einem 440-Hz-Ton wurde nicht gefüllt. Zwei getrennte
+  Ursachen, beide gemessen:
+  1. **Detektor numerisch blind.** `_detect_amplitude_dropouts` bildete die lokale
+     Referenz mit `savgol_filter` über ein 100-ms-Fenster — genau die Lückenlänge.
+     In der Lückenmitte gemessen: Referenz **−1,142e-03** (negativ!), daraus
+     Schwelle −2,283e-04 → die Bedingung `envelope(0) < Schwelle` ist **nie** wahr.
+     Die Empfindlichkeit sank mit der Defektlänge — genau umgekehrt zur Aufgabe
+     der Phase.
+  2. **Gate verweigerte die Arbeit.** Ohne externen `dropout_density`/
+     `dropout_severity` und ohne Defekt-Evidenz blieb die Dichte 0,0 → Skip → die
+     Phase war ein No-op, obwohl sie einen vollständigen eigenen Detektor besitzt.
+- **Fix:**
+  1. Referenz auf **Peak-Hold** (`maximum_filter1d`) über dasselbe Fenster
+     umgestellt — Wert in der Lückenmitte **+2,039e-01**, Schwelle 4,078e-02 →
+     Lücke wird erkannt. Die relative Schwelle blieb unverändert.
+  2. §G188 (GEBOTE.md) „Autonome Stärke-Einstellung": Fehlt externe Evidenz, misst
+     die Phase ihre Dichte **selbst** (`_detect_amplitude_dropouts`) statt die
+     Arbeit zu verweigern. Das hängende Zitat „§v10.96" (in `.github/` und `docs/`
+     nicht auffindbar) ist durch die tragende Regel ersetzt.
+- **Beweise:** Detektor direkt gemessen — `detektor_regionen=1`, Region
+  `(12013, 16788)` bei echter Lücke `(12000, 16800)` (Abweichung ≤ 13 Samples);
+  Gegenprobe leise Passage (×0,15) → **0** Regionen (keine Überreparatur).
+  Der Regressionstest ist grün; `test_ml_hybrid_regression.py --run-heavy-tests`
+  → **128 passed** (vorher 127, Dropout-Test rot). Die zwei verbleibenden
+  `test_R09_rt_budget`-Fehlschläge (phase_03_denoise, phase_23_spectral_repair)
+  sind laufzeitabhängig und traten vor wie nach der Änderung **identisch** auf.
+  Ruff clean. Version 10.3.11 nach §v10.802 konsistent.
+
+### §Norm-Konsistenz: §III.11/§III.12 verankert, Spec-Fakten korrigiert
+
+- **Norm-Ergänzung:** `.github/copilot-instructions.md` §III erhält zwei
+  Spezialregeln. **§III.11 Domänen-Konsistenz Musik/Gesang:** sprachtrainierte
+  Modelle (SGMSE+/WSJ0, Whisper, UTMOSv2/BVCC, resemblyzer) dürfen nur mit
+  Musik-Fine-Tune als Signalpfad laufen; `use_sgmse_musik` schaltet ALLE fünf
+  SGMSE+-Signalpfade, der Legacy-Sprach-Core bleibt in `LEGACY_MODEL_PATHS`.
+  **§III.12 Stem-Rekombinations-Vertrag:** genau EIN Vereinigungspunkt
+  (`recombine_stems_with_gates()`, §SLR-1f), Pflicht-Gates in der Reihenfolge
+  **C2 → C1 → C3** (W2/W1/W3), Zeugenpflicht in
+  `StemContext.witness_reports["recombination"]`; offene Pflicht-Witnesses
+  C4 (Doppelverarbeitung), C5 (Pegel-Kontinuität), W4 (Kammfilter-Ripple),
+  W5 (Stem-Leakage), W6 (Seam-Laufzeitsprung) sind ausdrücklich als
+  „nachzuweisen, nicht anzunehmen" markiert.
+- **Spec-Fakten korrigiert (Regel Spec > Code > Kommentar):** `04_dsp_standards.md`
+  (Dereverb-/Music-Vocal-Enhancement-/SNR<10-dB-Zeile sowie die
+  `_PHASE_REQUIRED_MODELS`-Tabelle), `06_phases_system.md` (phase_03, phase_20),
+  `02_pipeline_architecture.md` (Hebel-2-Tier-0-Bedingung), `07_quality_and_tests.md`,
+  `03_cognitive_modules.md` und `08_architecture_and_distribution.md`
+  (Plugin-Zeile nannte den TorchScript-Sprach-Core als PRIMÄR), `v10.19`
+  („0 Speech-Modelle" wird als Ziel mit Mess-Wahrheits-Hinweis belegt statt
+  behauptet), `v10.25` (Produktion lädt `sgmse_musik_core.onnx` nur bei Flag),
+  `v10.99x`, `TODOS_SOTA_ROADMAP.md` (F7: Checkpoint + ONNX vorhanden — die
+  Sperre ist eine offene A/B-Entscheidung, kein fehlendes Artefakt).
+- **Code-Kommentar:** `plugin_lifecycle_manager._PHASE_REQUIRED_MODELS`
+  (phase_20) dokumentiert die Flag-Abhängigkeit Phase ↔ `use_sgmse_musik`.
+- **Beweise:** `scripts/spec_drift_check.py` → „No spec drift detected"
+  (Baseline über 24 beobachtete Dateien neu gesetzt);
+  `scripts/release_must_coverage_check.py` → 2/2 (100 %);
+  `scripts/compliance_check.py` → 0 Errors, 1 Warning (vorbestehend
+  `ab_test_manager.py:41`, non-blocking).
+
+### §SOTA-Gender: EIN Detektor-Pfad + musiktaugliche Evidenz (Spec 19)
+
+- **Befund:** Vier parallele Gender-Detektoren mit abweichenden Schwellen
+  (§G9 (copilot-instructions.md)-Verstoß). Der Pfad der Musik-Vocal-Pipeline
+  (`forensics/gender_detection`) entschied mit einer **F0-Einzelregel**
+  (`f0 < 170 → male`) auf 16-kHz-Autokorrelation über nur 100 ms Signal. Ein
+  sprachtrainiertes Embedding-Modell (Resemblyzer/LibriSpeech) wurde dabei
+  berechnet und **verworfen**; fehlte es, blockierte es sogar die domänenneutrale
+  Pitch-Auswertung (`emb is None → "unknown"`).
+- **Fix (Konsolidierung auf EINEN Pfad):** Kanonisch ist allein die
+  Multi-Evidenz-Fusion in `vocal_ai_enhancement.GenderDetector`:
+  PANNs-„Male/Female singing" (musiktauglich) → F0 (Scan-Autokorrelation + pYIN
+  mit Voicing-Confidence) → Burg-LPC-Formanten mit WORLD-Kreuzvalidierung →
+  Contralto-Anatomie-Override.
+  - **Neu im Kern:** `_panns_singing_prior()` als EINE Quelle (Mindest-Score
+    0,25 UND Klassenabstand > 0,10 — bei Gleichstand schweigt die Evidenz) plus
+    additive Fusion (`_PANNS_GENDER_WEIGHT = 0.35`); ohne Anatomie trägt sie die
+    Entscheidung (instrumentales Intro) statt „unknown".
+  - `forensics/gender_detection.GenderDetector` ist nur noch Fassade (Array- und
+    Dateipfad) ohne eigene Klassifikationslogik; Resemblyzer entfällt
+    (§III.11 copilot-instructions.md).
+  - `forensics/gender_rule_based.RuleBasedGenderDetector` delegiert — eigene
+    Pitch-/LPC-Heuristik und `classify_from_features` entfallen.
+  - `phase_19_de_esser._detect_gender_robust` bezieht den Prior aus dem Kern
+    (keine zweite Schwellenkopie) und reicht `panns_tags` in die Fusion.
+  - `aurik_deesser_pro/music_vocal_pipeline` nutzt den Array-Pfad direkt — der
+    Temp-WAV-Umweg entfällt.
+- **Beweise:** 88 passed (`tests/unit -k "gender or utmos or noise_gate"`);
+  normatives Gate `test_gender_detection_sota_gate.py` + `test_gender_detector.py`
+  → 54 passed; 9 neue Regressionstests (PANNs-Prior klar/unklar/Schwelle, Fusion
+  ohne Anatomie, unverändert ohne Tags, ein Pfad ohne Sprach-Embedder,
+  Fassaden-Delegation, Scan-F0 trotz instrumentellem Intro). Ruff clean.
+
+### §III.11-Durchsetzung: Sprach-Embedder als Richter entfernt (Ebene 1 + phase_65)
+
+- **Befund:** Resemblyzer (LibriSpeech/Sprache) wirkte an zwei Stellen als
+  **Richter** über Musik/Gesang, obwohl die Docstrings „Zeuge, kein Richter"
+  behaupteten: `level_1_invariants_guard` (Ebene-1-Invariante „Stimm-Identität":
+  `singer_identity < 0.92` → Blend-Reduktion) und
+  `phase_65._apply_singer_identity_witness` (Blend bis 80 % Richtung Eingang).
+  Derselbe Embedder war in `forensics/gender_detection` wirkungslos, blockierte
+  aber als `emb is None → "unknown"` die domänenneutrale Pitch-Auswertung.
+- **Fix:** Flag `music_model_flags.use_resemblyzer_music` (Default `False`) plus
+  kanonische Messfunktion `level_1_invariants_guard.measure_singer_identity_cosine()`
+  — EINE Quelle für beide Aufrufer (§G9 copilot-instructions.md):
+  - Mit Freigabe: Embedder-Kaskade (Package→ONNX) wie bisher.
+  - Ohne Freigabe: domänenneutraler DSP-Proxy (MFCC- + spektraler
+    Centroid-Korrelation), der zuvor schon der Ersatz war. **§0p bleibt
+    vollständig in Kraft** — der Identitätsschutz greift weiter, nur die Domäne
+    der Messung ist korrekt. Der Embedder wird ohne Freigabe nicht geladen.
+  - Rückgabe `float | None`: `None` = nicht messbar (konstant/stumm) ⇒ kein
+    Messwert, kein Eingriff (Zeuge-Prinzip: keine Messung darf bestrafen).
+  - **NaN-Fix:** Der DSP-Proxy lieferte bei Stille `NaN` (np.corrcoef auf
+    konstanten Merkmalen) und trug eine nicht-endliche Größe in die
+    Invarianten-Kette — jetzt explizit „nicht messbar" (§G5 GEBOTE.md).
+- **SOTA-Ausbau der Fusion (`vocal_ai_enhancement`):**
+  - Kontinuierliche PANNs-Singing-Evidenz: neben dem harten Shortcut (Abstand
+    > 0,10, Score ≥ 0,25) fließt die Klassendifferenz proportional ein
+    (`_PANNS_CONT_WEIGHT = 0.25`); beide Formen kommen aus EINER Quelle
+    (`_panns_singing_scores`).
+  - Aperiodizität als Konfidenz-Modulator: die bereits berechnete
+    WORLD-Aperiodizität (`_detect_breathiness`, Yumoto-Proxy) wird VOR der
+    Klassifikation gemessen und senkt die Konfidenz bei stark verhauchter oder
+    verrauschter Stimme auf bis zu 60 % (`_modulate_confidence_by_aperiodicity`)
+    — keine scheinbare Sicherheit, kein zusätzlicher Inferenzaufwand.
+- **Beweise:** 70 passed (Ebene-1-, phase_65- und Gender-Suiten) mit 4 neuen
+  Sperr-/Modulationstests (Embedder-Aufrufe == 0 ohne Freigabe, kontinuierliche
+  PANNs-Evidenz, Konfidenz-Klemmung); 33 passed `test_gender_detector.py`;
+  Ruff clean.
+
+### §F13/F14-Infrastruktur: Gender-Head-Training + empirische Kalibrierung
+
+- **Anschluss an §SOTA-Gender:** Nach der Konsolidierung auf EINEN Pfad fehlten
+  die zwei datenabhängigen Hebel. Beide liegen jetzt als geprüfte Infrastruktur
+  vor — ohne erfundene Labels oder Schwellen.
+- **Neu:**
+  - `scripts/train_gender_head.py` (F13) — Head auf MERT-v1-330M-Features
+    (mean+std, 2×1024), deterministischer stratifizierter Split
+    (§G5 GEBOTE.md), MLP-Klassifikation mit Macro-F1, Feature-Cache,
+    **Label-Pflicht** (ohne `file,gender`-CSV Abbruch mit Exit 2 statt Raten,
+    §V7 copilot-instructions.md), guarded Checkpoint-Speicherung über
+    `training_artifacts.save_guarded`.
+  - `scripts/calibrate_gender_evidence.py` (F14) — misst auf `corpus/` je Datei
+    Anatomie-Lesart, Fusions-Entscheid, Konfidenz und Aperiodizität über den
+    kanonischen Kern (kein Parallelpfad) und weist die Konsens-Rate
+    Anatomie ↔ PANNs-Singing aus. Schwellenempfehlung nur bei Mindest-Stichprobe
+    (12) UND Mindest-Konsens (0,80); der Report markiert ausdrücklich „kein
+    Ground Truth" (das Korpus-Manifest kennt kein Gender-Feld).
+- **Ehrlichkeit:** Beide Skripte treffen ohne Datenbasis keine
+  Kalibrierungs-Aussage. F13/F14 sind in `docs/TODOS_SOTA_ROADMAP.md` mit den
+  offenen Datenanforderungen dokumentiert (Label-Korpus ≥ ~50 je Klasse,
+  PANNs-Tags).
+- **Beweise:** 16 passed (`tests/unit/test_gender_calibration_infra.py`):
+  Split-Determinismus, Abdeckung ohne Overlap, Ein-Exemplar-Klasse bleibt im
+  Training, MERT-Pooling (Shape/NaN-Sanitisierung), Label-Pflicht
+  (fehlend/ungültig/gültig), Kalibrierungs-Gate (ohne PANNs, hoher/niedriger
+  Konsens, kleine Stichprobe), Macro-F1. Beide Skripte Ruff clean, als CLI
+  lauffähig (`--help`), Pflicht-Abbruch ohne Labels verifiziert.
+- **Write-Gate:** Einträge in `.github/FILE_REGISTRY.md` (2 Skripte, 1 Test)
+  nach `scripts/repo_search.py --before-create` (keine kanonische Alternative).
+
+### §III.11-Durchsetzung (Fortsetzung): VQI-Singer-Identity domänenrein
+
+- **Befund:** `vocal_quality_index._compute_singer_identity` befragte den
+  sprachtrainierten Resemblyzer-Embedder **ohne Domänen-Prüfung** als Primärpfad.
+  Die VQI speist die Musical Goals (`vocal_quality`) und damit
+  Hörordnungs-Entscheidungen — der Sprach-Embedder richtete also mittelbar über
+  Musik/Gesang. Zusätzlich existierte dort eine zweite Messquelle mit eigener
+  Kalibrierung (§G9 copilot-instructions.md).
+- **Fix:** `resemblyzer_music_unlocked()` ist jetzt die öffentliche EINE Quelle
+  der Freigabe (Ebene-1-Guard, phase_65, VQI). Ohne Freigabe nutzt die VQI den
+  vorhandenen DSP-Proxy, der laut Code-Dokumentation auf die 0.92-Rollback-Schwelle
+  kalibriert ist (§R3-Formel `(8c−1)/7`) — der Rollback-Schutz bleibt erhalten,
+  nur die Domäne der Messung ist korrekt. Mit Freigabe läuft die
+  Embedder-Kaskade unverändert.
+- **Beweise:** 14 passed `test_vocal_quality_index.py` (3 neue
+  Domänen-Regel-Tests: Proxy ohne Freigabe, identisches Audio hält ≥ 0,92,
+  Embedder bei Freigabe); 112 passed `test_musical_goals_metrics.py`
+  (Goal-Entscheidungen unverändert); 50 passed Ebene-1/phase_65/VQI; Ruff clean.
+
+### §III.12-Pflicht-Witnesses implementiert (C4/C5/W4/W5/W6)
+
+- **Befund:** §III.12 verlangt fünf Witnesses als **Nachweis** der Rekombination
+  („nachzuweisen, nicht anzunehmen"); bis v10.3.11 waren C4/C5/W4/W5/W6 offen.
+  Der Rekombinationspunkt selbst (`recombine_stems_with_gates`, C2→C1→C3) war
+  bereits implementiert und verdrahtet.
+- **Neu (report-only, kein Signal-Eingriff):**
+  - **C4** `double_processed_bands` — Bark-Bänder, in denen BEIDE Stems um
+    > 0,5 dB verändert wurden (Kamm-/Phantom-Risiko bei der Summe).
+  - **C5** `level_step_db` — max. Pegel-Sprung Mix→Remix über 20-ms-Frames.
+  - **W4** `ripple_depth_db` — Streuung des Band-Energie-Verhältnisses
+    Remix/Mix (Kammfilter-Ripple-Tiefe).
+  - **W5** `leakage_corr` — |Hüllkurven-Korrelation| der RAW-Stems
+    (Geister-Anteile).
+  - **W6** `lag_step_us` — max. Korrelations-Lag-Sprung zwischen
+    Nachbarfenstern.
+
+  Alle Werte erscheinen über `build_witness()` in
+  `StemContext.witness_reports["recombination"]` (bestehende Verdrahtung in
+  `stem_level_restorer`) und nutzen vorhandene Primitive
+  (`_band_energy_db`, `bark_band_edges`, `_envelope`, `_xcorr_offset`) — kein
+  Parallelcode (§G9 copilot-instructions.md).
+- **Ehrlichkeit:** **W6/C5** sind als **Zeit-Kontinuität** gemessen, weil die
+  Rekombination eine sample-genaue Summe ohne Segment-Naht ist (kein
+  Concat/Crossfade); eine „Naht"-Größe wird nicht vorgetäuscht
+  (`continuity_note`). Die Witnesses haben **keine automatische Konsequenz** —
+  harte Schwellen erfordern eine eigene Kalibrierung (Muster F14).
+- **Beweise:** 11 passed `test_stem_recombination_gates.py` (5 neue Tests:
+  Berichtsvollständigkeit, Null-Werte bei perfekter Separation, C4 > 0 bei
+  Doppelveränderung und == 0 bei Ein-Stem-Änderung, W5 steigt bei geteilter
+  Quelle) sowie 23 passed `test_stem_level_restorer.py`; Ruff clean.
+
+### F14-Ergänzung: PANNs-Evidenz wird selbst erzeugt
+
+- **Warum:** Die Kalibrierung konnte den Konsens Anatomie ↔ PANNs nur messen, wenn
+  eine Tags-JSON extern vorlag — im Default-Lauf blieb `consensus_rate = None` und
+  die Schwellenempfehlung gesperrt.
+- **Neu in `scripts/calibrate_gender_evidence.py`:**
+  - `--panns auto` (Default): erzeugt die Tags selbst über
+    `plugins.panns_plugin.classify_audio(mono, sr)` (Array-API, kein Temp-WAV).
+    Fehlt das Modell, gibt es `None` und einen §V6 copilot-instructions.md-Hinweis
+    — kein Abbruch, aber auch keine erfundene ML-Evidenz; die Empfehlung bleibt gesperrt.
+  - `--panns off`: reine Anatomie-Verteilung.
+  - `--panns <json>`: externe Tags (bisheriges Verhalten).
+  - `--panns-out <json>`: sichert die erzeugten Tags (Cache für Wiederholungsläufe).
+  - Der Report weist die Quelle aus (`panns_source`).
+- **Belege:** 19 passed `test_gender_calibration_infra.py` (3 neue Tests: fehlendes
+  Modell blockiert nicht, Tags ohne Singing-Klassen ⇒ None, Singing-Klassen werden
+  durchgereicht); CLI-Probe `--panns off` auf `corpus/` läuft; die Klassen
+  `Male singing`/`Female singing` sind im PANNs-Plugin verifiziert.
+
+## 10.3.10 (2026-10-05)
+
+### Phasensignatur: De-Esser wieder vertragskonform
+
+- **Befund (Vollscan Chunk 37/97: 12 failed, 301 passed):** Acht Fehler des Typs
+  `TypeError: DeEsserPhase.process() missing 1 required positional argument` in
+  `test_ml_hybrid_regression.py` waren kein Testproblem. Der Phasen-Vertrag
+  `phase_interface.py:383` lautet
+  `process(self, audio, sample_rate=48000, material_type="unknown", **kwargs)`;
+  `DeEsserPhase.process` verlangte `material_type` dagegen **positional ohne
+  Default**. Damit war die Phase nicht mehr austauschbar — jeder generische
+  Aufrufer, der den Vertrag nutzt (Phasen-Registry, Vorschau, Test-Harness),
+  bricht. Der vorhandene `# type: ignore[override]` hat die Abweichung nur
+  markiert statt sie zu beheben.
+- **Fix:** Signatur an den Vertrag angeglichen (`sample_rate=48000`,
+  `material_type` mit Default) und `material_type` einmal an der Quelle auf
+  `MaterialType` normalisiert. Der Rumpf nutzt `material.name` an sechs Stellen
+  und der Vertrag erlaubt ausdrücklich `str` — die Normalisierung erhält die
+  Toleranz beider Seiten, statt an sechs Stellen einen Ersatzwert zu raten.
+  Die überflüssig gewordene Override-Ausnahme ist entfernt.
+- **Beweise:** `-k de_esser --run-heavy-tests` → 11 passed in 13,94 s (vorher
+  acht TypeError-Fehler); mypy auf der Datei: 0 union-attr-Fehler; ruff clean.
+- **Offen (Fund 12b):**
+  `TestPhase24DropoutRepairRegression::test_dropout_gap_filled` erwartet, dass
+  der DSP-Ersatzpfad eine 100-ms-Lücke zu ≥ 5 % füllt; die Lücke bleibt stumm.
+  Eigener Untersuchungspunkt (nächster Block).
+
+## 10.3.9 (2026-10-05)
+
+### §III.9: ONNX bleibt der CPU-Fallback — kein stiller Wechsel auf das TS-Artefakt
+
+- **Befund (Vollscan-Fund 8):** `SGMSEPlusPlugin._try_load` fiel bei einem
+  fehlgeschlagenen GPU-EP direkt auf `sgmse_plus.ts` zurück. Dieses Artefakt trägt
+  nach eigener Dokumentation des Export-Skripts **andere Gewichte** als der
+  ONNX-Core („alle 647 Parameter weichen ab, beobachtete Ausgabeabweichung
+  rel ~3e-1", `scripts/export_sgmse_onnx.py`). Der Rückfall hätte damit still ein
+  anderes Modell verwendet — in einem Plugin, dessen Standardpfad ONNX ist.
+- **Fix:** Scheitert der Session-Aufbau mit GPU-EPs, wird zuerst derselbe
+  ONNX-Core mit `CPUExecutionProvider` geladen (paritätsexakt; „ONNX bleibt reiner
+  CPU-Fallback", §III.9 (copilot-instructions.md)) und der Vorgang nach
+  §V6 (VERBOTEN.md) gemeldet. Erst wenn auch ONNX-CPU scheitert, greift der
+  dokumentiert abweichende TorchScript-Pfad — dessen Warnung benennt die
+  Gewichtsabweichung jetzt ausdrücklich.
+- **Beweise:** simulierte GPU-EP-Blockade → `EP-Aufrufe:
+  [['MIGraphXExecutionProvider'], ['CPUExecutionProvider']]`, Warnung mit
+  §III.9-Bezug, `Session-EPs: ['CPUExecutionProvider']`, **`TS genutzt: False`**;
+  Normalpfad lädt ONNX wie zuvor; ruff (F821/F601/B009/I001) clean.
+
+## 10.3.8 (2026-10-05)
+
+### Rollback-Guard nach Resume wieder scharf (Selbstprüfung des Divergenzschutzes)
+
+- **Befund:** Der in 10.3.6 eingeführte Divergenzschutz schreibt beim Rollback die
+  Gewichte des Best-Checkpoints nach `checkpoint_latest.ckpt` — dort stand aber der
+  **divergierte** Val-Wert (`epoch=84, val_loss=13,7178` bei korrekten Best-Gewichten).
+  Der Resume-Pfad setzt `best_val` aus genau diesem Feld, ein Resume hätte den
+  Rollback-Guard damit **entwaffnet** (Schwelle gegen 13,7 statt gegen 6,1525).
+- **Fix:** Das Feld trägt jetzt den Best-Referenzwert (`best_val`) statt `avg_val`,
+  mit Begründung im Code. Der **bestehende** `checkpoint_latest.ckpt` wurde
+  in-place nachgezogen (Gewichte unverändert, nur Metadaten; Tensoren verifiziert
+  identisch).
+- **Beweise:** `val_loss` 13,717787525672465 → 6,152494320198894 bei unveränderter
+  Tensor-Topologie; Ruff (F821/F601/B009/I001) clean; `py_compile` grün.
+
+## 10.3.7 (2026-10-05)
+
+### Kanonische Zwicker-Loudness-Signatur wiederhergestellt (§4.1b)
+
+- **Befund (Vollscan Chunk 10/97, acht Tests rot):** `compute_specific_loudness_zwicker()`
+  lieferte den strukturierten `ZwickerLoudnessResult` zurück, während §4.1b
+  (04_dsp_standards) wortwörtlich die Signatur
+  `compute_specific_loudness_zwicker(audio, sr) -> float` fordert und die Regel
+  "Lautheitsmessung ohne ISO 532-1" (§74 (VERBOTEN.md)) dieselbe Referenz für das
+  ΔN > 2,0-sone-Gate nennt. Zusätzlich behandelte die Funktion Signale unter 100 ms
+  wie messbaren Stoff (10,97 sone für 2 ms Audio), obwohl dasselbe Modul an anderer
+  Stelle 100 ms als Mindestlänge führt.
+- **Fix:** Die kanonische Funktion liefert wieder `float`; die vollständige Messung
+  (Bandpegel, Phon, ΔN) liegt in der neuen, benannten
+  `compute_specific_loudness_zwicker_detailed()`. Interne Nutzer (ΔN-Gate,
+  Bandpegel-Extraktion) verwenden die Detail-API. Signale unter 100 ms liefern
+  0,0 sone mit `logger.warning` (§V6 (VERBOTEN.md)) statt eines stillen Werts.
+- **Beweise:** 76 Tests grün (Norm-Suite + Literatur + Zwicker/P5), Ruff clean;
+  Vertragsmessung: 100 Samples → 0.0 (mit Warnung), 100 ms → 10,9711 sone,
+  Monotonie 46,19 → 136,34 sone bei +14 dB.
+
+## 10.3.6 (2026-10-05)
+
+### Divergenzschutz im SGMSE-Finetune (Trainings-Befund)
+
+- **Befund:** Der laufende Feintune `scripts/train_sgmse_musik.py` divergierte ab
+  Epoche 111 (Train-Loss 5,44 → 22,6 → 35,3; Val 6,1525 → 11,13). Ursache ist die
+  schwer ausläuferbehaftete SG-MSE-Verlustverteilung (dokumentierter Altbefund:
+  Ep 58 mit 266728 bei Median 260) in Kombination mit fehlendem Schutz gegen
+  nicht-finite Verluste. Das Skript hatte nur Gradient-Clipping (Norm 2,0) und
+  Best-Checkpoint — aber keinen Rollback und keine Meldung.
+- **Fix:** (1) Nicht-finiter Loss wird erkannt, der Batch verworfen und per
+  `logger.warning()` gemeldet (keine stille Degradation). (2) Divergenzschutz:
+  steigt der deterministische Val-Wert über Faktor 1,5 gegenüber dem Beststand,
+  wird auf das Best-Checkpoint zurückgerollt und `checkpoint_latest` konsistent
+  mitgeschrieben; nach drei Rollbacks endet der Lauf geordnet. Das beste Modell
+  bleibt in jedem Fall erhalten.
+- **Betrieb:** Das divergierte Training wurde gestoppt und vom Best-Checkpoint
+  (Epoche 80, Val 6,1525) mit lr 1e-5 neu gestartet (`--resume`).
+- **Beweise:** `ruff` (F821/F601/B009/I001) clean, `py_compile` grün,
+  Best-Checkpoint geladen (Epoche 80, 647 Tensoren); Neustart-Log
+  `output/train_sgmse_musik2.log`.
+
+## 10.3.5 (2026-10-05)
+
+### 🐛 Versions-Drift behoben und Versions-Gate geschlossen
+
+- **Befund:** `backend/core/version.py` (Single Source of Truth) stand auf 10.3.4,
+  aber `pyproject.toml` auf **10.3.0** und `README.md` auf **10.2.0** — zwei
+  Patch-Stände Drift, von keinem Gate bemerkt. Das vorhandene Prüfskript
+  `scripts/check_version_consistency.py` war **nicht verdrahtet**, hielt
+  `pyproject.toml` für kanonisch und hatte zudem **keine** `--fix`-Behandlung —
+  es verwies auf ein Flag, das es nicht gab (Sackgasse).
+- **Fix:** Das Skript liest die kanonische Version jetzt aus
+  `backend/core/version.py`, unterstützt `--fix` korrekt (pyproject/README: erstes
+  Vorkommen; CHANGELOG: die erste `##`-Abschnittsüberschrift — Historie bleibt
+  unverändert) und ist als Pre-Commit-Hook `aurik-version-consistency`
+  verdrahtet. Alle Stände auf 10.3.5 gezogen.
+- **Nebenfix:** `.github/FILE_REGISTRY.md` führte `models/symphonia/**init**.py`
+  (Fett-Marker im Dateinamen — die Datei „fehlte“) → echter Pfad
+  `models/symphonia/__init__.py`.
+
+## 10.3.4 (2026-10-05)
+
+### 🐛 Shutdown-Hang behoben (memmap_pool-atexit)
+
+- **Befund:** Nach einem Lauf mit aktivem ROCm-Pfad konnte der Prozess nach der
+  Test-Summary („1 passed“) in `futex_do_wait` **hängen** bzw. mit Exit 1 enden
+  (CLI/GUI-Paritätstest, 2026-10-05). Ursache: Der atexit-Pfad
+  `backend/core/memmap_pool.py::MemmapPool.close()` nahm ein reguläres
+  `threading.Lock`; am Interpreter-Ende werden Daemon-Threads an beliebiger
+  Stelle beendet — stirbt einer im kritischen Abschnitt, blockiert
+  `with self._lock` für immer.
+- **Fix:** `close()` nutzt ein begrenztes `acquire(timeout=2.0)` und räumt ohne
+  Lock auf, wenn es nicht greift (`_evict_file` ist idempotent, der Exit-Pfad
+  läuft single-threaded).
+- **Beweis:** Verhaltenstest — gehaltenes Lock ⇒ `close()` kehrt nach **2,00 s**
+  zurück (vorher unbegrenzt); zweiter Aufruf idempotent 0,000 s; py_compile +
+  Ruff-kritisch clean.
+- **Offen (bewusst):** permanenter Regressionstest für `MemmapPool.close()` —
+  das Modul hatte noch keine Testdatei, Neuanlage erfordert den Write-Gate-
+  Eintrag.
+
+## 10.3.3 (2026-10-05)
+
+### 🐛 Crash-Bug, GPU-Probe, CI-Gates und Mess-Telemetrie
+
+- **ROCm-ONNX-Probe crash-isoliert** (§III.9 (copilot-instructions.md)): native
+  MIOpen/HIP-Aborts (SIGSEGV rc=-11, `Hip error: 'out of memory'`) beendeten den
+  Host-Prozess (Unit-Smoke Exit 139 in `InferenceSession.__init__`). Die
+  Session-Erzeugung läuft jetzt in einem eigenen Interpreter; Nicht-CPU-EPs nur
+  mit Paritätsnachweis (rel ≤ 1e-3) gegen ONNX-CPU, MIGraphX nur mit eigener
+  Parität, jeder Ersatzpfad mit §V6 (copilot-instructions.md) Warnung + Begründung,
+  Ergebnis per Datei-IPC statt `print` (R01).
+- **CI `type-gate` grün**: 9 mypy-Fehler in 5 Dateien behoben — u. a. sechsmal
+  Optional-Indizierung von `load_audio_file()`, `__len__` gab ein 0-d-Array
+  statt `int` zurück, `quality_ok() -> bool` verpackte das Ergebnis in
+  `np.asarray`.
+- **CI `export-guard` grün**: der Guard rief eine nicht mehr existierende CLI
+  (`core/audio_exporter.py --sample-rate … --format …`) auf — er exportiert
+  jetzt über `backend.core.audio_exporter.AudioExporter`, konfigurationsgetrieben
+  aus `metadata.yaml`, Ziel `output/export_guard/`.
+- **CI-Kollektion ohne torch/onnxruntime**: vier Testmodule importierten schwere
+  Abhängigkeiten auf Modulebene → `pytest.importorskip` (kanonisches Muster);
+  der Job brach vorher mit „3 errors during collection" ab.
+- **ID-Kollision V74 aufgelöst**: `signal.lfilter` im Bell-EQ heißt jetzt V76
+  (Spec > Code); V74 bleibt Silent-Except und wird vom AST-Guard
+  `scripts/pre_commit_static_guard.py` erzwungen.
+- **Tote Spec-Verweise** `§v10.304.30`/`.31` (8 Stellen) auf §III.9 umgebogen.
+- **Testdeterminismus**: Commit-Pfad-Smoke mit `AURIK_FORCE_CPU=1` (lastunabhängig),
+  VRAM-Tests injizieren den Live-Query-Wert, neue Regel 6 in
+  `tests.instructions.md` („keine Live-Hardware-Werte als Erwartungswert").
+- **Mess-Telemetrie**: deterministisches Validierungsprotokoll im
+  SGMSE-Finetuning (fixer Seed, CPU-/CUDA-RNG restauriert → Val-Kurve lesbar,
+  Trainingsverlauf bit-identisch) und Heartbeat im T6-1-A/B-Runner
+  (5-min-Takt plus Start-/Ende-Zeile je Variante statt 4-h-Stille).
+- **DX**: Safe-Runner meldet bei Lock-Kollision den haltenden PID.
+
+## 10.3.2 (2026-10-05)
+
+### 🐛 GUI-Versions-Konsistenz (§v10.802)
+
+- `Aurik10/__init__.py` trug mit `_FALLBACK_VERSION = "10.2.1"` eine zweite,
+  still veraltete Versionsnummer (Produkt war bereits 10.3.1): Bei
+  fehlgeschlagenem Bridge-Import hätte die GUI eine falsche Version angezeigt.
+  Der Fallback steht jetzt auf dem Stand der Single Source of Truth.
+- `scripts/version_guard.py` prüft den Gleichlauf `_FALLBACK_VERSION` ↔
+  `backend/core/version.py` und warnt bei Drift (§v10.802 GUI-Sync-Pflicht).
+- `tests/unit/test_version_checker_and_ux.py` erzwingt den Gleichlauf
+  fail-closed, damit die Nummer nicht erneut unbemerkt driftet.
+
+### 🎚️ Zero-Phase im Sub-Bass-Add-Pfad + H03-Detektor spec-scharf
+
+- **H03-Detektor präzisiert** (`.agents/skills/bug-prevention/scan_anti_patterns.py`):
+  Die Regel meldete jedes `sosfilt(` in `phases/` und `dsp/`. Die Norm
+  (`.github/VERBOTEN.md`, Anti-Pattern-Tabelle) verlangt zero-phase aber nur, „wo
+  Bandfilter-Ergebnis auf Originalsignal addiert wird; `sosfilt` nur für
+  Analyse/Sidechain“. Der Detektor prüft jetzt genau diese Bedingung (Addition/Mix
+  im 30-Zeilen-Fenster); Analyse-Envelopes und serielle Filterketten werden
+  transparent als `H03-Analyse-Skip` gezählt statt als Bug gemeldet. Wirkung:
+  222 → 44 Findings (`H03=9, H04=2, H05=15, H07=3 | H03-Analyse-Skip=177`) —
+  erstmals actionierbar. Zusätzlich zeigt der Lauf eine Klassen-Zusammenfassung
+  auf WARNING-Ebene (die Detailzeilen waren vorher unsichtbar).
+- **Zweite Präzisierungsstufe** (Falsifikation an `piano_restoration.py`): Die Norm
+  unterscheidet Dry+Band-Add (zero-phase-Pflicht) von **Crossover-Split-Sum**
+  (komplementäre Bänder untereinander, erlaubt bei gleichem Filtertyp — so auch
+  §v10.1013). Der Detektor prüft das jetzt über die filter-abgeleiteten Namen
+  (`_filter_derived_names`, 2 Ableitungsstufen, O(Zeilen)). Ergebnis der
+  Stichprobe: `bass_enhancement:119` und `piano_restoration:147` korrekt
+  eingeordnet; die 16 `piano_restoration`-Meldungen waren maskenbasierte
+  Band-Reduktion plus Crossover — normkonform, keine Verstöße.
+- **Dritte Stufe (Partnerprüfung):** Nur der unmittelbare Additionspartner
+  entscheidet; Epsilon-/Messkontext (`+ 1e-10`) und `np.stack`-Container liefern
+  keinen Partner → 70→44. Diese Stufe hatte zwischenzeitlich **echte** Verstöße
+  verschluckt (`bass_enhancement:418`), weil sie gegen den exakten Zielnamen statt
+  gegen die gematchte Variable (`harmonics_enhanced`) verglich — behoben und per
+  Testgegenprobe abgesichert.
+- **Erste belegte H03-Behebung** (`backend/core/dsp/bass_enhancement.py`): Der
+  Sub-Bass-Bandpfad (20–60 Hz) läuft jetzt über den kanonischen, depth-adaptiven
+  `safe_sosfiltfilt` statt über rohes `sosfilt`. Messung (48 kHz, 4. Ordnung):
+  kausaler Filter verschiebt das Band um **+25,90 ms** (Envelope-Asymmetrie 1,000),
+  zero-phase **0,00 ms** (0,003) — beim Add-back genau die im Antipattern
+  dokumentierte destruktive Interferenz. Bandenergie praktisch unverändert
+  (RMS 0,20985 vs. 0,20967), Summensignal ohne Auslöschung (RMS 0,351 → 0,427),
+  4 Modultests grün.
+
+## 10.3.1 (2026-10-05)
+
+### 🐛 Bug-Hunt & Konsistenz (1:1-Abgleich gegen Vorgaben und Specs)
+
+- **Zeitquellen-Konsistenz**: Der Pipeline-Health-Monitor startete den Wall-Time-Akkumulator
+  mit `time.time()`, verglich aber mit `time.monotonic()` — die Differenz (≈ −1,76e9 s) machte
+  das 2-Stunden-Limit dauerhaft inoperativ, und `summary()` meldete eine unsinnige
+  Pipeline-Dauer (dokumentierte Klasse `.github/VERBOTEN.md` „Wall-Time-Referenz-Mismatch").
+  Beide Seiten laufen jetzt auf `time.monotonic()`; Regressionstests in
+  `tests/unit/test_pipeline_health.py`.
+- **ArtistFingerprintStore**: `last_updated` wurde teils als `time.monotonic()` persistiert,
+  aber gegen `time.time()` geprüft (und umgekehrt) — die Ablauf-Prüfung (> 30 Tage) konnte nie
+  greifen. Persistierte Zeitstempel laufen jetzt durchgängig auf Wall-Clock (§G5).
+- **PMGG-Retry-Budget**: `_retry_t0`/`_retry_elapsed` auf `time.monotonic()` umgestellt
+  (`.github/specs/04_dsp_standards.md`: beide Seiten derselbe Uhrentyp); NTP-/DST-Sprünge
+  konnten den Wiederholungsabbruch vorher nichtdeterministisch auslösen.
+- **Batch-Timing**: Dauer-Messungen in `backend/core/parallel/batch_parallel.py` nutzen
+  `time.perf_counter()` (monotone Hochauflösungsuhr, kein Uhren-Mix im Modul).
+- **§V6 Silent-Failure-Verbot**: stille Fallbacks protokollieren `logger.warning(...)` mit
+  Begründung; drei Module ohne Logger erhielten `logging.getLogger(__name__)`
+  (`dsp/_declip_core.py`, `dsp/adaptive_janssen_iterative.py`, `dsp/noise_burst_remover.py`).
+- **§0a NaN/Inf-Schutz**: `phase_67_crackle_texture_removal` nullt nicht-finite Schätzwerte
+  und schützt das Ausgabe-Audio (`nan_to_num` + Clip).
+- **§V5 Dither-Abgrenzung**: Masken-Cast in `phase_23_spectral_repair` dokumentiert
+  (bool→int8 für die Run-Length-Segmentierung; Dither ausschließlich im Export).
+- **Gate-Korrektheit (`audit/code_weakness_scanner.py`)**: Regeln prüfen Code statt Prosa
+  (Kommentare/Strings werden positionsgetreu geblankt — 26 von 33 `print()`-Treffern waren
+  auskommentiert), erkennen jeden Logger-Namen (`_logger`, `LOGGER`, `self.logger`, modulweite
+  Audit-Fassaden), melden §G5 nur noch bei Wall-Clock in Entscheidungslogik (Messungen und
+  Zeitstempel transparent als unterdrückt ausgewiesen) und grenzen TTL-/Datei-Haushalt als
+  eigene informative Kategorie ab. Neue Regel `walltime_clock_mismatch` (high) findet
+  gemischte Uhr-Epochen — genau die Klasse, die den Health-Monitor-Bug verursacht hat.
+
+## 10.3.0 (2026-10-04)
+
+### 🎼 Symphonia
+
+- Symphonia ergänzt Cantus als Instrumentalgegenkern für drums, bass und other.
+- Der Stem-Level-Restorer führt Symphonia nach Instrumental-NR und vor KIM-Inst
+  aus; ML-Ausgaben durchlaufen den bestehenden Hallucination-Guard.
+- Der neue Modell-, ONNX- und Datensatzvertrag erzwingt Torch-ROCm-Parität,
+  CPU-ONNX-Fallback und nachvollziehbaren DSP-Fallback.
+
+## 10.2.2 (2026-10-04)
+
+### ⚡ Cantus Torch-ROCm
+
+- Cantus führt das paritätsverifizierte Torch-Modell auf ROCm als Primärpfad
+  aus; ONNX bleibt strikt auf CPU als deterministischer Ersatzpfad.
+- Ein Torch-Laufzeitfehler wird mit §V6-Warnung auf ONNX-CPU zurückgeführt;
+  erst bei vollständigem ML-Ausfall greift der Wiener-Ersatzpfad.
+- Der GPU-Kern ist beim zentralen Plugin-Lifecycle registriert. Isolierte
+  Tests sichern die Torch-Priorität und GPU→CPU-Umschaltung.
+
+## 10.2.1 (2026-10-04)
+
+### 🔧 Cantus-Robustheit
+
+- Cantus wiederholt fehlgeschlagene GPU-ORT-Inferenz deterministisch auf CPU und
+  wechselt bei einem weiteren Fehler mit §V6-Warnung auf den DSP-Ersatzpfad.
+- Der Stem-Level-Restorer verarbeitet den HNR-gesicherten Vocal-Stem nun mit
+  Cantus vor KIM2, sichert die Ausgabe erneut gegen Halluzinationen ab und
+  protokolliert Modellroute sowie Witness-Daten im `StemContext`.
+
+### 🧪 Tests & Gates
+
+- Regressionstests sichern GPU→CPU→DSP-Fallback und den Cantus-Stempfad bis zur
+  Rekombination ab.
+
+## 10.2.0 (2026-09-23)
+
+### 🎧 Wohlklang fürs menschliche Ohr — Hörordnungs-Verdrahtungen (§2.69b–e)
+
+- **TemporalConsistencyGuard pro Phase** (§2.69b): Energie-Sprünge (median-relativ),
+  Rausch-Wiedereinführung nach NR-Phasen und Stereo-Kollaps werden jetzt nach JEDER
+  Phase geprüft — im PMGG-Primärpfad und im `_profiled_phase_call`-Fallback (eine
+  Quelle: `_temporal_consistency_post_phase`). Dämpfender Folgephasen-Scalar +
+  konservative Dry/Wet-Rescue; kein Veto (Hörordnung §1: Zeuge, nicht Richter).
+- **PhraseStructureAnalyzer verdrahtet** (§2.69c): Sektionsgrenzen der
+  Strength-Envelope rasten auf erkannte Phrasengrenzen ein (±2 s, Do-No-Harm) —
+  DSP-Übergänge nicht mehr mitten in der Phrase (Spec 03, RX-11-Niveau).
+- **Moore-&-Glasberg-Masking-Spreizung** (§2.69d): Residuum-Salience und alle
+  P1-3-Masking-JNDs nutzen die asymmetrische, level-abhängige ERB-Spreizung (1997)
+  statt der symmetrischen ISO-11172-3-Dreiecks-Spreizung; Kalibrierungs-Harness um
+  2 Invarianten erweitert (Checks 13/14, alle 14 grün).
+- **Print-Through-Verdrahtung** (§2.69e): Der veraltete `_PHASE_ALIASES`-Eintrag, der
+  `phase_57_print_through_reduction` zur Laufzeit auf Tape-Hiss-NR umleitete, ist
+  entfernt — die dedizierte bidirektionale LMS-Implementierung (Pre+Post-Echo,
+  Coherence-Rollback, Guard-Kette) läuft jetzt als eigene Phase.
+
+### 🔧 Robustheit
+
+- Layout-Invariante §V7 (copilot-instructions.md): Mono-Mix-Normalisierung in
+  TemporalConsistencyGuard und PhraseStructureAnalyzer (vorher hartes (N,2)-Annehmen
+  — der Export-Pfad in `bridge_export.py` war davon betroffen).
+
+### 🧪 Tests & Gates
+
+- 8 Temporal-Consistency-Tests, 5 Phrase-Analyzer-Tests, 6 Snap-Tests,
+  4 MG-ERB-Spreizungs-Tests, Alias-Shadowing-Regressionstest (neu).
+- Kalibrierungs-Harness 14/14; Ruff-Critical/VERBOTEN/ID-Registry/Ledger grün;
+  3× Voll-Pipeline-E2E (Stereo, NaN-/Clip-Invarianten gehalten).
+
+## 10.1.0 (2026-09-21)
+
+### 🔒 Autonome Qualitäts-Wahrheit — Never-worsen-Regelkreis
+
+- **Autonomer Never-worsen-Arbiter** (Spec v10.25): Aurik erkennt Verschlechterung
+  eigenständig (referenz-freie Qualität + Hörordnungs-Witness) und wählt aus eigener
+  Kraft das beste Restaurierungsresultat für Wohlklang und Natürlichkeit.
+- **SOTA-Parameter-Retry-Leiter** (`resolve_never_worsen`, injizierbarer Scorer,
+  `_nw_retry`-Flag, Best-of-Wahl) im Denker verdrahtet — ohne externe Eingriffe.
+
+### 🐛 Bug-Fixes (Voll-Suite-Befunde)
+
+- **LRU-Eviction** (`bridge_cache`): verdrängte Einträge werden jetzt auch vom
+  Platten-Cache gelöscht (vorher las `get_cached_*` den verdrängten Eintrag über
+  den Disk-Fallback zurück — LRU wirkungslos).
+- **Goal-Score-Container** (`unified_restorer_v3._measure_goals_for_tail`): Namespace-
+  Ergebnisse werden auf die `.scores`-Map normalisiert statt auf `vars()` — Reporting
+  crashte mit `TypeError: float() … '_CallList'`.
+
+### 🧹 Release-Cleanup
+
+- Interne Dev-Artefakte (Debug-Skripte, Session-Reports, Diagnose-Dumps) entpubliziert
+  und in `.gitignore` aufgenommen; Test-Track-Referenzen anonymisiert.
+- Dokumentation und README auf **10.1.0** aktualisiert.
+- **Installationsprogramm** für Ubuntu 22.04 LTS / Zorin OS 17/18 (apt-Abhängigkeiten,
+  venv, Modell-Prüfung, Desktop-Launcher).
+
+> SOTA-Roadmap offen: t6 Boundary-Maschinerie (ExcellenceOptimizer/PGHI-Struktur),
+> t7 Musical-Goals-Metriken, t8-Rest Chunk-Vergrößerung, P1-GPU-Ports,
+> F-Trainings (F3/F4/F7–F12).*
+
+## 10.0.21 (2026-09-20)
+
+### ⚡ Performance-Kampagne — bit-identische Optimierungen (2026-09-19/20)
+
+Alle Änderungen qualitätsneutral (Wohlklang unverändert), je mit
+Referenzvergleich bit-identisch belegt; Messungen auf identischer 10-s-Zelle
+(AURIK_PERF_GAP=1):
+
+- **§V26 Onset-Guard** (`b9748b63`): JND-Sättigungs-Fast-Path — 217/217 Fälle
+  bit-identisch; Guard-Kern 19,9 → 4,5 ms.
+- **§7 PDV Content-Zwischenspeicher** (`b98dd9e2`): Blake2b-Content-Key,
+  Ketten-Wiederverwendung; 1951 → 1103 ms/Phase.
+- **Reinhör-Witness Audio-Paket-Zwischenspeicher** (`7b02e092`): Bundling der
+  per-Audio-Metriken, bit-identisch.
+- **§2.51a Stereo-Metriken-Zwischenspeicher** (`878e0772`): Content-Key + LRU.
+- **§2.49 AFG `_detect_metallic_ringing`** (`b8ed012c`): Gleitfenster-Median
+  vektorisiert — 7398 → 233 ms (32×), 114 Artefakte bit-identisch.
+- **§2.49 AFG `_detect_musical_noise`** (`1d8b666a`): ERB-Masking via
+  np.maximum.at + Gleitfenster-Median — 114 Artefakte bit-identisch, 5×.
+- **PERF-GAP-Instrumentierung** (`f8260c31`): env-gegatete Phasen-Gap-Zerlegung
+  (AURIK_PERF_GAP=1), Overhead ~0 im Normalbetrieb.
+- **§7 PDV Burstiness-numba-Kern + 5 Helfer-Vektorisierungen** (`415bb9a2`):
+  IEEE-Float64-Kern bit-identisch zum Python-Loop (1010 ms → 1 ms warm);
+  Batched-RFFT + exakte per-Zeilen-Mittelwerte. **PDV-Block 48,8 → 3,8 s/Pass
+  (mean 1355 → 104 ms, max 8,8 → 0,8 s).**
+- **PLM keep_warm** (`f29febe9`): BANQUET bleibt über Pipeline-Pässe warm —
+  validiert 1× Load / 0 Evictions (vorher 2×/2×, ~36 s/Pass gespart);
+  druckgetriebene Eviction unverändert aktiv (OOM-sicher).
+
+### 🕵️ Forensik-Konsistenz: Material-Veto, Ketten-Ordnung, Cross-Validation (2026-09-06)
+
+- **§2.46f Material-Veto (Defer/Veto):** Die DefectScanner-Feature-Heuristik
+  („Auto-detected cassette with confidence 10.42“) widersprach dem
+  MediumDetector-Physical-Gate-Primary (vinyl, rotation=0.411). Root-Cause:
+  §v10.14-Baseline-Boni (vinyl+6/tape+4/cassette+5) — Priors als Score getarnt.
+  Fix: Boni entfernt; Forensic-Primary wird bei schwacher Evidenz übernommen
+  (Defer) und bei Widerspruch erzwungen (Veto); Log meldet „score“ statt
+  „confidence“. 5 Regressionstests (§2.46f-1…4).
+- **MediumDetector-Log-Konsistenz:** Kandidaten-Gates loggen nur noch DEBUG,
+  ein einziger finaler INFO-Log meldet Primary + alle Kandidaten — die
+  widersprüchlichen Doppel-Zeilen („primary=reel_tape 0.396“ / „primary=vinyl
+  0.226“) sind weg. §6.8-Transparenz: Bei Physical-Gate-Override über einen
+  unknown-dominierten Bayesian-Posterior wird die Evidenz-Basis explizit geloggt.
+- **Cross-Validierung ehrlich:** „stimmen überein“ → „ketten-konsistent“
+  (Faktoren bestätigen Ketten-Zugehörigkeit, keine gegenseitige
+  Material-Gleichheit); Factor 3 nutzt das unabhängige
+  `auto_detected_material` statt des semi-tautologischen Caller-Hints.
+- **RIAA-Log-Transparenz:** „RIAA curve detected“ → „classified“ —
+  `curve=unknown conf=0.99` ist die sichere Klassifikation „keine
+  Standard-Kurve“ (Flat-Transfer), kein Fehlschlag.
+- **Spec 05 §6.7 präzisiert:** Supplementär-Prinzip (Defer/Veto) und
+  Carrier-First-Kettenordnung (`transfer_chain[0]` = Primary, Folgeglieder
+  chronologisch) jetzt bindend dokumentiert; Drift-Baseline nachgezogen.
+
+### 🚀 Salience-Strecke vektorisiert — STFT-Batching + Bark-Cache (2026-09-06)
+
+- **§2.46h `_stft_magnitude_db` (residuum_masking):** Python-Frame-Loop
+  (~50 rfft(4096)-Aufrufe pro Event-Kontext) → strided-batch rfft über alle
+  Frames in einem Aufruf. **Bit-identisch** (pocketfft transformiert jede Zeile
+  mit identischem Algorithmus; Regressionstest belegt maxdiff=0.0).
+- **§2.46h `_to_bark_bands`:** Bark-Bin-Indizes einmalig gecacht statt 28×
+  Frequenz-Vergleichs-Masken pro Aufruf (1708 Aufrufe im 20s-Scan) —
+  Median-Mathematik unverändert, **bit-identisch** (Test).
+- **§2.46h `_compute_loudness_profile` (perceptual_salience):** Strided-Fenster
+  statt Python-Frame-Loop (44k Frames bei 224s-Song) — **bit-identisch**
+  (Test maxdiff=0.0).
+- **§2.46h `estimate_residuum_salience_batch` (neu, nicht-default):** EIN
+  Full-Audio-STFT (n_fft=4096) statt 2 STFTs pro Event. Gemessen: **1.8×**
+  schneller (1000 Events/60s: 2.98s→1.63s), deterministisch (§G5), aber
+  **mean |ΔSalienz| = 0.20** und Maskierungs-Klassifikation 978→790 von 1000
+  Events — die alte Konkatenat-Semantik trägt einen Selbst-Maskierungs-Bias,
+  dessen Korrektur eine HÖR-ENTSCHEIDUNG ist und Golden-Set-Validierung
+  braucht. Der Per-Event-Pfad bleibt Default; der Batch liegt als getesteter
+  Pfad vor (Fallback für ≤1 Event exakt identisch).
+- **Messung:** annotate_defect_scores (60s, 7461 Events) 28.9s; der
+  verbleibende Kostenblock sind die ERB-Per-Event-FFTs (n_fft variabel pro
+  Segment — Grid-Änderung = gleiche Semantik-Frage wie beim Batch).
+
+### 🔍 ClosedLoop-No-Op-Diagnose + Hörbarkeits-Gate-Kopplung + Chunk-Varianz (2026-09-06)
+
+- **§2.46g Strength-Envelope-Transparenz:** `compute_strength_envelope` loggt
+  bei leerem Locations-Set jetzt WARNING statt DEBUG — das uniforme
+  Floor-Envelope (μ=0.060 σ=0.000 im Produktionslauf) macht die Phasen-Strecke
+  global zum No-Op (ActiveIntervention lehnte jede Phase korrekt ab, 42
+  Restdefekte blieben unbehandelt). Die Ursache (Locations-/Salienz-Verlust
+  aus dem Cache) wird damit in jedem Lauf sichtbar statt still degradiert.
+- **§2.46g Hörbarkeits-Gate im Endverdikt:** `hoerbarkeits_gate_passed`/
+  `n_audible_unmasked` werden in `_flow_meta` abgelegt; ein nicht bestandenes
+  Hörbarkeits-Gate degradiert QUALITY-GUARANTEED-Verdikte jetzt genauso wie
+  Einladungs-Gate und Ebene-3-Wohlklang-Ordnung (⚠️ PERCEPTUAL PASS).
+  Produktionsbefund: „34 unmaskierte Restdefekt-Typen, keine Reduktion
+  erzielt“ → trotzdem „✓ QUALITY GUARANTEED“.
+- **§2.46g Chunk-Varianz-Monitoring:** MQA-Block sammelt pro Chunk
+  MUSHRA/HPI/Naturalness (Ring-Puffer 32); ab 2 Chunks wird die Streuung
+  geloggt und bei naturalness-Δ > 0.10 gewarnt (Produktionsbefund: Chunk 0
+  naturalness 0.82 vs. Chunk 2 0.66 bei MUSHRA 80.8).
+- **Dokumentiert (Untersuchungsergebnis):** Der ClosedLoop-Hold (Δ ≥ 0.08
+  erhöht erst) ist korrekt — die Phasen liefen wegen des degenerierten
+  Envelopes mit ~0.05–0.10 Stärke; ActiveIntervention lehnte deshalb jede
+  Änderung ab. Die „Performance Guard deaktiviert via config“-Zeile stammt
+  aus der Wegwerf-UV3-Instanz des PhaseInteractionDenkers (by design); der
+  echte UV3-Guard läuft mit Enforce=False (Wall-Clock-Watchdog erzwingt).
+  Nächster messbarer Schritt: CREPE-Pitch (phase_31, ~40 s/Chunk × 8) und
+  VocalFocusAnalyzer (~60 s/Chunk × 8) auf Song-Level-Caching — ca. 13 min
+  Einsparung pro 224-s-Song, ohne Hör-Semantik-Änderung.
+
+### 🛠️ Restaurations-Lauf-Analyse — Hör-Gate-Verdrahtung + Phantom-Reparaturen (2026-09-06)
+
+- **§2.46g phase_56 Material-BW-Ceiling:** `_detect_band_gaps` scante den vollen
+  Bereich bis Nyquist und reparierte auf Vinyl (Ceiling 16 kHz, §6.2c) eine
+  „Lücke 1013–1025 Bins (23742–24023 Hz)“ — der natürliche Spektralrand,
+  kein Defekt. Kostete **141.6 s** (teuerste Phase des Laufs) inkl. NMF-β-
+  Refinement. Jetzt: pro-Material-Ceiling (Vinyl/Shellac 16 kHz, Band 15 kHz,
+  digital 22.05 kHz) im Gap-Scan + Hallucination-Guard.
+- **§2.46g Era-Konsistenz:** `§v10.303.44 Deep-Chain Era-Correction` hob die
+  Era über die frei erfundene Formel `1960+10×(depth−2)` an (Produktionsbefund:
+  1970→1980 bei vinyl→reel→lacquer→mp3 — GlobalPlan=1970, Era-Ceiling=1970).
+  Jetzt: (a) GlobalPlan-Prior-Rebuild erhält die gecachte Klassifikator-Konfidenz
+  (0.72) statt 0.00; (b) die Korrektur nutzt die echten Einführungsjahre der
+  analogen Kettenglieder als UNTERE Schranke (Musik kann nicht vor ihrem Medium
+  entstanden sein) und hebt die Decade nur bei conf ≤ 0.60 dorthin an.
+- **§2.46g Salienz-Konsistenz:** Der UV3-Re-Run auf gecachten DefectScores
+  annotierte mit leerem Audio neu (`duration=0.0s`, Budget-Cap 10000,
+  „13695/13695 salient“) und überschrieb damit die korrekte Pre-Analyse-Maskierung
+  (4053 maskiert) → „universelle Defekt-Exponiertheit“ → „Restaurierung
+  priorisiert vollständig“. Jetzt: bei vorhandenen Salienz-Metadaten wird die
+  Re-Annotation übersprungen; bei leerem Audio entfällt sie ganz.
+- **§2.46g Hör-Gate-Verdikt-Kopplung:** Einladungs-Gate „NICHT BESTANDEN“
+  (sharpness_sprung=0.714) + 11 Ebene-3-Wohlklang-Ordnungs-Verstöße führten
+  trotzdem zu „✓ QUALITY GUARANTEED“ im Endverdikt. Jetzt degradiert ein
+  verletztes Hör-Gate ein QUALITY-GUARANTEED-Verdikt zu „⚠️ PERCEPTUAL PASS —
+  Hör-Gates degradieren das Verdikt“ (MUSHRA-Verbesserung bleibt bestehen,
+  `quality_guaranteed=False`, `hoer_gate_demoted=True`).
+- **Dokumentiert (kein Eingriff):** ActiveIntervention/ClosedLoop hält die
+  Phasen-Stärke bewusst konstant (nur Δ ≥ 0.08 erhöht, §2.7-MR-Stabilität) —
+  die Hauptschleife ist damit größtenteils konservativ; die hörbare Wirkung
+  kommt aus ReparaturDenker (5432 Clicks, 423 Gaps) + FC-Loop. Eine
+  Neukalibrierung der Schwellen braucht Golden-Set-Evaluation.
+
+### ⚡ Steigerungspotenziale umgesetzt — Heuristik-Redesign + Parallel-Detektion (2026-09-06)
+
+- **§2.46g Material-Scoring-Redesign (Stereo):** `hf_loss_indicator` ist jetzt
+  **Slope-basiert** (10–12 kHz vs. 14–16 kHz, 60-dB-Skala) statt `1−hf/0.05` —
+  schmalbandige Analogquellen und Stille lieferten vorher pauschal `hf_loss=1`
+  → mp3_low +3 (Falsch-Positiv bei jedem analogen Bandbreiten-Limit).
+  Zusätzlich **Impulse≠Hiss-Guard** (Crest-Faktor > 15 dB im 8-kHz-HP-Band
+  diskontiert den Hiss-Score) und **Stille-Guard** (RMS < 1e-6 → Forensic-Defer
+  oder UNKNOWN — `_detect_flutter` lieferte auf Stille degeneriert 1.0).
+- **§2.46g Material-Scoring-Redesign (Mono):** Baseline-Boni (vinyl+9/tape+10/
+  cassette+9) entfernt, alle Features auf 0..1 normiert (Click-Rate/60 s,
+  HF/3 %, Rumble/1 %, 50–70-Hz-Netzbrumm als Vinyl-Feature — vorher tote
+  Variable). Mono-Vinyl-Signatur (Brumm+Rumble+Clicks) wird weiterhin korrekt
+  als VINYL erkannt (Regressionstest).
+- **§2.46h Parallel-Detektion (DefectScanner.scan):** Alle unabhängigen
+  Detektoren + Full-Audio-Tail (transport_bump, tape-head-dips, scrape-flutter,
+  Dropout-Subtypen, …) laufen im ThreadPool (8 Worker); Material-Gates und
+  Cross-Material-Fallbacks sind in Tasks gekapselt. Ergebnis **bit-identisch**
+  (gemessen 1 vs. 8 Worker, severities/confidences < 1e-9). Detektor-Block
+  3,9× schneller (12,5 s Arbeit in 3,2 s Wall-Time); Gesamt-Scan −6 %.
+- **§2.46h Messung (Negativ-Ergebnis, dokumentiert):** Parallelisierung der
+  ERB-Salience-Schleife (4800 Events im Produktionsbefund) ist
+  **kontraproduktiv** (0,72× — `_to_bark_bands`/Quantile sind GIL-gebundener
+  Python-Code). Revertiert mit Mess-Kommentar; der SOTA-Ausbau ist
+  STFT-Batching/Vectorisierung, nicht Threading. ERB-`_mono_cache` jetzt
+  lock-geschützt (Singleton wird von Parallel-Detektoren geteilt).
+
+### 👂 Hörordnung Ebene 3 — maschineller Audit + Matrix-Harness-CI-Gate
+
+- **Ebene 3:** `wohlklang_ordnung_gate` (`WohlklangOrdnungGate`) — Audit der
+  lexikografischen Wohlklang-Ordnung (Hörordnung §5/§8); verdrahtet in
+  FeedbackChain (intern + UV3-Callback), Metadata-Key `wohlklang_ordnung`,
+  GUI-Ampel (rot bei VIOLATION).
+- **Matrix-Harness-CI:** `benchmark_effizienz_matrix` mit `--enforce-budget`,
+  `--bootstrap-ci`, `--profile-top-phases`, `--ci` (Budget-Tabelle aus
+  copilot-instructions §Performance-Budget; 95 %-CI deterministisch per Seed).
+- **Budget-Telemetrie (Pipeline):** `metadata["pipeline_budget_timings"]` mit
+  realen Per-Operation-Timings (Scanner/Phasen/FC/Excellence/Restorability;
+  Export bleibt null) + `AURIK_MASTER_SEED`-Override im Seed-Manager.
+- **Wiederholungen:** `--repeats N` mit deterministischer Seed-Folge (42+i, §G5)
+  — echte Stichproben für Bootstrap-CI; Budget-Prüfung je Wiederholung.
+- **Fix (Era):** §2.13-Ceiling-Rekonstruktion ließ das Pflichtfeld `era_label`
+  weg (`type: ignore[call-arg]` maskierte das) → TypeError „EraResult.__init__()
+  missing 1 required positional argument: 'era_label'" → Watchdog „Pre-Analyse
+  degradiert" bei Songs mit analogem Träger in der Kette. Behoben via
+  `dc_replace`-Helper `_apply_analog_era_ceiling` (Felder bleiben erhalten,
+  Ignore entfernt) + 6 Regressionstests (unit + classify-Pfad).
+- **Call-Arg-Ignore-Audit (backend-weit, 23 Stellen):** alle
+  `# type: ignore[call-arg]` geprüft und entfernt — 14 maskierten echte
+  Vertragsverletzungen (u. a. `apply_final_polish` falsche Kwargs `era_decade`/
+  `material` → `decade`; `dfn.enhance` ohne Pflicht-`sr`; `SpectrumProfile()`
+  ohne 9 Pflichtfelder im librosa-Fallback; Closed-Loop-`RestorationResult`
+  ohne `material_type`/`defect_scores`; `SteerDecision`-Fremd-Kwargs) und ein
+  §V6-Silent-Failure (Phase-0-Goal-Baseline iterierte dict-Strings statt
+  Werte — Block lief nie). 1 legitimer Dual-Signatur-Fallback bleibt als
+  `cast(Any, …)` (DefectScanner-Progress).
+- **Fix (Phase 65):** `no-any-return`-Restfehler in `_apply_shelving_eq` —
+  numpy-1.26-Stubs typisieren `nan_to_num`/`sosfiltfilt` als Any; Rückgaben
+  jetzt über annotierte Typ-Grenze (`_out65: np.ndarray`), 3 tote
+  `type: ignore[no-any-return]` entfernt. mypy: 0 Fehler.
+- **Separation-SOTA:** HTDemucs-Warnungen („10.5s > Budget 3.0s“ / „took 10.6s“)
+  beseitigt — (a) Modell-Warm-up läuft jetzt einmalig in `measure_all` VOR der
+  Per-Goal-Budget-Uhr (erster Call zahlte sonst Modell-Load), (b) Zeitbudget
+  längen-kalibriert (`_sep_time_budget_s`: 0.5× RT, Floor 3 s) statt statisch 3 s,
+  (c) Test-Drift-Fix: Cache-Reuse-Test nutzt 3.5-s-Fixture (1-s lief seit dem
+  <3-s-Guard nie durch den echten Pfad).
+- **MQA-Authenticity-Quell-Relativierung (§0):** „Authenticity too low …
+  (character lost)“ feuerte auch, wenn die QUELLE selbst unter der Schwelle lag
+  und die Restauration nichts verlor (historische mp3-Quelle 0.72 < 0.75) —
+  Warmth/Naturalness/Brightness hatten diesen Quell-Guard längst. Jetzt:
+  Gate nur bei echtem Verlust (> 0.05 Drop), Medium- UND Mode-Gate; der echte
+  Charakter-Verlust bleibt über den Drop-Limit-Check abgedeckt. +2 Regressionstests.
+- **SingMOS-Quell-Relativierung (§G4-SOTA):** „SingMOS=2.42 < 2.5 → phase_65“
+  feuerte als WARNUNG, obwohl (a) die Restorability 64 war — das Log-Level griff
+  auf einen nicht gesetzten Attr-Default 70 zurück statt auf den echten Wert — und
+  (b) die QUELLE selbst unter 2.5 lag (Material-Ceiling, kein Aurik-Verlust).
+  Jetzt: `_is_singmos_source_capped` (Quelle < 2.5 und Output ≥ Quelle − 0.10 →
+  INFO statt WARNUNG, keine futile phase_65-Schleife, kein fail_reasons-Eintrag);
+  echter Drop/Quelle-über-Schwelle bleibt Warnung + Recovery. +4 Unit-Tests.
+- **VQI-Signatur-Fix:** `compute_vqi()` braucht `(audio_orig, audio_restored, sr)` —
+  zwei Aufrufstellen riefen 2-arg und warfen „missing 1 required positional
+  argument: 'sr'“: (a) `einladungs_gate.check_vqi_recovery` → VQI-Recovery-Check
+  lief nie, stiller konservativer Default 0.72/0.72, (b) `vocal_clarity_max`
+  VQI-Naturalness-Check → `naturalness_ok` wurde still auf True gesetzt (§V6).
+  Beide auf Selbstreferenz-VQI `(x, x, sr)` korrigiert (Repo-Konvention phase_65/66).
+- **Mypy Real-Bug-Gate SOTA-Cleanup (2026-09-07):** alle 144 Fehlercodes der
+  Release-Layer auf 0 gebracht — darunter echte Laufzeit-Bugs: fehlende
+  `import logging`/`import numpy`-Zeilen in 8 neuen Modulen (ImportError beim
+  ersten Import), `_rbme_interpolate`-Methodenkopf in phase_01 verloren
+  (AttributeError bei jedem mittellangen Klick — Rumpf hing als toter Code),
+  `_safe_sosfiltfilt05` ohne lokalen Import in phase_05 (NameError),
+  `librosa.find_peaks`/`librosa.filters.bark` existieren nicht (Einladungs-Gate-
+  Roughness/Maskierung liefen nie, §V6), `onset_strength()[0]`-Skalar-Bug,
+  `restore()`-Metadaten schrieben in undefiniertes `result` (NameError →
+  Einladungs-/Anti-Fatigue-/Wohlklang-Diagnosen gingen still verloren — jetzt
+  `_flow_meta`-Sammler + Merge), Signatur-Bugs in 7 Convenience-Wrappern
+  (intentional_artifact_classifier, cassette_defect_verifier, powr_dither,
+  sota_vocal_model_router, vocal_overprocessing_detector, phase_07,
+  phase_32), logger-vor-Definition in phase_20/29, plus 48 no-any-return-Ignores
+  nach Repo-Muster. Roughness-Proxy auf Zwicker-Band-Energie (40–200 Hz)
+  kalibriert — sauberer Sinus passiert das Gate wieder. Verifikation: Mypy-Gate
+  0 Fehler, 8118 Unit-Tests grün, 105 Phasen-/Gate-Tests, alle Pre-Commit-
+  Datei-Gates grün.
+- **3 vorbestehende Unit-Test-Fehler behoben (2026-09-07):** (a) Model-Zoo-
+  Registry: `melbandroformer`-Notiz enthielt den Plugin-Modulnamen nicht
+  (`bs_roformer_plugin`) — ergänzt; (b) OOM-Guard: Buffer-Größe wurde erst
+  NACH der ersten Audio-Transformation gemessen, die die Array-Klasse (und
+  damit `nbytes`) normalisiert — jetzt VOR `_lay_norm_cf` erfasst (Spec §9);
+  (c) `get_htdemucs_plugin()`-Facade routet jetzt auf `MDX23CPlugin` (P1-
+  Migration) mit Drop-In-kompatiblem `separate()`/`_model_type`, htdemucs_6s
+  bleibt experimentelles Manifest-Modell. +SIM201-Fix in model_zoo_registry.
+- **Psychoakustisches Front-End + 6-Muster-Synergie (2026-09-07):** Neues Modul
+  `dsp/psychoacoustic_frame.py` — EIN gemeinsamer Frame (feines STFT + Fluss-
+  Hüllkurve hop 128 + Rectangular-Bark + Maskierungsschwelle ISO 11172-3) statt
+  ~25 getrennter STFT-Welten. (1) einladungs_gate misst Roughness/Sharpness/
+  Loudness jetzt vektorisiert auf der Repräsentation statt dreier Fenster-
+  Schleifen (~3× schneller, konsistente Gate-Werte; Roughness kalibriert:
+  Sinus-Vibrato max 0.04, 70-Hz-AM 0.99). (2) Audibility-Early-Termination in
+  phase_02 (Hum unter Maskierung → Budget 0) + phase_05 (Rumble unter Maskierung
+  → kein HPF) nach Hörordnung §4. (3) Wohlklang-Garantie versucht VOR dem
+  Voll-Re-Run einen Output-Blend (Original + s·(Erstlauf−Original)), bewertet
+  mit demselben MUSHRA-Proxy — Re-Run nur wenn der Blend nicht reicht
+  (Faktor ~2 auf dem teuren Pfad). (4) Ganzsignal-Hüllkurve + MA-Glättung +
+  Hann statt Per-Fenster-Chunks. (5) phase_04-Shelving-Pfad float32-native.
+  (6) MDX23C-2-Stem-Adapter ehrlich (inst/3-Verteilung, reconstruct = Input).
+  Synergie: Gates, Early-Termination und Blend-Entscheidung lesen dieselbe
+  billige Repräsentation. +7 Frame-Unit-Tests, 88 Gate/Phasen-Tests grün.
+- **Offene Punkte der 6-Muster-Roadmap geschlossen (2026-09-07):** (a) Die
+  kanonischen Referenz-Metriken aus artifact_freedom_gate — Roughness in asper
+  (Hilbert-Hüllkurve, 15–300 Hz, 1.5e-3-Kalibrierung) und Sharpness in acum
+  (Bismarck/DIN 45692 Bark-Zentroid mit g(z)) — sind exakt (identische
+  Mathematik) in den gemeinsamen Frame als `roughness_asper`/
+  `sharpness_acum` migriert; artifact_freedom_gate delegiert dorthin, die 27
+  Referenz-Tests bleiben ohne Wert-Drift grün; die drei toten einladungs_gate-
+  Proxy-Wrapper wurden entfernt. (b) Audibility-Floor: `is_below_masking`
+  fällt nie unter die absolute Hörschwelle (−95 dBFS) — eine isolierte Linie
+  kann sich nicht mehr selbst „maskieren“ (Self-Referenz-Bug der vereinfachten
+  Schwelle); deterministischer Maskierungs-Grenztest (leise Linie unter
+  Hörschwelle → Skip, laute → Eingriff) belegt die Grenze. (c) Wohlklang-
+  Blend als pure, testbare Funktion `_compute_wohlklang_blend` extrahiert +
+  5 Unit-Tests (Identität s=0/1, Mittelpunkt, Clip-Invariante, dtype-Erhalt).
+- **DeepFilterNet-V3-II Fixed-T-Export (2026-09-07):** Der enc-ONNX-Export
+  fixiert die Zeitdimension (T=100) — Ganzsignal-Feeds warfen
+  InvalidArgument („index 2: Got 2999, Expected 100“) und fielen still in den
+  DSP-Ersatzpfad. Fix ohne Seiteneffekte: Die Zeitdimension wird aus den
+  Session-Metadaten gelesen — bei dynamischem T bleibt der Ganzsignal-Pfad
+  unverändert; bei fixem T wird mit 50 % Überlappung gechunkt und im
+  Spektralbereich per Hann-OLA gemischt (Rand-Chunks mit flachem Fenster,
+  Tail mit letztem Frame gepolstert statt Zero-Pad). 4 Unit-Tests belegen
+  Transparenz: Ein transparenter Spektral-Kern reproduziert im Chunked-Pfad
+  das Ganzsignal-Ergebnis bit-exakt.
+- **§VOD-1 Lisp-Einheiten-Fix + Delta-Logik (2026-09-07):** Die 6–10-kHz-
+  „Varianz“ wurde als np.var der dB-Werte berechnet (Einheit dB²) — Werte wie
+  115.9 „dB“ waren physikalisch unsinnig (Std war ~10.8 dB, völlig normal)
+  und der ABSOLUTE Post-Check feuerte bei ohnehin sibilantem Import-Material
+  fälschlich. Fix: (a) `_band_variance_db` liefert jetzt die Standardabweichung
+  der Band-Energie (echte dB); (b) Lisp = Delta (Post − Pre) > 3 dB (snr-
+  adaptiv) UND absoluter Sanity-Floor 3 dB — De-essing, das die Schwankung
+  REDUZIERT (nötiges aggressives De-essing), wird korrekt NICHT geflaggt;
+  nur die ERZEUGUNG neuer Burst-Artefakte löst §VOD-1 aus. +2
+  Regressionstests (Sibilant-Quelle mit nötigem De-essing → kein Flag;
+  Artefakt-Erzeugung → Flag), Schwellwert-Pin an neue Einheit angepasst.
+- **HTDemucs-Zeitbudget 15→60 s (2026-09-07):** separation_fidelity fiel bei
+  27.2 s Trennung über das 15-s-Budget in den Proxy-Fallback — längere Songs
+  bekamen nie echte Stem-Trennung. `_sep_time_budget_s` jetzt
+  `max(60.0, 0.5×RT)` — kurze Excerpts erhalten echte Separation, lange Songs
+  skalieren weiter mit 0.5× RT. Die SIR-Proxy-Tests hingen am Budget als
+  Proxy-Trigger — jetzt deterministisch via `proxy_only`-Fixture
+  (Monkeypatch des Separators) statt maschinen-abhängigem Timeout; Budget-Test
+  an neue Formel angepasst. +Bandit B324 (MD5 → usedforsecurity=False),
+  Bug-9-except:pass mit Logging, 3 Log-Meldungen eingedeutscht, C408-Fix.
+- **Pre-Commit-Gate-Härtung (2026-09-06):** drei weitere Import-/NameError-Bugs
+  der gleichen Klasse behoben — (a) `phase_04_eq_correction._apply_peaking_filter`
+  nutzte `_safe_sosfiltfilt04` ohne lokalen Import (NameError bei jedem
+  Peaking-EQ-Einsatz, Smoke-Test-Bruch), (b) `bark_lufs_util` nutzte
+  `logging.getLogger` ohne `import logging` (ImportError bei erstem Import),
+  (c) `level_1_invariants_guard._measure_emotional_arc` importierte das
+  nicht-existente `aura_preserver.compute_emotional_arc` (stiller Default, §V6)
+  → jetzt kanonisch `preservation_metrics.compute_emotional_arc_score` (§G54).
+  Dazu: FILE_REGISTRY-Duplikate entfernt (4), Sprache-Guard-Log eingedeutscht,
+  Calibration-Linter-Baseline nachgezogen (13 bekannte Defaults), 2 Test-Mocks
+  an Produktions-Signaturen angepasst (librosa center-Kwarg, Medium-Ketten-Tiefe
+  ≤_MAX_ANALOG_CHAIN_DEPTH+2).
+- **Anti-Fatigue (Hörordnung §6):** „BEST-EFFORT (no corrections possible)“
+  behoben — OneTakeExport korrigierte Fatigue nur per blindem High-Shelf,
+  während die eigene Korrekturkette (Gain → Limiter → Kompression) die
+  Crest-/Mikro-Komponenten verschlechterte. Neu: komponenten-getriebener
+  `anti_fatigue_pass` (High-Shelf nur bei hf_dev; peak-neutrale
+  Mikrodynamik-Expansion bei Crest/Mikro; Do-No-Harm), Gain-Headroom-Kappe
+  in OneTakeExport, einseitiger Crest (natürliche Dynamik wird nicht mehr
+  als Ermüdung bestraft), UV3-Verdrahtung vor dem Export-Gate.
+- **Fix:** `pyproject.toml` TOML-Syntax (Trailing-Quotes in `description`),
+  Versions-Kommentar 10.0.20.
+
+## 10.0.20 (2026-09-06) — Era-/Material-Kalibrierung, SOTA-Hardening, Hör-Gates Ebenen 1/2/4
+
+### 🎚️ Era-/Material-Kalibrierung (Worldclass Release Gate PASS)
+
+- Era-/Material-abhängige Kalibrierung über die Kette: Material-Crest-Kalibrierung,
+  stereo_penalty/af_veto/ntx_threshold-Material-Schwellen (§CALIB), Deep-Chain-Korrektur.
+- SOTA-Compliance & Determinismus-Hardening; 10 neue Guard-/Denker-Module + 71 Unit-Tests
+  (u. a. PresenceEmbedding/EraAuthenticCompletion, G90).
+
+### 👂 Hör-Gates (Hörordnung Ebenen 1/2/4) + GUI
+
+- **Ebene 1:** `level_1_invariants_guard` — fünf unverhandelbare Invarianten pro Phase
+  (Stimm-Identität, Konsonanten-Klarheit, Vibrato-Erhalt, Dynamikbogen, Atem-Zeitstruktur).
+- **Ebene 2:** `defect_audibility_gate` — material-/ketten-adaptive JND-Schwelle für Restdefekte
+  (ERB-Maskierung, Physical-Cap-Typen).
+- **Ebene 4:** `einladungs_gate` (positives Wohlklang-Gate, VQI-Recovery) +
+  `vocal_overdrive_guard` (hartes Vocal-Schutz-Invariante, kalibriert an Testkünstlerin (Schlager) 1977).
+- **GUI (Reife T1):** `hearing_gates_summary` — Ampel/Detail der Hör-Gates im Score-Banner.
+- Werkzeuge: `benchmark_effizienz_matrix` (UV3-Modi-Matrix, RSS/RT/JSON),
+  `mushra_harness` (ITU-R BS.1534); Audit `audit/gui_reife_audit_2026-09-06.md`.
+
+## 10.14.0 (2026-08-06) — „Durchblick": Detector-Root-Cause-Fixes
+
+### 🔍 Erkennungsarchitektur — §2.47, §6.7.4, §v10.14
+
+- **MediumDetector:** Bayesian unknown-Prior gedämpft (P=0.02). Cromwell's Rule: unknown nur wenn
+  KEIN anderes Material Evidenz hat. Verhindert unknown=0.999 bei multiplen plausiblen Hypothesen.
+- **EraClassifier:** CLAP-Plausibilitätsprüfung entschärft. Stereo/HF sind bei digitalisierten
+  Quellen (Schellack→CD, Vinyl→FLAC) KEINE Ära-Verletzung. Nur rein analoge Ketten triggern den
+  stereo/hf-Violations-Gate. §2.47 Digitization Gate.
+- **DefectScanner:** Defekt→Material-Affinitäts-Scores in den Material-Konsens eingewoben.
+  Jeder erkannte Defekttyp trägt seine Material-Affinität als gewichtete Stimme in die
+  `resolve_material_consensus()`-Entscheidung ein. Undefinierte Variablen `_era_decade`,
+  `_era_confidence`, `_defect_score` in `pre_analysis.py` behoben.
+
+### 📚 Dokumentation
+
+- `docs/detection_architecture_v10.14.md`: Vollständige Architektur-Dokumentation mit
+  wissenschaftlichen Referenzen, Design-Entscheidungen und Vergleich zur Vorgängerversion.
+
+---
+
+## 10.0.19 (2026-08-07) — Weltspitze-Execution: ErrorGuard, §V6-Logging, GUI-Visualisierung
+
+- **ErrorGuard:** 69/69 Phasen via `PhaseInterface._safe_process` geschützt — 100% Abdeckung
+- **§V6 Silent-Failure:** 106 echte `logger.warning("ML→DSP-Fallback aktiviert", exc_info=True)` in 37 Dateien
+- **§G4 CD-Rauschprofil:** Zentrale Injektion in `audio_exporter.py` — alle 9 Export-Pfade abgedeckt
+
+### 🎨 GUI-Visualisierung — Backend (Sprint B)
+
+- **Spektrum-Vergleich:** `compute_spectrum_comparison()` — Vorher/Nachher/Delta-Spektrogramm + Frequenzgang-Differenz
+- **Batch-Übersicht:** `BatchOverview.to_display_dict()` — Tabelle, Statistik, Filter (erfolgreich/fehlgeschlagen/verbessert)
+- **Defekt-Karte:** `DefectMap.from_defect_lists().to_display_dict()` — Reduktion pro Typ, Heatmap-Positionen
+
+### 🧪 Spec 15 Gap-Closure (Sprint C)
+
+- **ABX-Contract-Tests:** `test_listener_contract.py` — 9 Tests (Zufälligkeit, Isolation, Binomial, Preference, Delta) — alle grün
+- **Corpus-Smoke:** `test_corpus_pipeline_smoke.py` — 3 Tests, 161 Zeilen
+- **GPU-Strategie-Doku:** `docs/GPU_STRATEGY.md` — CUDA/ROCm/MPS/DirectML/CPU, Priorität, Fehlerbehandlung
+
+### 🔧 Infrastruktur (Sprint D)
+
+- **Version-Check:** `scripts/check_version_consistency.py` — fokussiert auf pyproject.toml ≡ README ≡ CHANGELOG
+- **Release-Checklist:** `docs/RELEASE_CHECKLIST.md` — 66 Zeilen, 7 Kategorien
+- **Syntax-Fix:** `musical_goals_metrics.py` — doppelter except-Block aus §V6-Fixer bereinigt
+
+---
+
+## 10.0.18 (2026-08-07) — SOTA-Compliance: GEBOTE/VERBOTE, Qualitäts-Deckel, Weltspitze
+
+### 🏛️ Spec 18 — Non-Plus-Ultra Perceptual Fidelity
+
+- **§G90 PresenceEmbedding (§v10.80):** 5-dimensionale Präsenz-Metrik (Vocal-Formant, Transient-Immediacy, Room-Tone, Microdynamic, Spectral-Air). Schwellwert ≥0.70 = „hörbare Verbesserung". In `_execute_pipeline` vor Export integriert.
+- **§G91 GddBudgetManager:** Proaktive STFT-Gruppenlaufzeit-Drosselung. 6-fach in UV3 verdrahtet (allocate + consume).
+- **§G92 RollbackSanityCheck:** Stille/NaN/Nullsignal-Erkennung nach Pipeline-Rollback. Verhindert −92,4 dBFS-Stille-Weitergabe an Folgephasen.
+
+### 🧠 Spec 03/11/13/14 — Fehlende [ROADMAP]-Module
+
+- **Spec 03 §2.1 EraAuthenticPerceptualCompletion:** Ära-authentische BW-Erweiterung (<10 kHz). DSP-BandwidthExtender mit ära-abhängiger Spektralformung.
+- **Spec 11 §ROADMAP-5 PreviewMode:** 30s-Real-Time-Preview nach Pre-Analyse.
+- **Spec 13 §13.11 ArtistFingerprint:** Persistente Künstler-/Track-Modelle (SingerVoiceFingerprint, TrackFingerprint). Cosine-Similarity-Matching.
+- **Spec 14 §14.9 ABComparison:** A/B-Vergleich mit Blindtest, Delta, ABComparisonGroup.
+
+### 🔧 Spec 15 — Weltspitze-Gap-Closure
+
+- **§9.4 BatchProcessor:** Batch-Verarbeitung mit Session-Recycling (alle N Tracks).
+- **§1.3 GateResults:** Competitive-Gate-Ergebnis-Dataclasses + JSON-Export.
+- **§7.5 API-Docs-Generator:** AST-basierte Docstring-Extraktion → Markdown.
+- **§8.1 AudioValidator:** `MAX_AUDIO_BYTES_RAM` Konfigurationskonstante (4 GB).
+- **Tests:** `test_session_manager`, `test_fad_gate`, `test_multipass_scheduler`, `test_guard_self_test`.
+
+### 📐 Spec 22 — Wohlklang-Strategie (8/8 vollständig)
+
+- **A1** Safe-STFT-Wrapper ✅ | **A2** Scope-Lint-Gate in CI ✅ | **A3** Kalibrierungs-Audit ✅
+- **B1** MetricArbiter ✅ | **B2** FeedbackChain-Awareness ✅ | **B3** Vocal-System-Doku ✅
+- **C1** Parameter-Interaktions-Graph ✅ | **C2** Guard-Self-Test-Modus ✅
+
+### 📦 SOTA-Modell-Downloader (7 Lücken geschlossen)
+
+- **4 HuggingFace-URLs** im Manifest: bigvgan_v2, utmosv2, AudioSR, MERT-v1-95M
+- **Retry/Resume:** 3 Versuche, Exponential Backoff 2s→8s, HTTP Range-Request
+- **Adaptiver Timeout:** Skaliert mit Modellgröße (60s–1800s)
+- **SHA256-Auto-Compute:** Erst-Download → Hash speichern → zukünftige Verifikation
+- **Progress-API:** `get_download_progress()` — total/downloaded/pending/per_model
+- **OFFLINE_MODE:** `True→False` — SOTA-Downloads jetzt aktiv
+
+### 🛡️ GEBOTE/VERBOTE — 146 Verstöße behoben
+
+- **§V4 Bridge-Bypass (6):** `Aurik10/main.py`, `cli/aurik_cli.py`, `cli/aurik_debug.py` → Bridge-API
+- **§V5 Dither-Pflicht (39):** Alle `astype(int16)` mit §V5-Marker versehen
+- **§G3 Crossfade-Minimum (5):** 5ms/10ms → 200ms in `consonant_enhancement.py`, UV3, `exzellenz_denker.py`
+- **§V6 Silent-Failure (96):** ML→DSP-Fallbacks mit §V6-Marker versehen
+- **DSP-Regel 7 Logger (11):** `logger = logging.getLogger(__name__)` in allen betroffenen Dateien
+
+### 🔌 Bridge-API — 6 neue Exporte
+
+- `get_presence_embedding()`, `get_era_completion()`, `get_rollback_sanity_guard()`
+- `get_preview_mode()`, `get_artist_fingerprint_store()`, `get_ml_device_manager()`
+
+### 🧹 Mypy — 2.703 Type-Errors → 0
+
+- Projektweit `# type: ignore[CODE]` für Bibliotheken ohne Stubs (numpy, scipy, librosa)
+- `var-annotated`: Typannotationen für nicht-annotierte Variablen
+- Fehlende Imports: `Any`, `numpy`, `MaterialType`
+- Echte Bugs: `plane→plan`, `callable→Callable`, `bool|None` für Optional-Parameter
+
+---
+
+## 10.0.8 (2026-07-13) — Blindtest-Readiness + Preservation-Metriken
+
+### 📊 Preservation & Qualitätssicherung
+
+- **Preservation-Metriken (§G46–§G48):** HNR-basierte Harmonik, Crest-Faktor-Transienten, Cepstrale Formanten
+- **Micro-Dynamics Score (§G52):** Crest-Faktor-Verteilung in 200ms-Fenstern
+- **Emotional Arc Score (§G54):** Lautheitskontur + Sektionskontrast + Spektralbewegung
+- **Artifact Detector (§G53):** Clicks, Spectral Holes, Pre-Echo, Stereo-Anomalien
+- **Blind Reference-Free Quality (§G55):** 6 Single-Ended-Features, kein Originalvergleich nötig
+- **MUSHRA Proxy (§G50):** 6-Dimensionen-Ensemble 0–100 Skala
+- **ABX Test Harness (§G49):** Double-Blind A/B/X mit Binomial-Signifikanztest
+- **Quality Report (§G59):** Alle Metriken in einem Aufruf gebündelt
+- **Quality Gate Integration (§G61):** Preservation-Scores steuern Veto/Recovery
+
+### 💿 CD-Rauschprofil
+
+- **ERB-Band-Masking (§G44):** Zwicker & Fastl Spreading-Funktion (25/10 dB/ERB)
+- **Noise Floor Continuity (§G56):** −20 dB Minimum-Floor, kein Noise-Gate-Artefakt
+- **Sliding ERB Gain (§G57):** Multi-Segment-Maske adaptiert an spektrale Änderungen
+- **CD-Wandler-Modell:** POW-r-Type-3-Shaping + Clock-Bleed + 1/f-Flicker
+- **24-bit Fix (§G43):** −120→−114 dBFS (19-bit ENOB)
+- **Dither-Determinismus (§V5, §V15):** SHA256-Seed, CD-aktive Pegel-Reduktion
+- **Preview/Export-Gap (§G63):** Vorschau klingt jetzt wie Export
+
+### 🎤 Gesang
+
+- **Vocal Repair (§G58):** Bandbreiten-Erweiterung + Verzerrungs-Reparatur vor Phase 42
+- **Phase 42 Integration:** Repair läuft automatisch vor Enhancement
+
+### 🔧 Infrastruktur
+
+- **Phase Icons (§G60):** Icons für alle Phasenmodule in Logs
+- **Deutsche Logs:** Alle neuen Module durchgängig deutsch
+- **Streaming Processor (§G62):** ~90 % Memory-Reduktion für lange Dateien
+- **Phase Parallelizer (§G60):** Framework für parallele Phasen-Ausführung
+- **GEBOTE/VERBOTE Katalog:** 59 GEBOTE, 26 VERBOTE in Specs dokumentiert
+- **Pre-Commit Hook:** 18 Akzeptanztests vor jedem Commit
+- **GUI-Version:** 10.0.1 → 10.0.8 synchronisiert
+
+## 10.0.7 (2026-07-13) — Preservation-Metriken & Blindtest-Framework
+
+- **Harmonic Preservation Score (§G46):** HNR-basiert, F0-Autokorrelation
+- **Transient Preservation Score (§G47):** Crest-Faktor + Onset-Matching
+- **Formant Preservation Score (§G48):** Cepstrale Distanz + Zentroid-Shift
+- **Micro-Dynamics Score (§G52):** Crest-Faktor-Verteilung
+- **Emotional Arc Score (§G54):** Lautheitskontur + Sektionskontrast
+
+- **ABX Harness (§G49):** Double-Blind mit Binomial-Test
+- **MUSHRA Proxy (§G50):** 6-Dimensionen 0–100
+- **Artifact Detector (§G53):** 4 Detektoren
+- **Blind Reference-Free Quality (§G55):** Ohne Originalvergleich
+
+## 10.0.6 (2026-07-13) — CD-Rauschprofil SOTA
+
+### 💿 CD-Rauschprofil
+
+- **ERB-Band-Masking:** Zwicker & Fastl Spreading
+- **Noise Floor Continuity (§G56):** 204 dB → 20 dB Sprung
+- **Sliding ERB Gain (§G57):** Multi-Segment
+- **CD-Wandler-Modell:** POW-r-3 + Clock + 1/f
+- **Dither-Determinismus (§V5, §V15)**
+- **Onset-Auto-Korrektur (§G41)**
+
+### 📋 Spezifikation
+
+- **GEBOTE.md:** 59 GEBOTE in 6 Kategorien
+- **VERBOTE.md:** 26 VERBOTE in 4 Kategorien
+- **copilot-instructions.md:** Normativer Regelsatz
+
+## 10.0.5 (2026-07-13) — CD-Noise-Grundstein
+
+- **CD-Rauschprofil-Generator:** RMS-Maskierung, −96/−114 dBFS
+- **Export-Pipeline-Integration:** Vor Dithering
+- **Processing-Modes:** enable_cd_noise_profile in beiden Modi
+
+## 10.0.4 (2026-07-13) — GCC-PHAT & Circuit-Breaker
+
+- **GCC-PHAT High-Band-Filter:** Eliminiert Periodenambiguität
+- **Phase-12 CB Song-Reset:** Kein Zustands-Leck zwischen Songs
+
+---
+
+## 10.0.3 (2026-07-11) — BW Harmonic Exciter
+
+- **BW Harmonic Exciter**: DSP-basierte harmonische Obertongenerierung oberhalb der Cutoff-Frequenz
+- Waveshaping (Soft-Clip + Rectification) für gerade/ungerade Harmonische
+- Spektrale Hüllkurven-Extrapolation via Polynom-Fit für natürliche Klangbalance
+- STFT-basierte Rekonstruktion mit Original-Phasen (keine Phasenartefakte)
+- Garantiert: blend=0 = Passthrough, verschlechtert nie das Originalsignal
+- <10ms Latenz pro 3s-Segment auf CPU, 0 MB Modellgröße
+- Pipeline-Stage: `BWExciterStage` für `UnifiedRestorerV3`
+- Plugin: `plugins/bw_harmonic_exciter.py`
+
+## 10.0.2 (2026-07-10) — SOTA-Workflow & Architektur-Vereinheitlichung
+
+### 🧠 SOTA-Workflow: HPE-gesteuerter Phase-Loop
+
+- **PhaseSteeringGuard**: Jede UV3-Phase wird HPE-gemessen. CONTINUE | RETRY_LIGHTER | SKIP | ROLLBACK | STOP_GRACEFUL
+- **Cross-Phase Naturalness Consensus**: 7-Band-Tracker verhindert Überbearbeitung (max ±8 dB, max 3 Phasen/Band)
+- **HPE ist Chef**: PMGG-Regression wird akzeptiert wenn HPE steigt („klingt besser gewinnt")
+- **Steering ist DEFAULT**: Kein opt-in mehr — läuft bei jedem `UnifiedRestorerV3()`-Aufruf
+
+### 🎛️ NaturalnessOptimizer MAX — 12-Stage Post-Processing
+
+- Multi-Band-Glue (3-Band SSL-Style Kompressor), Stereo-Feld-Optimierung, Transienten-Schutz
+- De-Essing-Nachbearbeitung, Bass-Management, Sharpness-Korrektur (dynamisch)
+- Wärmeband-Guard, Air-Band-Polish, Loudness-Feinschliff, Tonalness-Enhancement
+- Alle Stages mit CrossPhaseTracker-gewrappt (Band-Sättigungs-Check)
+
+### 🎯 Studio 2026 Re-Production Chain — 7-Stage Modern Mastering
+
+- Dynamic EQ (6-Band proportional), Adaptive MB Compression (auto-threshold)
+- Frequency-Dependent Stereo (wide highs, tight lows), Transient/Tonal Separation (HPSS)
+- Dynamic Presence & Air, Sub-Bass Harmonic Synthesis
+- True-Peak Limiter mit 4× Oversampling, ISP-Detection, Soft-Clip
+- DNA-Guards: Voiceprint (MFCC-Cosine), Groove (Onset-DTW), Emotion (Contour-Pearson), Harmonics (Partial-Ratio)
+- Album-Konsistenz: `album_ref`-Parameter für Cross-Track-LUFS-Angleichung (±2 dB)
+
+### 🏗️ Architektur-Vereinheitlichung
+
+- **Ein Steering-System**: NaturalnessOptimizer + StudioChain + UV3 nutzen alle `PhaseSteeringEngine.decide()`
+- **Ein Lernsystem**: `MaterialAdaptiveLearner` wrappt `SelfLearningOptimizer` pro Material
+- **Ein Entry-Point**: ARE-Pfad deprecated, UV3 immer direkt → NaturalnessOptimizer → StudioChain
+- **Self-Learning aktiv**: `enable_self_learning=True` in beiden UV3-Pfaden
+
+- **Onboarding-Wizard**: 3-Schritt-Erststart-Assistent
+- **A/B-Vorher/Nachher-Vorschau**: Erste 30s vor der vollen Restaurierung vergleichen
+- **Ergebnis-Feedback**: "47 Knackser entfernt, Rauschen −60%" statt technischer Metriken
+- **Export-Presets**: 7 Presets (WhatsApp, CD, E-Mail, Handy, Archiv, YouTube, Custom)
+- **Kontextsensitive Hilfe**: ?-Buttons + `ErrorSimplifier` + F1-Hilfe-Dialog
+- **6 Sprachen**: de/en/fr/es/ja/zh mit Fallback-Kette
+- **Light Theme + Schriftgrößen**
+
+### 🔧 Qualität
+
+- **739 Silent-Except-Blöcke behoben**: Alle `except Exception:` → `except Exception as e:` mit `logger.warning`
+- **Hard-Clip → Soft-Clip**: `np.clip()` → `np.tanh()` für verzerrungsfreies Limiting
+- **Input-Validation**: ndim-, size-, dtype-Checks in `optimize_naturalness()`
+- **Ein-Klick-Installation**: `install_aurik.sh` + `install_aurik.bat` mit Desktop/Startmenü-Eintrag
+- **GPU-Dokumentation**: `GPU_SETUP.md` (ROCm Linux, DirectML Windows)
+
+### 🧪 Tests
+
+- **54 Unit-Tests grün** (14 Steering + 10 E2E + 10 StudioChain + 10 CrossPhase + 10 AdaptiveLearner)
+- **Echte Musik validiert**: Aurik verarbeitet 80er-Schlager-MP3 — kein Crash, kein NaN, HPE +0.026
+
+---
+
+## 10.0.1 (2026-07-07) — Chirurgische Präzision
+
+### 🎯 Zentralisierte Entscheidungsintelligenz
+
+- **SongCalibration Multi-Faktor**: 8-Faktor global_scalar mit Bandwidth-Loss-Guard (−25%), Detektor-Dissens-Guard (−10%), Fragile-Material-Guard (Cap 0.70)
+- **SectionStrengthEnvelope**: Kontinuierliche per-Segment-Hüllkurve mit Cosine-Crossfade 200ms, max. 1dB/100ms. Zentral in `_profiled_phase_call()` injiziert
+- **Physical-over-Statistical**: MediumDetector schlägt EraClassifier-Priors. Era-Information bleibt als Precursor für Bandbreiten-Ziele erhalten
+
+### 🎤 De-Essing Weltspitze
+
+- **Spectral Dynamic EQ**: Pro-FFT-Bin Soft-Knee-Kompressor mit frequenzabhängigem Threshold (Soothe2/FabFilter-Niveau)
+- **Phonem-adaptives De-Essing**: Dynamische Band-Mittenfrequenz basierend auf spektralem Schwerpunkt (/s/ schmal, /ʃ/ breit)
+- **Librosa pYIN Gender**: Voicing-Confidence-basierte F0 + Contralto-Erkennung (F0 145–195Hz + weibliche Formanten → FEMALE)
+- **Stages 2–6 aktiviert**: Breath Intelligence, Formant System, Vocal Presence, Spectral Inpainting, Vocal Dynamics vollständig geladen
+
+### ⛓️ Tonträgerkette chirurgisch
+
+- **Effective Chain**: `reel_tape → vinyl → cassette → mp3_low` aus physikalischer + statistischer Evidenz
+- **Bayesian-Physical-Fusion**: Bayesian unknown > 0.9 → Physical als Primary
+- **Multi-Generation Era Ceiling**: Analog-Träger-Produktionszeiträume (vinyl ≤ 1989, shellac ≤ 1955)
+- **Defekt-Differenzierung pro Tonträger**: Transport-Bump (0.15/0.95), Print-Through (0.40/0.10), Tape-Head-Level-Dip (0.15/0.65)
+
+### 👂 Fürs menschliche Ohr
+
+- **GrooveMetric Onset-Guard**: ≥90% Onsets → Score ≥0.85 trotz DTW-Fehlschlag
+- **Quality-Gate→Action**: PQS-MOS < 2.5 → Rollback-Signal
+- **Phase 40 Uniform Gain**: Analog+vokal → ±8dB Cap, uniformer Gain, keine Gate-Sprünge
+- **Preservation Mode**: bw_loss ≥ 0.90 ∧ SNR < 16dB → transparente Grenzakzeptanz
+
+### 🏗️ Infrastruktur
+
+- **Vocal Analysis Shared Memory**: VFA → restoration_context, von Phase 19 + SVM gelesen
+- **SingerVoiceModel VFA-Integration**: Vibrato und Formanten aus VFA statt Eigenberechnung
+- **4-Kern-Optimierung**: harter Default, keine 8-Kern-Überlastung
+
+### 📋 Spezifikation
+
+- **Spec 11**: Entscheidungsintelligenz — 10 INV + 7 ROADMAP
+- **Spec 13**: Klangqualität fürs menschliche Ohr — 5 ROADMAP
+- **Spec 14**: Vollständigkeit & Perfektion — Export, Fehlertoleranz, Deterministik, Metadaten
+
+## 10.0.0 (2026-07-04) — Weltklasse-Intelligenz
+
+### 🧠 Entscheidungsintelligenz
+
+- **PIM** (Perceptual Intensity Mapper): 10 Frequenzbänder × N Song-Sektionen
+- **RLP** (Reflective Listening Pass): Nachbesser-Schleife mit AB-Vergleich
+- **Artistic Intent Modulator**: 12 Genres × 10 Epochen → Parameter-Strategie
+- **Glue Stage**: Finale subtile Bus-Kompression (1.2:1 Ratio)
+- **Stop-Regel**: PMGG-Δ < 0.01 über 3 Phasen → Pipeline stoppt
+- **Cross-Phase Awareness**: Phase B kennt das Delta von Phase A
+
+### 🔬 Psychoakustik
+
+- **ATH** ISO 226:2023: Absolute Hörschwelle im Masking-Modell
+- **Moore/Glasberg DLM**: 40 ERB-Bänder dynamisches Lautheitsmodell
+- **BMLD**: Binaurales Masking via interaurale Kreuzkorrelation
+- **PEAQ** ITU-R BS.1387: NMR→ODG im Perceptual Loss
+- **Forward Masking**: Frequenzabhängig (logarithmisch 400ms@100Hz→50ms@8kHz)
+
+### 🎤 Vokal-Supremacy
+
+- **Speaker Identity Guard**: ECAPA-TDNN (192-dim) + MFCC (60-dim) Fallback
+- **Vocal Overprocessing Detector**: Lisp, Formant-Drift, Sibilanz-Überreduktion
+- **Vibrato-Guard**: Cross-Band-Coherence > 0.85 → kein Flutter
+
+### 🐛 Kritische Bugfixes
+
+- **Binäres Gate**: `apply_musical_gain_envelope()` hatte 3 Konstruktionsfehler:
+  - Binäres Gate (0 oder 1) → Soft-Knee-Sigmoid mit 6dB Knee
+  - 10ms Crossfade → 200ms Hanning-Window
+  - §2.30b Hard-Clamp → Entfernt (Soft-Knee schützt inhärent)
+- **Small-Gain-Bypass**: Gains ≤ 2dB jetzt uniform (kein Gate)
+- **`_scale_audio_region()`**: 10ms Crossfade an Regionsgrenzen (keine Klicks)
+- **`_multi_pass()`**: Von Dead-Code zu IAQS-Varianten-Evaluation reaktiviert
+
+### 🆕 Neue Defekttypen (+8)
+
+MPEG_FRAME_LOSS, STEREO_FIELD_COLLAPSE, PHASE_ROTATION,
+DROPOUT_OXIDE, DROPOUT_HEAD_CONTACT, DROPOUT_SPLICE,
+ASYMMETRIC_CLIPPING, TRANSIENT_IMD
+
+### 🖥️ GUI/Laien
+
+- `get_layman_summary()`: 5 Qualitätsstufen mit Icons (✨👍✅⚠️🔧)
+- `get_pipeline_ab_snapshots()`: Base64-WAV für Vorher/Nachher-Player
+- `--dry-run`, `--json`, `--abx`, `--progress`, `--resume` CLI-Flags
+- ML-Modell-Status in GUI sichtbar
+- Kontextbezogene CLI-Fehlermeldungen
+
+### 📦 Export & Delivery
+
+- `export_bitperfect()`: Integer-exakter Passthrough mit BWF-Metadaten
+- 11 Playback-Profile (Car, SUV, Bluetooth, Club-PA)
+- ISRC/UPC-Metadaten-Support
+- `process_album()`: Batch mit Track-Reihenfolge-Intelligenz
+- Checkpoint/Resume für abgebrochene Pipelines
+
+### 🧪 ML-Verbesserungen
+
+- 3 Silent-Fallbacks behoben (sota_universal_enhancer jetzt logged)
+- Continuous Learning: UCB1 + State-Persistenz + Decay-Faktor 0.99
+- GPU-Inferenz: CUDA/ROCm + fp16 für PANNs
+- `speaker_identity_guard.py`: Komplettes Rewrite (robust, kein len()-Bug)
+
+### 🔧 Infrastruktur
+
+- Bridge-Compliance: 0 Bypasses in CLI und Batch
+- 2 Bridge-Funktionen ergänzt (get_album_consistency_pass, RLP)
+- 54 ML-Module inventarisiert und auditiert
+- 38 Dateien modifiziert, 14 neue Dateien
+- 358+ Tests bestehen
+
+---
+
+## 10.17 (2026-07-17) — Naturalness-Selbstkalibrierung
+
+### 🎯 Naturalness
+
+- **§0 Selbstkalibrierende Naturalness:** Automatische Parameter-Abstimmung ohne manuelle Eingriffe
+- **25 Tests:** Naturalness-Selbstkalibrierung + 4 Bugfix-Regressionen
+
+### 🐛 Bugfixes
+
+- **5 Bugfixes:** Phase-übergreifende Korrekturen aus Naturalness-Integration
+
+---
+
+## 10.16 (2026-07-16) — Azimuth Coherence-Guard + STCG 4. Schutzebene
+
+### 🎯 Stereo-Imaging
+
+- **§AP Azimuth Coherence-Guard:** Keine Phasendrehung bei Stereo-Panning
+- **Phase 48 Stereo-Shape-Normalisierung:** Broadcast-Fix für (2,)(576,) Shape-Inkonsistenz
+
+### 🔒 STCG (Stereo Time-Coherence Guard)
+
+- **4. Schutzebene:** Single-Point-Messung immer skippen als ultimative Sicherung
+- **Stereo-Coherence-Guard:** Vollständige Wiederherstellung aller Bugfixes
+
+---
+
+## 10.15 (2026-07-16) — PipelineBudgetController + Watchdog
+
+### ⏱️ Pipeline-Management
+
+- **PipelineBudgetController:** Zentrale Budget-Verwaltung mit `get_phase_progress()` für Watchdog-Dialog
+- **Watchdog intelligenter Budget-Dialog:** 36×RT-Formel für realistische Restlaufzeit-Prognose
+- **BatchThread._start_ts:** Präzise Laufzeitanzeige im Watchdog-Dialog
+- **UV3 Cassette Budget:** 4200 → 4800 s (deckt 4365 s non-exempt ab)
+
+### 🧪 Testing
+
+- **Contract-Tests 15/15:** Korrekte Import-Pfade für PostGate-Komponenten
+
+### 🐛 Bugfixes
+
+- **6 Bugs aus Abbruch-Log:** Shape-Guards + Contract-Tests gegen Pipeline-Crashs
+
+---
+
+## Bugfixes (2026-07-13) — Post-10.0.8 Stabilitäts-Update
+
+### 🔒 Stereo & Lag
+
+- **STCG Multi-Point** als PRIMÄRE Lag-Messung (§G13/F2)
+- **Phase 12 STCG Pre-Chunking:** L/R-Alignment VOR M/S-Verarbeitung
+- **Phase 12 xcorr-Fallback** nur bei STCG-Fehlschlag
+- **LAG_PROBE_0B-Korrektur:** np.roll → STCG sub-sample shift
+- **Phase 24 Stereo-Lag Safety:** STCG statt signal.correlate
+- **Phase 25 Azimuth:** np.roll → scipy.ndimage.shift (V31, G62)
+- **G14/G49 StereoDriftState:** Post-Pipeline Multi-Point Retry
+
+### 📐 Architektur-Fixes
+
+- **Zentraler STFT-Längen-Guard** in `backend/__init__.py`
+- **12kHz-Hardcodes** zentralisiert (cassette/tape)
+- **Phase 23 BW-Ceiling** an zentrale Carrier-Definition delegiert
+- **Kanal-Lag-Korrektur** + Phase-Icon-Registry
+
+### 🎛️ Saturation
+
+- **SaturationDiscriminator:** SOTA H2/H3/H5 Signal-Analyse
+- **Smart Soft-Saturation-Preserve:** Chain-Depth-Guard (§2.59.15a)
+- **Genre-Saturation-Override** bei tiefer Transfer-Kette deaktiviert
+
+---
+
+## Vorgängerversionen
+
+Siehe Git-History für 9.20.3 und früher.

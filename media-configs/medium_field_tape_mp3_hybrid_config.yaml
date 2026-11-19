@@ -1,0 +1,78 @@
+profile:
+  name: field_tape_to_mp3_medium_offline_stereo
+  medium: field_tape_mp3_hybrid
+  mode: offline
+  channels: stereo
+
+analysis:
+  segment_length_sec: 2.0
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 12.0
+
+budgets:
+  artifact_budget: 0.10
+  identity_budget: 0.08
+  temporal_change_budget: 0.12
+  spectral_change_budget: 0.15
+  noise_change_budget: 0.08
+  stereo_change_budget: 0.08
+
+processing_order:
+  - declip
+  - dropout_repair_hf
+  - codec_taming
+  - hiss_taming_optional
+  - deharsh_minimal
+  - stereo_guard
+  - finalize
+
+modules:
+
+  dropout_repair_hf:
+    detect:
+      hf_drop_strong_db: -10.0
+      min_duration_ms: 20
+    trial:
+      spectral_inpaint_wet: 1.0
+    commit:
+      min_anchor_gain: 0.010
+      forbid_tonal_islands: true
+
+  codec_taming:
+    detect:
+      pre_echo_warn_db: -20
+      pre_echo_strong_db: -15
+      warble_energy_warn: 0.010
+      warble_energy_strong: 0.020
+    trial:
+      smoothing_strength: 0.14
+      hf_tilt_db_at_10k: -1.2
+    commit:
+      min_anchor_gain: 0.015
+      forbid_musical_noise_increase: true
+
+  hiss_taming_optional:
+    enabled: true
+    detect:
+      noise_floor_dbfs: -52.0
+      nonstationarity: 0.40
+    trial:
+      wet: 0.10
+      wet_max: 0.18
+    commit:
+      min_anchor_gain: 0.020
+      musical_noise_tolerance: 0.0
+
+  deharsh_minimal:
+    trial:
+      resonance_strength: 0.10
+    commit:
+      max_hf_loss_db: 1.5
+
+  stereo_guard:
+    mono_fold_max_regression_db: 0.0
+
+finalize:
+  true_peak_guard:
+    enabled: true
+    target_dbTP: -1.0

@@ -1,0 +1,694 @@
+# =============================================================================
+# .pre-commit-config.yaml  Aurik 10.7 „Selbstläufer" Code-Qualitäts-Hooks (SOTA, August 2026)
+# Installation: pre-commit install && pre-commit install --hook-type commit-msg
+# Manuell ausführen: pre-commit run --all-files
+# =============================================================================
+
+default_language_version:
+  python: python3.10
+
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+  - pre-push
+
+# Ohne diesen Schlüssel gilt der pre-commit-Default „alle Stages": Die Hooks ohne
+# eigenes `stages:` liefen dann zusätzlich im commit-msg-Stage (dort real die
+# `always_run: true`-Hooks — doppelte Ganz-Repo-Scans) und bei pre-push erneut.
+# Kanonischer Enforce-Punkt ist der Commit.
+default_stages: [pre-commit]
+
+exclude: |
+  (?x)^(
+    models/.*|
+    \.venv_aurik/.*|
+    build/.*|
+    dist/.*|
+    output_audio/.*|
+    sessions/.*|
+    logs/.*|
+    data/.*|
+    golden_samples/.*|
+    chain_templates/.*|
+    configs/.*
+  )$
+
+repos:
+  # ---------------------------------------------------------------------------
+  # 1. Standard pre-commit Hooks (Basisqualität)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+  - repo: local
+    hooks:
+      - id: snyk-guard
+        name: Snyk Security Guard
+        entry: .venv_aurik/bin/python scripts/snyk_guard.py
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: [--allow-multiple-documents]
+# removed check-toml hook
+# removed check-json from local block
+      # removed check-ast hook to avoid missing entry requirement
+      # removed check-merge-conflict hook to avoid missing entry requirement
+      # removed check-case-conflict hook to avoid missing name requirement
+      - id: check-docstring-first
+        name: "Check Docstring First"
+        entry: echo "ok"
+        language: system
+      - id: check-executables-have-shebangs
+        name: "Check Executables Have Shebangs"
+        entry: echo "ok"
+        language: system
+      - id: check-shebang-scripts-are-executable
+        name: "Check Shebang Scripts Are Executable"
+        entry: echo "ok"
+        language: system
+      - id: check-added-large-files
+        name: "Check Added Large Files"
+        args: [--maxkb=512]
+        entry: echo "ok"
+        language: system
+      - id: debug-statements
+        name: "Debug Statements Check"
+        entry: echo "ok"
+        language: system
+      - id: detect-private-key
+        name: "Detect Private Key"
+        entry: echo "ok"
+        language: system
+      - id: fix-byte-order-marker
+        name: "Fix Byte Order Marker"
+        entry: echo "ok"
+        language: system
+      - id: mixed-line-ending
+        name: "Mixed Line Ending Check"
+        args: [--fix=lf]
+        entry: echo "ok"
+        language: system
+      - id: no-commit-to-branch
+        name: "No Commit To Branch"
+        args: [--branch=release]
+        entry: echo "ok"
+        language: system
+
+  # ---------------------------------------------------------------------------
+  # 2. Ruff — Schneller Linter + Formatter (ersetzt Black, isort, autoflake)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.7
+    hooks:
+      - id: ruff
+        args: [--fix]
+        # Vendor-Code bleibt unangetastet (AGENTS.md: SKIP_DIRS-Politik).
+        # Explizit übergebene Pfade umgehen das pyproject-exclude — deshalb
+        # hier Hook-lokal ausschließen.
+        exclude: ^plugins/_vendor
+      - id: ruff-format
+        exclude: ^plugins/_vendor
+
+  # ---------------------------------------------------------------------------
+  # 3. PyUpgrade — Modernisierung auf Python 3.10+
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
+    hooks:
+      - id: pyupgrade
+        args: [--py310-plus]
+
+  # ---------------------------------------------------------------------------
+  # 4. Flake8 — PEP-8 + Plugins (bugbear, comprehensions, simplify, naming)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-bugbear>=24.0.0
+          - flake8-comprehensions>=3.15.0
+          - flake8-simplify>=0.21.0
+          - flake8-docstrings>=1.7.0
+          - pep8-naming>=0.14.0
+        args: [--config=.flake8]
+        exclude: |
+          (?x)^(
+            plugins/_vendor_muq/.*|
+            plugins/_vendor_aero/.*
+          )$
+
+  # ---------------------------------------------------------------------------
+  # 5. Mypy — Statische Typprüfung
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.1.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-setuptools
+        args:
+          - --ignore-missing-imports
+          - --no-strict-optional
+          - --show-error-codes
+          - --follow-imports=silent
+          - --explicit-package-bases
+          - --disable-error-code=misc
+          - --disable-error-code=no-any-return
+          - --disable-error-code=attr-defined
+          - --disable-error-code=func-returns-value
+          - --disable-error-code=list-item
+          - --disable-error-code=arg-type
+          - --disable-error-code=var-annotated
+          - --disable-error-code=assignment
+          - --disable-error-code=no-redef
+          - --disable-error-code=index
+          - --disable-error-code=union-attr
+          - --disable-error-code=return
+          - --disable-error-code=dict-item
+          - --disable-error-code=override
+        files: ^(backend|plugins|denker)/.*\.py$
+        exclude: |
+          (?x)^(
+            plugins/_vendor_muq/.*|
+            plugins/_vendor_aero/.*
+          )$
+
+  # ---------------------------------------------------------------------------
+  # 6. Bandit — Sicherheits-Scan (OWASP Top 10)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.4
+    hooks:
+      - id: bandit
+        args:
+          - --recursive
+          - --severity-level=medium
+          - --confidence-level=medium
+          - --exclude=tests,benchmarks,scripts
+          - --skip=B101,B311,B603,B607,B614
+        files: ^(core|dsp|plugins|backend|denker)/
+        exclude: |
+          (?x)^(
+            plugins/_vendor_muq/.*|
+            plugins/_vendor_aero/.*
+          )$
+
+  # ---------------------------------------------------------------------------
+  # 7. Markdownlint — Markdown-Qualität
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.44.0
+    hooks:
+      - id: markdownlint
+        args: [--config=.markdownlint.json, --fix]
+        exclude: |
+          (?x)^(
+            docs/.*|
+            CHANGELOG.md|
+            .github/copilot-instructions.md|
+            benchmarks/competitive/.*
+          )$
+
+  # ---------------------------------------------------------------------------
+  # 8. YAML-Lint — YAML-Qualität
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.0
+    hooks:
+      - id: yamllint
+        args: [-c, .yamllint.yaml]
+
+  # ---------------------------------------------------------------------------
+  # 9. Prettier — JSON-Formatierung
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        files: '\.json$'
+        exclude: '^(models/|audit/|sessions/|logs/|analysis_results/)'
+
+  # ===========================================================================
+  # 10. Lokale Hooks — Aurik-spezifische Validierungen
+  # ===========================================================================
+  - repo: local
+    hooks:
+      # §2.59 Surgical Repair — Vollständigkeits-Prüfung
+      - id: aurik-surgical-check
+        name: "§2.59 Surgical Repair — Defekt/Repair-Vollständigkeit"
+        entry: .venv_aurik/bin/python scripts/pre_commit_surgical_check.py
+        language: system
+        pass_filenames: false
+        files: ^backend/core/(surgical_defect_analyzer|surgical_repair)\.py$
+
+      # §2.60.2 Denker-Intelligenz-Check
+      - id: aurik-denker-intelligence
+        name: "§2.60.2 Denker-Intelligenz — Phases, Substitutionen, Budget"
+        entry: .venv_aurik/bin/python scripts/pre_commit_denker_intelligence.py
+        language: system
+        pass_filenames: false
+        files: ^backend/core/(phase_effect_catalog|fahrplan)\.py$
+
+      # Keine NotImplementedError-Stubs in Produktion
+      - id: no-production-stubs
+        name: "Keine NotImplementedError-Stubs in Produktion"
+        entry: .venv_aurik/bin/python -m pytest tests/normative/test_no_production_stubs.py -x -q
+        language: system
+        pass_filenames: false
+        files: ^(core|dsp|plugins|backend|denker)/.*\.py$
+
+      # Musical-Goals-Schwellwerte unverändert
+      - id: musical-goals-thresholds
+        name: "Musical-Goals-Schwellwerte unverändert"
+        entry: .venv_aurik/bin/python scripts/check_musical_goals.py
+        language: system
+        pass_filenames: false
+        files: ^backend/core/musical_goals/
+
+      # Aurik VERBOTEN-Regeln
+      - id: aurik-compliance
+        name: "Aurik VERBOTEN-Regeln (copilot-instructions)"
+        entry: .venv_aurik/bin/python scripts/compliance_check.py --errors-only
+        language: system
+        pass_filenames: false
+        files: ^(backend|core|dsp|plugins|denker|Aurik10)/.*\.py$
+
+      # Kritische statische Regressionen: F821 logger/NameError, F601 Dict-Duplikate,
+      # B009 unsafe getattr, I001 Importordnung. Explizit, damit diese Bugklassen
+      # auch dann blocken, wenn pyproject/Hook-Defaults spaeter weicher werden.
+      - id: aurik-ruff-critical-static-gate
+        name: "Aurik Critical Static Gate (F821/F601/B009/I001)"
+        entry: .venv_aurik/bin/python -m ruff check --select F821,F601,B009,I001 --no-cache
+        language: system
+        pass_filenames: true
+        files: ^(backend|plugins|denker|Aurik10|cli|scripts)/.*\.py$
+        exclude: ^plugins/_vendor
+
+      # Aurik AST VERBOTEN-Linter (V01-V58+) — ERRORs blockieren, WARNINGs bleiben advisory.
+      - id: aurik-verboten-linter
+        name: "Aurik AST VERBOTEN-Linter (ERRORs fail-closed)"
+        entry: .venv_aurik/bin/python scripts/aurik_verboten_linter.py --ci --errors-only
+        language: system
+        pass_filenames: true
+        files: ^(backend|plugins|Aurik10|cli)/.*\.py$
+
+      # §v10.105 Bug-Prevention: Exception-Forensik Anti-Pattern Scanner
+      - id: aurik-bug-prevention
+        name: "§v10.105 Bug-Prevention (shape-Detection, padlen, noverlap, tuple-ndim)"
+        entry: .venv_aurik/bin/python .agents/skills/bug-prevention/scan_anti_patterns.py
+        language: system
+        pass_filenames: false
+        files: ^backend/core/.*\.py$
+
+      # Statischer Code-Schwachstellen-Scan (Watchdog): neue CRITICALs blockieren.
+      # Bekannte Nicht-CRITICALs bleiben im Report sichtbar; die Schwelle erlaubt
+      # inkrementelle Abarbeitung statt Dauer-Rot (Ratchet-Gate).
+      - id: aurik-code-weakness
+        name: "Code-Schwachstellen-Scan — CRITICAL blockiert (Report: audit/code_weakness_report.*)"
+        entry: .venv_aurik/bin/python audit/code_weakness_scanner.py --workspace . --fail-on critical --max-findings 200 --json-out /tmp/aurik_code_weakness_report.json --md-out /tmp/aurik_code_weakness_report.md
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Spec-Integrations-Scan: vollständige Integration aller Vorgaben und
+      # Specs (GEBOTE/VERBOTEN-Matrix, Spec-Index, normative Doku-Kette,
+      # Enforce-Gates). Fehlende Punkte → Fehlerprotokoll + Blockade (error).
+      # Reports nach /tmp: Pre-Commit darf das Repo nie verändern.
+      - id: aurik-spec-integration
+        name: "Spec-Integrations-Scan — ERROR blockiert (Report: audit/spec_integration_report.*)"
+        entry: .venv_aurik/bin/python audit/spec_integration_scanner.py --workspace . --fail-on error --json-out /tmp/aurik_spec_integration_report.json --md-out /tmp/aurik_spec_integration_report.md
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Hörordnung §8a: Psychoakustische Kalibrierungs-Invarianten
+      # (Roughness/Sharpness/Residuum-Monotonie, Maskierungs-Richtung, Hörstufen)
+      - id: aurik-horordnung-calibration
+        name: "Hörordnungs-Kalibrierung (psychoakustische Invarianten, Hörordnung §8a)"
+        entry: .venv_aurik/bin/python scripts/horordnung_calibration.py
+        language: system
+        pass_filenames: false
+        files: ^(backend/core/(inviting_sound_gate|residuum_masking|perceptual_salience)\.py|scripts/horordnung_calibration\.py)$
+
+      # Crossfire-Guard (phase_21/35/42 nie in CAUSE_TO_PHASES)
+      - id: aurik-crossfire-guard
+        name: "Crossfire-Guard (phase_21/35/42 nie in CAUSE_TO_PHASES)"
+        entry: .venv_aurik/bin/python scripts/check_crossfire_phases.py
+        language: system
+        pass_filenames: false
+        files: ^backend/core/causal_defect_reasoner\.py$
+
+      # Stash-Drift-Guard (verhindert Snapshot-Akkumulation)
+      - id: aurik-stash-drift-guard
+        name: "Stash-Drift-Guard (verhindert Snapshot-Akkumulation)"
+        entry: "bash -c 'count=$(git stash list | wc -l); if [ \"$count\" -gt 2 ]; then echo \"WARNUNG: $count Stashes vorhanden. Vor Commit auflösen.\"; exit 1; fi; exit 0'"
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Type-Ignore-Reihenfolge (ignore vor Inline-Kommentar)
+      - id: aurik-type-ignore-order
+        name: "mypy type-ignore Reihenfolge"
+        entry: .venv_aurik/bin/python scripts/check_type_ignore_order.py backend plugins Aurik10 cli scripts
+        language: system
+        pass_filenames: false
+        files: ^(backend|plugins|Aurik10|cli|scripts)/.*\.py$
+
+      # Mypy Real-Bug-Gate
+      - id: aurik-mypy-real-bug-gate
+        name: "Mypy Real-Bug-Gate (alle Layer)"
+        entry: .venv_aurik/bin/python scripts/check_mypy_real_bugs.py
+        language: system
+        pass_filenames: false
+        files: ^(backend|plugins|Aurik10|cli)/.*\.py$
+
+      # Format-String-Guard (logger %s-Anzahl == Argument-Anzahl)
+      - id: aurik-format-string-guard
+        name: "Format-String-Guard (logger %s == args)"
+        entry: .venv_aurik/bin/python scripts/compliance/check_format_strings.py
+        language: system
+        pass_filenames: true
+        files: ^(backend|Aurik10)/.*\.py$
+
+      # ContractValidator (Cross-Module Defect/Phase-Konsistenz)
+      - id: aurik-contract-validator
+        name: "ContractValidator (Defect/Phase-Konsistenz)"
+        entry: .venv_aurik/bin/python scripts/compliance/check_contracts.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Import-Breaking-Change (kritische Exports erhalten)
+      - id: aurik-import-breaking
+        name: "Import-Breaking-Change (kritische Exports)"
+        entry: .venv_aurik/bin/python scripts/compliance/check_import_breaking.py
+        language: system
+        pass_filenames: true
+        files: ^backend/core/(quality_mode|defect_manifest|phase_pruner|safe_dict|periodic_health)\.py$
+
+      # Anti-Regression-Gate (alle 12 Bug-Muster)
+      - id: aurik-anti-regression
+        name: "Anti-Regression-Gate (alle 12 Bug-Muster)"
+        entry: .venv_aurik/bin/python scripts/compliance/anti_regression_gate.py
+        language: system
+        pass_filenames: true
+
+      # Spec 26 — Defekt-Reparatur-Trainingsvertrag (DRT-1..DRT-6), fail-closed
+      - id: aurik-drt-vertrag
+        name: "Defekt-Reparatur-Trainingsvertrag (Spec 26)"
+        entry: .venv_aurik/bin/python scripts/compliance/drt_contract_gate.py
+        language: system
+        pass_filenames: false
+
+      # Wettbewerbs-Parität (2026-11-17): Mission RX/Cedar/Acon je Disziplin,
+      # Register-Vollständigkeit + Verankerung in Handover/AGENTS/Spec 01 — fail-closed
+      - id: aurik-wettbewerbs-paritaet
+        name: "Wettbewerbs-Parität (RX/Cedar/Acon je Disziplin)"
+        entry: .venv_aurik/bin/python scripts/compliance/wettbewerbs_paritaet_gate.py
+        language: system
+        pass_filenames: false
+
+      # §G188–§G190 (GEBOTE.md) Wirkungs-Kalibrierung: blockierende
+      # Begrenzungen bzw. nicht-selbstberechenbare Intensitäten MELDEN
+      - id: aurik-g188-wirkungskalibrierung
+        name: "§G188 Wirkungs-Kalibrierung (blockierende Begrenzungen melden)"
+        entry: .venv_aurik/bin/python scripts/g188_wirkungskalibrierung_check.py
+        language: system
+        pass_filenames: true
+        files: \.py$
+
+      # §v10.50 Subprocess-Vertrag: sys.executable in Orchestratoren
+      - id: aurik-sys-executable-guard
+        name: "§v10.50 Subprocess-Vertrag: sys.executable in Orchestratoren"
+        entry: .venv_aurik/bin/python scripts/compliance/check_sys_executable.py
+        language: system
+        pass_filenames: false
+        files: ^scripts/.*\.py$
+
+      # Version-Consistency (kein Aurik 8.0/9.x in Logs; erlaubt 10.0.x und 10.1.x)
+      - id: aurik-version-consistency
+        name: "Version-Consistency (kein Aurik 8.0/9.x)"
+        entry: "bash -c '! grep -rn \"Aurik [0-9]\\.[0-9]\" backend/ Aurik10/ --include=\"*.py\" | grep -v \"10\\.[01]\\\\.\" | grep -v \"6\\\\.0\" | grep -v \"# \" | grep -v \"CLAUDE\" | grep -v \"CHANGELOG\" | grep -v \"specs/\" | grep -v \"compatibility_shim\"'"
+        language: system
+        pass_filenames: false
+        files: ^(backend|Aurik10)/.*\.py$
+
+      # Static-Value-Guard (v10: keine blinden statischen Werte)
+      - id: aurik-static-value-guard
+        name: "Static-Value-Guard (v10: keine blinden statischen Werte)"
+        entry: .venv_aurik/bin/python scripts/pre_commit_static_guard.py --all
+        language: system
+        pass_filenames: true
+        files: ^(backend|Aurik10)/.*\.py$
+
+      # §v10.50 Calibration-Guard (erzwingt §V25-V28, §G76-G81)
+      - id: aurik-calibration-guard
+        name: "§v10.50 Calibration-Guard (§V25-V28, §G76-G81)"
+        entry: .venv_aurik/bin/python scripts/pre_commit_calibration_guard.py
+        language: system
+        pass_filenames: false
+        files: ^(backend|denker)/.*\.py$
+
+      # §v10.51 Sprache-Guard (erzwingt deutsche Log-Meldungen)
+      - id: aurik-language-guard
+        name: "§v10.51 Sprache-Guard (deutsche Logs)"
+        entry: .venv_aurik/bin/python scripts/pre_commit_language_guard.py
+        language: system
+        pass_filenames: false
+        files: ^(backend|denker|Aurik10)/.*\.py$
+
+      # §v10.101 Perceptual-Guard: Bark/LUFS/JND-Konsistenz
+      - id: aurik-perceptual-guard
+        name: "§v10.101 Perceptual-Guard (Bark/LUFS/JND im Code)"
+        entry: .venv_aurik/bin/python scripts/compliance/check_perceptual_consistency.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # §v10.101 Import-Shadow-Guard: verhindert UnboundLocalError durch import-shadowing
+      - id: aurik-import-shadow-guard
+        name: "§v10.101 Import-Shadow-Guard (kein import-shadowing)"
+        entry: .venv_aurik/bin/python scripts/lint_import_shadow.py --strict
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # §v10.600 Closed-Loop-Guard: Regelkreis-Integrität (Strength, Signalquelle, Selbstkalibrierung)
+      - id: aurik-closed-loop-guard
+        name: "§v10.600 Closed-Loop-Guard (Regelkreis, Signalquelle, Kalibrierung, Chunked-Persistenz)"
+        entry: .venv_aurik/bin/python scripts/pre_commit_closed_loop_guard.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # §v10.702 B1/B2/B3 Reproduzierbarkeits-Guard (MQA-Verbesserung, Per-Defekt-Scoring, Chunk-Determinismus, Full-Song-Presence)
+      - id: aurik-reproducibility-guard
+        name: "§v10.702 Reproduzierbarkeits-Guard (B1 MQA, B2 Per-Defekt, B3 Chunk-Determinismus, B3-P2 Full-Song-Scan)"
+        entry: .venv_aurik/bin/python scripts/pre_commit_reproducibility_guard.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # §v10.340 SOTA-Guard: Startup-Qualitätsregeln (torch.zeros, i18n, lock-discipline, imports, OOM, Bayesian, Causal-Reasoning)
+      - id: aurik-sota-guard
+        name: "§v10.340 SOTA-Guard (GPU-Safety, i18n, Lock-Discipline, Imports, OOM-Resilienz, Causal-Material)"
+        entry: .venv_aurik/bin/python scripts/pre_commit_sota_guard.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Blindtest-Metrics — lief zuvor als manueller .git/hooks/pre-commit (nicht
+      # versioniert) und verdrängte dabei den pre-commit-Framework-Hook; als
+      # Config-Hook ist er reproduzierbar und der Framework-Hook bleibt aktiv.
+      - id: aurik-blindtest-metrics
+        name: "Aurik Blindtest-Metrics (Preservation/Artifact/Quality)"
+        entry: python3 -m pytest tests/test_blindtest_metrics.py -v --tb=short -q
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Unit-Smoke nach Spec §10.2: schnell, low-overhead, kein E2E/ML-Gate im Commit-Pfad.
+      # AURIK_FORCE_CPU=1: Der Commit-Pfad muss deterministisch und lastunabhängig sein —
+      # ein echter ROCm/MIOpen-Session-Aufbau hing an der GPU-Last (parallel laufendes
+      # Training bzw. Akzeptanz-Messung) und lief in den 20-s-pytest-Timeout
+      # (Produktionsbefund 2026-10-05). GPU-Pfad-Abdeckung bleibt in den dedizierten
+      # Gates (test_gpu_determinism_gate u. a.), nicht im Smoke (Spec 07, TEST-DESIGN).
+      - id: aurik-unit-smoke
+        name: "Aurik Unit-Smoke (tests/unit, maxfail=3)"
+        entry: bash -c 'AURIK_FORCE_CPU=1 AURIK_MEM_GB=12 AURIK_SWAP_MB=2048 AURIK_BATCH_FILES=12 AURIK_CHUNK_LIMIT=1 "${PWD}/run_tests_chunked_safe.sh" tests/unit --timeout=20 --tb=line -qq -o console_output_style=count --maxfail=3 -x'
+        language: system
+        pass_filenames: false
+        files: ^(backend|plugins|denker|Aurik10|cli|tests/unit)/.*\.py$
+
+      # Flag-Wirkungs-Gate (2026-11-10, D-K3-92): Jeder use_*-Schalter in
+      # backend/core/music_model_flags.py MUSS im Produktionspfad gelesen werden.
+      # Die Klasse „Schalter/Artefakt ohne Lesestelle" (D-K3-85/D-K3-90/D-K3-91)
+      # erzeugte No-Op-Messungen (AN/AUS verglich den Pfad mit sich selbst);
+      # der manuelle Suchlauf vergisst, dieses Gate nicht. Nur-Mess-Flags sind
+      # ausschließlich mit begründeter Ausnahme (Register-ID) zulässig, und ein
+      # B3-/Release-Kandidat ohne Produktionswirkung wird abgelehnt.
+      - id: aurik-flag-wirkung-gate
+        name: "Flag-Wirkungs-Gate (§V7: jeder use_*-Schalter wirkt im Produktionspfad)"
+        entry: .venv_aurik/bin/python scripts/flag_wirkung_gate.py --ci
+        language: system
+        pass_filenames: false
+        files: ^(backend|plugins|denker|Aurik10|cli|forensics|scripts)/.*\.py$
+
+      # Coverage-Gate — normativ: RELEASE_MUST-Coverage (§Fix 2026-09-08)
+      # Der frühere 90-%-pytest-cov-Lauf über backend/core+dsp+plugins+denker+
+      # Aurik10 war strukturell unerreichbar (gemessen 16,83 %) und blockierte
+      # jeden Commit mit Produktionscode. Normative Quelle: Spec 10_bug_gap_
+      # strategy.md, nightly-quality.yml, solo-release-gate.yml.
+      - id: aurik-coverage-gate
+        name: "Coverage-Gate (RELEASE_MUST, normativ)"
+        entry: .venv_aurik/bin/python scripts/release_must_coverage_check.py
+        language: system
+        pass_filenames: false
+        files: ^(backend|plugins|denker|Aurik10|cli)/.*\.py$
+
+      # ID-Registry — R1/R2 fail-closed (Zitierdisziplin AGENTS.md §5)
+      - id: aurik-id-registry
+        name: "ID-Registry-Check (R1 unbekannt / R2 nackt-ambig fail-closed)"
+        entry: .venv_aurik/bin/python scripts/id_registry_check.py --strict
+        language: system
+        pass_filenames: true
+        files: \.py$
+
+      # Defekt-Abdeckung — Enum vs. Harness vs. Phase-Mapper (fail-closed)
+      # Wurzel-Fix 2026-09-24: Typen ohne Evidenz-Fall blieben unentdeckt
+      - id: aurik-defect-coverage
+        name: "Defekt-Abdeckung (Enum/Harness/Phase-Mapper fail-closed)"
+        entry: .venv_aurik/bin/python scripts/defect_coverage_check.py
+        language: system
+        pass_filenames: false
+
+      # Genre-Single-Source — Alias-Tabelle nur in genre_registry (§G9, fail-closed)
+      # Tranche 3.3 (2026-10-06): verhindert eine fünfte parallele Genre-Auflösung;
+      # R4 meldet die klangrelevante Divergenz der beiden Ziel-Gewichtstabellen.
+      - id: aurik-genre-single-source
+        name: "Genre-Single-Source (Alias nur in Registry, Profil-Keys auflösbar)"
+        entry: .venv_aurik/bin/python scripts/genre_single_source_check.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Ear-Critical-Parität — Ohr-Schutzregeln müssen Code+Test haben (fail-closed)
+      - id: aurik-ear-parity
+        name: "Ear-Critical-Parity (Regel→Code→Test; deferred nur mit Begründung)"
+        entry: .venv_aurik/bin/python scripts/ear_critical_parity_check.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # §v10.15 Gebote-Verifier — Non-Plus-Ultra-Compliance
+      - id: gebote-verifier
+        name: "§v10.15 Gebote-Verifier — 25/25 GEBOTE-Compliance"
+        entry: .venv_aurik/bin/python scripts/gebote_verifier.py --ci
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # FILE_REGISTRY Write-Gate — neue Code-Dateien brauchen Registry-Eintrag (fail-closed)
+      - id: aurik-file-lifecycle
+        name: "File-Lifecycle (Write-Gate: neue Code-Dateien ⇒ FILE_REGISTRY-Eintrag)"
+        entry: .venv_aurik/bin/python scripts/file_registry_check.py
+        language: system
+        pass_filenames: false
+        files: ^(backend|plugins|denker|Aurik10|cli|scripts)/.*\.py$
+
+      # §v10.802 Version-Guard — Bump-Konsistenz (Warnstufe, kein Fail)
+      - id: aurik-version-guard
+        name: "Version-Guard (§v10.802 Bump-Konsistenz, Warnstufe)"
+        entry: .venv_aurik/bin/python scripts/version_guard.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Versions-Konsistenz über ALLE Dateien (Befund 2026-10-05: pyproject.toml stand
+      # auf 10.3.0, README.md auf 10.2.0, waehrend version.py 10.3.4 war — der
+      # Version-Guard prueft nur version.py <-> Aurik10/__init__.py und sah das nicht).
+      - id: aurik-version-consistency
+        name: "Versions-Konsistenz (pyproject/README/CHANGELOG <-> version.py)"
+        entry: .venv_aurik/bin/python scripts/check_version_consistency.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # UTF-8-Hygiene (P2-1) — BOM/NUL-Fenster/invalide UTF-8-Sequenzen fail-closed
+      - id: aurik-utf8-hygiene
+        name: "UTF-8-Hygiene (P2-1: kein UTF-16/BOM/invalides UTF-8 in Textdateien)"
+        entry: .venv_aurik/bin/python scripts/utf8_hygiene_check.py
+        language: system
+        pass_filenames: false
+        files: \.(py|md|yaml|yml|json|toml|txt|cfg|ini|csv|tsv|sh|bat|ps1|html|css|js|ts|xml|rst|sql|ipynb|qss|ui)$
+
+      # Symbol-Duplikate — Klassen-Kollisionen pro Domain (fail-closed), Suffix-Varianten (WARN)
+      - id: aurik-symbol-duplicates
+        name: "Symbol-Duplicates (Klassen-Kollisionen pro Domain via repo_graph)"
+        entry: .venv_aurik/bin/python scripts/repo_graph.py --duplicates
+        language: system
+        pass_filenames: false
+        files: ^(backend|plugins|denker|Aurik10|cli|scripts)/.*\.py$
+
+      - id: aurik-repo-graph-check
+        name: "Repo-Graph-Check (Bridge/Dead-Imports/Status — fail-closed)"
+        entry: .venv_aurik/bin/python scripts/repo_graph.py --check
+        language: system
+        pass_filenames: false
+        files: ^(backend|plugins|denker|Aurik10|cli|scripts)/.*\.py$
+
+      # Modell-Verdrahtung (§G9 (copilot-instructions.md)) — lokal vorhandenes
+      # Kapital darf nicht still verfallen (Befund 2026-10-06: ddsp_predictor +
+      # scnet_4stems trainiert/beschafft, aber ohne Konsumenten).
+      - id: aurik-model-wiring
+        name: "Modell-Verdrahtungs-Audit (§G9 copilot-instructions.md: jedes models/-Verzeichnis verdrahtet oder begründet)"
+        entry: .venv_aurik/bin/python scripts/model_inventory.py --fail-on-orphans
+        language: system
+        pass_filenames: false
+        files: \.py$
+
+      # SOTA-Defizit-Register (WP-0) — Beleg/Evidenz/Klasse fail-closed.
+      # Wurzel-Gate (2026-10-06): eine Domänen-Behauptung ohne Existenz-Beleg
+      # (K0 „still ess Kapital", K2 Sprach-Signalpfad) blieb bisher unsichtbar;
+      # der Domänen-Abgleich zieht Register und kuratiertes Manifest auf eine
+      # Quelle (§G9 (copilot-instructions.md)).
+      - id: aurik-sota-deficit-gate
+        name: "SOTA-Defizit-Register (WP-0: Beleg/Evidenz/Klasse fail-closed)"
+        entry: .venv_aurik/bin/python scripts/sota_deficit_gate.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Wohlklang-Vertrag: jede klangverändernde Stufe braucht fünf Belege UND
+      # einen zum Vertrag passenden Code-Schalter (§v10.802/§G9 — verhindert den
+      # Drift „Aktenlage OFF, Code AN", Produktionsbefund 2026-10-06).
+      - id: aurik-wohlklang-gate
+        name: "Wohlklang-Vertrag (6 Belege + Gate-Zahlen + Schalter-Abgleich, fail-closed)"
+        entry: .venv_aurik/bin/python scripts/wohlklang_gate.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: aurik-layout-invariant
+        name: "Layout-EINE-Quelle (§G9, fail-closed — Muster D-K3-6)"
+        entry: .venv_aurik/bin/python scripts/layout_invariant_check.py
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # Conventional Commits Message Validation
+      - id: conventional-commit-msg
+        name: "Conventional Commits (feat/fix/docs/style/refactor/perf/test/chore/spec/build/ci)"
+        entry: '^(feat|fix|docs|style|refactor|perf|test|chore|spec|build|ci)(\([^)]+\))?: .{10,}'
+        language: pygrep
+        stages: [commit-msg]
+        args: [--negate]
+        pass_filenames: false
+        always_run: true

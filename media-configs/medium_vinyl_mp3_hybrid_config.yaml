@@ -1,0 +1,127 @@
+profile:
+  name: vinyl_to_mp3_medium_offline_stereo
+  medium: vinyl_mp3_hybrid
+  mode: offline
+  channels: stereo
+
+analysis:
+  segment_length_sec: 2.0
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 12.0
+
+budgets:
+  artifact_budget: 0.10
+  identity_budget: 0.08
+  temporal_change_budget: 0.10
+  spectral_change_budget: 0.15
+  noise_change_budget: 0.08
+  stereo_change_budget: 0.08
+
+processing_order:
+  - declip
+  - declick_decrackle_limited
+  - dehum_rumble
+  - codec_taming
+  - hiss_taming_optional
+  - sibilance
+  - stereo_guard
+  - finalize
+
+modules:
+
+  declip:
+    detect:
+      pct_samples_above_minus_0_2dbfs_warn: 0.5
+      pct_samples_above_minus_0_2dbfs_strong: 1.5
+      true_peak_warn_dbTP: -0.3
+    trial:
+      strength_warn: 0.20
+      strength_strong: 0.35
+      strength_max: 0.40
+    commit:
+      min_anchor_gain: 0.015
+      max_true_peak_dbTP: -1.0
+
+  declick_decrackle_limited:
+    # Vinyl-Impulse + MP3: nur sicherste Reparaturen, keine aggressiven spektralen Experimente
+    clicks:
+      detect:
+        impulse_salience_db: 16.0
+        max_duration_ms: 2.0
+      trial:
+        wet: 1.0
+      commit:
+        min_anchor_gain: 0.008
+    crackle:
+      detect:
+        micro_impulse_density_per_sec: 80
+      trial:
+        wet: 0.45
+        wet_max: 0.60
+      commit:
+        min_anchor_gain: 0.010
+      gates:
+        forbid_codec_warble_increase: true
+        forbid_musical_noise_increase: true
+
+  dehum_rumble:
+    hum:
+      detect:
+        hum_line_snr_warn_db: 12.0
+        hum_line_snr_strong_db: 18.0
+      trial:
+        reduction_50hz_db: 12
+        reduction_harmonics_db: 8
+      commit:
+        min_anchor_gain: 0.010
+    rumble:
+      hpf_cutoff_hz: 25
+      slope_db_per_oct: 12
+      commit:
+        min_anchor_gain: 0.010
+
+  codec_taming:
+    detect:
+      pre_echo_warn_db: -20
+      pre_echo_strong_db: -15
+      warble_energy_warn: 0.010
+      warble_energy_strong: 0.020
+      stereo_corr_min: 0.45
+    trial:
+      smoothing_strength: 0.15
+      hf_tilt_db_at_10k: -1.2
+    commit:
+      min_anchor_gain: 0.015
+      forbid_musical_noise_increase: true
+
+  hiss_taming_optional:
+    enabled: true
+    detect:
+      noise_floor_dbfs: -52.0
+      nonstationarity: 0.35
+    trial:
+      wet: 0.12
+      wet_max: 0.22
+    commit:
+      min_anchor_gain: 0.020
+      musical_noise_tolerance: 0.0
+
+  sibilance:
+    detect:
+      spikiness_warn_db: 9.0
+      spikiness_strong_db: 12.0
+    trial:
+      resonance_strength: 0.15
+      deesser_wet: 0.12
+      deesser_wet_max: 0.20
+    commit:
+      min_anchor_gain: 0.010
+
+  stereo_guard:
+    mono_fold_max_regression_db: 0.0
+    hf_coherence_min_delta: -0.02
+
+finalize:
+  true_peak_guard:
+    enabled: true
+    target_dbTP: -1.0

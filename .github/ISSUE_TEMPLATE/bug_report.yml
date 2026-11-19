@@ -1,0 +1,133 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in Aurik 10
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below to help us identify and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Tell us what went wrong...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Process audio file '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened
+      placeholder: What actually happened instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: Aurik Version
+      description: Which version of Aurik are you using?
+      options:
+        - 10.0.8 (latest)
+        - 10.0.0
+        - Other (please specify in description)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Processing Mode
+      description: Which processing mode were you using?
+      options:
+        - RESTORATION (💿)
+        - STUDIO 2026 (🎯)
+        - CLI (aurik_cli.py)
+        - Batch Processing
+        - Other
+    validations:
+      required: false
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: Which OS are you running?
+      options:
+        - Windows 10
+        - Windows 11
+        - Linux (Ubuntu/Debian)
+        - Linux (Fedora/RHEL)
+        - Linux (Other)
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+    validations:
+      required: true
+
+  - type: input
+    id: audio-format
+    attributes:
+      label: Audio Format
+      description: Format of the audio file you were processing (e.g., WAV, FLAC, MP3)
+      placeholder: "WAV, 44.1kHz, 16-bit"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log Output
+      description: Any relevant log output or error messages
+      placeholder: Paste log output here...
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (screenshots, audio examples, etc.)
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Before submitting, please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this bug hasn't been reported before
+          required: true
+        - label: I have included all relevant information (version, OS, steps to reproduce)
+          required: true
+        - label: I am using the latest version of Aurik (or have noted my version above)
+          required: false

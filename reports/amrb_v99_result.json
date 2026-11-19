@@ -1,0 +1,288 @@
+{
+  "amrb_version": "1.0",
+  "aurik_version": "9.10.57",
+  "baselines": {
+    "Aurik 9.9 (Restoration Mode)": {
+      "goal_natuerlichkeit": 0.91,
+      "mushra_overall": 84.0,
+      "pqs_mos": 4.2
+    },
+    "Aurik 9.9 (Studio 2026 Mode)": {
+      "goal_natuerlichkeit": 0.93,
+      "mushra_overall": 88.0,
+      "pqs_mos": 4.5
+    },
+    "Simple Wiener (1984-Klasse)": {
+      "goal_natuerlichkeit": 0.65,
+      "mushra_overall": 48.0,
+      "pqs_mos": 3.2
+    },
+    "Unbearbeitet (degradiert)": {
+      "goal_natuerlichkeit": 0.52,
+      "mushra_overall": 32.0,
+      "pqs_mos": 2.8
+    },
+    "iZotope RX 10 (commercial)": {
+      "goal_natuerlichkeit": 0.8,
+      "mushra_overall": 71.0,
+      "pqs_mos": 3.9
+    },
+    "iZotope RX 11 (commercial)": {
+      "goal_natuerlichkeit": 0.8,
+      "mushra_overall": 71.0,
+      "pqs_mos": 3.9
+    }
+  },
+  "best_scenario": "AMRB-02-VINYL",
+  "n_passed": 9,
+  "n_scenarios": 10,
+  "os_leadership": true,
+  "overall_score": 88.4,
+  "report_sha256": "bd3f315e1447e5e401fbdece50034d1698fb407776c13701e84b9ebbea437d17",
+  "run_seed": 42,
+  "scenarios": {
+    "AMRB-01-TAPE": {
+      "description": "Tape-Hiss + Dropout",
+      "goal_scores": {
+        "artikulation": 0.7938625479876221,
+        "authentizitaet": 0.8155829214666348,
+        "bass_kraft": 1.0,
+        "brillanz": 0.9025360458120658,
+        "emotionalitaet": 0.9028413918225051,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.7949967509791128,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.933640643954277,
+        "tonal_center": 0.9535685727871326,
+        "transparenz": 0.9084041866429458,
+        "waerme": 1.0
+      },
+      "mushra_mean": 86.5,
+      "mushra_std": 0.0,
+      "passed": true,
+      "pqs_mos_mean": 3.72,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-02-VINYL": {
+      "description": "Vinyl-Crackle + Rumble",
+      "goal_scores": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9876479069604114,
+        "bass_kraft": 1.0,
+        "brillanz": 0.9080830576625636,
+        "emotionalitaet": 0.9129474884772586,
+        "groove": 0.9433657437893976,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.8995293869363734,
+        "separation_fidelity": 0.8920620803308494,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9572230532765389,
+        "tonal_center": 0.9991858777250269,
+        "transparenz": 0.9411238530715568,
+        "waerme": 1.0
+      },
+      "mushra_mean": 97.5,
+      "mushra_std": 0.2,
+      "passed": true,
+      "pqs_mos_mean": 4.94,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-03-SHELLAC": {
+      "description": "Shellac-Breitrauschen",
+      "goal_scores": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9159332699007892,
+        "bass_kraft": 1.0,
+        "brillanz": 0.35027629737110727,
+        "emotionalitaet": 0.8833649418916668,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.9022077796142494,
+        "separation_fidelity": 0.9440267022668534,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.7573770880699158,
+        "tonal_center": 0.8808173231756911,
+        "transparenz": 0.45874097249725254,
+        "waerme": 1.0
+      },
+      "mushra_mean": 71.2,
+      "mushra_std": 0.4,
+      "passed": false,
+      "pqs_mos_mean": 1.55,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-04-DIGITAL": {
+      "description": "Clipping + Quantisierung",
+      "goal_scores": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9812001784660495,
+        "bass_kraft": 1.0,
+        "brillanz": 0.8990845814790126,
+        "emotionalitaet": 0.8629572544344499,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.9011367194470274,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9561840564012527,
+        "tonal_center": 0.9988138166506344,
+        "transparenz": 0.9423122030685563,
+        "waerme": 1.0
+      },
+      "mushra_mean": 96.6,
+      "mushra_std": 0.0,
+      "passed": true,
+      "pqs_mos_mean": 4.92,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-05-CODEC": {
+      "description": "Codec-Artefakte (LP-Simulation)",
+      "goal_scores": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9891276819682004,
+        "bass_kraft": 1.0,
+        "brillanz": 0.8166610122085076,
+        "emotionalitaet": 0.8710006415605134,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.888158525879714,
+        "separation_fidelity": 0.8467706852326025,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.8815755665302276,
+        "tonal_center": 0.9993174974819394,
+        "transparenz": 0.9197281131686847,
+        "waerme": 1.0
+      },
+      "mushra_mean": 93.5,
+      "mushra_std": 0.0,
+      "passed": true,
+      "pqs_mos_mean": 4.9,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-06-VOCAL": {
+      "description": "Stimmrauschen + Pitch-Drift",
+      "goal_scores": {
+        "artikulation": 0.7702635992845402,
+        "authentizitaet": 0.8194167315753653,
+        "bass_kraft": 1.0,
+        "brillanz": 0.9271883276470197,
+        "emotionalitaet": 0.8809729903042164,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.7708108588113596,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.8925520330667496,
+        "tonal_center": 0.9667199430054391,
+        "transparenz": 0.8770614797957117,
+        "waerme": 1.0
+      },
+      "mushra_mean": 82.2,
+      "mushra_std": 0.1,
+      "passed": true,
+      "pqs_mos_mean": 2.95,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-07-REVERB": {
+      "description": "K\u00fcnstlicher Raumhall RT60=1.2s",
+      "goal_scores": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9840422878304673,
+        "bass_kraft": 1.0,
+        "brillanz": 0.8131483524401482,
+        "emotionalitaet": 0.8079128925556435,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.8990273479421671,
+        "separation_fidelity": 0.8992973688852233,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.942370691895485,
+        "tonal_center": 0.9858036047298127,
+        "transparenz": 0.8666261429713289,
+        "waerme": 1.0
+      },
+      "mushra_mean": 90.2,
+      "mushra_std": 1.2,
+      "passed": true,
+      "pqs_mos_mean": 4.58,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-08-HUM": {
+      "description": "50-Hz-Brumm + Obert\u00f6ne",
+      "goal_scores": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9805400109018688,
+        "bass_kraft": 1.0,
+        "brillanz": 0.9582066913459069,
+        "emotionalitaet": 0.8843938917480902,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.8938535640028903,
+        "separation_fidelity": 0.8662151350512002,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9178846985101701,
+        "tonal_center": 0.9491642831005458,
+        "transparenz": 0.8682163316275843,
+        "waerme": 1.0
+      },
+      "mushra_mean": 89.4,
+      "mushra_std": 0.1,
+      "passed": true,
+      "pqs_mos_mean": 4.52,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-09-DROPOUT": {
+      "description": "Tape-Dropout 50\u2013200 ms",
+      "goal_scores": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.6506922082480586,
+        "bass_kraft": 1.0,
+        "brillanz": 0.8604073590566854,
+        "emotionalitaet": 0.914087050708217,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.8265872558944689,
+        "separation_fidelity": 0.881424139760131,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.8646933734416962,
+        "tonal_center": 0.9420677183331148,
+        "transparenz": 0.9124801687973303,
+        "waerme": 1.0
+      },
+      "mushra_mean": 86.8,
+      "mushra_std": 1.0,
+      "passed": true,
+      "pqs_mos_mean": 3.05,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-10-COMPOSITE": {
+      "description": "Kombinierte Degradierung",
+      "goal_scores": {
+        "artikulation": 0.9124760492712554,
+        "authentizitaet": 0.8960840328836013,
+        "bass_kraft": 1.0,
+        "brillanz": 0.9134945044275141,
+        "emotionalitaet": 0.8780002146353529,
+        "groove": 0.9,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.8517654089805936,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.937032288312912,
+        "tonal_center": 0.9534148459487142,
+        "transparenz": 0.9390205184759179,
+        "waerme": 1.0
+      },
+      "mushra_mean": 90.0,
+      "mushra_std": 0.0,
+      "passed": true,
+      "pqs_mos_mean": 4.42,
+      "scenario_type": "synthetic"
+    }
+  },
+  "system_name": "Aurik 9.9.9 (restoration)",
+  "timestamp": "2026-03-23T17:46:48.434245+00:00",
+  "worst_scenario": "AMRB-03-SHELLAC"
+}

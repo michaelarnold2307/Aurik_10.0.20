@@ -1,0 +1,3 @@
+- In backend/core/unified_restorer_v3.py ohne `from __future__ import annotations` darf keine Signatur wie `"MaterialType" | None` verwendet werden; das wirft zur Importzeit `TypeError`.
+- Safe pattern in diesem Modul: `object | None` oder echtes Symbol ohne String-Literal (`MaterialType | None`).
+- Regression-Schutz: nach Signatur-Änderungen in `UnifiedRestorerV3` mindestens einen Import-basierten Unit-Test ausfuehren (z. B. `tests/unit/test_unified_restorer_v3.py -k ...`).

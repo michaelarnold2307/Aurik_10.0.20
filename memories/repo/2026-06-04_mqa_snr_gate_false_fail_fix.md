@@ -1,0 +1,5 @@
+- Symptom: `QUALITY GATES FAILED - SNR too low` trat bei Near-Threshold-Faellen auf (z.B. 28.2 < 28.5 dB), obwohl kein realer Qualitaetsgewinn durch aggressiveres NR ohne Artefaktrisiko moeglich war.
+- Root cause in `backend/core/musical_quality_assurance.py`: fixer target-floor-Anteil (`target * 0.55`) blieb auch bei sehr niedriger Baseline aktiv und erzeugte implizit unrealistische SNR-Anforderungen.
+- Fix: adaptive target-floor-Rampe nach Baseline (`0.0` bei <=30 dB, bis `0.55` bei >=45 dB) + SNR-Toleranzband (`0.35 dB`, bei Baseline <=30 zusaetzlich `+0.15 dB`).
+- Result: Near-threshold false fails verschwinden, klare SNR-Regressionsfaelle bleiben blockiert.
+- Regression tests added in `tests/unit/test_musical_quality_assurance_intensity.py`.

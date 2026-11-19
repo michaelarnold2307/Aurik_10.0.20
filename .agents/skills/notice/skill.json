@@ -1,0 +1,15 @@
+{
+  "allowedTools": [],
+  "assets": [],
+  "description": "Copyright 2026 Michael Arnold",
+  "entry": "SKILL.md",
+  "id": "notice",
+  "name": "NOTICE",
+  "priority": 0,
+  "triggers": {
+    "commands": [],
+    "fileTypes": [],
+    "promptPatterns": []
+  },
+  "version": "0.0.0"
+}

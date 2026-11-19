@@ -1,0 +1,488 @@
+"""
+Aurik10/ui/results_summary.py — Verständliches Ergebnis-Feedback für Laien.
+
+Zeigt nach der Restaurierung in einfacher Sprache, was Aurik getan hat.
+Keine technischen Metriken — nur das, was der Nutzer wissen will.
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+from PyQt5 import QtCore, QtWidgets
+
+from Aurik10.i18n import t
+
+logger = logging.getLogger(__name__)
+
+
+class ResultsSummaryDialog(QtWidgets.QDialog):
+    """Zeigt das Restaurierungsergebnis in einfacher, verständlicher Sprache."""
+
+    play_requested = QtCore.pyqtSignal()
+    open_folder_requested = QtCore.pyqtSignal(str)
+
+    def __init__(
+        self,
+        result_data: dict,
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._data = result_data
+        self._build_ui()
+        self.setWindowTitle(t("results.title"))
+        self.setMinimumSize(520, 420)
+        self.setModal(True)
+
+    def _build_ui(self) -> None:
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setSpacing(16)
+        layout.setContentsMargins(28, 24, 28, 24)
+
+        # ── Header ────────────────────────────────────────────────────────
+        header = QtWidgets.QLabel(t("results.header_done"))
+        header.setStyleSheet("font-size: 18pt; font-weight: bold; color: #82B89A;")
+        header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(header)
+
+        # ── File info line ────────────────────────────────────────────────
+        d = self._data
+        file_name = d.get("file_name", "?")
+        duration = d.get("duration_seconds", 0)
+        material = d.get("material_detected", "")
+        mins = int(duration // 60)
+        secs = int(duration % 60)
+
+        info_parts = []
+        info_parts.append(f"📂 {file_name}")
+        if duration > 0:
+            info_parts.append(f"🕐 {mins}:{secs:02d}")
+        if material:
+            mat_label = t(f"material.{material}") if material else ""
+            if mat_label and mat_label != f"material.{material}":
+                info_parts.append(f"💿 {mat_label}")
+        info_line = QtWidgets.QLabel("  |  ".join(info_parts))
+        info_line.setStyleSheet("font-size: 10pt; color: #8894A8;")
+        info_line.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        info_line.setWordWrap(True)
+        layout.addWidget(info_line)
+
+        # ── Separator ─────────────────────────────────────────────────────
+        sep = QtWidgets.QFrame()
+        sep.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        sep.setStyleSheet("background: rgba(130, 184, 154, 0.2); max-height: 1px;")
+        layout.addWidget(sep)
+
+        # ── What was done section ─────────────────────────────────────────
+        what_label = QtWidgets.QLabel(t("results.what_done"))
+        what_label.setStyleSheet("font-size: 12pt; font-weight: bold;")
+        layout.addWidget(what_label)
+
+        improvements = self._build_improvements()
+        layout.addWidget(improvements)
+
+        # ── §v10.996: Konsolidierter Bericht (Plan → Ausführung → Beweis) ──
+        _bericht = d.get("restoration_bericht") or {}
+        _found = _bericht.get("found") or []
+        _planned = _bericht.get("planned") or []
+        if _found or _planned:
+            _report_box = QtWidgets.QFrame()
+            _report_box.setStyleSheet(
+                "QFrame { background: rgba(130, 184, 154, 0.06); border: 1px solid "
+                "rgba(130, 184, 154, 0.25); border-radius: 6px; }"
+            )
+            _report_layout = QtWidgets.QVBoxLayout(_report_box)
+            _report_layout.setContentsMargins(10, 8, 10, 8)
+            _report_layout.setSpacing(4)
+
+            _lines: list[tuple[str, str]] = []
+            if _found:
+                _found_text = ", ".join(f"{f['label']} ({f.get('severity', '')})".rstrip() for f in _found)
+                _lines.append(
+                    (
+                        t("results.found_follows", items=_found_text),
+                        "#8894A8",
+                    )
+                )
+            if _planned:
+                _done_n = int(_bericht.get("done_count", 0) or 0)
+                _skip_n = int(_bericht.get("skipped_count", 0) or 0)
+                _def_n = int(_bericht.get("deferred_count", 0) or 0)
+                _noeff = int(_bericht.get("no_effect_count", 0) or 0)
+                _lines.append(
+                    (
+                        t("results.aurik_did", steps=" → ".join(_planned[:6])),
+                        "#82B89A",
+                    )
+                )
+                _exec_parts = [t("results.steps_executed", count=_done_n)]
+                if _skip_n:
+                    _exec_parts.append(t("results.steps_skipped", count=_skip_n))
+                if _noeff:
+                    _exec_parts.append(t("results.steps_no_effect", count=_noeff))
+                if _def_n:
+                    _exec_parts.append(t("results.steps_deferred", count=_def_n))
+                _lines.append(("   " + " · ".join(_exec_parts), "#8894A8"))
+
+            _guards = _bericht.get("guards") or {}
+            _g = _guards.get("guards", {}) or {}
+            _fired = (
+                int(_g.get("truepeak", 0) or 0)
+                + int(_g.get("pumping", 0) or 0)
+                + int(_g.get("formant", 0) or 0)
+                + int(_g.get("spectral", 0) or 0)
+            )
+            _iters = int((_guards.get("utmos_loop") or {}).get("iterations", 0) or 0)
+            _guard_text = t("results.safety_net", count=_fired)
+            if _iters:
+                _guard_text += t("results.utmos_control", count=_iters)
+            _lines.append((_guard_text, "#82B89A" if _fired == 0 else "#B8A068"))
+
+            _proof = _bericht.get("proof") or {}
+            _verdict = str(_proof.get("verdict", "") or "")
+            if _verdict:
+                _lines.append(("📊 " + _verdict, "#8894A8"))
+
+            for _text, _color in _lines:
+                _row = QtWidgets.QLabel(_text)
+                _row.setStyleSheet(f"font-size: 10pt; color: {_color};")
+                _row.setWordWrap(True)
+                _report_layout.addWidget(_row)
+            layout.addWidget(_report_box)
+
+        # ── Quality indicator ─────────────────────────────────────────────
+        # §v10.202: Revert-Prüfung VOR Qualitäts-Anzeige
+        was_reverted = d.get("was_reverted", False)
+        quality_before = d.get("quality_before", 0)
+        quality_after = d.get("quality_after", 0)
+        mushra = d.get("mushra_score", 0.0)
+        hpi = d.get("hpi_score", 0.0)
+        phases = d.get("phases_total", 0)
+
+        # §v10.14 P0: Keine Fake-Werte — wenn Qualität nicht verfügbar, ehrlich sein
+        if quality_before is None or quality_after is None or (quality_before == 0 and quality_after == 0):
+            quality_text = t("results.quality_metrics_unavailable")
+            _color = "#8899AA"
+            _bg = "rgba(136, 153, 170, 0.08)"
+        elif was_reverted:
+            revert_reason = d.get("revert_reason", "")
+            quality_text = (
+                t("results.revert_with_reason", reason=revert_reason)
+                if revert_reason
+                else t("results.revert_no_reason")
+            )
+            _color = "#B8A068"
+            _bg = "rgba(184, 160, 104, 0.10)"
+        elif quality_after > quality_before and quality_before > 0:
+            delta = quality_after - quality_before
+            quality_text = t(
+                "results.quality_improved",
+                before=int(quality_before),
+                after=int(quality_after),
+                delta=int(delta),
+            )
+            if mushra > 0:
+                quality_text += t("results.audio_quality", mushra=f"{mushra:.0f}")
+            if hpi > 0:
+                quality_text += t("results.improvement_pct", hpi=f"{hpi:.0%}")
+            _color = "#82B89A"
+            _bg = "rgba(130, 184, 154, 0.08)"
+        elif quality_after <= quality_before and quality_before > 0:
+            quality_text = t(
+                "results.quality_no_change",
+                before=int(quality_before),
+                after=int(quality_after),
+            )
+            _color = "#8894A8"
+            _bg = "rgba(136, 148, 168, 0.08)"
+        else:
+            quality_text = t("results.quality_assessment_unavailable")
+            _color = "#8894A8"
+            _bg = "rgba(136, 148, 168, 0.08)"
+
+        quality_label = QtWidgets.QLabel(f"📊 {quality_text}")
+        quality_label.setStyleSheet(
+            f"font-size: 11pt; color: {_color}; padding: 8px; background: {_bg}; border-radius: 6px;"
+        )
+        quality_label.setWordWrap(True)
+        # §v10.207: Laienverständliche Tooltips
+        _tooltip_parts = []
+        if mushra > 0:
+            _tooltip_parts.append(t("results.tooltip_mushra"))
+        if hpi > 0:
+            _tooltip_parts.append(t("results.tooltip_improvement"))
+        if _tooltip_parts:
+            quality_label.setToolTip("\n\n".join(_tooltip_parts))
+        layout.addWidget(quality_label)
+
+        # ── Chain-Depth Kontext (nur bei tiefen Ketten) ──
+        _chain_depth = d.get("chain_depth", 1)
+        if _chain_depth >= 3:
+            _chain_note = (
+                t("results.chain_deep", depth=_chain_depth)
+                if _chain_depth >= 4
+                else t("results.chain_moderate", depth=_chain_depth)
+            )
+            _depth_label = QtWidgets.QLabel(_chain_note)
+            _depth_label.setStyleSheet("font-size: 10pt; color: #8894A8; padding: 4px 8px;")
+            _depth_label.setWordWrap(True)
+            layout.addWidget(_depth_label)
+
+        # ── §v10.202: Arbeits-Zusammenfassung ────
+        if phases > 0:
+            work_label = QtWidgets.QLabel(t("results.phases_executed", count=phases))
+            work_label.setStyleSheet("font-size: 10pt; color: #8894A8; padding: 4px 0;")
+            layout.addWidget(work_label)
+
+        # ── §v10.35 Experience Insights (Joy/Fatigue/Recommendations) ────
+        joy_idx = d.get("joy_index", 0.0)
+        fatigue_idx = d.get("fatigue_index", 0.0)
+        recommendations = d.get("recommendations", [])
+
+        if joy_idx > 0 or fatigue_idx > 0 or recommendations:
+            exp_sep = QtWidgets.QFrame()
+            exp_sep.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+            exp_sep.setStyleSheet("background: rgba(102, 126, 234, 0.2); max-height: 1px;")
+            layout.addWidget(exp_sep)
+
+            exp_header = QtWidgets.QLabel(t("results.experience_header"))
+            exp_header.setStyleSheet("font-size: 12pt; font-weight: bold;")
+            layout.addWidget(exp_header)
+
+            if joy_idx > 0:
+                joy_pct = int(joy_idx * 100)
+                joy_emoji = "😊" if joy_idx > 0.7 else ("🙂" if joy_idx > 0.4 else "😐")
+                joy_label = QtWidgets.QLabel(t("results.joy", emoji=joy_emoji, percent=joy_pct))
+                joy_color = "#82B89A" if joy_idx > 0.6 else ("#C8A84B" if joy_idx > 0.3 else "#B87A7A")
+                joy_label.setStyleSheet(f"font-size: 10pt; color: {joy_color}; padding: 4px 0;")
+                layout.addWidget(joy_label)
+
+            if fatigue_idx > 0:
+                fat_pct = int(fatigue_idx * 100)
+                fat_emoji = "😫" if fatigue_idx > 0.6 else ("😐" if fatigue_idx > 0.3 else "😌")
+                fat_label = QtWidgets.QLabel(t("results.fatigue", emoji=fat_emoji, percent=fat_pct))
+                fat_color = "#82B89A" if fatigue_idx < 0.3 else ("#C8A84B" if fatigue_idx < 0.5 else "#B87A7A")
+                fat_label.setStyleSheet(f"font-size: 10pt; color: {fat_color}; padding: 4px 0;")
+                layout.addWidget(fat_label)
+
+            if recommendations:
+                rec_label = QtWidgets.QLabel("💡 " + " · ".join(recommendations[:3]))
+                rec_label.setStyleSheet("font-size: 10pt; color: #7B93F0; padding: 4px 0; font-style: italic;")
+                rec_label.setWordWrap(True)
+                layout.addWidget(rec_label)
+
+        # ── Output path ───────────────────────────────────────────────────
+        output = d.get("output_path", "")
+        if output:
+            fmt = d.get("export_format", "FLAC")
+            output_label = QtWidgets.QLabel(t("results.saved_as").format(path=output, fmt=fmt))
+            output_label.setStyleSheet("font-size: 10pt; color: #8894A8;")
+            output_label.setWordWrap(True)
+            layout.addWidget(output_label)
+
+        # ── Spacer ────────────────────────────────────────────────────────
+        layout.addStretch()
+
+        # ── Buttons ───────────────────────────────────────────────────────
+        btn_row = QtWidgets.QHBoxLayout()
+        btn_row.setSpacing(12)
+
+        listen_btn = QtWidgets.QPushButton(t("results.listen"))
+        listen_btn.setStyleSheet(
+            "QPushButton { background: #667eea; color: white; border: none;"
+            "border-radius: 8px; padding: 10px 24px; font-size: 11pt; font-weight: bold; }"
+            "QPushButton:hover { background: #7B93F0; }"
+        )
+        listen_btn.clicked.connect(self.play_requested.emit)
+        btn_row.addWidget(listen_btn)
+
+        if output:
+            folder_btn = QtWidgets.QPushButton(t("results.open_folder"))
+            folder_btn.setStyleSheet(
+                "QPushButton { background: transparent; color: #8894A8;"
+                "border: 1px solid rgba(136, 148, 168, 0.3); border-radius: 8px;"
+                "padding: 10px 24px; font-size: 11pt; }"
+                "QPushButton:hover { border-color: #667eea; color: #c9d1d9; }"
+            )
+            folder_btn.clicked.connect(lambda: self.open_folder_requested.emit(str(Path(output).parent)))
+            btn_row.addWidget(folder_btn)
+
+        ok_btn = QtWidgets.QPushButton(t("results.ok"))
+        ok_btn.setStyleSheet(
+            "QPushButton { background: transparent; color: #8894A8;"
+            "border: 1px solid rgba(136, 148, 168, 0.3); border-radius: 8px;"
+            "padding: 10px 24px; font-size: 11pt; }"
+            "QPushButton:hover { border-color: #82B89A; color: #82B89A; }"
+        )
+        ok_btn.clicked.connect(self.accept)
+        btn_row.addWidget(ok_btn)
+
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+    def _build_improvements(self) -> QtWidgets.QWidget:
+        """Baut die menschenlesbare Liste von Verbesserungen."""
+        d = self._data
+        widget = QtWidgets.QWidget()
+        vbox = QtWidgets.QVBoxLayout(widget)
+        vbox.setSpacing(6)
+        vbox.setContentsMargins(0, 0, 0, 0)
+
+        items = []
+
+        # Defects
+        defects_found = d.get("defects_found", 0)
+        defects_fixed = d.get("defects_fixed", 0)
+        if defects_fixed > 0:
+            items.append(("✓", t("results.defects_fixed").format(n=defects_fixed), "#82B89A"))
+        elif defects_found == 0:
+            items.append(("✓", t("results.no_defects"), "#82B89A"))
+
+        # Noise reduction
+        noise_reduction = d.get("noise_reduction_pct", 0)
+        if noise_reduction > 0:
+            items.append(("✓", t("results.noise_reduced").format(pct=int(noise_reduction)), "#82B89A"))
+
+        # Clarity improvement
+        clarity_delta = d.get("clarity_improvement", 0)
+        if clarity_delta > 0:
+            items.append(("✓", t("results.clarity_improved"), "#82B89A"))
+
+        # HPE naturalness
+        hpe_before = d.get("hpe_before", 0)
+        hpe_after = d.get("hpe_after", 0)
+        if hpe_after > hpe_before + 0.03:
+            items.append(("🎧", t("results.naturalness_improved"), "#7B93B8"))
+
+        # Mode
+        mode = d.get("mode", "")
+        if mode:
+            mode_name = t("results.mode_studio") if "STUDIO" in str(mode).upper() else t("results.mode_restoration")
+            items.append(("⚙️", t("results.mode_used", mode=mode_name), "#8894A8"))
+
+        # Era
+        era = d.get("era_detected", "")
+        if era:
+            items.append(("🕰️", t("results.era_detected").format(era=era), "#8894A8"))
+
+        for icon, text, color in items:
+            row = QtWidgets.QHBoxLayout()
+            icon_label = QtWidgets.QLabel(icon)
+            icon_label.setStyleSheet(f"color: {color}; font-size: 12pt; min-width: 24px;")
+            icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            row.addWidget(icon_label)
+
+            text_label = QtWidgets.QLabel(text)
+            text_label.setStyleSheet(f"color: {color}; font-size: 10pt;")
+            text_label.setWordWrap(True)
+            row.addWidget(text_label, 1)
+            vbox.addLayout(row)
+
+        vbox.addStretch()
+        return widget
+
+
+def interpret_mushra_score(mushra_score: float) -> str:
+    """§v10.207: Laienverständliche Einordnung des MUSHRA-Klangqualitäts-Scores (0-100).
+
+    Skala nach ITU-R BS.1534: 80-100 exzellent, 60-80 gut, 40-60 mittel, <40 schwach.
+    """
+    if mushra_score >= 90:
+        return t("results.mushra_world_class")
+    if mushra_score >= 80:
+        return t("results.mushra_very_good")
+    if mushra_score >= 50:
+        return t("results.mushra_improved")
+    return t("results.mushra_checkpoint")
+
+
+def interpret_hpi_score(hpi_score: float) -> str:
+    """§v10.207: Laienverständliche Einordnung des HPI (Health/Pipeline-Integrity-Index, 0-1).
+
+    Bildet ab, wie sicher sich die Pipeline bei ihren eigenen Entscheidungen war.
+    """
+    if hpi_score >= 0.85:
+        return t("results.hpi_high_confidence")
+    if hpi_score >= 0.65:
+        return t("results.hpi_trustworthy")
+    if hpi_score >= 0.45:
+        return t("results.hpi_cautious")
+    return t("results.hpi_protection_mode")
+
+
+def build_results_data(
+    *,
+    file_name: str = "",
+    duration_seconds: float = 0,
+    defects_found: int = 0,
+    defects_fixed: int = 0,
+    quality_before: float | None = None,  # §v10.14 P0: None = nicht verfügbar (vorher Fake-Default 50)
+    quality_after: float | None = None,  # §v10.14 P0: None = nicht verfügbar (vorher Fake-Default 85)
+    material_detected: str = "",
+    era_detected: str = "",
+    mode: str = "",
+    output_path: str = "",
+    export_format: str = "FLAC",
+    noise_reduction_pct: float = 0,
+    clarity_improvement: float = 0,
+    hpe_before: float = 0,
+    hpe_after: float = 0,
+    restoration_result: object = None,
+    restoration_bericht: dict | None = None,  # §v10.996: Plan → Ausführung → Beweis
+) -> dict:
+    """Baut das data-dict für den ResultsSummaryDialog."""
+    # §v10.201: Echte Qualitätswerte aus RestorationResult.metadata
+    _rmeta = getattr(restoration_result, "metadata", {}) or {}
+    _q_raw = float(getattr(restoration_result, "quality_estimate", 0.0) or 0.0)
+    _q_after = round(_q_raw * 100, 1)
+    _q_before = float(_rmeta.get("restorability_score", 50))
+    _mushra = float((_rmeta.get("mushra") or {}).get("mushra_score", 0.0))
+    _hpi = float(_rmeta.get("hpi_score", 0.0))
+    _reverted = bool((_rmeta.get("do_no_harm") or {}).get("reverted", False))
+    _phases = int(_rmeta.get("phases_total", 0))
+    _dnh_reason = str((_rmeta.get("do_no_harm") or {}).get("reason", ""))
+    _phases_skipped = getattr(restoration_result, "phases_skipped", None) or []
+    _deferred_phases = getattr(restoration_result, "deferred_phases", None) or []
+    # §v10.14: RestorationNarrator-Verdict + Phase-Deltas für Ergebnis-Dialog
+    _narrator = _rmeta.get("narrator", {}) or {}
+    _narrator_verdict = str(_narrator.get("verdict", "") or "")
+    _narrator_emotional = str(_narrator.get("emotional_summary", "") or "")
+    _phase_deltas = getattr(restoration_result, "phase_deltas", None) or {}
+    return {
+        "file_name": file_name,
+        "duration_seconds": duration_seconds,
+        "defects_found": defects_found,
+        "defects_fixed": defects_fixed,
+        # §v10.14 FIX P0: Keine Fake-Werte — echte Daten oder "—" anzeigen.
+        # Defaults 50/85 waren aktiv irreführend wenn keine Metriken verfügbar.
+        "quality_before": _q_before if _q_before > 0 else None,
+        "quality_after": _q_after if _q_after > 0 else None,
+        "mushra_score": _mushra,
+        "hpi_score": _hpi,
+        "was_reverted": _reverted,
+        "revert_reason": _dnh_reason,
+        "phases_total": _phases,
+        "chain_depth": _rmeta.get("transfer_chain_depth", _rmeta.get("chain_depth", 1)),
+        "material_detected": material_detected,
+        "era_detected": era_detected,
+        "mode": mode,
+        "output_path": output_path,
+        "export_format": export_format,
+        "noise_reduction_pct": noise_reduction_pct,
+        "clarity_improvement": clarity_improvement,
+        "hpe_before": hpe_before,
+        "hpe_after": hpe_after,
+        "joy_index": 0.0,
+        "fatigue_index": 0.0,
+        "recommendations": [],
+        # §v10.202: Degradations-/Countdown-Transparenz für die GUI
+        "degradation_status": _rmeta.get("degradation_status", ""),
+        "fail_reason": _rmeta.get("fail_reason", ""),
+        "no_effect_phase_count": int(_rmeta.get("no_effect_phase_count", 0)),
+        "residual_audible_defects": int((_rmeta.get("defect_countdown") or {}).get("remaining_audible", 0)),
+        "phases_skipped": len(_phases_skipped),
+        "deferred_phase_count": len(_deferred_phases),
+        # §v10.996: Konsolidierter Bericht (bridge.get_restoration_bericht)
+        "restoration_bericht": restoration_bericht or {},
+    }

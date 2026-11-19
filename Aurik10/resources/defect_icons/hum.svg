@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+<defs>
+<filter id="gl"><feGaussianBlur stdDeviation="1.48" result="b"/>
+<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <!-- Mystical: transparent nebula backdrop -->
+  <radialGradient id="m_nbg" cx="50%" cy="50%" r="50%">
+    <stop offset="0%"   stop-color="#0C0720" stop-opacity="0.92"/>
+    <stop offset="55%"  stop-color="#08041A" stop-opacity="0.80"/>
+    <stop offset="85%"  stop-color="#05030E" stop-opacity="0.45"/>
+    <stop offset="100%" stop-color="#020108" stop-opacity="0.00"/>
+  </radialGradient>
+  <!-- Mystical: outer cosmic ring gradient -->
+  <radialGradient id="m_ring" cx="50%" cy="50%" r="50%">
+    <stop offset="80%"  stop-color="#7744CC" stop-opacity="0.00"/>
+    <stop offset="95%"  stop-color="#6633BB" stop-opacity="0.30"/>
+    <stop offset="100%" stop-color="#4422AA" stop-opacity="0.10"/>
+  </radialGradient>
+  <!-- Mystical: ethereal glow filter -->
+  <filter id="m_glow" x="-80%" y="-80%" width="260%" height="260%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="2.8" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <!-- Mystical: sparkle glow filter -->
+  <filter id="m_spark" x="-200%" y="-200%" width="500%" height="500%">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+<!-- Mystical nebula backdrop (transparent at edges) -->
+<rect width="48" height="48" rx="6" fill="url(#m_nbg)"/>
+
+<path d="M4 24 Q10 5 16 24 Q22 43 28 24 Q34 5 40 24 Q43 33 44 24"
+  fill="none" stroke="#E0C020" stroke-width="2.2" filter="url(#gl)"/>
+<path d="M4 24 Q10 12 16 24 Q22 36 28 24 Q34 12 40 24 Q43 30 44 24"
+  fill="none" stroke="#A08010" stroke-width="1.0" opacity="0.6"/>
+<text x="24" y="44" font-family="monospace" font-size="6" fill="#C0A020"
+  text-anchor="middle" opacity="0.6">50Hz</text>
+<!-- Mystical: ethereal aura rings -->
+<circle cx="24" cy="24" r="22.8" fill="url(#m_ring)" opacity="1.0"/>
+<circle cx="24" cy="24" r="22.5" fill="none" stroke="#7744DD" stroke-width="0.55"
+  stroke-dasharray="4 3.5" opacity="0.30" filter="url(#m_glow)"/>
+<circle cx="24" cy="24" r="20.5" fill="none" stroke="#3355BB" stroke-width="0.30"
+  opacity="0.18" stroke-dasharray="2 5"/>
+<!-- Mystical: ethereal sparkle particles -->
+<g filter="url(#m_spark)">
+  <circle cx="6.5"  cy="6.5"  r="0.85" fill="#B09AFF" opacity="0.65"/>
+  <circle cx="41.5" cy="7.0"  r="0.70" fill="#80CCFF" opacity="0.55"/>
+  <circle cx="42.0" cy="41.5" r="0.80" fill="#CC88FF" opacity="0.60"/>
+  <circle cx="7.0"  cy="41.5" r="0.65" fill="#99DDFF" opacity="0.50"/>
+  <circle cx="24.0" cy="3.5"  r="0.60" fill="#FFD0FF" opacity="0.40"/>
+  <circle cx="44.5" cy="24.0" r="0.55" fill="#A0B8FF" opacity="0.38"/>
+</g>
+</svg>

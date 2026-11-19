@@ -1,0 +1,4 @@
+# Beispiel-Policy für SOTA-Tests
+default_policy:
+  rule1: "value1"
+  rule2: "value2"

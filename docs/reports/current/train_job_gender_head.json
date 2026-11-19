@@ -1,0 +1,26 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "f13_gender-20261112T205426Z-a2d5dc",
+  "name": "gender_head",
+  "phase": "f13_gender",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_gender_head.py --labels data/gender_labels.csv --audio-dir data/musdb18hq --out models/gender_head --epochs 200",
+  "resume_befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_gender_head.py --labels data/gender_labels.csv --audio-dir data/musdb18hq --out models/gender_head --epochs 200",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 112.9,
+      "timed_out": false,
+      "output_tail": "INFO F13: 144 gelabelte Paare — Extraktion startet\nINFO Klassen-Bilanz: {'male': 61, 'female': 83, 'child': 0}\nWARNING Klasse 'child' hat 0 Labels — Training läuft ehrlich mit den vorhandenen Klassen (§V6 (copilot-instructions.md), kein Label-Raten; D-K4-11)\nINFO §v10.40c GPU-Policy: mert_330m.onnx → CPU erzwungen (Registry: cpu)\nINFO MERT geladen: mert.onnx (330M params, CPUExecutionProvider)\nWARNING Klassen ohne Beispiele: ['child'] — Head lernt sie nicht (Hinweis, kein Fehler)\nINFO Epoche 40/200 — Loss 0.6795\nINFO Epoche 80/200 — Loss 0.6886\nINFO Epoche 120/200 — Loss 0.6908\nINFO Epoche 160/200 — Loss 0.6872\nINFO Epoche 200/200 — Loss 0.6887\nINFO F13 fertig: models/gender_head/gender_head.pt (Metriken: {'train_n': 108, 'val_n': 36, 'epochs': 200, 'seed': 42, 'val_accuracy': 0.5833, 'val_macro_f1': 0.3684})\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_gender_head.py --labels data/gender_labels.csv --audio-dir data/musdb18hq --out models/gender_head --epochs 200"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "gender_head.pt": "acb816efce23f61cc39d647b47ea1fe44259afc69bee20e392efa89c8db80e4c"
+  },
+  "ergebnis": "erfolgreich"
+}

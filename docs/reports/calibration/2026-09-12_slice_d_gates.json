@@ -1,0 +1,119 @@
+{
+  "slice": "D",
+  "date": "2026-09-12",
+  "seed": 20260912,
+  "songs": 5,
+  "segment": "60.0s..120.0s",
+  "recombination_no_harm_p90": {
+    "offset_samples": 0.0,
+    "residue_bands_reused": 0.0,
+    "residue_db_max_over": -146.76509866596703,
+    "itd_drift_us": 0.0,
+    "ild_drift_db": 0.0,
+    "iacc_drop": 0.0
+  },
+  "declip_no_harm": [
+    {
+      "song": "AM Contra - Heart Peripheral",
+      "declip_applied": false,
+      "sparse_used": false,
+      "aspade_used": false,
+      "cqtdiff_used": false,
+      "proxy_delta": 0.0,
+      "clip_fraction": 0.0
+    },
+    {
+      "song": "BKS - Too Much",
+      "declip_applied": false,
+      "sparse_used": false,
+      "aspade_used": false,
+      "cqtdiff_used": false,
+      "proxy_delta": 0.0,
+      "clip_fraction": 0.0
+    },
+    {
+      "song": "Bobby Nobody - Stitch Up",
+      "declip_applied": false,
+      "sparse_used": false,
+      "aspade_used": false,
+      "cqtdiff_used": false,
+      "proxy_delta": 0.0,
+      "clip_fraction": 0.0
+    },
+    {
+      "song": "Motor Tapes - Shore",
+      "declip_applied": false,
+      "sparse_used": false,
+      "aspade_used": false,
+      "cqtdiff_used": false,
+      "proxy_delta": 0.0,
+      "clip_fraction": 0.0
+    },
+    {
+      "song": "Secretariat - Over The Top",
+      "declip_applied": true,
+      "sparse_used": false,
+      "aspade_used": false,
+      "cqtdiff_used": false,
+      "proxy_delta": 5e-6,
+      "clip_fraction": 7.558578987150416e-7
+    }
+  ],
+  "rows": [
+    {
+      "song": "AM Contra - Heart Peripheral",
+      "offset_samples": 0,
+      "alignment_corr": 0.08037561633085795,
+      "residue_bands_reused": 0,
+      "residue_db_max_over": -163.24794602616248,
+      "itd_drift_us": 0.0,
+      "ild_drift_db": 0.0,
+      "iacc_drop": 0.0,
+      "stereo_ok": true
+    },
+    {
+      "song": "BKS - Too Much",
+      "offset_samples": 0,
+      "alignment_corr": 0.05616321922466681,
+      "residue_bands_reused": 0,
+      "residue_db_max_over": -148.61364020753948,
+      "itd_drift_us": 0.0,
+      "ild_drift_db": 0.0,
+      "iacc_drop": 0.0,
+      "stereo_ok": true
+    },
+    {
+      "song": "Bobby Nobody - Stitch Up",
+      "offset_samples": 0,
+      "alignment_corr": 0.06048731488086481,
+      "residue_bands_reused": 0,
+      "residue_db_max_over": -148.57351134928138,
+      "itd_drift_us": 0.0,
+      "ild_drift_db": 0.0,
+      "iacc_drop": 0.0,
+      "stereo_ok": true
+    },
+    {
+      "song": "Motor Tapes - Shore",
+      "offset_samples": 0,
+      "alignment_corr": -0.04138950146369994,
+      "residue_bands_reused": 0,
+      "residue_db_max_over": -145.55949021042412,
+      "itd_drift_us": 0.0,
+      "ild_drift_db": 0.0,
+      "iacc_drop": 0.0,
+      "stereo_ok": true
+    },
+    {
+      "song": "Secretariat - Over The Top",
+      "offset_samples": 0,
+      "alignment_corr": 0.07813108879992281,
+      "residue_bands_reused": 0,
+      "residue_db_max_over": -166.67321205675916,
+      "itd_drift_us": 0.0,
+      "ild_drift_db": 0.0,
+      "iacc_drop": 0.0,
+      "stereo_ok": true
+    }
+  ]
+}

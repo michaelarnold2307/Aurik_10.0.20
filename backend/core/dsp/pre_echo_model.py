@@ -1,0 +1,343 @@
+"""Pre-Echo-Proxy — deterministische Forward-Masking-Verletzungserkennung.
+
+§Witness-SOTA P4 (2026-09-12, docs/WITNESS_SOTA_GAP_ANALYSE.md §5):
+Zeitbereichs-Prozessoren (Codec/ML-Klassen) können Energie VOR einem
+Transienten „vorladen" — hörbar als Pre-Echo (Forward-Masking-Verletzung).
+Proxy: an starken Onsets des Nach-Signals wird die Delta-Energie im
+Vor-Fenster [t−20 ms, t−2 ms] gegen die Onset-Energie [t−2 ms, t+10 ms]
+gesetzt — positiv dB = Pre-Echo-Verdacht. Rein deterministisch (5-ms-Hüllkurven).
+
+Referenz: Zwicker & Fastl (2007) §7.2 (Pre-/Post-Masking); Godsill & Rayner
+(1998) (Impuls-Interpolation als Gegenstück).
+
+§D-K3-62 (2026-10-08): `analyze_pre_echo` klassifiziert zusätzlich das am
+schlechtesten befundene Onset — „duplicate“ (normierte Peak-Kreuzkorrelation
+der hinzugefügten Vor-Fenster-Energie gegen das Onset-Fenster ≥ 30 %:
+Codec-artige Kopie) vs. „repair_fill“ (lokale Reparatur-Energie, unkorreliert;
+FP-Klasse aus Lauf 10.12.17). Report-only — die Witness-Schwelle und das
+Finding bleiben unverändert: keine Verschärfung ohne Hörstichprobe (§V7 copilot-instructions.md).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+
+_PRE_WIN_S = 0.020  # 20 ms Vor-Fenster
+_GAP_S = 0.002  # 2 ms Schutzabstand zum Onset
+_POST_WIN_S = 0.010  # 10 ms Onset-Fenster
+_ENV_WIN_S = 0.005  # 5 ms Hüllkurven-Raster
+_ONSET_RISE = 4.0  # Hüllkurven-Anstieg × lokaler Baseline = Onset-Kandidat
+_LOCAL_WIN_S = 1.0  # Lokales Referenz-Fenster (±0,5 s) für die Onset-Baseline
+_LOCAL_PERC = 10.0  # Baseline = 10. Perzentil des lokalen Fensters (robust ggü. Lautheit)
+_FWD_MASK_DB = 18.0  # Forward-Masking (Zwicker & Fastl §7.2): Pre-Energie unter
+# Onset-Pegel − 18 dB ist nicht hörbar → kein Befund
+
+# §D-K3-47 (2026-10-07): Timing-Alignment gegen FALSE-Positive durch reine
+# Ereignis-Verschiebungen (Wow-Korrektur phase_12, Klick-Ersatz-Kanten phase_01).
+_ALIGN_SEARCH_MS = 5.0  # Suchfenster des lokalen Versatzes
+_ALIGN_CTX_MS = 25.0  # Kontextfenster der Kreuzkorrelation
+_ALIGN_MIN_CORR = 0.30  # Peak-Energie ≥ 30 % der Fenster-Energie → klarer Versatz
+
+# §D-K3-62 (2026-10-08): Diskriminator „Echo-Duplikat vs. lokale Reparatur-
+# Füllung“ gegen die Metrik-FP-Klasse aus Lauf 10.12.17 (Dropout-Füllung
+# −2,8 dB, Klick-Ersatz −8,4 dB, Wow-Resampling −10,5 dB — alle als „pre_echo“
+# gemeldet). Codec-Pre-Echo ist eine vorwärts verschmierte KOPIE des
+# Transienten (Korrelation hoch); Reparatur-Füllungen sind NEUE, unkorrelierte
+# lokale Energie. Schwelle konservativ wie das D-K3-47-Alignment (30 %) — der
+# Befund bleibt report-only (§V7 copilot-instructions.md): keine Verschärfung
+# des Vetos ohne Hörstichprobe (D-K3-62-Empfehlung).
+_KIND_MIN_CORR = 0.30
+_KIND_DUPLICATE = "duplicate"
+_KIND_REPAIR_FILL = "repair_fill"
+_KIND_NONE = "none"
+
+
+@dataclass(frozen=True)
+class PreEchoAnalysis:
+    """§D-K3-62 (2026-10-08): Pre-Echo-Befund mit Diskriminator-Klassifikation.
+
+    Attributes:
+        ratio_db: dB-Abstand der hinzugefügten Vor-Fenster-Energie zum Onset
+            (> −12 dB ⇒ Pre-Echo-Verdacht; −200.0 ⇒ kein Befund).
+        corr: Normierte Peak-Kreuzkorrelation (0..1) der hinzugefügten
+            Vor-Fenster-Energie gegen das Onset-Fenster am schlechtesten Onset.
+        kind: "duplicate" (Codec-artige Kopie) | "repair_fill" (lokale
+            Reparatur-Energie) | "none" (kein Befund).
+        onset_sample: Sample-Position des ausschlaggebenden Onsets (−1 = keins).
+    """
+
+    ratio_db: float
+    corr: float
+    kind: str
+    onset_sample: int
+
+
+def _pre_delta_onset_corr(
+    before: np.ndarray,
+    after: np.ndarray,
+    pre_lo: int,
+    pre_hi: int,
+    onset_lo: int,
+    onset_hi: int,
+) -> float:
+    """§D-K3-62: Normierte Peak-Kreuzkorrelation des Vor-Δ gegen das Onset.
+
+    Codec-Pre-Echo ist die rückwärts verschmierte KOPIE des Transienten — die
+    hinzugefügte Vor-Fenster-Energie (after − before) korreliert dann mit dem
+    Onset-Fenster (lag-verschoben bis zu eine Vor-Fenster-Länge, daher
+    Kreuzkorrelation statt Punktprodukt; Betrag, weil eine Kopie invertiert
+    ankommen kann). Lokale Reparatur-Füllungen sind unkorreliert.
+    Rückgabe ∈ [0, 1]; deterministisch.
+    """
+    lo = max(0, int(pre_lo))
+    hi = min(len(before), len(after), int(pre_hi))
+    o_lo = max(0, int(onset_lo))
+    o_hi = min(len(after), int(onset_hi))
+    if hi - lo < 8 or o_hi - o_lo < 8:
+        return 0.0
+    a = np.asarray(after[lo:hi], dtype=np.float64) - np.asarray(before[lo:hi], dtype=np.float64)
+    b = np.asarray(after[o_lo:o_hi], dtype=np.float64)
+    a = a - a.mean()
+    b = b - b.mean()
+    ea = float(np.dot(a, a))
+    eb = float(np.dot(b, b))
+    if ea <= 1e-18 or eb <= 1e-18:
+        return 0.0
+    cc = np.correlate(b, a, mode="full")
+    if cc.size == 0:
+        return 0.0
+    return float(np.max(np.abs(cc)) / np.sqrt(ea * eb))
+
+
+def _local_shift_samples(
+    x_before: np.ndarray,
+    x_after: np.ndarray,
+    sr: int,
+    center_sample: int,
+) -> int:
+    """§D-K3-47 (2026-10-07): Lokaler Zeitversatz (Samples) per Kreuzkorrelation.
+
+    Positiv = das Nach-Signal ist an dieser Stelle um ``shift`` Samples SPÄTER
+    als das Vor-Signal (z. B. nach Zeitkorrektur/Wow-Bearbeitung). Rückgabe 0,
+    wenn kein klarer Versatz messbar ist (konservativ: dann gilt die
+    unalignierte Prüfung). Rein deterministisch (FFT-Korrelation).
+    """
+    half_ctx = max(64, int(_ALIGN_CTX_MS * 1e-3 * sr))
+    lo = max(0, center_sample - half_ctx)
+    hi = min(len(x_before), len(x_after), center_sample + half_ctx)
+    n = hi - lo
+    max_lag = max(1, int(_ALIGN_SEARCH_MS * 1e-3 * sr))
+    if n < 4 * max_lag:
+        return 0
+    a = np.asarray(x_before[lo:hi], dtype=np.float64)
+    b = np.asarray(x_after[lo:hi], dtype=np.float64)
+    fft_len = 1
+    while fft_len < n + max_lag:
+        fft_len <<= 1
+    cc = np.fft.irfft(np.fft.rfft(b, fft_len) * np.conj(np.fft.rfft(a, fft_len)), fft_len)
+    pos = cc[: max_lag + 1]  # lags 0..+max_lag
+    neg = cc[fft_len - max_lag :]  # lags -max_lag..-1
+    p_idx = int(np.argmax(pos))
+    n_idx = int(np.argmax(neg)) - max_lag  # ∈ [-max_lag, -1]
+    peak_pos = float(pos[p_idx])
+    peak_neg = float(neg[n_idx + max_lag])
+    if peak_pos >= peak_neg:
+        lag, peak = p_idx, peak_pos
+    else:
+        lag, peak = n_idx, peak_neg
+    energy = float(np.sum(b * b) + 1e-18)
+    if peak <= _ALIGN_MIN_CORR * energy:
+        return 0  # kein klarer Versatz — keine Alignment-Korrektur
+    return int(lag)
+
+
+def _aligned_delta_pre_energy(
+    x_before: np.ndarray,
+    x_after: np.ndarray,
+    lo: int,
+    hi: int,
+    shift: int,
+) -> float:
+    """§D-K3-47: Mittlere positive Delta-Energie im Vor-Fenster [lo, hi).
+
+    Vergleichsbasis ist das um ``shift`` verschobene VOR-Signal — bei einer
+    reinen Ereignis-Verschiebung geht das Delta gegen 0 (kein Pre-Echo);
+    ein echter Precursor bleibt sichtbar.
+    """
+    if hi <= lo:
+        return 0.0
+    lo2 = lo - shift
+    hi2 = hi - shift
+    a_aligned = np.zeros(hi - lo, dtype=np.float64)
+    s = max(0, lo2)
+    e = min(len(x_before), hi2)
+    if e > s:
+        a_aligned[s - lo2 : e - lo2] = np.asarray(x_before[s:e], dtype=np.float64)
+    b = np.asarray(x_after[lo:hi], dtype=np.float64)
+    return float(np.mean(np.maximum(b - a_aligned, 0.0) ** 2))
+
+
+def analyze_pre_echo(
+    x_before: np.ndarray,
+    x_after: np.ndarray,
+    sr: int,
+    corr_threshold: float = _KIND_MIN_CORR,
+) -> PreEchoAnalysis:
+    """Pre-Echo-Verhältnis (dB) + §D-K3-62-Diskriminator (Duplikat vs. Füllung).
+
+    Returns:
+        PreEchoAnalysis — `ratio_db` positiv = Pre-Echo-Verdacht; −200.0, wenn
+        kein hörrelevantes Delta existiert oder keine Onsets gefunden werden
+        (dann `kind="none"`). `kind`: "duplicate" (normierte Peak-Kreuz-
+        korrelation der hinzugefügten Vor-Fenster-Energie gegen das Onset-
+        Fenster ≥ `corr_threshold` — Codec-artige Kopie) oder "repair_fill"
+        (lokale Reparatur-Energie, unkorreliert). Deterministisch.
+    """
+    before = np.asarray(x_before, dtype=np.float32)
+    after = np.asarray(x_after, dtype=np.float32)
+    n = min(len(before), len(after))
+    before, after = before[:n], after[:n]
+    if n < int(sr * 0.05):
+        return PreEchoAnalysis(ratio_db=-200.0, corr=0.0, kind=_KIND_NONE, onset_sample=-1)
+
+    delta = (after - before).astype(np.float32)
+    delta_rms = float(np.sqrt(np.mean(delta**2))) + 1e-12
+    after_rms = float(np.sqrt(np.mean(after**2))) + 1e-12
+    if delta_rms < 1e-4 * after_rms:
+        return PreEchoAnalysis(ratio_db=-200.0, corr=0.0, kind=_KIND_NONE, onset_sample=-1)  # kein hörrelevantes Delta
+    hop = max(1, int(sr * _ENV_WIN_S))
+    n_frames = max(1, (n - hop) // hop + 1)
+    idx = np.arange(hop)[None, :] + hop * np.arange(n_frames)[:, None]
+
+    env_a = np.sqrt(np.mean(after[idx] ** 2, axis=1)) + 1e-12
+    # Hinzugefügte (positive) Delta-Energie je Frame — für das Audibility-Gate.
+    # |delta|² allein ist vorzeichenblind: Klick-ENTFERNUNG im Vor-Fenster zählt
+    # sonst wie Pre-Echo-HINZUFÜGUNG (False-Positive bei Declickern).
+    env_d_pos = np.sqrt(np.mean(np.maximum(delta[idx], 0.0) ** 2, axis=1)) + 1e-18
+
+    # Onset-Kandidaten: Nach-Hüllkurve steigt stark relativ zur LOKALEN Baseline
+    # (10. Perzentil über ±0,5 s) — der globale Median verschluckt Anstiege in
+    # lauten Passagen (Produktionsbefund: 6,3×-Attack als 1,85× gemessen).
+    _loc_win = max(4, int(_LOCAL_WIN_S / _ENV_WIN_S))
+    _floor = float(np.max(env_a)) * 10.0 ** (-60.0 / 20.0)  # −60 dB unter Song-Peak:
+    # Stille erzeugt keine Onsets (Baseline ≈ 0 würde jedes Rauschen als Anstieg
+    # werten — Produktionsbefund auf realem Song-Anfang).
+    _loc_base = np.zeros(n_frames, dtype=np.float64)
+    # §PERF-R11: Rollendes Perzentil über sliding_window_view für die
+    # Innen-Frames (bit-identisch — gleiche percentile-Berechnung je Fenster),
+    # Rand-Frames behalten den Loop (geklemmte Fenster).
+    _interior_lo = _loc_win
+    _interior_hi = n_frames - _loc_win
+    if _interior_hi > _interior_lo:
+        _w_len = 2 * _loc_win + 1
+        _w = np.lib.stride_tricks.sliding_window_view(env_a, _w_len)
+        _loc_base[_interior_lo:_interior_hi] = np.percentile(_w[: _interior_hi - _interior_lo], _LOCAL_PERC, axis=1)
+    for f in list(range(0, _interior_lo)) + list(range(_interior_hi, n_frames)):
+        _lo = max(0, f - _loc_win)
+        _hi = min(n_frames, f + _loc_win + 1)
+        _loc_base[f] = max(float(np.percentile(env_a[_lo:_hi], _LOCAL_PERC)), _floor)
+    np.maximum(_loc_base, _floor, out=_loc_base)
+    rise = env_a / (_loc_base + 1e-12)
+    onset_frames = np.where(rise > _ONSET_RISE)[0]
+    if onset_frames.size == 0:
+        return PreEchoAnalysis(ratio_db=-200.0, corr=0.0, kind=_KIND_NONE, onset_sample=-1)
+
+    pre_frames = max(1, int(_PRE_WIN_S / _ENV_WIN_S))
+    gap_frames = max(1, int(_GAP_S / _ENV_WIN_S))
+    post_frames = max(1, int(_POST_WIN_S / _ENV_WIN_S))
+
+    worst_db = -200.0
+    worst_onset = -1
+    worst_pre_lo = 0
+    worst_pre_hi = 0
+    worst_post_hi = 0
+    _mask_floor_db = 10.0 ** (-_FWD_MASK_DB / 10.0)
+    # SUP-F6 (2026-09-16): Absolute Hörbarkeits-Schwelle — hinzugefügte
+    # Pre-Energie unter −60 dB des Song-Peaks (gleiche Konstante wie die
+    # Onset-Baseline) ist unter jeder Maskierungsbedingung unhörbar. Bei
+    # leisen Onsets gehen die relativen Schwellen gegen 0 und Delta-Rauschen
+    # ≈0-Delta-Phasen (phase_01 micro_fallback Δ=+0,00 dB, phase_47-Limiter)
+    # passierte sie — Produktionsbefund 2026-09-16.
+    _abs_floor_e = (float(np.max(env_a)) * 10.0 ** (-60.0 / 20.0)) ** 2
+    for _of in onset_frames:
+        _pre_lo = max(0, _of - pre_frames)
+        _pre_hi = max(0, _of - gap_frames)
+        _post_hi = min(n_frames, _of + post_frames)
+        if _pre_hi <= _pre_lo or _post_hi <= _of:
+            continue
+        # Forward-Masking-Gate: Nur HINZUGEFÜGTE Vor-Fenster-Energie, die über
+        # Onset-Pegel − 18 dB liegt, kann als Pre-Echo hörbar sein.
+        # §D-K3-47 (2026-10-07): Timing-Alignment — reine Ereignis-Verschiebungen
+        # (Wow-Korrektur phase_12, Klick-Ersatz-Kanten) verlagern die Attack-
+        # Energie ins Vor-Fenster und wirkten wie ein Precursor. Kontroll-
+        # Experiment: Shift +1 ms → −11,5 dB („Befund"), echtes Echo → kein
+        # Befund — die Metrik war timing-blind. Die Vergleichsbasis wird um den
+        # LOKALEN Versatz korrigiert (nur bei klarer Korrelation, sonst 0).
+        _shift_s = _local_shift_samples(before, after, sr, _of * hop + hop // 2)
+        if _shift_s:
+            _added_pre_e = _aligned_delta_pre_energy(before, after, _pre_lo * hop, _pre_hi * hop, _shift_s)
+        else:
+            _added_pre_e = float(np.mean(env_d_pos[_pre_lo:_pre_hi] ** 2))
+        if _added_pre_e < float(env_a[_of] ** 2) * _mask_floor_db:
+            continue
+        if _added_pre_e < _abs_floor_e:
+            continue
+        # SUP-F6 (2026-09-16): Zweite Audibility-Schwelle — hinzugefügte
+        # Pre-Energie unter dem lokalen Vor-Fenster-Signalpegel − 18 dB ist
+        # maskiert und löst KEINEN Befund aus. Bisher erzeugte Delta-Rauschen
+        # (≈0-Delta-Phasen, z. B. Limiter bei pitch=0.0c/loud=0.0dB) einen
+        # Pre-Echo-Befund, weil das Verhältnis zweier Rausch-Energien beliebig
+        # groß werden kann.
+        _pre_signal_e = float(np.mean(env_a[_pre_lo:_pre_hi] ** 2)) + 1e-18
+        if _added_pre_e < _pre_signal_e * _mask_floor_db:
+            continue
+        # SUP-F6 (2026-09-16): Das Verhältnis wird auf HINZUGEFÜGTER Energie
+        # (positive Delta-Hälfte) gebildet — die signierte Delta-Energie zählte
+        # Klick-ENTFERNUNG im Vor-Fenster wie eine Pre-Echo-HINZUFÜGUNG
+        # (False-Positive bei phase_01/23, Produktionsbefund 2026-09-16).
+        # SUP-F7 (2026-09-23): Ratio-Referenz auf die ONSET-Energie des
+        # Nach-Signals umgestellt (Forward-Masking-Kontext, Zwicker & Fastl
+        # §7.2). Das alte Verhältnis zweier HINZUGEFÜGTER Energien
+        # (pre-Δ ÷ post-Δ) konnte bei ≈0-Delta-Phasen beliebig groß werden
+        # (post-Δ → 0) — Produktionsbefund „Vogel der Nacht": 12 Pre-Echo-
+        # Befunde bei loud=0.0dB/hf=0.000. Rückgabe ist jetzt der dB-Abstand
+        # der hinzugefügten Vor-Fenster-Energie zum Onset: > −12 dB ⇒
+        # potenziell hörbares Pre-Echo (Witness-Schwelle), < −18 dB ⇒ durch
+        # die Forward-Masking-Gates oben bereits ausgeschlossen.
+        # §D-K3-47: gleiche (ggf. alignierte) Vor-Fenster-Energie wie in den Gates.
+        _pre_e = _added_pre_e
+        _onset_e = float(env_a[_of] ** 2)
+        ratio_db = 10.0 * np.log10(_pre_e / max(_onset_e, 1e-18))
+        if ratio_db > worst_db:
+            worst_db = ratio_db
+            worst_onset = int(_of)
+            worst_pre_lo, worst_pre_hi, worst_post_hi = _pre_lo, _pre_hi, _post_hi
+    if worst_db <= -200.0 or worst_onset < 0:
+        return PreEchoAnalysis(ratio_db=-200.0, corr=0.0, kind=_KIND_NONE, onset_sample=-1)
+    # §D-K3-62: Diskriminator am SCHLECHTESTEN (höchsten) Kandidaten.
+    corr = _pre_delta_onset_corr(
+        before,
+        after,
+        worst_pre_lo * hop,
+        worst_pre_hi * hop,
+        worst_onset * hop,
+        worst_post_hi * hop,
+    )
+    kind = _KIND_DUPLICATE if corr >= corr_threshold else _KIND_REPAIR_FILL
+    return PreEchoAnalysis(
+        ratio_db=float(round(worst_db, 2)),
+        corr=float(round(corr, 4)),
+        kind=kind,
+        onset_sample=worst_onset * hop,
+    )
+
+
+def pre_echo_ratio_db(x_before: np.ndarray, x_after: np.ndarray, sr: int) -> float:
+    """Kompatibilitäts-Wrapper (§G9 copilot-instructions.md): nur das Verhältnis.
+
+    Der volle Befund inkl. §D-K3-62-Diskriminator kommt aus
+    :func:`analyze_pre_echo`.
+    """
+    return analyze_pre_echo(x_before, x_after, sr).ratio_db

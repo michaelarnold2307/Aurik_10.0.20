@@ -1,0 +1,36 @@
+# Aurik 8.0 Advanced Optimization Requirements
+# Phase 1-6: Neural Architecture Search, Ensemble, Multi-Objective, Uncertainty, Augmentation
+
+# Core Deep Learning — CPU-only (§13.4, §9.5 — kein CUDA erlaubt)
+# Installation via install_aurik.sh oder:
+# pip install torch==2.7.0+cpu torchaudio==2.7.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+# Sicherheitsfix: torch>=2.6.0 behebt CVE-2025-32434 (critical RCE via torch.load),
+#   CVE-2024-31580 (heap-based buffer overflow), CVE-2024-31583 (use-after-free).
+torch==2.7.0+cpu
+torchaudio==2.7.0+cpu
+
+# Hyperparameter Optimization
+optuna>=3.5.0
+# Security override: alembic -> mako traversal fixes
+mako==1.3.12
+
+# Neural Architecture Search
+# sympy: >=1.13.1 behebt ReDoS/Infinite-loop-Schwachstellen in 1.13.0;
+# <1.14.0 schließt bekannte Code-Injection (Eval-Injection) in 1.14.x aus
+# und behält PyTorch-Kompatibilität.
+sympy>=1.13.1,<1.14.0
+
+# Performance Testing
+pytest-benchmark>=5.2.3  # For performance benchmarking tests
+# Security override: fixes ReDoS in older transitive pygments
+pygments==2.20.0
+
+# Scientific Computing (if not already in main requirements)
+numpy>=1.24.0
+scipy>=1.11.0
+# Security overrides for transitive matplotlib chain
+fonttools==4.63.0
+pillow==12.2.0
+
+# Visualization (optional, graceful fallback in multi_objective.py)
+matplotlib>=3.7.0

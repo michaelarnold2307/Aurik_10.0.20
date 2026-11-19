@@ -1,0 +1,24 @@
+{
+  "stufe": "W-4 MP-SENet",
+  "rows": [
+    {
+      "sample": "AM_Contra_-_Heart_Peri",
+      "rms_delta_db": -1.927,
+      "never_worsen": false
+    },
+    {
+      "sample": "Al_James_-_Schoolboy_F",
+      "rms_delta_db": -2.112,
+      "never_worsen": false
+    },
+    {
+      "sample": "Motor_Tapes_-_Shore__m",
+      "rms_delta_db": -1.922,
+      "never_worsen": false
+    }
+  ],
+  "never_worsen": false,
+  "befund": "MP-SENet ist Vokal-NR (Rausch-Entferner): RMS sinkt ~2dB = beabsichtigte Rausch-Entfernung, KEIN Worse. RMS-Erhaltung ist die falsche Never-worsen-Metrik fuer eine NR-Stufe.",
+  "richtige_metrik": "seg-SNR-Verbesserung (Rausch-Abstand) + Qualitaets-Erhalt (VERSA/MOS), nicht RMS-Erhaltung",
+  "offener_schritt": "W-4-Voll-Song-Nachweis braucht NR-spezifische Metrik (seg-SNR + Never-worsen auf Sprach/Musik-Qualitaet) + Blindheit + Signifikanz (W-1-Muster)"
+}

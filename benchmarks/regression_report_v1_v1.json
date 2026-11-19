@@ -1,0 +1,82 @@
+{
+  "alerts": [
+    {
+      "baseline_value": 0.8800000000000001,
+      "baseline_version": "v1.0",
+      "category": null,
+      "current_value": 0.0,
+      "current_version": "v1.0",
+      "degradation": -0.8800000000000001,
+      "goal_name": "bass-kraft",
+      "samples_affected": null,
+      "severity": "critical"
+    },
+    {
+      "baseline_value": 0.96,
+      "baseline_version": "v1.0",
+      "category": null,
+      "current_value": 0.3460308042719653,
+      "current_version": "v1.0",
+      "degradation": -0.6139691957280347,
+      "goal_name": "transparenz",
+      "samples_affected": null,
+      "severity": "critical"
+    },
+    {
+      "baseline_value": 0.9099999999999999,
+      "baseline_version": "v1.0",
+      "category": null,
+      "current_value": 0.8829726773394192,
+      "current_version": "v1.0",
+      "degradation": -0.02702732266058072,
+      "goal_name": "natuerlichkeit",
+      "samples_affected": null,
+      "severity": "minor"
+    },
+    {
+      "baseline_value": 0.9399999999999998,
+      "baseline_version": "v1.0",
+      "category": null,
+      "current_value": 0.0,
+      "current_version": "v1.0",
+      "degradation": -0.9399999999999998,
+      "goal_name": "dynamik",
+      "samples_affected": null,
+      "severity": "critical"
+    },
+    {
+      "baseline_value": 0.9,
+      "baseline_version": "v1.0",
+      "category": null,
+      "current_value": 0.0,
+      "current_version": "v1.0",
+      "degradation": -0.9,
+      "goal_name": "raeumlichkeit",
+      "samples_affected": null,
+      "severity": "critical"
+    },
+    {
+      "baseline_value": 0.95,
+      "baseline_version": "v1.0",
+      "category": null,
+      "current_value": 0.11107670656452037,
+      "current_version": "v1.0",
+      "degradation": -0.8389232934354796,
+      "goal_name": "brillanz",
+      "samples_affected": null,
+      "severity": "critical"
+    }
+  ],
+  "summary": {
+    "baseline_version": "v1.0",
+    "critical_regressions": 5,
+    "current_version": "v1.0",
+    "improvements": 0,
+    "minor_regressions": 1,
+    "moderate_regressions": 0,
+    "no_change": 4,
+    "regressions_detected": 6,
+    "timestamp": "2026-02-11T05:52:51.438258",
+    "total_goals": 10
+  }
+}

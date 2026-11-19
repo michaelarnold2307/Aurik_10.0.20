@@ -1,0 +1,143 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "pegel_matching": true,
+  "jnd_defektlast": 0.05,
+  "n_paare": 6,
+  "n_besser": 2,
+  "aggregat": {
+    "kassette": {
+      "n": 3,
+      "delta_defektlast": -0.0254,
+      "delta_musik_mos": -0.0467,
+      "besser": 0
+    },
+    "clipping": {
+      "n": 3,
+      "delta_defektlast": -0.10417,
+      "delta_musik_mos": 0.2668,
+      "besser": 2
+    }
+  },
+  "zeilen": [
+    {
+      "song": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320 ",
+      "rezept": "clipping",
+      "clean": {
+        "defektlast": 0.4749,
+        "musik_mos": 4.7065
+      },
+      "schaden": {
+        "defektlast": 0.4779,
+        "musik_mos": 4.0595
+      },
+      "restauriert": {
+        "defektlast": 0.18,
+        "musik_mos": 4.6348
+      },
+      "delta_defektlast": -0.2979,
+      "delta_musik_mos": 0.5753,
+      "besser": true,
+      "pegel_gain_ist": 0.2853
+    },
+    {
+      "song": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320 ",
+      "rezept": "kassette",
+      "clean": {
+        "defektlast": 0.4749,
+        "musik_mos": 4.7065
+      },
+      "schaden": {
+        "defektlast": 0.4983,
+        "musik_mos": 4.7069
+      },
+      "restauriert": {
+        "defektlast": 0.4911,
+        "musik_mos": 4.5848
+      },
+      "delta_defektlast": -0.0072,
+      "delta_musik_mos": -0.1221,
+      "besser": false,
+      "pegel_gain_ist": 0.6542
+    },
+    {
+      "song": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+      "rezept": "clipping",
+      "clean": {
+        "defektlast": 0.4823,
+        "musik_mos": 4.5377
+      },
+      "schaden": {
+        "defektlast": 0.4694,
+        "musik_mos": 3.7403
+      },
+      "restauriert": {
+        "defektlast": 0.5046,
+        "musik_mos": 3.845
+      },
+      "delta_defektlast": 0.0352,
+      "delta_musik_mos": 0.1047,
+      "besser": false,
+      "pegel_gain_ist": 0.7071
+    },
+    {
+      "song": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl",
+      "rezept": "kassette",
+      "clean": {
+        "defektlast": 0.4823,
+        "musik_mos": 4.5377
+      },
+      "schaden": {
+        "defektlast": 0.4996,
+        "musik_mos": 4.5172
+      },
+      "restauriert": {
+        "defektlast": 0.4306,
+        "musik_mos": 4.4991
+      },
+      "delta_defektlast": -0.069,
+      "delta_musik_mos": -0.0181,
+      "besser": false,
+      "pegel_gain_ist": 1.0747
+    },
+    {
+      "song": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+      "rezept": "clipping",
+      "clean": {
+        "defektlast": 0.2801,
+        "musik_mos": 4.8441
+      },
+      "schaden": {
+        "defektlast": 0.2731,
+        "musik_mos": 4.6816
+      },
+      "restauriert": {
+        "defektlast": 0.2233,
+        "musik_mos": 4.8021
+      },
+      "delta_defektlast": -0.0498,
+      "delta_musik_mos": 0.1205,
+      "besser": true,
+      "pegel_gain_ist": 0.3246
+    },
+    {
+      "song": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+      "rezept": "kassette",
+      "clean": {
+        "defektlast": 0.2801,
+        "musik_mos": 4.8441
+      },
+      "schaden": {
+        "defektlast": 0.4933,
+        "musik_mos": 4.7295
+      },
+      "restauriert": {
+        "defektlast": 0.4933,
+        "musik_mos": 4.7295
+      },
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": 0.0,
+      "besser": false,
+      "pegel_gain_ist": 1.0
+    }
+  ]
+}

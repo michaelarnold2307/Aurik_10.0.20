@@ -1,0 +1,248 @@
+{
+  "check_count": 10,
+  "checks": [
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.32,
+        "max_interaction_rollbacks": 8.0,
+        "max_ml_fallbacks_used": 8.0,
+        "max_ml_guard_events": 32.0,
+        "min_decision_stability_score": 0.74
+      },
+      "field_coverage": [],
+      "guard_class": "critical",
+      "id": "voice_first_snapshot_non_empty",
+      "required": true
+    },
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.32,
+        "max_interaction_rollbacks": 8.0,
+        "max_ml_fallbacks_used": 8.0,
+        "max_ml_guard_events": 32.0,
+        "min_decision_stability_score": 0.74
+      },
+      "field_coverage": [],
+      "guard_class": "critical",
+      "id": "voice_first_blockers_runtime",
+      "required": true
+    },
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.25,
+        "min_decision_stability_score": 0.8
+      },
+      "field_coverage": [
+        "decision_quality.learning_applied",
+        "decision_quality.causal_credit_confidence",
+        "decision_quality.prior_drift_ratio",
+        "decision_quality.decision_stability_score"
+      ],
+      "guard_class": "critical",
+      "id": "decision_quality_learning_guard",
+      "required": true
+    },
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.28,
+        "max_fail_reasons_count": 0.0,
+        "max_hf_delta_ratio": 0.35,
+        "max_hf_guard_fired_count": 8.0,
+        "max_interaction_rollbacks": 6.0,
+        "max_length_corrections": 4.0,
+        "max_ml_fallbacks_used": 6.0,
+        "max_ml_guard_events": 24.0,
+        "max_recovery_uncertainty_index": 0.85,
+        "max_spectral_tilt_deviation_db_per_oct": 4.5,
+        "max_spectral_tilt_guard_fired_count": 8.0,
+        "max_team_coordination_events": 32.0,
+        "max_temporal_critical_events": 0.0,
+        "max_temporal_gain_step_db": 1.5,
+        "min_decision_stability_score": 0.78,
+        "min_holistic_artifact_freedom": 0.95
+      },
+      "field_coverage": [
+        "fidelity_guards.hf_hallucination_guard.guard_fired_count",
+        "fidelity_guards.hf_hallucination_guard.max_delta_ratio",
+        "fidelity_guards.spectral_tilt_guard.guard_fired_count",
+        "fidelity_guards.spectral_tilt_guard.max_deviation_db_per_oct"
+      ],
+      "guard_class": "high",
+      "id": "bridge_export_fidelity_guard",
+      "required": false
+    },
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.28,
+        "max_fail_reasons_count": 0.0,
+        "max_hf_delta_ratio": 0.35,
+        "max_hf_guard_fired_count": 8.0,
+        "max_interaction_rollbacks": 6.0,
+        "max_length_corrections": 4.0,
+        "max_ml_fallbacks_used": 6.0,
+        "max_ml_guard_events": 24.0,
+        "max_recovery_uncertainty_index": 0.85,
+        "max_spectral_tilt_deviation_db_per_oct": 4.5,
+        "max_spectral_tilt_guard_fired_count": 8.0,
+        "max_team_coordination_events": 32.0,
+        "max_temporal_critical_events": 0.0,
+        "max_temporal_gain_step_db": 1.5,
+        "min_decision_stability_score": 0.78,
+        "min_holistic_artifact_freedom": 0.95
+      },
+      "field_coverage": [
+        "ml_guard_events",
+        "ml_fallbacks_used"
+      ],
+      "guard_class": "high",
+      "id": "dsp_ml_guard_runtime",
+      "required": false
+    },
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.28,
+        "max_fail_reasons_count": 0.0,
+        "max_hf_delta_ratio": 0.35,
+        "max_hf_guard_fired_count": 8.0,
+        "max_interaction_rollbacks": 6.0,
+        "max_length_corrections": 4.0,
+        "max_ml_fallbacks_used": 6.0,
+        "max_ml_guard_events": 24.0,
+        "max_recovery_uncertainty_index": 0.85,
+        "max_spectral_tilt_deviation_db_per_oct": 4.5,
+        "max_spectral_tilt_guard_fired_count": 8.0,
+        "max_team_coordination_events": 32.0,
+        "max_temporal_critical_events": 0.0,
+        "max_temporal_gain_step_db": 1.5,
+        "min_decision_stability_score": 0.78,
+        "min_holistic_artifact_freedom": 0.95
+      },
+      "field_coverage": [
+        "interaction_guard.interaction_rollbacks",
+        "interaction_guard.pipeline_stopped_early"
+      ],
+      "guard_class": "high",
+      "id": "interaction_guard_runtime",
+      "required": false
+    },
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.28,
+        "max_fail_reasons_count": 0.0,
+        "max_hf_delta_ratio": 0.35,
+        "max_hf_guard_fired_count": 8.0,
+        "max_interaction_rollbacks": 6.0,
+        "max_length_corrections": 4.0,
+        "max_ml_fallbacks_used": 6.0,
+        "max_ml_guard_events": 24.0,
+        "max_recovery_uncertainty_index": 0.85,
+        "max_spectral_tilt_deviation_db_per_oct": 4.5,
+        "max_spectral_tilt_guard_fired_count": 8.0,
+        "max_team_coordination_events": 32.0,
+        "max_temporal_critical_events": 0.0,
+        "max_temporal_gain_step_db": 1.5,
+        "min_decision_stability_score": 0.78,
+        "min_holistic_artifact_freedom": 0.95
+      },
+      "field_coverage": [
+        "fail_reasons",
+        "graceful_stop",
+        "recovery_certainty.uncertainty_index"
+      ],
+      "guard_class": "high",
+      "id": "recovery_execution_runtime",
+      "required": false
+    },
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.28,
+        "max_fail_reasons_count": 0.0,
+        "max_hf_delta_ratio": 0.35,
+        "max_hf_guard_fired_count": 8.0,
+        "max_interaction_rollbacks": 6.0,
+        "max_length_corrections": 4.0,
+        "max_ml_fallbacks_used": 6.0,
+        "max_ml_guard_events": 24.0,
+        "max_recovery_uncertainty_index": 0.85,
+        "max_spectral_tilt_deviation_db_per_oct": 4.5,
+        "max_spectral_tilt_guard_fired_count": 8.0,
+        "max_team_coordination_events": 32.0,
+        "max_temporal_critical_events": 0.0,
+        "max_temporal_gain_step_db": 1.5,
+        "min_decision_stability_score": 0.78,
+        "min_holistic_artifact_freedom": 0.95
+      },
+      "field_coverage": [
+        "team_coordination.event_count",
+        "goal_recovery.attempted",
+        "goal_recovery.resolved",
+        "goal_recovery.final_violations",
+        "length_corrections"
+      ],
+      "guard_class": "high",
+      "id": "team_goal_runtime",
+      "required": false
+    },
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.28,
+        "max_fail_reasons_count": 0.0,
+        "max_hf_delta_ratio": 0.35,
+        "max_hf_guard_fired_count": 8.0,
+        "max_interaction_rollbacks": 6.0,
+        "max_length_corrections": 4.0,
+        "max_ml_fallbacks_used": 6.0,
+        "max_ml_guard_events": 24.0,
+        "max_recovery_uncertainty_index": 0.85,
+        "max_spectral_tilt_deviation_db_per_oct": 4.5,
+        "max_spectral_tilt_guard_fired_count": 8.0,
+        "max_team_coordination_events": 32.0,
+        "max_temporal_critical_events": 0.0,
+        "max_temporal_gain_step_db": 1.5,
+        "min_decision_stability_score": 0.78,
+        "min_holistic_artifact_freedom": 0.95
+      },
+      "field_coverage": [
+        "temporal_continuity.*.critical",
+        "temporal_continuity.*.gain_step_db",
+        "mono_compatibility_warning",
+        "onset_shift_ok"
+      ],
+      "guard_class": "high",
+      "id": "temporal_stereo_runtime",
+      "required": false
+    },
+    {
+      "effective_policy": {
+        "max_allowed_prior_drift_ratio": 0.28,
+        "max_fail_reasons_count": 0.0,
+        "max_hf_delta_ratio": 0.35,
+        "max_hf_guard_fired_count": 8.0,
+        "max_interaction_rollbacks": 6.0,
+        "max_length_corrections": 4.0,
+        "max_ml_fallbacks_used": 6.0,
+        "max_ml_guard_events": 24.0,
+        "max_recovery_uncertainty_index": 0.85,
+        "max_spectral_tilt_deviation_db_per_oct": 4.5,
+        "max_spectral_tilt_guard_fired_count": 8.0,
+        "max_team_coordination_events": 32.0,
+        "max_temporal_critical_events": 0.0,
+        "max_temporal_gain_step_db": 1.5,
+        "min_decision_stability_score": 0.78,
+        "min_holistic_artifact_freedom": 0.95
+      },
+      "field_coverage": [
+        "vocal_no_harm_gate.requires_rollback",
+        "vocal_no_harm_rollback",
+        "holistic_perceptual_gate.passed",
+        "holistic_perceptual_gate.artifact_freedom"
+      ],
+      "guard_class": "high",
+      "id": "vocal_perceptual_runtime",
+      "required": false
+    }
+  ],
+  "required_count": 3,
+  "schema": "voice-first-guard-coverage-manifest.v1",
+  "timestamp": "2026-05-21T04:17:53.655319"
+}

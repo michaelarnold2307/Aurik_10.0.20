@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'aurik-backend'
+    static_configs:
+      - targets: ['aurik-backend:8000']
+
+  - job_name: 'deepfilternet'
+    static_configs:
+      - targets: ['deepfilternet:5000']
+
+  - job_name: 'dnsmos'
+    static_configs:
+      - targets: ['dnsmos:5000']

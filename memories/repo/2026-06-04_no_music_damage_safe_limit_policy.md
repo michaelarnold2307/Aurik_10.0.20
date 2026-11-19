@@ -1,0 +1,8 @@
+- UnifiedRestorerV3: Psycho-Naturalness-Recovery erweitert um Safe-Limit-Mode.
+- Wenn kein Gate-passender Kandidat existiert, wird dennoch der psychoakustisch beste Blend (>= +0.01 Score) übernommen, um Musikschaden zu minimieren.
+- Policy-Tag in Fail-Reasons ergänzt: maximum_defect_suppression_without_music_damage.
+- Validierung: tests/unit/test_unified_restorer_v3.py -> 244 passed; real_audio_execution_golden_gate passed=True, artifact/hpi/vocal/export jeweils 1.0.
+- Follow-up: Kurzexcerpt-Feasibility um transient_energie/authentizitaet erweitert + Ultra-Short-Toleranz (<=4s) fuer instabile P3/P4-Ziele.
+- Ergebnis Full-Gate (goal_short_ultra_v1): MUSICAL_GOALS_VIOLATION 4 -> 0 bei unveraenderter strikter Psycho-Naturalness (PSYCHO_NATURALNESS_FAIL bleibt 8).
+- Psycho-Recovery vertieft (safe reference blends bis alpha 0.16 fuer original_audio, 0.32 fuer best_carrier_checkpoint) + duration_s konsistent in Candidate-Gate.
+- Ergebnis Full-Gate (psy_recovery_depth_v1): PSYCHO_NATURALNESS_FAIL 8 -> 0, MUSICAL_GOALS_VIOLATION bleibt 0, Contracts artifact/hpi/vocal/export jeweils 1.0.

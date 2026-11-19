@@ -1,0 +1,11 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "datum": "2026-11-15",
+  "lauf": "declip_kopf_ganztitel_kontrolle",
+  "befund": "Declip-Kopf (use_aspade_declipper, D-K4-1) auf Ganz-Titel-clipping (3 Paare, Seed 42): TRAEUMER BESSER (-0,036/+0,103 vs. Kontrolle +0,408/-0,333) — der schlimmste clipping-Fall wird gelöst. JETS knapp (-0,016/-0,076 vs. +0,063/+0,003). BOOGIE defektlast schlechter (+0,063 vs. Kontrolle -0,070) — der Kopf übernimmt, obwohl die Bestands-Pipeline besser ist. DRT-12-Kontroll-Bedingung GREIFT: 1/3 besser, 1/3 verschlechtert => keine Aktivierung; naechste Ursache: der phase_07-Guard vergleicht gegen den Input statt gegen die Bestands-Pipeline (Amtsinhaber-Vergleich auf Ganz-Titel-Ebene fehlt).",
+  "quellen": [
+    "study_stimuli/sinn_declip/bewertung.json",
+    "/tmp/sinn_kontrolle/bewertung.json",
+    "/tmp/sinn_jets_kontrolle/bewertung.json"
+  ]
+}

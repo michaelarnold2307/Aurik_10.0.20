@@ -1,0 +1,175 @@
+# Hearing Test Scenarios — Restoration Mode (v9.10.130)
+# Purpose: Mandatory external hearing validation for restoration pipeline
+# These scenarios isolate carrier-chain defects and minimal-intervention quality
+# All scenarios include ≥1 vocal track to assess lyrical-saliency preservation (§2.36, §2.44)
+
+scenarios:
+  - id: "RESTORATION_SCENARIO_1"
+    name: "Vinyl Wear + Surface Noise (Rock Vocal)"
+    category: "Carrier-Chain: Vinyl Degradation"
+
+    source_material:
+      carrier: "vinyl"
+      era: "1970s"
+      genre: "rock"
+      vocal_track: true
+      description: "Original rock recording from vinyl with audible distortion, wow/flutter, and surface crackle"
+
+    expected_defects_scanner:
+      - "crackle_noise (severity: high)"
+      - "wow_flutter (severity: medium)"
+      - "rumble (severity: low)"
+      - "distortion_clipping (severity: medium)"
+
+    restoration_objectives:
+      - "Remove surface crackle without affecting vocal presence"
+      - "Stabilize pitch/tempo (wow/flutter correction)"
+      - "Preserve original vinyl-era warmth and compression signature"
+      - "Maintain lyrical intelligibility"
+
+    listening_focus_areas:
+      - "Vocalist breath clarity and articulation"
+      - "Instrumental transients: drum punch, string attack"
+      - "Stereo imaging: stable, not collapsed or phase-inverted"
+      - "Absence of musical noise or spectral holes"
+      - "Natural decay and reverb tail"
+
+    mandatory_validation_points:
+      - "Natürlichkeit ≥ 0.90" # §0 primary principle
+      - "Authentizität ≥ 0.88" # Original carrier character preserved
+      - "Artikulation (P2 Goal) ≥ 0.85" # No articulation regression
+      - "Artefaktfreiheit § (artifact_freedom > 0.95)" # Hard gate
+      - "No phase-cancellation in vocal center"
+      - "L/R imbalance < 6 dB (was degraded, must stabilize but not overcorrect)"
+
+    expected_oqs_range: [75, 82] # Restoration: timbral fidelity, not enhancement
+    acceptable_lufs_difference: 1.0 # LUFS-diff ≤ 1 LU (§2.46)
+
+    mushra_reference_setup:
+      num_listeners: 8  # Minimum
+      reference_audio_track: "vinyl_original_unprocessed"
+      hidden_reference: true
+      anchor_low: "crackle_only_removed_aggressively"  # Over-processed bad example
+      anchor_high: "original_unprocessed"  # No processing
+      evaluation_scale: "1–100 (Naturalness, Authenticity, Artifact Freedom)"
+
+    go_no_go_criteria:
+      - "≥ 6/8 listeners score restoration ≥ 75 on naturalness"
+      - "≥ 6/8 detect restoration as 'original' or 'minimally processed'"
+      - "No listener reports new artifacts (musical noise, phase weirdness)"
+      - "Vocal intelligibility rated ≥ 80 on clarity scale"
+
+  - id: "RESTORATION_SCENARIO_2"
+    name: "Tape Hiss + Oxide Dropout (Jazz Vocal)"
+    category: "Carrier-Chain: Magnetic Tape Degradation"
+
+    source_material:
+      carrier: "reel_tape"
+      era: "1980s"
+      genre: "jazz"
+      vocal_track: true
+      description: "Jazz vocal recording on reel-to-reel with audible tape hiss and 2–3 short dropouts (< 500 ms)"
+
+    expected_defects_scanner:
+      - "tape_hiss_broadband_noise (severity: high)"
+      - "dropout_short_duration (severity: medium)"
+      - "tape_saturation_soft_clipping (severity: low)"
+
+    restoration_objectives:
+      - "Reduce tape hiss without removing musical texture"
+      - "Repair dropout regions with coherent audio"
+      - "Preserve tape saturation character (soft, musical)"
+      - "Maintain vocal nuance and breath sounds"
+
+    listening_focus_areas:
+      - "Singer's breath texture and mic proximity"
+      - "Piano/clarinet tonality: smooth, not synthetic"
+      - "Dropout repair: seamless blending, no abrupt energy changes"
+      - "Tape saturation color: warm, not harsh"
+      - "Stereo field stability and natural decay"
+
+    mandatory_validation_points:
+      - "Natürlichkeit ≥ 0.90"
+      - "Wärme (P4 Goal) ≥ 0.75" # Tape saturation character must survive
+      - "Transparenz (P4 Goal) ≥ 0.82" # Hiss removal without spectral holes
+      - "Artefaktfreiheit > 0.95" # No dropout repair artifacts (phase-cancellation, clicks)
+      - "No spectral holes or 'hollowness' in vocal"
+      - "Dropout repair must be inaudible or blend naturally"
+
+    expected_oqs_range: [72, 80]
+    acceptable_lufs_difference: 1.0
+
+    mushra_reference_setup:
+      num_listeners: 8
+      reference_audio_track: "tape_original_unprocessed"
+      hidden_reference: true
+      anchor_low: "excessive_denoise_kills_warmth"
+      anchor_high: "original_with_hiss"
+      evaluation_scale: "1–100 (Naturalness, Warmth Preservation, Dropout Repair Quality)"
+
+    go_no_go_criteria:
+      - "≥ 6/8 listeners rate restoration ≥ 72 on warmth preservation"
+      - "≥ 7/8 find dropout repairs 'unnoticeable' or 'natural'"
+      - "No listener perceives hiss removal as 'dead' or 'detuned'"
+      - "Vocal texture rated ≥ 75 on 'breath clarity' scale"
+
+  - id: "RESTORATION_SCENARIO_3"
+    name: "Shellac Brittleness + Click Storm (Classical Vocal)"
+    category: "Carrier-Chain: Shellac/Acoustic Recording"
+
+    source_material:
+      carrier: "shellac"
+      era: "1930s"
+      genre: "classical"
+      vocal_track: true
+      description: "Shellac 78 rpm recording of soprano with pervasive clicking, frequency loss (narrow bandwidth ≤ 5 kHz), and mechanical noise"
+
+    expected_defects_scanner:
+      - "crackle_click_heavy (severity: very_high)"
+      - "frequency_loss_high_frequency (severity: high)"
+      - "rumble_mechanical_noise (severity: medium)"
+
+    restoration_objectives:
+      - "Remove click storm without affecting vocal naturalism"
+      - "Extend frequency response (band-limited source, not clipping)"
+      - "Restore 'presence' (3–5 kHz region) for vocal intelligibility"
+      - "Preserve original recording character (acoustic horn, no electrical compression)"
+
+    listening_focus_areas:
+      - "Soprano vowel clarity and vibrato definition"
+      - "Orchestral accompaniment: strings, woodwinds tonality"
+      - "Click removal: silence, no new artifacts"
+      - "Frequency-restoration balance: presence without harshness"
+      - "Overall 'age character': sounds old but beautiful, not harsh or synthetic"
+
+    mandatory_validation_points:
+      - "Natürlichkeit ≥ 0.90" # Must sound intentional, not 'corrected'
+      - "Authentizität ≥ 0.88" # Shellac era-character preserved
+      - "Brillanz (P5 Goal) ≥ 0.78" # Frequency restoration must not oversaturate
+      - "Artikulation (P2 Goal) ≥ 0.85" # Vocal articulation preserved
+      - "Artefaktfreiheit > 0.95" # No spectral holes or ringing from click removal
+      - "No phase-shift artifacts (delay or cancellation)"
+
+    expected_oqs_range: [68, 78]  # Lower range: severely degraded source
+    acceptable_lufs_difference: 1.5  # Shellac may need ±1.5 LU adjustment
+
+    mushra_reference_setup:
+      num_listeners: 8
+      reference_audio_track: "shellac_original_78rpm"
+      hidden_reference: true
+      anchor_low: "clicks_partially_removed_harsh_brightening"
+      anchor_high: "original_unprocessed_click_heavy"
+      evaluation_scale: "1–100 (Click Removal Quality, Naturalness, Frequency Extension Beauty)"
+
+    go_no_go_criteria:
+      - "≥ 6/8 listeners rate click removal ≥ 80 on 'unnoticeable' scale"
+      - "≥ 6/8 perceive frequency extension as 'natural presence' not 'harshness'"
+      - "No listener detects spectral artifacts (ringing, holes, phase-weirdness)"
+      - "Vocal intelligibility (IPA-syllable clarity) improved by ≥ 2 points on 1–10 scale"
+
+metadata:
+  version: "v9.10.130"
+  spec_reference: ".github/specs/07_quality_and_tests.md §5.7a"
+  created_date: "2026-04-07"
+  mandatory_for_release: true
+  ml_fallback_scenarios: ["RESTORATION_SCENARIO_1 @ high_cpu_load (DSP fallback HPSS)", "RESTORATION_SCENARIO_2 @ OOM (spectral-gating fallback)", "RESTORATION_SCENARIO_3 @ CREPE_unavailable (pYIN fallback)"]

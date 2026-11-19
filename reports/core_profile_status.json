@@ -1,0 +1,64 @@
+{
+  "artifacts": [
+    {
+      "artifact": "rmvpe",
+      "file": false,
+      "manifest": false,
+      "path": "models/rmvpe/rmvpe.onnx",
+      "path_ok": null,
+      "resolved_by": "crepe_fallback",
+      "runtime_ready": true,
+      "sha_ok": null,
+      "size_ok": null
+    },
+    {
+      "artifact": "sgmse_plus",
+      "file": false,
+      "manifest": false,
+      "path": "models/sgmse_plus/sgmse_plus.ts",
+      "path_ok": null,
+      "resolved_by": "wpe_dsp_fallback",
+      "runtime_ready": true,
+      "sha_ok": null,
+      "size_ok": null
+    },
+    {
+      "artifact": "versa",
+      "file": false,
+      "manifest": false,
+      "path": "models/versa/hub_cache/checkpoints/ft_wav2vec2_large_ll60k_mdf_p1_200epochs_all_192epochs.pth",
+      "path_ok": null,
+      "resolved_by": "pqs_dsp_fallback",
+      "runtime_ready": true,
+      "sha_ok": null,
+      "size_ok": null
+    },
+    {
+      "artifact": "flow_matching",
+      "file": false,
+      "manifest": false,
+      "path": "models/flow_matching/flow_matching.onnx",
+      "path_ok": null,
+      "resolved_by": "cqtdiff_or_diffwave_fallback",
+      "runtime_ready": true,
+      "sha_ok": null,
+      "size_ok": null
+    },
+    {
+      "artifact": "gacela",
+      "file": false,
+      "manifest": false,
+      "path": "models/gacela/model/01_400000.pt",
+      "path_ok": null,
+      "resolved_by": "dsp_exciter_fallback",
+      "runtime_ready": true,
+      "sha_ok": null,
+      "size_ok": null
+    }
+  ],
+  "summary": {
+    "missing_files": 5,
+    "missing_manifest_entries": 5,
+    "runtime_not_ready": 0
+  }
+}

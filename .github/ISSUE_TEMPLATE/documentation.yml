@@ -1,0 +1,84 @@
+name: 📚 Documentation Issue
+description: Report issues with documentation or request documentation improvements
+title: "[Docs]: "
+labels: ["documentation", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Aurik's documentation!
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Documentation Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - Missing documentation
+        - Incorrect or outdated information
+        - Unclear or confusing explanation
+        - Typo or grammatical error
+        - Code example doesn't work
+        - Missing code examples
+        - Broken link
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation Location
+      description: Which file or page has the issue?
+      placeholder: "e.g., README.md, docs/ARCHITECTURE.md, line 42"
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: Issue Description
+      description: Describe the documentation issue
+      placeholder: What's wrong or missing?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: How would you improve this documentation?
+      placeholder: What should it say instead?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How much does this affect users?
+      options:
+        - Critical - Prevents users from using Aurik
+        - High - Causes significant confusion
+        - Medium - Minor confusion or inconvenience
+        - Low - Small improvement
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I would be willing to submit a PR to fix this documentation issue
+          required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have verified this information is incorrect/missing in the latest version
+          required: true

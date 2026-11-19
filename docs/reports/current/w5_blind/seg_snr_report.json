@@ -1,0 +1,57 @@
+{
+  "stufe": "W-5 DFN Musik-NR",
+  "metrik": "seg-SNR",
+  "rows": [
+    {
+      "sample": "cassette_hiphop_1980",
+      "seg_snr_in": 20.97,
+      "seg_snr_out": 20.97,
+      "delta_db": 0.0
+    },
+    {
+      "sample": "cassette_pop_1980s_c",
+      "seg_snr_in": 21.69,
+      "seg_snr_out": 21.69,
+      "delta_db": 0.0
+    },
+    {
+      "sample": "cassette_rock_1990s_",
+      "seg_snr_in": 18.93,
+      "seg_snr_out": 18.93,
+      "delta_db": 0.0
+    },
+    {
+      "sample": "digital_electronic_2",
+      "seg_snr_in": 99.21,
+      "seg_snr_out": 99.21,
+      "delta_db": 0.0
+    }
+  ],
+  "befund": "DFN enhance gibt Input unveraendert zurueck (segSNR +0.00dB auf allen 4) — DFN wendet NICHT an (Modell nicht geladen oder Fallback).",
+  "offener_schritt": "DFN enhance interner Pfad (enc->erb_dec->dec) wendet nicht an — interne Verarbeitung/Fallback pruefen; ONNX-Deploy steht, die Anwendung fehlt noch.",
+  "deploy_versuch": "ONNX-Export (scripts/export_df_musik_onnx.py) aus dfn_musik_best.pt: FAILED",
+  "deploy_blocker": "torchaudio.backend.common entfernt (neueres torchaudio) — vendored DeepFilterNet df/io.py importiert es noch (ModuleNotFoundError). Dependency-Version-Inkompatibilitaet, nicht Modell-Problem.",
+  "deploy_naechster_schritt": "torchaudio-backend-Import in df/io.py modernisieren (torchaudio>=2.x API) ODER torchaudio-Pin; dann Export + enhance wirkt + W-5-Nachweis.",
+  "deploy_export": "ONNX-Export ERFOLGREICH (dynamo=False fix): enc.onnx + erb_dec.onnx + dec.onnx in finetuned/",
+  "deploy_status": "Plugin laedt alle 3 ONNX (enc/dec/erb_dec True) + use_df_musik=True + Dateien vorhanden. ABER enhance gibt Input unveraendert zurueck (interne Fallback-Routine) — segSNR +0.00dB.",
+  "w5_final": "W-5 durchdiagnostiziert: torchaudio-Import gefixt, ONNX-Deploy steht, eager laedt, conv-Dims bekannt. Offen: feat_spec-F (100 vs 96) gegen echten enc-Pfad bestimmen (braucht korrekte feat_spec-Erzeugung aus fft/erb), dann c0-Layout exakt + dec laeuft. Annahmen ohne Referenz -> schaedlich (bewiesen, revertiert).",
+  "w5_ursache": "Moeglich: exportierte ONNX-Koeffizienten skaliert falsch ODER _apply_df_filter wendet coefs nicht korrekt an ODER Modell-Checkpoint war nicht trainiert (dfn_musik_best.pt).",
+  "w5_naechster_schritt": "DF-Koeffizienten-Pruefung (coefs-Werte + _apply_df_filter-Semantik gegen eager-Referenz); dann W-5-Nachweis (seg-SNR/Blind/Signifikanz).",
+  "w5_apply_df_filter": "_apply_df_filter ist der Deep Filter (komplexer Spektral-Filter, DF-Taps [S,96,10]). No-op = exportierte Koeffizienten erzeugen Identitaet.",
+  "w5_endstand": "W-5 ONNX-Deploy steht (enc/erb_dec/dec exportiert + geladen + ausgefuehrt). Tiefere Ursache des No-ops: DF-Koeffizienten aus dfn_musik_best.pt evtl. untrainiert/Identity oder Skalierung. Braucht Koeffizienten-Vergleich gegen eager-Referenz.",
+  "w5_wurzelursache": "enc/dec c0-Shape-Mismatch im Export: enc gibt c0 [B,16,100,T] (Freq=100 fix), dec erwartet [B,16,T,96] (transponiert). dec-Reshape schlaegt fehl (/df_fc_emb Reshape {1,100,400}->{1,100,16,48}) -> Fallback -> Deep-Filter No-op.",
+  "w5_fix": "Export: c0-Achsen enc->dec angleichen (Transpose vor dec ODER dynamische Freq-Achse im enc-Export). Dann dec laeuft -> Koeffizienten wirken -> W-5-Nachweis.",
+  "w5_shape_fix": "c0-Bug klar: enc dynamic_axes markiert dim2 als time, aber echte c0 hat time an dim3 (Freq=100 fix) + dec erwartet [B,16,T,96]. Fix: c0 dynamic_axes dim3=time + enc->dec c0-Layout angleichen.",
+  "w5_eager_blocker": "eager-Referenz-Laden (df.model.Model.load) scheitert am torchaudio.backend-Import — der io.py-Fix greift auf dem eager-Pfad noch nicht (anderer Import-Weg).",
+  "w5_c0_befund": "enc c0 [B,16,100,T] (Freq=100, Time=dim3) vs dec c0 [B,16,T,96] (Time=dim2, Freq=96): TRANSPOSE + Freq-Dim-Mismatch. Export-Dummy-Shapes inkonsistent (enc dummy_spec [1,2,100,96] vs dec dummy_c0 [1,16,100,96]).",
+  "w5_c0_fix": "Vor dec Transpose (dim2<->dim3) + Freq-Dim angleichen (100->96 via Slice/Pad ODER Dummy-Shapes konsistent setzen). Dann enc->dec kompatibel, dec laeuft, Koeffizienten wirken.",
+  "w5_c0_versuch": "Dummy_spec auf Freq=96 gesetzt -> enc interne View-Shape brach ([1,96,16,48] invalid fuer 76800). enc intern braucht Freq=100. Revertiert.",
+  "w5_c0_offen": "enc intern Freq=100, dec c0 Freq=96: die Frequenz-Dim ist MODELL-intern verschieden (enc feat_spec Freq=100 -> c0 Freq, dec c0 Freq=96). Braucht genaue eager-Referenz (df.model) um das korrekte c0-Layout zu sehen — blockiert am torchaudio eager-Import.",
+  "w5_eager_fix": "pip df/io.py torchaudio-Import robust gemacht (eager laedt jetzt). Eager enc-Forward hat dieselbe feat_spec-Shape-Problematik ([1,100,16,48] invalid fuer 40000) — die Dims sind modell-intern anspruchsvoll.",
+  "w5_eager_status": "eager Model.load via df.deepfilternet3.init_model laedt (enc/dec), aber enc-Forward braucht korrekte feat_spec-Dims. W-5 c0-Layout-Vergleich somit weiter offen, aber Import-Blocker behoben.",
+  "w5_dims": "DfParams: nb_erb=32 (feat_erb-Freq), nb_df=96 (dec-c0-Freq), fft_size=960, hop_size=480, sr=48000, df_order=5. Bestätigt dec-c0-Freq=96 (nb_df); enc feat_spec-Freq (100 im Export) ist die Spektral-Dim (fft/erb).",
+  "w5_dims_offen": "feat_spec-Freq (100) vs nb_df (96) ist der Kern des c0-Mismatch: enc c0 hat Freq=Spektral-Dim (100), dec c0 erwartet Freq=nb_df (96). Fix: enc->dec c0 auf nb_df=96 projizieren (Slice/Linear) ODER Export-Dummy auf nb_df=96 angleichen (braucht enc-internen Pfad, der 100->96 mapped).",
+  "w5_c0_fix_versuch": "c0-Transpose+Projektion (100->96) eingefuegt: Filter wendet an, aber SCHAEDLICH (segSNR 20.97->-1.45, -22dB). Layout-Annahme falsch. REVERTIERT (besser No-op als schaedliche Verzerrung).",
+  "w5_c0_offen_final": "Korrektes enc->dec c0-Layout weiter offen. Braucht den echten enc-internen c0-Pfad (eager: df.deepfilternet3.init_model + korrekte feat_spec-Dims [fft/erb-Projektion]) — dann Export exakt nachbauen. Annahmen ohne Referenz fuehren zu schaedlicher Verzerrung.",
+  "w5_conv_dims": "enc conv: erb_conv0 in=1 (feat_erb [B,1,32,T]), df_conv0 in=2 (feat_spec [B,2,F,T] real+imag). feat_spec F=100 (Export) vs nb_df=96 (dec-c0). F-Dim ist der Kern des c0-Mismatch."
+}

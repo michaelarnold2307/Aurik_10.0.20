@@ -1,0 +1,79 @@
+{
+  "amrb_version": "1.0",
+  "aurik_version": "9.10.123",
+  "baselines": {
+    "Aurik 9.9 (Restoration Mode)": {
+      "goal_natuerlichkeit": 0.91,
+      "mushra_overall": 84.0,
+      "pqs_mos": 4.2
+    },
+    "Aurik 9.9 (Studio 2026 Mode)": {
+      "goal_natuerlichkeit": 0.93,
+      "mushra_overall": 88.0,
+      "pqs_mos": 4.5
+    },
+    "Simple Wiener (1984-Klasse)": {
+      "goal_natuerlichkeit": 0.65,
+      "mushra_overall": 48.0,
+      "pqs_mos": 3.2
+    },
+    "Unbearbeitet (degradiert)": {
+      "goal_natuerlichkeit": 0.52,
+      "mushra_overall": 32.0,
+      "pqs_mos": 2.8
+    },
+    "iZotope RX 10 (commercial)": {
+      "goal_natuerlichkeit": 0.8,
+      "mushra_overall": 71.0,
+      "pqs_mos": 3.9
+    },
+    "iZotope RX 11 (commercial)": {
+      "goal_natuerlichkeit": 0.8,
+      "mushra_overall": 71.0,
+      "pqs_mos": 3.9
+    }
+  },
+  "best_scenario": "AMRB-01-TAPE",
+  "external_validation": {
+    "dataset": "",
+    "leadership_claim_ready": false,
+    "n_external_scenarios": 0,
+    "notes": "Synthetic-only AMRB run; external dataset validation pending.",
+    "ready": false
+  },
+  "n_passed": 0,
+  "n_scenarios": 1,
+  "os_leadership": false,
+  "overall_score": 64.7,
+  "report_sha256": "0a49849bc68996262cfc6f6b6f0c9d482006820cb2de994cf15cdba15e8a4123",
+  "run_seed": 42,
+  "scenarios": {
+    "AMRB-01-TAPE": {
+      "description": "Tape-Hiss + Dropout",
+      "goal_scores": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9462922893215095,
+        "bass_kraft": 1.0,
+        "brillanz": 0.0,
+        "emotionalitaet": 0.9025542181748838,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 0.8440899732642998,
+        "natuerlichkeit": 0.8701091745617998,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9237481772899627,
+        "tonal_center": 0.9638904118697273,
+        "transparenz": 0.37302953780179043,
+        "waerme": 0.7904816733556338
+      },
+      "mushra_mean": 64.7,
+      "mushra_std": 0.0,
+      "passed": false,
+      "pqs_mos_mean": 1.13,
+      "scenario_type": "synthetic"
+    }
+  },
+  "system_name": "Aurik 9.10.x (restoration)",
+  "timestamp": "2026-04-06T20:25:46.699789+00:00",
+  "worst_scenario": "AMRB-01-TAPE"
+}

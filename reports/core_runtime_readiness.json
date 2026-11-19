@@ -1,0 +1,42 @@
+{
+  "all_runtime_ready": true,
+  "components": [
+    {
+      "fallback": true,
+      "name": "rmvpe",
+      "primary": false,
+      "resolved_by": "crepe_fallback",
+      "runtime_ready": true
+    },
+    {
+      "fallback": true,
+      "name": "sgmse_plus",
+      "primary": false,
+      "resolved_by": "wpe_dsp_fallback",
+      "runtime_ready": true
+    },
+    {
+      "fallback": true,
+      "name": "versa",
+      "primary": false,
+      "resolved_by": "pqs_dsp_fallback",
+      "runtime_ready": true
+    },
+    {
+      "fallback": true,
+      "name": "flow_matching",
+      "primary": false,
+      "resolved_by": "cqtdiff_or_diffwave_fallback",
+      "runtime_ready": true
+    },
+    {
+      "fallback": true,
+      "name": "gacela",
+      "primary": false,
+      "resolved_by": "dsp_exciter_fallback",
+      "runtime_ready": true
+    }
+  ],
+  "missing_runtime_components": [],
+  "mode": "runtime_readiness"
+}

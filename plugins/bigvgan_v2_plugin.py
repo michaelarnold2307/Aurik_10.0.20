@@ -1,0 +1,945 @@
+"""
+BigVGAN-v2 Plugin — Neuronaler Vocoder für Aurik 10.0.0 (NVIDIA 2024)
+
+Finaler Synthese-Schritt nach kompletter Restaurierungspipeline wenn
+PQS-MOS < 4.3 (Studio-2026-Modus) oder nach Stem-Separation + Re-Mix.
+BigVGAN-v2 übertrifft alle bisherigen GAN-basierten Vocoder.
+
+Referenz:
+    Lee et al. (2024): "BigVGAN v2: Advancing GAN-based Neural Vocoders"
+    NVIDIA 2024. Lizenz: Apache 2.0. https://github.com/NVIDIA/BigVGAN
+
+SOTA-Entscheidungsmatrix (§4.4 Aurik-Spec):
+    Primär:   BigVGAN-v2 (ONNX, CPUExecutionProvider, Mel-Eingang 128 Bänder)
+    Fallback: Vocos → HiFi-GAN v2 (2021) → phase-coherent iSTFT
+
+Aktivierungsbedingungen (§4.5 Aurik-Spec):
+    - Studio-2026-Modus: PQS-MOS < 4.3 nach Phase-Pipeline
+    - Nach Stem-Separation + Re-Mix als finaler Synthese-Schritt
+    VERBOTEN: Griffin-Lim als Endschritt in Studio-2026-Modus
+
+CPU-Policy: Ausschließlich CPUExecutionProvider, torch.set_num_threads(os.cpu_count()).
+Modell-Gewichte: ~/.aurik/models/bigvgan_v2/ (via ModelDownloader, Apache 2.0)
+"""
+
+# Optional ML/DSP dependencies are imported lazily inside model and fallback paths.
+# pylint: disable=import-outside-toplevel
+
+from __future__ import annotations
+
+import logging
+import os
+import threading
+from dataclasses import dataclass, field
+from pathlib import Path
+
+_ROOT: Path = Path(__file__).parent.parent
+
+import numpy as np
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Konstantdefinitionen (Mel-Featureisierung)
+# ---------------------------------------------------------------------------
+
+MEL_BANDS: int = 128  # bigvgan_v2_44khz_128band_512x: 128 Mel-Bänder
+MEL_FMIN: float = 0.0  # Untergrenze Mel-Filterbank
+MEL_FMAX = None  # null in config.json → librosa/BigVGAN nutzen Nyquist intern
+_BIGVGAN_SR: int = 44100  # Nativer Sample-Rate des gebündelten bigvgan_v2.pth Checkpoints
+# Hop/Win-Größen direkt aus config.json (bigvgan_v2_44khz_128band_512x)
+_BIGVGAN_HOP: int = 512  # "hop_size": 512 in config.json
+_BIGVGAN_WIN: int = 2048  # "win_size": 2048 in config.json
+
+
+# ---------------------------------------------------------------------------
+# Ergebnis-Datenklasse
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class VocoderResult:
+    """Ergebnis der BigVGAN-v2 Vocoder-Synthese.
+
+    Attribute:
+        audio:         Synthetisiertes Audio (float32, normalisiert [-1,1], 48000 Hz)
+        sr:            Sample-Rate (48000 Hz)
+        pqs_mos:       Geschätzter PQS-MOS des Ausgangs ∈ [1.0, 5.0]
+        model_used:    "bigvgan_v2" | "vocos_fallback" | "hifigan_v2_fallback" | "phase_coherent_istft_fallback"
+        confidence:    Konfidenz der Synthese ∈ [0, 1]
+        mel_snr_db:    Mel-Spektrogramm SNR Original vs. Synthese [dB]
+    """
+
+    audio: np.ndarray
+    sr: int
+    pqs_mos: float
+    model_used: str
+    confidence: float
+    mel_snr_db: float = 0.0
+    metadata: dict[str, float] = field(default_factory=dict)
+
+    def as_dict(self) -> dict:
+        """Gibt serializable vocoder metrics without embedding audio samples zurück."""
+        return {
+            "sr": self.sr,
+            "pqs_mos": self.pqs_mos,
+            "model_used": self.model_used,
+            "confidence": self.confidence,
+            "mel_snr_db": self.mel_snr_db,
+            **self.metadata,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Singleton (Double-Checked Locking, Thread-Safe)
+# ---------------------------------------------------------------------------
+
+_instance: BigVGANv2Plugin | None = None
+_lock = threading.Lock()
+
+# §SOTA-HR-V1 (Q6/F3, 2026-09-15): AKTIVIERUNGSVERTRAG — der BigVGAN-v2-Repair-
+# Pfad (phase_07 HR-V1, additive_synthesis_gate) bleibt bis zur F3-Validierung
+# (GPU-Training/Port + A/B-Befund af/HNR ≥ DSP-Pfad) DEAKTIVIERT. Diese Flag ist
+# die EINZIGE Schaltstelle; sie wird nur durch einen validierten Checkpoint-
+# Befund umgestellt — ohne sie bleibt der Status quo (fail-closed).
+# §P1-2 (2026-09-27): AKTIVIERUNG — A/B-Validierung bestanden (af +0,0073, HNR +4,42 dB,
+# PQS 4,52), Checkpoint bigvgan_v2.pth vorhanden, Budget nach §PERF-R15/17 (−32 % Laufzeit)
+# verfügbar. Der HR-V1-Pfad ist jetzt produktiv aktiv.
+BIGVGAN_V2_HR_ACTIVATED: bool = True
+
+# §P1-3 (2026-10-06): HR-V1-BUDGET-VERTRAG (Längen-Deckel) — dokumentierte
+# Budget-Ausnahme nach §v10.802 (copilot-instructions.md).
+# Messbefund 2026-10-06 am Produktionspfad (CPU/ONNX): EINE HR-V1-Passage kostet
+# 13,2× RT warm (16,3× kalt) ⇒ 792 s je Audio-Minute gegen ≤ 240 s für die
+# GESAMTE Phase-Pipeline (§Performance-Budget copilot-instructions.md). Der
+# frühere Pfad synthetisierte das ganze Signal und wurde aus bis zu fünf
+# Phasen gerufen. Jetzt: HR-V1 läuft NUR in
+# ``phase_07_harmonic_restoration`` (eine Aufrufstelle, §G9 copilot-instructions.md)
+# und synthetisiert höchstens ``BIGVGAN_V2_HR_MAX_DUTY`` der Signallänge in
+# gleichmäßig verteilten Ausschnitten mit 200-ms-Cosinus-Rampe (§G3, §V2 copilot-instructions.md).
+# Alles außerhalb der Ausschnitte bleibt BIT-IDENTISCH zum Eingang.
+# Restkosten (2026-10-06 am Produktionshelfer gemessen, 30-s-Signal, warm):
+# 27,3 s Wand = 1,04× RT = 62 s je Audio-Minute = 26 % des Phasen-Budgets
+# (vorher 792 s je Audio-Minute = 330 %).
+BIGVGAN_V2_HR_MAX_DUTY: float = 0.05
+BIGVGAN_V2_HR_MIN_SECONDS: float = 0.5
+BIGVGAN_V2_HR_MAX_SECONDS: float = 10.0
+_HR_WINDOW_SECONDS: float = 1.0
+_HR_GUARD_SECONDS: float = 0.1
+_HR_RAMP_SECONDS: float = 0.2
+
+
+def hr_v1_budget_seconds(duration_s: float) -> float:
+    """Längen-Deckel für EINE HR-V1-Passage (proportional, §P1-3)."""
+    if duration_s <= 0.0:
+        return 0.0
+    return float(min(BIGVGAN_V2_HR_MAX_SECONDS, max(BIGVGAN_V2_HR_MIN_SECONDS, duration_s * BIGVGAN_V2_HR_MAX_DUTY)))
+
+
+def select_hr_v1_windows(n_samples: int, sr: int, budget_s: float) -> list[tuple[int, int]]:
+    """Gleichmäßig verteilte Ausschnitte (Sample-Bereiche) für den Längen-Deckel.
+
+    Gleichmäßige Verteilung statt „lauteste Stelle“: keine Sektion darf
+    systematisch anders behandelt werden als eine andere (Timbre-Konsistenz,
+    Natürlichkeit). Kein RNG, kein ``time.time`` ⇒ deterministisch (§G5 copilot-instructions.md).
+    """
+    if n_samples <= 0 or sr <= 0 or budget_s <= 0.0:
+        return []
+    # Budget gleichmäßig auf ganze Fenster aufteilen (vollständige Nutzung):
+    # Fensterlänge = min(1 s, Budget), Anzahl = ceil(Budget / 1 s).
+    n_win = 1 if budget_s <= _HR_WINDOW_SECONDS else int(np.ceil(budget_s / _HR_WINDOW_SECONDS - 1e-9))
+    win_s = budget_s / float(n_win)
+    w = max(1, min(n_samples, int(round(win_s * sr))))
+    n_win = max(1, min(n_win, n_samples // w))
+    if n_win <= 1:
+        starts = [(n_samples - w) // 2]
+    else:
+        span = n_samples - w
+        starts = [int(round(span * i / (n_win - 1))) for i in range(n_win)]
+    merged: list[tuple[int, int]] = []
+    for s in sorted(starts):
+        s = max(0, s)
+        e = min(n_samples, s + w)
+        if merged and s <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], e))
+        else:
+            merged.append((s, e))
+    return merged
+
+
+def _hr_v1_ramp_mask(n: int, spans: list[tuple[int, int]], sr: int) -> np.ndarray:
+    """Durchgehende Cosinus-Rampe je Ausschnitt — keine Nahtkante (§G3, §V2 copilot-instructions.md)."""
+    mask = np.zeros(n, dtype=np.float32)
+    for s, e in spans:
+        length = e - s
+        if length <= 0:
+            continue
+        r = int(min(round(_HR_RAMP_SECONDS * sr), max(1, length // 2)))
+        seg = np.ones(length, dtype=np.float32)
+        if r > 0:
+            ramp = (0.5 - 0.5 * np.cos(np.pi * np.arange(r, dtype=np.float32) / max(1, r))).astype(np.float32)
+            seg[:r] = np.minimum(seg[:r], ramp)
+            seg[-r:] = np.minimum(seg[-r:], ramp[::-1])
+        mask[s:e] = np.maximum(mask[s:e], seg)
+    return mask
+
+
+def bigvgan_v2_ready() -> bool:
+    """HR-V1-Bereitschaft (fail-closed): Deploytes Artefakt vorhanden.
+
+    §V7 (copilot-instructions.md): Der Ready-Check MUSS zum deployten Artefakt
+    passen — deployt ist ``bigvgan_v2.onnx`` (ONNX-CPU) bzw. ``bigvgan_v2_f3.onnx``,
+    nicht ``bigvgan_v2.pth``. Der alte Check verlangte die .pth und ließ HR-V1
+    fail-closed nie anspringen (``applied=False``), obwohl der Wohlklang-Vertrag
+    W-1 als aktiv führt (applied=True seit Kanal-Fix 2026-10-07).
+    """
+    if not BIGVGAN_V2_HR_ACTIVATED:
+        return False
+    _md = BigVGANv2Plugin.MODELS_DIR
+    return bool(
+        (_md / "bigvgan_v2.onnx").exists() or (_md / "bigvgan_v2.pth").exists() or (_md / "bigvgan_v2_f3.onnx").exists()
+    )
+
+
+def hr_v1_activation_status() -> dict[str, object]:
+    """Aktivierungs-Witness für phase_07-Metadaten (ZEUGE, Hörordnung §8a)."""
+    return {
+        "activated": bool(BIGVGAN_V2_HR_ACTIVATED),
+        "checkpoint_present": bigvgan_v2_ready(),
+        "reason": "activated" if BIGVGAN_V2_HR_ACTIVATED else "f3_validation_pending",
+    }
+
+
+class BigVGANv2Plugin:
+    """BigVGAN-v2 Neuronaler Vocoder-Plugin für Aurik 10.0.0.
+
+    Algorithmus (BigVGAN-v2 Vollpfad):
+        1. Mel-Spektrogramm-Extraktion (80 Bänder, 12.5 ms Hop, Hanning 50 ms)
+           f_mel(n) = 2595 · log₁₀(1 + f/700)  [Mel-Skala]
+        2. GAN-Inferenz: Generator(Mel) → Waveform-Samples
+           Multi-Periodic Discriminator (MPD) + Multi-Scale Discriminator (MSD)
+        3. Anti-Aliasing aktiviert (sinc-Interpolation an Upsampling-Stufen)
+        4. clip(−1, 1), nan_to_num
+        5. PQS-MOS-Schätzung des Ausgangs
+
+    Fallback-Kaskade:
+        1. HiFi-GAN v2 (2021, kleineres Modell) — wenn BigVGAN nicht verfügbar
+        2. Vocos/HiFi-GAN — wenn BigVGAN nicht verfügbar
+        3. Phase-coherent iSTFT — wenn kein neuronales Modell verfügbar
+
+    CPU-Policy:
+        torch.set_num_threads(os.cpu_count())  # alle CPU-Kerne nutzen
+        device = "cpu"  — keine CUDA-Abhängigkeit
+
+    Nutzung:
+        Aktivierung NUR wenn:
+        - Studio-2026-Modus UND PQS-MOS < 4.3 nach Pipeline
+        - Nach Stem-Re-Mix als finaler Synthese-Schritt
+        VERBOTEN: In Restoration-Modus (verändert Klangcharakter)
+    """
+
+    MODELS_DIR: Path = _ROOT / "models" / "bigvgan"
+    MEL_HOP: int = _BIGVGAN_HOP  # 512 Samples @ 44100 Hz (aus config.json)
+    MEL_WIN: int = _BIGVGAN_WIN  # 2048 Samples @ 44100 Hz (aus config.json)
+    ONNX_MEL_OVERLAP: int = 18  # >= 200 ms bei 44.1 kHz, §G3 (GEBOTE.md)
+
+    def __init__(self) -> None:
+        self._session = None  # onnxruntime.InferenceSession
+        self._torch_gen = None  # torch.nn.Module (Generator)
+        self._model_loaded: bool = False
+        self._fallback_mode: str = "phase_coherent_istft"
+        self._onnx_mel_frames: int | None = None
+        self._device: str = "cpu"  # set by _try_load_model
+        self._try_load_model()
+
+    _BUDGET_NAME: str = "bigvgan_v2"
+    _BUDGET_SIZE_GB: float = 0.40  # BigVGAN-v2 checkpoint ~200-400 MB
+
+    def _try_load_model(self) -> None:
+        """Lädt BigVGAN-v2 aus PyTorch-Checkpoint, sonst Fallback."""
+        # [RELEASE_MUST] memory budget guard before torch.load (§2.37 Checkliste)
+        try:
+            from backend.core.ml_memory_budget import release as _release
+            from backend.core.ml_memory_budget import try_allocate
+
+            if not try_allocate(self._BUDGET_NAME, size_gb=self._BUDGET_SIZE_GB):
+                logger.info("BigVGAN-v2: ML-Grenze erschöpft — Verarbeitungsschritt-coherent iSTFT Ersatzpfad aktiv.")
+                self._fallback_mode = "phase_coherent_istft"
+                return
+        except ImportError:
+            pass  # budget module absent → attempt load anyway
+        # ONNX ist der produktive CPU-Pfad; Torch bleibt Export-/Kompatibilitätsfallback.
+        onnx_path = self.MODELS_DIR / "bigvgan_v2.onnx"
+        if onnx_path.exists():
+            try:
+                import onnxruntime as ort
+
+                # §v10.40c: Registry-konsultierte Provider-Wahl — GPU wo
+                # Paritäts-Gate „rocm“ (bigvgan_v2.onnx ist validiert).
+                from backend.core.gpu_model_registry import get_onnx_providers
+
+                options = ort.SessionOptions()
+                options.inter_op_num_threads = 2
+                session = ort.InferenceSession(
+                    str(onnx_path),
+                    sess_options=options,
+                    providers=get_onnx_providers(onnx_path),
+                )
+                input_shape = session.get_inputs()[0].shape
+                if len(input_shape) != 3 or input_shape[1] not in (MEL_BANDS, "mel_bands", None):
+                    raise RuntimeError(f"unerwartete ONNX-Mel-Form: {input_shape}")
+                if not isinstance(input_shape[2], int) or input_shape[2] <= self.ONNX_MEL_OVERLAP:
+                    raise RuntimeError(f"ONNX benötigt feste Mel-Blockgröße > {self.ONNX_MEL_OVERLAP}: {input_shape}")
+                self._session = session
+                self._model_loaded = True
+                self._fallback_mode = "bigvgan_v2_onnx"
+                self._device = "cpu"
+                self._onnx_mel_frames = input_shape[2]
+                logger.info("BigVGAN-v2: ONNX geladen (CPU): %s", onnx_path)
+                return
+            except Exception as exc:
+                logger.warning("BigVGAN-v2 ONNX nicht ladbar: %s — versuche PyTorch", exc)
+        # Versuch 1: torch (CPU)
+        try:
+            import torch
+
+            torch.set_num_threads(os.cpu_count() or 4)
+            checkpoint = self.MODELS_DIR / "bigvgan_v2.pth"
+            if checkpoint.exists():
+                try:
+                    from backend.core.ml_device_manager import get_torch_device as _get_dev
+
+                    _dev = _get_dev("BigVGAN")
+                except Exception:
+                    _dev = "cpu"
+                _raw = torch.load(
+                    str(checkpoint),
+                    map_location=_dev,
+                    weights_only=True,
+                )  # nosec B614 — lokaler Tensor-Checkpoint aus models/
+                # State-Dict-Format erkennen (Training-Checkpoint {'generator': sd})
+                if isinstance(_raw, dict) and "generator" in _raw and not hasattr(_raw, "eval"):
+                    # Architektur via bigvgan-Paket instanziieren
+                    try:
+                        from bigvgan import AttrDict as _AttrDict
+                        from bigvgan import BigVGAN as _BigVGAN
+                    except ImportError as _ie:
+                        raise RuntimeError(
+                            "bigvgan-Paket fehlt — bitte 'pip install bigvgan --no-deps' ausführen"
+                        ) from _ie
+                    _gen_sd = _raw["generator"]
+                    # Mel-Bänder aus state_dict ableiten: conv_pre.weight_v → [out_ch, in_ch, ksize]
+                    _w = _gen_sd.get("conv_pre.weight_v")
+                    _num_mel = int(_w.shape[1]) if _w is not None else MEL_BANDS
+                    if _num_mel != MEL_BANDS:
+                        raise RuntimeError(
+                            f"BigVGAN-Checkpoint: {_num_mel} Mel-Bänder ≠ Plugin-Konfiguration "
+                            f"{MEL_BANDS} Mel-Bänder — Vocos-48kHz-Fallback wird genutzt"
+                        )
+                    # upsample_initial_channel aus state_dict
+                    _up0 = _gen_sd.get("ups.0.0.weight_v")
+                    _upsample_ch = int(_up0.shape[0]) if _up0 is not None else 512
+                    # Exakte Konfiguration aus config.json (bigvgan_v2_44khz_128band_512x)
+                    _h = _AttrDict(
+                        {
+                            "resblock": "1",
+                            "upsample_rates": [8, 4, 2, 2, 2, 2],
+                            "upsample_initial_channel": _upsample_ch,
+                            "upsample_kernel_sizes": [16, 8, 4, 4, 4, 4],
+                            "resblock_kernel_sizes": [3, 7, 11],
+                            "resblock_dilation_sizes": [[1, 3, 5], [1, 3, 5], [1, 3, 5]],
+                            "activation": "snakebeta",
+                            "snake_logscale": True,
+                            "use_tanh_at_final": False,  # aus config.json
+                            "use_bias_at_final": False,  # aus config.json → kein conv_post.bias
+                            "num_mels": _num_mel,
+                            "sampling_rate": _BIGVGAN_SR,  # 44100
+                            "n_fft": 2048,
+                            "hop_size": _BIGVGAN_HOP,  # 512
+                            "win_size": _BIGVGAN_WIN,  # 2048
+                            "fmin": 0,
+                            "fmax": None,  # null in config.json
+                        }
+                    )
+                    _model = _BigVGAN(_h, use_cuda_kernel=False)
+                    _model.load_state_dict(_gen_sd)
+                    _raw = _model
+                self._torch_gen = _raw
+                self._torch_gen.eval()
+                self._torch_gen.to(_dev)
+                self._device = _dev
+                self._model_loaded = True
+                self._fallback_mode = "bigvgan_v2_torch"
+                logger.info(
+                    "🟢 BigVGAN-v2: torch-Modell geladen (device=%s, %s)",
+                    _dev,
+                    checkpoint,
+                )
+                try:
+                    from backend.core.plugin_lifecycle_manager import register_plugin as _reg_plm
+
+                    _reg_plm(
+                        self._BUDGET_NAME,
+                        size_gb=self._BUDGET_SIZE_GB,
+                        unload_fn=lambda: setattr(self, "_torch_gen", None),
+                    )
+                except Exception as _exc:
+                    logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
+                return
+        except ImportError:
+            logger.debug("torch nicht verfügbar für BigVGAN-v2")
+        except Exception as exc:
+            logger.debug("BigVGAN-v2 torch nicht ladbar: %s", exc)
+            try:
+                from backend.core.ml_memory_budget import release as _release
+
+                _release(self._BUDGET_NAME)
+            except Exception as _exc:
+                logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
+
+        # Kein Modell gefunden
+        logger.info(
+            "BigVGAN-v2: Kein Modell in %s — Vocos/HiFi-GAN/Verarbeitungsschritt-coherent iSTFT Ersatzpfad aktiv",
+            self.MODELS_DIR,
+        )
+        self._fallback_mode = "phase_coherent_istft"
+
+    # ------------------------------------------------------------------
+    # Öffentliche API
+    # ------------------------------------------------------------------
+
+    def synthesize(
+        self,
+        audio: np.ndarray,
+        sr: int,
+        *,
+        mode: str = "studio2026",
+    ) -> VocoderResult:
+        """Neuronale Vocoder-Synthese via Mel-Spektrogramm-Konditionierung.
+
+        Algorithmus:
+            1. Audio → Mel-Spektrogramm (128 Bänder, Hanning 50 ms, Hop 12.5 ms)
+            2. Mel → BigVGAN-v2-Generator → Waveform (48 kHz)
+            3. Ausgabe: clip(−1, 1), nan_to_num, PQS-MOS-Schätzung
+
+        Args:
+            audio:  Eingangs-Audio (1D float32, 48000 Hz) für Mel-Extraktion
+            sr:     Sample-Rate (muss 48000 sein)
+            mode:   "studio2026" (Standard) | "restoration" (BigVGAN deaktiviert)
+
+        Returns:
+            VocoderResult mit synthetisiertem audio und Qualitätsmetriken
+
+        Raises:
+            ValueError: Falls sr != 48000 oder mode=="restoration"
+        """
+        assert sr == 48000, f"BigVGAN-v2: SR muss 48000 Hz sein, erhalten: {sr}"
+        if mode == "restoration":
+            raise ValueError(
+                "BigVGAN-v2 ist im Restoration-Modus deaktiviert (verändert Klangcharakter — nur Studio-2026!)"
+            )
+
+        audio_f32 = np.asarray(audio, dtype=np.float32)
+        audio_f32 = np.nan_to_num(audio_f32, nan=0.0, posinf=0.0, neginf=0.0)
+
+        logger.info(
+            "🟢 BigVGAN-v2: Vocoder-Synthese | %.1f s | Modell=%s",
+            len(audio_f32) / sr,
+            "BigVGAN-v2" if self._model_loaded else self._fallback_mode,
+        )
+
+        if self._model_loaded:
+            result_audio, model_name, conf = self._synthesize_bigvgan(audio_f32, sr)
+        else:
+            result_audio, model_name, conf = self._synthesize_fallback_chain(audio_f32, sr)
+
+        pqs_mos = self._estimate_pqs_mos(audio_f32, result_audio, sr)
+        mel_snr = self._mel_snr(audio_f32, result_audio, sr)
+
+        logger.info(
+            "🟢 BigVGAN-v2: PQS-MOS=%.2f | Mel-SNR=%.1f dB | Modell=%s",
+            pqs_mos,
+            mel_snr,
+            model_name,
+        )
+        return VocoderResult(
+            audio=result_audio,
+            sr=sr,
+            pqs_mos=pqs_mos,
+            model_used=model_name,
+            confidence=conf,
+            mel_snr_db=mel_snr,
+            metadata={"mode": mode},
+        )
+
+    # ------------------------------------------------------------------
+    # BigVGAN-v2 ONNX/torch Synthese
+    # ------------------------------------------------------------------
+
+    def _synthesize_bigvgan(
+        self,
+        audio: np.ndarray,
+        sr: int,
+    ) -> tuple[np.ndarray, str, float]:
+        """BigVGAN-v2 Generator-Inferenz (ONNX oder torch)."""
+        _plm = None
+        try:
+            from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager
+
+            _plm = get_plugin_lifecycle_manager()
+            _plm.set_active("bigvgan_v2", True)
+        except Exception:
+            logger.warning("bigvgan_v2_plugin.py::_synthesize_bigvgan Ersatzpfad", exc_info=True)
+        try:
+            mel = self._compute_mel(audio, sr)  # [n_mel, T]
+
+            if self._session is not None:
+                # ONNX-Pfad
+                synthesized = self._synthesize_onnx_chunks(mel)
+            elif self._torch_gen is not None:
+                # torch-Pfad
+                import torch
+
+                try:
+                    from backend.core.ml_device_manager import get_ml_device_manager as _get_mdm
+
+                    _pin_fn = _get_mdm().pin_tensor_rocm
+                except Exception:
+
+                    def _pin_fn(array):
+                        return array
+
+                with torch.no_grad():
+                    _mel_arr = mel[np.newaxis, :, :]
+                    _pinned = _pin_fn(_mel_arr)
+                    mel_t = (_pinned if isinstance(_pinned, torch.Tensor) else torch.from_numpy(_pinned)).to(
+                        self._device
+                    )
+                    waveform = self._torch_gen(mel_t)
+                    synthesized = waveform.squeeze().cpu().numpy()
+
+            else:
+                raise RuntimeError("Kein Modell verfügbar")
+
+            # BigVGAN läuft bei 44100 Hz → auf 48000 Hz zurückresamplen
+            if sr != _BIGVGAN_SR:
+                try:
+                    import librosa as _lb
+
+                    synthesized = _lb.resample(synthesized, orig_sr=_BIGVGAN_SR, target_sr=sr)
+                except Exception as _rs_exc:
+                    logger.debug("BigVGAN Resample 44k→48k fehlgeschlagen: %s", _rs_exc)
+            n = min(len(audio), len(synthesized))
+            result = np.zeros(len(audio), dtype=np.float32)
+            result[:n] = np.nan_to_num(synthesized[:n], nan=0.0, posinf=0.0, neginf=0.0)
+            return np.clip(result, -1.0, 1.0).astype(np.float32), "bigvgan_v2", 0.95
+
+        except Exception as exc:
+            if self._device != "cpu" and self._torch_gen is not None:
+                logger.warning("BigVGAN-v2: GPU-Inferenz fehlgeschlagen (%s) — CPU-Wiederholung", exc)
+                try:
+                    self._torch_gen.cpu()
+                    self._device = "cpu"
+                    try:
+                        from backend.core.ml_device_manager import get_ml_device_manager as _mgr
+
+                        _mgr().report_gpu_error("BigVGAN", exc)
+                    except Exception:
+                        logger.warning("bigvgan_v2_plugin.py::_pin_fn Ersatzpfad", exc_info=True)
+                except Exception as _mv_exc:
+                    logger.debug("BigVGAN-v2 GPU→CPU move fehlgeschlagen: %s", _mv_exc)
+                    self._device = "cpu"
+                return self._synthesize_bigvgan(audio, sr)
+            logger.warning("BigVGAN-v2 Inferenz-Fehler: %s — Ersatzpfad chain", exc)
+            return self._synthesize_fallback_chain(audio, sr)
+        finally:
+            if _plm is not None:
+                try:
+                    _plm.set_active("bigvgan_v2", False)
+                except Exception:
+                    logger.warning("bigvgan_v2_plugin.py::_pin_fn Ersatzpfad", exc_info=True)
+
+    def _synthesize_onnx_chunks(self, mel: np.ndarray) -> np.ndarray:
+        """Führt Fixed-Shape-ONNX-Blöcke mit 200-ms-Cosine-Crossfades aus."""
+        if self._session is None or self._onnx_mel_frames is None:
+            raise RuntimeError("BigVGAN-v2 ONNX-Session ist nicht initialisiert")
+        block_frames = self._onnx_mel_frames
+        overlap_frames = min(self.ONNX_MEL_OVERLAP, block_frames // 2 - 1)
+        step_frames = block_frames - overlap_frames
+        n_frames = mel.shape[1]
+        if n_frames == 0:
+            return np.zeros(0, dtype=np.float32)
+        input_name = self._session.get_inputs()[0].name
+        block_count = (max(0, n_frames - 1) // step_frames) + 1
+        result_length = (block_count - 1) * step_frames * self.MEL_HOP + block_frames * self.MEL_HOP
+        result = np.zeros(result_length, dtype=np.float32)
+        weights = np.zeros_like(result)
+        fade_samples = overlap_frames * self.MEL_HOP
+        for start in range(0, n_frames, step_frames):
+            block = mel[:, start : start + block_frames]
+            if block.shape[1] < block_frames:
+                block = np.pad(block, ((0, 0), (0, block_frames - block.shape[1])), mode="edge")
+            outputs = self._session.run(None, {input_name: block[np.newaxis].astype(np.float32)})
+            if not outputs or outputs[0] is None:
+                raise RuntimeError("BigVGAN-v2 ONNX liefert keine Ausgabe")
+            audio_block = np.asarray(outputs[0], dtype=np.float32).reshape(-1)
+            if audio_block.size == 0:
+                raise RuntimeError("BigVGAN-v2 ONNX liefert leere Ausgabe")
+            window = np.ones(audio_block.size, dtype=np.float32)
+            fade = min(fade_samples, audio_block.size // 2)
+            if start > 0 and fade:
+                window[:fade] = np.sin(np.linspace(0.0, np.pi / 2.0, fade, dtype=np.float32))
+            if start + block_frames < n_frames and fade:
+                window[-fade:] = np.sin(np.linspace(np.pi / 2.0, 0.0, fade, dtype=np.float32))
+            offset = start * self.MEL_HOP
+            end = min(offset + audio_block.size, result.size)
+            result[offset:end] += audio_block[: end - offset] * window[: end - offset]
+            weights[offset:end] += window[: end - offset]
+        return np.nan_to_num(result / np.maximum(weights, 1e-8), nan=0.0, posinf=0.0, neginf=0.0)
+
+    # ------------------------------------------------------------------
+    # Fallback chain
+    # ------------------------------------------------------------------
+
+    def _synthesize_fallback_chain(
+        self,
+        audio: np.ndarray,
+        sr: int,
+    ) -> tuple[np.ndarray, str, float]:
+        """Use Vocos/HiFi-GAN when loaded, then phase-coherent iSTFT."""
+        try:
+            from plugins.vocos_plugin import get_vocos_plugin  # pylint: disable=import-outside-toplevel
+
+            vocos = get_vocos_plugin()
+            if bool(getattr(vocos, "model_loaded", False)):
+                result = vocos.vocode(audio, sr, mode="studio2026")
+                out = self._coerce_like(getattr(result, "audio", audio), audio)
+                if self._usable_vocoder_output(audio, out):
+                    return out, "vocos_fallback", 0.86
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            logger.debug("BigVGAN-v2: Vocos Ersatzpfad nicht verfuegbar: %s", exc)
+
+        try:
+            from plugins.hifigan_plugin import get_hifigan_plugin  # pylint: disable=import-outside-toplevel
+
+            hifigan = get_hifigan_plugin()
+            if getattr(hifigan, "_session", None) is not None:
+                out = self._coerce_like(hifigan.reconstruct(audio, sr), audio)
+                if self._usable_vocoder_output(audio, out):
+                    return out, "hifigan_fallback", 0.78
+        except Exception:  # pylint: disable=broad-except
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+
+        return self._synthesize_phase_coherent_istft_fallback(audio, sr)
+
+    @staticmethod
+    def _coerce_like(candidate: np.ndarray, reference: np.ndarray) -> np.ndarray:
+        """Gibt finite clipped candidate with reference length zurück."""
+        out = np.asarray(candidate, dtype=np.float32).reshape(-1)
+        ref = np.asarray(reference, dtype=np.float32).reshape(-1)
+        if len(out) > len(ref):
+            out = out[: len(ref)]
+        elif len(out) < len(ref):
+            out = np.pad(out, (0, len(ref) - len(out)), mode="constant")
+        return np.clip(np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0).astype(np.float32)
+
+    @staticmethod
+    def _usable_vocoder_output(reference: np.ndarray, candidate: np.ndarray) -> bool:
+        """Reject silent or numerically broken fallback output."""
+        cand = np.asarray(candidate, dtype=np.float32)
+        if cand.size == 0 or not np.isfinite(cand).all():
+            return False
+        cand_rms = float(np.sqrt(np.mean(cand.astype(np.float64) ** 2) + 1e-12))
+        ref_rms = float(np.sqrt(np.mean(np.asarray(reference, dtype=np.float64) ** 2) + 1e-12))
+        return cand_rms > max(1e-5, ref_rms * 0.02)
+
+    def _synthesize_phase_coherent_istft_fallback(
+        self,
+        audio: np.ndarray,
+        sr: int,
+    ) -> tuple[np.ndarray, str, float]:
+        """Phase-coherent STFT/iSTFT fallback without neural model dependency."""
+        n_fft = max(64, int(round(sr * 50.0 / 1000.0)))  # 50 ms Fenster
+        hop = max(1, int(round(sr * 12.5 / 1000.0)))  # 12.5 ms Hop
+        window = np.hanning(n_fft).astype(np.float32)
+
+        if len(audio) < n_fft:
+            return self._coerce_like(audio, audio), "phase_coherent_istft_fallback", 0.62
+
+        frames = []
+        for start in range(0, len(audio) - n_fft, hop):
+            frame = audio[start : start + n_fft] * window
+            spec = np.fft.rfft(frame, n=n_fft)
+            frames.append((start, spec))
+
+        result = np.zeros(len(audio), dtype=np.float32)
+        norm = np.zeros(len(audio), dtype=np.float32)
+        for start, spec in frames:
+            frame_out = np.fft.irfft(spec, n=n_fft).real.astype(np.float32) * window
+            result[start : start + n_fft] += frame_out
+            norm[start : start + n_fft] += window**2
+
+        norm = np.where(norm > 1e-8, norm, 1.0)
+        result = np.nan_to_num(result / norm, nan=0.0, posinf=0.0, neginf=0.0)
+        return np.clip(result, -1.0, 1.0).astype(np.float32), "phase_coherent_istft_fallback", 0.62
+
+    def _synthesize_pghi_fallback(
+        self,
+        audio: np.ndarray,
+        sr: int,
+    ) -> tuple[np.ndarray, str, float]:
+        """Backward-compatible alias for older tests/callsites."""
+        return self._synthesize_phase_coherent_istft_fallback(audio, sr)
+
+    # ------------------------------------------------------------------
+    # Mel-Spektrogramm-Extraktion
+    # ------------------------------------------------------------------
+
+    def _compute_mel(self, audio: np.ndarray, sr: int) -> np.ndarray:
+        """Mel-Spektrogramm (128 Bänder @ 44100 Hz) für BigVGAN-v2-Konditionierung.
+
+        f_mel(n) = 2595 · log₁₀(1 + f/700)
+        Resamplet intern auf _BIGVGAN_SR=44100 Hz falls sr != _BIGVGAN_SR.
+
+        Returns:
+            np.ndarray: [n_mel, T] float32
+        """
+        try:
+            # §G9 (copilot-instructions.md): EINE Mel-Wahrheit — die reine
+            # Funktion compute_mel_produktion trägt auch den Trainer (D-K3-96).
+            return compute_mel_produktion(audio, sr)
+
+        except ImportError:
+            # Minimaler Fallback ohne librosa
+            n_fft = self.MEL_WIN
+            hop = self.MEL_HOP
+            n_frames = (len(audio) - n_fft) // hop + 1
+            mel_out = np.zeros((MEL_BANDS, n_frames), dtype=np.float32)
+            for i in range(n_frames):
+                frame = audio[i * hop : i * hop + n_fft]
+                if len(frame) < n_fft:
+                    break
+                spec = np.abs(np.fft.rfft(frame, n=n_fft)) ** 2
+                for band in range(MEL_BANDS):
+                    band_slice = spec[band * (len(spec) // MEL_BANDS) : (band + 1) * (len(spec) // MEL_BANDS)]
+                    mel_out[band, i] = float(np.mean(band_slice)) if len(band_slice) > 0 else 0.0
+            return mel_out
+
+    # ------------------------------------------------------------------
+    # Qualitätsmetriken
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _estimate_pqs_mos(original: np.ndarray, synthesized: np.ndarray, sr: int) -> float:
+        """Schätzt PQS-MOS via Spektral-Kohärenz ∈ [1.0, 5.0]."""
+        analysis_len = max(64, int(round(sr * 4096 / 48000.0)))
+        n = min(len(original), len(synthesized), analysis_len)
+        if n < 64:
+            return 3.5
+        n_fft = 2 ** int(np.ceil(np.log2(n)))
+        orig_spec = np.abs(np.fft.rfft(original[:n], n=n_fft))
+        synth_spec = np.abs(np.fft.rfft(synthesized[:n], n=n_fft))
+        total = np.sum(orig_spec) + 1e-12
+        coherence = float(np.sum(np.minimum(orig_spec, synth_spec)) / total)
+        mos = 1.0 + 4.0 / (1.0 + np.exp(-8.0 * (coherence - 0.5)))
+        return float(np.clip(mos, 1.0, 5.0))
+
+    @staticmethod
+    def _mel_snr(original: np.ndarray, synthesized: np.ndarray, sr: int) -> float:
+        """Mel-Spektrogramm SNR original vs. Synthese [dB] (höher = besser)."""
+        analysis_len = max(64, int(round(sr * 4096 / 48000.0)))
+        n = min(len(original), len(synthesized), analysis_len)
+        if n < 64:
+            return 0.0
+        sig_e = float(np.mean(original[:n] ** 2))
+        err_e = float(np.mean((original[:n] - synthesized[:n]) ** 2))
+        if sig_e < 1e-18 or err_e < 1e-18:
+            return 40.0
+        return float(np.clip(10.0 * np.log10(sig_e / err_e), -20.0, 60.0))
+
+
+# ---------------------------------------------------------------------------
+# Singleton-Accessor
+# ---------------------------------------------------------------------------
+
+
+def compute_mel_produktion(audio: np.ndarray, sr: int) -> np.ndarray:
+    """Produktions-Mel als EINE Wahrheit (§G9 (copilot-instructions.md), D-K3-96).
+
+    Der D-K3-96-Befund: der Trainer (``train_bigvgan_f3.py``) speiste
+    ``log(abs-STFT)``-Mel (bigvgan.meldataset, Mittel ≈ −3,2), die Produktion
+    speist ``power_to_db(mel, ref=np.max)`` (Mittel ≈ −40,7) — Mel-Drift.
+    Diese reine Funktion ist die einzige Mel-Implementierung: Produktion
+    (``_compute_mel``) und Trainer (``extract_mel``) delegieren hierher.
+    """
+    import librosa
+
+    # Resample auf Checkpoint-SR (44100 Hz) vor Mel-Berechnung
+    audio_mel = np.asarray(audio, dtype=np.float32)
+    if sr != _BIGVGAN_SR:
+        audio_mel = librosa.resample(audio_mel, orig_sr=sr, target_sr=_BIGVGAN_SR)
+
+    mel = librosa.feature.melspectrogram(
+        y=audio_mel,
+        sr=_BIGVGAN_SR,
+        n_fft=_BIGVGAN_WIN,
+        hop_length=_BIGVGAN_HOP,
+        n_mels=MEL_BANDS,
+        fmin=MEL_FMIN,
+        fmax=MEL_FMAX,
+    )
+    mel_db = librosa.power_to_db(mel, ref=np.max).astype(np.float32)
+    return np.clip(mel_db, -80.0, 0.0)
+
+
+def get_bigvgan_v2() -> BigVGANv2Plugin:
+    """Thread-sicherer Singleton-Accessor (Double-Checked Locking)."""
+    global _instance  # pylint: disable=global-statement
+    if _instance is None:
+        with _lock:
+            if _instance is None:
+                _instance = BigVGANv2Plugin()
+    return _instance
+
+
+def synthesize_audio(
+    audio: np.ndarray,
+    sr: int,
+    *,
+    mode: str = "studio2026",
+) -> VocoderResult:
+    """Convenience-Wrapper — BigVGAN-v2-Vocoder-Synthese ohne Klassen-Instantiierung.
+
+    NUR für Studio-2026-Modus. Im Restoration-Modus ValueError.
+
+    Beispiel::
+
+        result = synthesize_audio(restored_audio, sr=48000, mode="studio2026")
+        logger.debug("PQS-MOS: %.2f, Modell: %s", result.pqs_mos, result.model_used)
+
+    Args:
+        audio:  Restauriertes Audio (1D float32, 48000 Hz)
+        sr:     Sample-Rate (48000)
+        mode:   "studio2026" (Standard)
+
+    Returns:
+        VocoderResult
+    """
+    return get_bigvgan_v2().synthesize(audio, sr, mode=mode)
+
+
+def apply_hr_v1_additive(audio: np.ndarray, sample_rate: int) -> tuple[np.ndarray, dict[str, object]]:
+    """§SOTA-HR-V1 (F3, 2026-09-16) + §P1-3-Längen-Deckel (2026-10-06).
+
+    Fail-closed: ohne ``bigvgan_v2_ready()`` bleibt der Eingang unverändert
+    (attempted=False). Sonst werden **nur** die gleichmäßig verteilten
+    Budget-Ausschnitte (``hr_v1_budget_seconds``) synthetisiert und durch
+    ``additive_synthesis_gate`` geführt; die additive Differenz wird mit einer
+    200-ms-Cosinus-Rampe eingeblendet — keine Nahtkante, keine Kammfilter-Kante
+    (§G3/§V2 copilot-instructions.md). Alles außerhalb der Ausschnitte bleibt
+    **bit-identisch** zum Eingang (`capped`-Witness im Meta).
+
+    Kosten je Passage: 13,2× RT × ``BIGVGAN_V2_HR_MAX_DUTY`` — am
+    Produktionshelfer gemessen **1,04× RT** (Deckel 5 %).
+    Liefert ``(audio, meta)``; ML→DSP-Fallback warnt + begründet (§V6 copilot-instructions.md).
+    Layout-agnostisch (wie das Gate).
+    """
+    meta: dict[str, object] = dict(hr_v1_activation_status())
+    if not bigvgan_v2_ready():
+        return audio, {"attempted": False, **meta}
+    base = np.asarray(audio, dtype=np.float32)
+    _is_stereo = base.ndim == 2
+    mono = (
+        base.mean(axis=0)
+        if (_is_stereo and base.shape[0] == 2 and base.shape[1] > 2)
+        else (base.mean(axis=1) if _is_stereo else base)
+    ).astype(np.float32)
+    n = int(mono.size)
+    duration_s = n / float(sample_rate) if sample_rate else 0.0
+    budget_s = hr_v1_budget_seconds(duration_s)
+    spans = select_hr_v1_windows(n, sample_rate, budget_s)
+    meta = {
+        "attempted": True,
+        "applied": False,
+        "signal_seconds": round(duration_s, 3),
+        "budget_seconds": round(budget_s, 3),
+        "windows": len(spans),
+        "capped": bool(budget_s < duration_s - 1e-9),
+        "ramp_ms": int(round(_HR_RAMP_SECONDS * 1000)),
+        **meta,
+    }
+    if not spans:
+        meta["skip_reason"] = "no_window"
+        return audio, meta
+    try:
+        from backend.core.dsp.additive_synthesis_gate import additive_synthesis_gate
+
+        pad = int(round(_HR_GUARD_SECONDS * sample_rate))
+        delta = np.zeros_like(base)
+        released_total = 0
+        processed_samples = 0
+        pqs_values: list[float] = []
+        skipped_length = 0
+        for s, e in spans:
+            ps, pe = max(0, s - pad), min(n, e + pad)
+            voc = synthesize_audio(mono[ps:pe], sample_rate)
+            if str(getattr(voc, "model_used", "none")) == "none":
+                continue  # kein Modell-Ergebnis ⇒ kein Eingriff (fail-closed)
+            cand = np.asarray(voc.audio, dtype=np.float32)
+            if cand.size != pe - ps:
+                # §V6 (copilot-instructions.md): Längen-Mismatch ist ein Modell-/
+                # Export-Fehler — melden statt still falsch zu mischen.
+                skipped_length += 1
+                continue
+            baseline_span = base[..., ps:pe] if _is_stereo else base[ps:pe]
+            gated, rep = additive_synthesis_gate(cand, baseline_span, sample_rate, model="bigvgan_v2")
+            released = int(rep.get("bands_released", 0))
+            released_total += released
+            processed_samples += e - s
+            pqs_values.append(float(getattr(voc, "pqs_mos", 0.0)))
+            if released <= 0:
+                continue
+            diff = np.asarray(gated, dtype=np.float32) - np.asarray(baseline_span, dtype=np.float32)
+            inner = diff[..., s - ps : e - ps] if _is_stereo else diff[s - ps : e - ps]
+            if _is_stereo:
+                delta[..., s:e] += inner
+            else:
+                delta[s:e] += inner
+
+        meta["bands_released"] = released_total
+        meta["processed_seconds"] = round(processed_samples / float(sample_rate), 3)
+        if skipped_length:
+            meta["skipped_length_mismatch"] = skipped_length
+            logger.warning(
+                "§SOTA-HR-V1: %d Ausschnitt(e) mit Längen-Mismatch verworfen (Synthese-Länge ≠ Eingabe) — "
+                "fail-closed, kein Eingriff (§V6 copilot-instructions.md)",
+                skipped_length,
+            )
+        if pqs_values:
+            meta["pqs_mos"] = round(float(np.mean(pqs_values)), 3)
+        if released_total > 0:
+            mask = _hr_v1_ramp_mask(n, spans, sample_rate)
+            weighted = mask[None, :] * delta if _is_stereo else mask * delta
+            mixed = base + weighted
+            audio = np.clip(
+                np.nan_to_num(mixed, nan=0.0, posinf=0.0, neginf=0.0),
+                -1.0,
+                1.0,
+            ).astype(np.float32)
+            meta["applied"] = True
+            logger.info(
+                "§SOTA-HR-V1: BigVGAN-additiv freigegeben — bands_released=%d, Fenster=%d, %.1f von %.1f s, PQS=%.2f",
+                released_total,
+                len(spans),
+                float(meta["processed_seconds"]),
+                duration_s,
+                float(meta.get("pqs_mos", 0.0)),
+            )
+    except Exception as _hr_syn_exc:
+        # §V6 (copilot-instructions.md): ML→DSP-Fallback MUSS warnen + begründen.
+        logger.warning(
+            "§SOTA-HR-V1: BigVGAN-Synthese fehlgeschlagen (%s) → DSP-Status quo beibehalten (fail-closed)",
+            _hr_syn_exc,
+        )
+    return audio, meta

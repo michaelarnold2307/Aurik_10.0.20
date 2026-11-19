@@ -1,0 +1,241 @@
+"""
+Music Model Feature Flags (§v10.19)
+
+Controls which model variant is active. Allows incremental deployment
+and per-model rollback without code changes.
+
+After §v10.19 training completion, set each flag to True to activate
+the music-trained replacement. The original speech-trained model
+remains as fallback.
+
+Usage:
+    from backend.core.music_model_flags import (
+        use_df_musik, use_sgmse_musik, use_mp_senet_musik,
+        use_miipher_dit,
+        MUSIC_MODEL_PATHS,
+    )
+
+    model_path = MUSIC_MODEL_PATHS.get("dfn", fallback_path)
+"""
+
+# ── Feature Flags ───────────────────────────────────────────────────────────
+# Set to True after training + ONNX export + A/B test passed.
+
+use_df_musik: bool = True  # DFN Musik (§v10.15) replaces DeepFilterNet v3 (finetuned enc/dec/erb_dec)
+use_sgmse_musik: bool = False  # SGMSE+ Musik (§v10.16/F7): Musik-Core + ONNX-Export liegen vor,
+# A/B- + Hörordnungs-Abnahme stehen aber aus → Flag bleibt gesperrt (test_primary_paths_no_fallback pinnt False)
+use_mp_senet_musik: bool = True  # MP-SENet Musik (§v10.17) — A/B 2026-09-20 bestanden: seg-SNR +5,3…+11,3 dB,
+# VERSA 4,96–4,99 auf 3 Korpus-Paaren; ONNX: models/mp_senet/finetuned/mp_senet_musik.onnx (§v10.25)
+use_miipher_dit: bool = True  # MIIPHER-DiT (§v10.14) replaces proprietary MIIPHER (flow_matching_dit.onnx)
+use_bw_v5: bool = False  # BW-Reconstructor v5 — A1-HF-Gain-Gate 2026-10-27 bestanden (kalibriert,
+# neu 51,0 ≥ 1,02; Beleg docs/reports/current/2026-10-27_kp7_hf_gate_v2.json). Flag bleibt AUS:
+# Hör-Sign-off offen (+17 dB HF-Boost-Artefakt-Risiko, §v10.802 (copilot-instructions.md)),
+# §4-Verfahren (scripts/flag_freigabe.py).
+# redundant zu FlashSR/NVSR/DSP-SBR in Phase_06. Gated-Forschungsmodell.
+use_harmonic_inpainting: bool = True  # Harmonic-Inpainting-DiT (§v10.300) — DiT-Finetune für gedämpfte Obertöne
+use_whisper_denoiser: bool = False  # Whisper-Denoiser — DEPRECATED (Rev. 2026-08-16), nur A/B-Gate; NR trägt die Spec-04-Kette (DFN/SGMSE+/OMLSA)
+use_utmos_music: bool = False  # UTMOSv2 Musik-MOS (F8) — das Orakel ist auf SPRACHE (BVCC) trainiert und
+# darf bei Musik/Gesang deshalb kein VETO-Recht ausüben (§III.11 copilot-instructions.md): bis zur
+# Musik-Kalibrierung/MUSHRA-Abnahme bleibt es reiner Zeuge (report-only) in utmos_delta_gate.
+# True ⇒ Veto-Recht (Phase-Familien-Reduktion) ist freigeschaltet.
+use_silero_vad_music: bool = False  # Silero-VAD Musik-Freigabe — Silero ist auf SPRACHE trainiert und steuert
+# in phase_18_noise_gate den Gate-Schwellen-Offset (bis −15 dB). Nach §III.11 (copilot-instructions.md)
+# darf ein sprachtrainiertes Modell Musik/Gesang nicht steuern: bis zur Musik-Kalibrierung läuft das Gate
+# ohne VAD-Offset (neutral, §V7 copilot-instructions.md). True ⇒ VAD-gesteuerter Offset ist freigeschaltet.
+use_resemblyzer_music: bool = False  # Resemblyzer-Embedder Musik-Freigabe — Resemblyzer ist auf SPRACHE
+# (LibriSpeech) trainiert und wirkte in Ebene-1-Guard und phase_65 als RICHTER (Blend bis −80 % Richtung
+# Eingang). Nach §III.11 (copilot-instructions.md) darf er Musik/Gesang erst nach Musik-Fine-Tune (F9)
+# beurteilen; bis dahin trägt der domänenneutrale DSP-Proxy (MFCC + spektraler Centroid) die Messung.
+# True ⇒ Embedder-Messung ist freigeschaltet.
+use_scnet_music: bool = False  # SCNet-4-Stems-Tier (§P1-2/TODO-P1-2) — A/B gegen die FAIR gemessene
+# Demucs-v4-Stufe gewonnen (+1,96…+3,59 dB SI-SDR; docs/reports/current/2026-10-06_p1_2_scnet_vs_demucs_fair_ab.md),
+# danach aber OHNE Hörordnungs-Sign-off (§v10.802 copilot-instructions.md) und auf CPU ~7× langsamer
+# (68,9 s vs. 9,8 s je 30 s) ⇒ Flag gesperrt; test_primary_paths_no_fallback pinnt False.
+# True ⇒ MLStemSeparator wertet SCNet als Kandidaten aus und übernimmt ihn NUR, wenn der
+# Never-worsen-Vergleich (Rekonstruktions-Rückfall + Vokal-Erhalt, §v10.26) ihn trägt.
+use_bigvgan_f3_studio: bool = False  # KP-5 (2026-10-25): BigVGAN(-F3) als Studio-Finisher-STUFE-1-Kandidat
+# im §1.4-Block (vor der Vocos-Kaskade, nur Maximum/Studio/Aggressive + PQS-MOS < 4.3). Aktivierung erst
+# nach W-1-Hörprobe (Timbre-Konsistenz, D-K0-1/D-K2-3) + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md);
+# W-13 gesperrt. True ⇒ der §1.4-Block versucht die BigVGAN-Synthese zuerst, Vocos bleibt §V6-Ersatzpfad (copilot-instructions.md §V6).
+use_vocos_music_ft: bool = False  # M5 (D-K2-3): Musik-Finetune des Vocos-48-kHz-Tiers
+# (MUSDB18-HQ/R5, models/vocos_48khz/finetune/vocos_48khz_music_ft.onnx) im §1.4-Studio-Finisher.
+# Der Basis-Vocoder ist sprach-trainiert (kittn/vocos-mel-48khz-alpha1, §III.11/§V6 (copilot-instructions.md));
+# das Finetune ist musik-trainiert, aber seine Wirkung ist NICHT gemessen ⇒ Default AUS. Aktivierung nur
+# über §4-Verfahren (scripts/flag_freigabe.py) nach B3-Never-worsen gegen die Basis + Hörordnungs-Sign-off
+# (§v10.802 copilot-instructions.md). False ⇒ die Basis-Kaskade läuft bit-identisch weiter; fehlt das
+# Artefakt, fällt auch True fail-closed auf die Basis zurück (§V6 (copilot-instructions.md)).
+use_aspade_declipper: bool = False  # SOTA-M8 (D-K4-1): neuronaler A-SPADE-Klassen-Declipper als Challenger
+# zur heuristischen Phase 07. PCHIP bleibt §V6-DSP-Fallback (copilot-instructions.md §V6). Aktivierung erst
+# nach ΔSDR-Gate auf geclipptem Real-Material + blindem A/B + Hörordnungs-Sign-off (§v10.802
+# copilot-instructions.md). False ⇒ bit-identisches Bestandsverhalten.
+use_tf_gridnet_quality: bool = False  # SOTA-M9 (D-K4-2): nicht-kausaler TF-GridNet-Klassen-Vollband-Denoiser
+# als optionale Quality-Mode-Stufe. DeepFilterNet bleibt Default (§III.9 copilot-instructions.md:
+# kleine lokale Modelle bevorzugen). Aktivierung erst nach Never-worsen-Gate auf den 3 Referenz-Songs
+# + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md). False ⇒ keine Verhaltensänderung.
+use_wf4_warp_head: bool = False  # SOTA-M12 (D-K4-7): WF-V4-Klassen-Warp-Head auf FCPE/CRePE-F0-Basis
+# für Rest-Wow/Flutter unter der Hörschwelle. Phase 12 (heuristische Warp-Schätzung) bleibt
+# §V6-DSP-Fallback. Aktivierung erst nach Never-worsen gegen den Phase-12-Ist-Zustand
+# + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md). False ⇒ bit-identisches Bestandsverhalten.
+use_tp_v2_phase: bool = False  # SOTA-M12 (D-K4-8): TP-V2-Klassen-Phasenschätzung für
+# Transienten-Phasenkohärenz (kammfilter-frei). Aktivierung erst nach A/B auf transient-reichem
+# Material (Percussion ohne Kammfilter-Artefakte) + Hörordnungs-Sign-off (§v10.802
+# copilot-instructions.md). False ⇒ keine Verhaltensänderung.
+use_vocos_ft_reconstruction: bool = False  # M5 (D-K2-3, 2026-11-09): vocos-48k-Musik-Finetune
+# (models/vocos_48khz/finetune/vocos_48khz_music_ft.onnx) als Challenger für die Lücken-
+# Rekonstruktion im RekonstruktionsDenker — lokale Fenster-Resynthese statt linearer
+# Interpolation, Never-worsen via Mel-SNR gegen die lineare Füllung. Aktivierung erst nach
+# Hör-Sign-off (Proben: study_stimuli/hoerproben/m5_rekonstruktion, scripts/hoer_entscheidung.py)
+# (§v10.802 copilot-instructions.md). False ⇒ bit-identisches Bestandsverhalten; fehlt das ONNX,
+# fällt auch True fail-closed auf linear zurück (§V6 (copilot-instructions.md)).
+use_material_crnn: bool = (
+    False  # D-K1-3 Phase D: CRNN-Material-Classifier (models/material_crnn.pt) im Material-Entscheidungspfad
+)
+# Witness-Kopf groove_echo (D-K3-95-Folge, 2026-11-15): gate-bestandener Reparatur-Kopf
+# (verify_witness_kopf_gate.py: q_median 1,03 auf 200 Holdout-Regionen, never_worsen 0,964;
+# Q-Erstbeleg docs/reports/current/2026-11-15_q0_erstbeleg_witness_kopf.json). Konsum in
+# phase_07_declipper (backend/core/dsp/witness_kopf_groove_echo.py, Witness-Trigger + Never-worsen
+# fail-closed). Default AUS = bit-identisches Bestandsverhalten; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_groove_echo: bool = False
+# Witness-Kopf tape_head_level_dip (D-K3-95-Folge, 2026-11-15): zweiter gate-bestandener
+# Reparatur-Kopf (verify_witness_kopf_gate.py: q_median 0,995 auf 200 Holdout-Regionen,
+# never_worsen 1,0). Konsum in phase_07 (backend/core/dsp/witness_kopf_tape_head.py).
+# Default AUS = bit-identisches Bestandsverhalten; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_tape_head_level_dip: bool = False
+# Witness-Köpfe clicks + compression_artifacts (D-K3-95-Ausrollung, 2026-11-15):
+# gate-bestandene Reparatur-Köpfe (clicks q_median 1,19/never_worsen 1,0;
+# compression_artifacts q_median 1,02/never_worsen 1,0). Konsum in phase_07.
+# Default AUS = bit-identisches Bestandsverhalten; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_clicks: bool = False
+use_witness_kopf_compression_artifacts: bool = False
+# Witness-Köpfe tape_head_clog, phase_rotation, sibilance (D-K3-95-Nacharbeit mit
+# Identitäts-Anker, Spec 26 DRT-2, 2026-11-15): gate-bestanden (tape_head_clog
+# q 1,55/nw 1,0; phase_rotation q 1,06/nw 0,979; sibilance q 1,15/nw 0,960).
+# Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_tape_head_clog: bool = False
+use_witness_kopf_phase_rotation: bool = False
+use_witness_kopf_sibilance: bool = False
+# Witness-Kopf sticky_shed_residue (D-K3-95-Nacharbeit Runde 3, 2026-11-15): gate-bestanden
+# mit Produktions-Semantik-Schutz-Arm (q 0,98, never_worsen 1,0). Konsum in phase_07.
+# Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_sticky_shed_residue: bool = False
+# Witness-Kopf jitter_artifacts (D-K3-95-Nacharbeit Runde 4, 2026-11-15): gate-bestanden
+# mit Produktions-Semantik-Schutz-Arm (q 0,57, never_worsen 1,0). Konsum in phase_07.
+# Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_jitter_artifacts: bool = False
+# Witness-Kopf transport_bump (D-K3-95-Nacharbeit lokalisiert, 2026-11-15): gate-bestanden
+# mit lokalisiertem Loss (|schaden-clean|-Maske) + Produktions-Semantik-Schutz-Arm
+# (q 0,66, never_worsen 1,0). Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_transport_bump: bool = False
+# Witness-Köpfe dynamic_compression_excess + dropout_head_contact (DRT-8/10-Expansion,
+# 2026-11-19, --lambda-mos 0.1): gate-bestanden mit Zwei-Metrik-Auswahl
+# (dynamic_compression_excess q 1,186; dropout_head_contact q 2,0 = Clip-Obergrenze,
+# Detektor-AUC 0,72 — ehrlich dokumentiert). Beide musik_mos-Anteil 1,0.
+# Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_dynamic_compression_excess: bool = False
+use_witness_kopf_dropout_head_contact: bool = False
+# (MediumDetector.detect, Roh-Aufruf) statt 9 handgebaute Skalar-Features/Gauss-Mixture. Default AUS =
+# bisheriges Verhalten. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen). Flag-Flip
+# offen — nur nach §4-Verfahren (scripts/flag_freigabe.py: Verdikt → Register-Buchung → Flag-Flip → Commit).
+use_era_crnn: bool = False  # D-K1-3 Phase E: CRNN-Era-Classifier (models/era_crnn.pt) als Challenger zur Dekaden-Heuristik. Default AUS. 98% Dekade exakt (gemessen).
+use_defect_crnn: bool = False  # Phase F: Defekt-CRNN multi-label (models/defect_crnn.pt) als Challenger zu den _detect_*-Routinen. Default AUS. 88.6% Hamming (gemessen).
+use_loudness_dpn: bool = False  # F002: Loudness-DPN (models/loudness_dpn.pt) als Challenger zur Schwellwert-/Zielwert-Logik. Default AUS. MAE LUFS 2.46 dB (gemessen).
+use_rt60_regressor: bool = False  # SOTA-M15 (KP-10): RT60-Regressor auf RIR-Paaren als
+# Ersatz des konservativen T60-Witness-Caps (phase_20/49). Aktivierung erst nach Gate auf
+# RIR-Referenzmaterial + Hörordnungs-Sign-off (§v10.802 copilot-instructions.md).
+# False ⇒ das heuristische T60-Witness-Cap bleibt unverändert.
+use_audibility_budget: bool = False  # Hörordnung §4 (hoerordnung.instructions.md): Dämpfung nur so weit,
+# wie der Defekt die Maskierungsschwelle des verbleibenden Materials übersteigt (Audibility-Budget,
+# backend/core/dsp/audibility_budget.py; Pilot-Verdrahtung phase_03/phase_43). False ⇒ bit-identisches
+# Bestandsverhalten. Aktivierung nur über §4-Verfahren (scripts/flag_freigabe.py) nach B3-/Kompositions-
+# Messung + Hör-Sign-off; keine Ableitung aus Mess-Artefakten (W-3-Lehre 2026-11-06).
+
+
+# ── Model Paths (relative to project root) ──────────────────────────────────
+
+from pathlib import Path
+
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+MUSIC_MODEL_PATHS: dict[str, Path] = {
+    # DFN Musik — three ONNX files
+    "dfn_enc": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "finetuned" / "enc.onnx",
+    "dfn_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "finetuned" / "dec.onnx",
+    "dfn_erb_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "finetuned" / "erb_dec.onnx",
+    # SGMSE+ Musik-Score-Core (§v10.16/F7) — auf MUSDB18/48 kHz finetuned,
+    # aktiv NUR bei use_sgmse_musik=True (nach A/B + Hörordnungs-Abnahme).
+    # Der Sprach-Core (WSJ0-CHiME3) liegt als LEGACY_MODEL_PATHS["sgmse"].
+    "sgmse": _PROJECT_ROOT / "models" / "sgmse_plus" / "sgmse_musik_core.onnx",
+    # MP-SENet Musik — ONNX
+    "mp_senet": _PROJECT_ROOT / "models" / "mp_senet" / "finetuned" / "mp_senet_musik.onnx",
+    # MIIPHER-DiT — ONNX
+    "miipher_dit": _PROJECT_ROOT / "models" / "miipher_dit" / "flow_matching_dit.onnx",
+    # BW-Reconstructor v5 — bestes selbst trainiertes U-Net
+    "bw": _PROJECT_ROOT / "models" / "bw_reconstructor" / "bw_reconstructor_v5.onnx",
+    # Harmonic-Inpainting-DiT (§v10.300) — produktiver ONNX-Export
+    "harmonic_inpainting": _PROJECT_ROOT / "models" / "harmonic_inpainting" / "inpainting_best.onnx",
+    # Whisper-Denoiser (§v10.20) — Whisper-tiny (frozen) + 2M-Decoder (unet/decoder state_dicts)
+    "whisper_denoiser": _PROJECT_ROOT / "models" / "miipher_dit" / "whisper_denoiser_best.pt",
+    # Whisper-Encoder-Ersatz für MIIPHER-DiT (semantische Bedingung)
+    "whisper_encoder": _PROJECT_ROOT / "models" / "whisper" / "whisper_tiny.onnx",
+    # BigVGAN-v2 Produktionsvocoder — ONNX, export source bleibt .pth
+    "bigvgan": _PROJECT_ROOT / "models" / "bigvgan" / "bigvgan_v2.onnx",
+    # SCNet-4-Stems (§P1-2) — Musik-Separationstier (Checkpoint, kein ONNX);
+    # aktiv NUR bei use_scnet_music=True. Bewusst OHNE Legacy-Gegenstück: ohne
+    # Freigabe liefert resolve_model_path("scnet") None (§V7 copilot-instructions.md
+    # — kein Blind-Aktivieren) und der bestehende Tier-Verbund bleibt unverändert.
+    "scnet": _PROJECT_ROOT / "models" / "scnet_4stems" / "huge_scnet_4stems_v1.2.ckpt",
+}
+
+# ── Legacy paths (fallback) ─────────────────────────────────────────────────
+
+LEGACY_MODEL_PATHS: dict[str, Path] = {
+    "dfn_enc": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "enc.onnx",
+    "dfn_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "dec.onnx",
+    "dfn_erb_dec": _PROJECT_ROOT / "models" / "deepfilternet_v3_ii" / "erb_dec.onnx",
+    "sgmse": _PROJECT_ROOT / "models" / "sgmse_plus" / "sgmse_plus_core.onnx",
+    "mp_senet": _PROJECT_ROOT / "models" / "mp_senet" / "mp_senet.onnx",
+    "miipher_dit": _PROJECT_ROOT / "models" / "miipher_dit" / "flow_matching_dit.onnx",
+    # BW v1 als Fallback, falls v5 fehlt
+    "bw": _PROJECT_ROOT / "models" / "bw_reconstructor" / "bw_reconstructor.onnx",
+    # Harmonic-Inpainting: kein Legacy-Modell — DSP-Fallback (Phase_07 bestehende Synthese)
+    # Whisper-Denoiser: kein Legacy-Modell — DFN bleibt primärer Denoiser
+    # whisper_encoder: einziger bekannter lokaler Pfad
+    "whisper_encoder": _PROJECT_ROOT / "models" / "whisper" / "whisper_tiny.onnx",
+}
+
+
+def resolve_model_path(model_key: str) -> Path | None:
+    """Return active model path based on feature flags.
+
+    Returns the music-trained path if the flag is set AND the file exists,
+    otherwise falls back to the legacy path if it exists.
+    Returns None if neither exists.
+    """
+    if model_key not in MUSIC_MODEL_PATHS:
+        return None
+
+    # Check which flag controls this model
+    flag_map = {
+        "dfn_enc": use_df_musik,
+        "dfn_dec": use_df_musik,
+        "dfn_erb_dec": use_df_musik,
+        "sgmse": use_sgmse_musik,
+        "mp_senet": use_mp_senet_musik,
+        "miipher_dit": use_miipher_dit,
+        "bw": use_bw_v5,
+        "harmonic_inpainting": use_harmonic_inpainting,
+        "whisper_denoiser": use_whisper_denoiser,
+        # Ersatzpfade folgen dem DiT-Flag: nur aktiv wenn DiT selbst aktiv ist
+        "whisper_encoder": use_miipher_dit,
+        "bigvgan": use_miipher_dit,
+        "scnet": use_scnet_music,
+    }
+    use_music = flag_map.get(model_key, False)
+    music_path = MUSIC_MODEL_PATHS.get(model_key)
+    legacy_path = LEGACY_MODEL_PATHS.get(model_key)
+
+    if use_music and music_path and music_path.exists():
+        return music_path
+    if legacy_path and legacy_path.exists():
+        return legacy_path
+    return None

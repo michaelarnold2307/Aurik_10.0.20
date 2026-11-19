@@ -1,0 +1,828 @@
+dsp_modules:
+- id: 1
+  name: STFT
+  group: Spektralanalyse
+  priority: '-'
+  modul_file: null
+  modul_class: null
+  vertrag: null
+- id: 2
+  name: ISTFT
+  group: Spektralanalyse
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 3
+  name: Multi-Resolution STFT
+  group: Spektralanalyse
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 4
+  name: Mel Spectrogram
+  group: Spektralanalyse
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 5
+  name: CQT
+  group: Spektralanalyse
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 6
+  name: Autocorrelation
+  group: Spektralanalyse
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 7
+  name: Cross-Correlation
+  group: Spektralanalyse
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 8
+  name: RMS/Energy
+  group: Spektralanalyse
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 9
+  name: Zero-Crossing Rate
+  group: Spektralanalyse
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 10
+  name: Spectral Centroid
+  group: Spektralanalyse
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 11
+  name: Spectral Flux
+  group: Spektralanalyse
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 12
+  name: Spectral Rolloff
+  group: Spektralanalyse
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 13
+  name: MCRA
+  group: Noise Estimation
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 14
+  name: IMCRA
+  group: Noise Estimation
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 15
+  name: Minimum Statistics
+  group: Noise Estimation
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 16
+  name: MMSE Noise PSD
+  group: Noise Estimation
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 17
+  name: VAD
+  group: Noise Estimation
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 18
+  name: Histogram-based Noise
+  group: Noise Estimation
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 19
+  name: Noise Profile Learning
+  group: Noise Estimation
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 20
+  name: Per-Band SNR
+  group: Noise Estimation
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 21
+  name: Spectral Subtraction
+  group: Noise Suppression
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 22
+  name: Wiener Filter
+  group: Noise Suppression
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 23
+  name: Ephraim-Malah MMSE-STSA
+  group: Noise Suppression
+  priority: HOCH
+  modul_file: null
+  modul_class: null
+- id: 24
+  name: Ephraim-Malah MMSE-LSA
+  group: Noise Suppression
+  priority: HOCH
+  modul_file: null
+  modul_class: null
+- id: 25
+  name: OMLSA
+  group: Noise Suppression
+  priority: HOCH
+  modul_file: null
+  modul_class: null
+- id: 26
+  name: Spectral Gating
+  group: Noise Suppression
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 27
+  name: Multi-Band Expansion
+  group: Noise Suppression
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 28
+  name: Transient Preservation
+  group: Noise Suppression
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 29
+  name: Musical Noise Reduction
+  group: Noise Suppression
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 30
+  name: Energy Derivative Detection
+  group: Click/Transient
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 31
+  name: Median Filter
+  group: Click/Transient
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 32
+  name: AR Prediction (Burg)
+  group: Click/Transient
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 33
+  name: AR Prediction (Levinson)
+  group: Click/Transient
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 34
+  name: Spectral Inpainting
+  group: Click/Transient
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 35
+  name: Overlap-Add
+  group: Click/Transient
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 36
+  name: Crossfade/Blend
+  group: Click/Transient
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 37
+  name: Transient Detection
+  group: Click/Transient
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 38
+  name: Clip Detection
+  group: Declipping
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 39
+  name: Janssen Iterative
+  group: Declipping
+  priority: HOCH
+  modul_file: null
+  modul_class: null
+- id: 40
+  name: Spline Interpolation
+  group: Declipping
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 41
+  name: Constrained Optimization
+  group: Declipping
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 42
+  name: Dictionary-based
+  group: Declipping
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 43
+  name: Fundamental Detection
+  group: Hum/Tonal
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 44
+  name: Adaptive Comb Filter
+  group: Hum/Tonal
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 45
+  name: Notch Filter
+  group: Hum/Tonal
+  priority: '-'
+  modul_file: classic_filters.py
+  modul_class: NotchFilter
+- id: 46
+  name: Parametric EQ
+  group: Hum/Tonal
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 47
+  name: Harmonic Tracking
+  group: Hum/Tonal
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 48
+  name: Spectral Peak Removal
+  group: Hum/Tonal
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 49
+  name: YIN Pitch Tracking
+  group: Pitch/Time
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 50
+  name: pYIN Pitch Tracking
+  group: Pitch/Time
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 51
+  name: CREPE Neural Pitch
+  group: Pitch/Time
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 52
+  name: Phase Vocoder
+  group: Pitch/Time
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 53
+  name: Phase Locking
+  group: Pitch/Time
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 54
+  name: PSOLA
+  group: Pitch/Time
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 55
+  name: WSOLA
+  group: Pitch/Time
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 56
+  name: Resampling (Sinc)
+  group: Pitch/Time
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 57
+  name: Pitch Correction Curve
+  group: Pitch/Time
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 58
+  name: Variable Rate Resampling
+  group: Pitch/Time
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 59
+  name: Biquad (IIR)
+  group: Filter Design
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 60
+  name: Butterworth
+  group: Filter Design
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 61
+  name: Chebyshev I/II
+  group: Filter Design
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 62
+  name: Elliptic
+  group: Filter Design
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 63
+  name: FIR (Window)
+  group: Filter Design
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 64
+  name: FIR (Parks-McClellan)
+  group: Filter Design
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 65
+  name: Shelving EQ
+  group: Filter Design
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 66
+  name: Peaking EQ
+  group: Filter Design
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 67
+  name: Allpass
+  group: Filter Design
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 68
+  name: Linkwitz-Riley
+  group: Filter Design
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 69
+  name: Compressor
+  group: Dynamics
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 70
+  name: Limiter
+  group: Dynamics
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 71
+  name: Expander/Gate
+  group: Dynamics
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 72
+  name: De-Esser
+  group: Dynamics
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 73
+  name: AGC
+  group: Dynamics
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 74
+  name: Leveler
+  group: Dynamics
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 75
+  name: Multiband Dynamics
+  group: Dynamics
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 76
+  name: Transient Shaper
+  group: Dynamics
+  priority: Mittel
+  modul_file: transient_shaper.py
+  modul_class: TransientShaper
+- id: 77
+  name: M/S Encoding
+  group: Stereo
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 78
+  name: Cross-Correlation
+  group: Stereo
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 79
+  name: Delay Compensation
+  group: Stereo
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 80
+  name: Stereo Width
+  group: Stereo
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 81
+  name: Balance
+  group: Stereo
+  priority: '-'
+  modul_file: balance.py
+  modul_class: Balance
+- id: 82
+  name: Phase Correlation
+  group: Stereo
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 83
+  name: ISO 226 Threshold
+  group: Psychoakustik
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 84
+  name: Bark Scale
+  group: Psychoakustik
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 85
+  name: Simultaneous Masking
+  group: Psychoakustik
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 86
+  name: Temporal Masking
+  group: Psychoakustik
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 87
+  name: Spreading Function
+  group: Psychoakustik
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 88
+  name: BS.1770 Loudness
+  group: Psychoakustik
+  priority: HOCH
+  modul_file: null
+  modul_class: null
+- id: 89
+  name: A-Weighting
+  group: Psychoakustik
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 90
+  name: Azimuth Correction
+  group: Medien-spezifisch
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 91
+  name: Print-Through Removal
+  group: Medien-spezifisch
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 92
+  name: Wow/Flutter Detection
+  group: Medien-spezifisch
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 93
+  name: Wow/Flutter Correction
+  group: Medien-spezifisch
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 94
+  name: RIAA EQ
+  group: Medien-spezifisch
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 95
+  name: NAB/IEC EQ
+  group: Medien-spezifisch
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 96
+  name: Bias/HF Compensation
+  group: Medien-spezifisch
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 97
+  name: Crackle Detection
+  group: Medien-spezifisch
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 98
+  name: Dropout Detection
+  group: Medien-spezifisch
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 99
+  name: DC Offset Removal
+  group: Medien-spezifisch
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 100
+  name: Dithering (TPDF)
+  group: Production
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 101
+  name: Noise Shaping
+  group: Production
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 102
+  name: True Peak Limiting
+  group: Production
+  priority: HOCH
+  modul_file: null
+  modul_class: null
+- id: 103
+  name: Intersample Peak
+  group: Production
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 104
+  name: Loudness Normalization
+  group: Production
+  priority: HOCH
+  modul_file: null
+  modul_class: null
+- id: 105
+  name: Loudness Range (LRA)
+  group: Production
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 106
+  name: Fade In/Out
+  group: Production
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 107
+  name: Sample Rate Conversion
+  group: Production
+  priority: '-'
+  modul_file: null
+  modul_class: null
+- id: 108
+  name: Transient Shaper
+  group: Stem-Aware
+  priority: Mittel
+  modul_file: transient_shaper.py
+  modul_class: TransientShaper
+- id: 109
+  name: Formant Preservation
+  group: Stem-Aware
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 110
+  name: Sub-Bass Isolator
+  group: Stem-Aware
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 111
+  name: Harmonic Enhancer
+  group: Stem-Aware
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 112
+  name: Sibilance Detector
+  group: Stem-Aware
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 113
+  name: Breath Detector
+  group: Stem-Aware
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 114
+  name: Confidence Weighting
+  group: Neural Fusion
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 115
+  name: Neural Artifact Detector
+  group: Neural Fusion
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 116
+  name: Spectral Difference
+  group: Neural Fusion
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 117
+  name: Perceptual Error Weight
+  group: Neural Fusion
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 118
+  name: Onset Detector
+  group: Advanced Analysis
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 119
+  name: Beat Tracker
+  group: Advanced Analysis
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 120
+  name: Key Detector
+  group: Advanced Analysis
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 121
+  name: Segment Detector
+  group: Advanced Analysis
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 122
+  name: Genre Classifier
+  group: Advanced Analysis
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 123
+  name: Per-Band SNR Estimator
+  group: Advanced Analysis
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 124
+  name: Spectral Hole Filler
+  group: Advanced Repair
+  priority: Mittel
+  modul_file: null
+  modul_class: null
+- id: 125
+  name: Harmonic Regenerator
+  group: Advanced Repair
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 126
+  name: Stereo Field Repair
+  group: Advanced Repair
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 127
+  name: Reverb Estimator
+  group: Advanced Repair
+  priority: Niedrig
+  modul_file: null
+  modul_class: null
+- id: 128
+  name: KI-gestützte Adaptive Algorithmen
+  group: Innovation
+  priority: Hoch
+  description: Echtzeit-ML-Modelle für automatische Parameteranpassung (z. B. adaptive
+    Denoiser/EQs), Reinforcement-Learning-basierte Restaurierungsketten
+  modul_file: null
+  modul_class: null
+- id: 129
+  name: Generative Audio-Inpainting
+  group: Innovation
+  priority: Hoch
+  description: GANs/Transformer für Lückenfüllung bei stark beschädigten Aufnahmen,
+    kontextsensitives Inpainting
+  modul_file: null
+  modul_class: null
+- id: 130
+  name: Psychoakustische Optimierung
+  group: Innovation
+  priority: Hoch
+  description: Modelle zur Optimierung wahrgenommener Klangqualität (Perceptual Loss,
+    MOS), automatische Maskierungsmodelle
+  modul_file: null
+  modul_class: null
+- id: 131
+  name: Intelligente Benutzerführung
+  group: Innovation
+  priority: Hoch
+  description: KI-gestützte Vorschläge für Restaurierungsketten, automatische Qualitätsbewertung
+    und Feedback
+  modul_file: null
+  modul_class: null
+- id: 132
+  name: Extreme Restaurierung
+  group: Innovation
+  priority: Hoch
+  description: Algorithmen für stark zerstörte Medien (Laserdisc, Wachsrolle, Magnetband
+    mit Dropouts)
+  modul_file: null
+  modul_class: null
+- id: 133
+  name: Explainable AI für DSP
+  group: Innovation
+  priority: Hoch
+  description: Module, die ihre Entscheidungen und Bearbeitungsschritte für den Nutzer
+    transparent machen (z. B. Visualisierung, Begründungen, Audit-Trail)
+  modul_file: null
+  modul_class: null
+- id: 134
+  name: Automatisierte Parameteroptimierung
+  group: Innovation
+  priority: Hoch
+  description: KI-gestützte Suche nach optimalen DSP-Settings für spezifische Aufgaben,
+    automatisches Tuning
+  modul_file: null
+  modul_class: null
+- id: 135
+  name: Restaurierung für neue Medienformate
+  group: Innovation
+  priority: Hoch
+  description: Algorithmen für moderne Formate wie Podcasts, Streaming, immersive
+    Medien (z. B. 3D/Spatial Audio)
+  modul_file: null
+  modul_class: null

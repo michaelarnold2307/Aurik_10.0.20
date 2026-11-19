@@ -1,0 +1,4 @@
+- PMGG-False-Positive-Muster für rekonstruktive Phasen (phase_24/phase_55): defect-zentrierte Stichprobe gegen beschädigte Referenz erzeugt hohe scheinbare Regressionen trotz sauberer Außenwirkung.
+- Fix: in backend/core/per_phase_musical_goals_gate.py zusätzlich defektfernes Kontrollfenster wählen; wenn targeted regression hoch, aber control regression <= threshold und kein Content-Integrity-Penalty vorliegt, Action `passed_reconstruction_localized` verwenden.
+- Phase 55 braucht Per-Gap-Strength statt nur globalem `safe_strength`: lokales Oracle aus 250-ms-Kontext-RMS, Gap-Dauer und VFA-Schutzzonen ableiten; Kandidat lokal vor finalem Global-Blend abschwächen.
+- Validiert mit 105 fokussierten Tests + 3 schmalen Integrationstests am 2026-06-04.

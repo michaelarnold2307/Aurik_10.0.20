@@ -1,0 +1,477 @@
+{
+  "golden_samples": [
+    {
+      "filename": "vocal_001_synthetic.wav",
+      "category": "vocal",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/vocal_001_synthetic.wav",
+      "characteristics": {
+        "fundamental_freq": 220.0,
+        "formants": [
+          800,
+          1200,
+          2600
+        ],
+        "vibrato_rate": 5.0
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9914,
+        "bass_kraft": 1.0,
+        "brillanz": 0.2475,
+        "emotionalitaet": 0.8538,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.9368,
+        "separation_fidelity": 0.8877,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.8361,
+        "tonal_center": 0.9983,
+        "transparenz": 0.4297,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:40.105339"
+      }
+    },
+    {
+      "filename": "vocal_002_synthetic.wav",
+      "category": "vocal",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/vocal_002_synthetic.wav",
+      "characteristics": {
+        "fundamental_freq": 220.0,
+        "formants": [
+          800,
+          1200,
+          2600
+        ],
+        "vibrato_rate": 5.0
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9914,
+        "bass_kraft": 1.0,
+        "brillanz": 0.2475,
+        "emotionalitaet": 0.8538,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.9368,
+        "separation_fidelity": 0.8877,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.8361,
+        "tonal_center": 0.9983,
+        "transparenz": 0.4297,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:41.732852"
+      }
+    },
+    {
+      "filename": "vocal_003_synthetic.wav",
+      "category": "vocal",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/vocal_003_synthetic.wav",
+      "characteristics": {
+        "fundamental_freq": 220.0,
+        "formants": [
+          800,
+          1200,
+          2600
+        ],
+        "vibrato_rate": 5.0
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9914,
+        "bass_kraft": 1.0,
+        "brillanz": 0.2475,
+        "emotionalitaet": 0.8538,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.9368,
+        "separation_fidelity": 0.8877,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.8361,
+        "tonal_center": 0.9983,
+        "transparenz": 0.4297,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:43.400390"
+      }
+    },
+    {
+      "filename": "vocal_004_synthetic.wav",
+      "category": "vocal",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/vocal_004_synthetic.wav",
+      "characteristics": {
+        "fundamental_freq": 220.0,
+        "formants": [
+          800,
+          1200,
+          2600
+        ],
+        "vibrato_rate": 5.0
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9914,
+        "bass_kraft": 1.0,
+        "brillanz": 0.2475,
+        "emotionalitaet": 0.8538,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.9368,
+        "separation_fidelity": 0.8877,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.8361,
+        "tonal_center": 0.9983,
+        "transparenz": 0.4297,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:45.062772"
+      }
+    },
+    {
+      "filename": "vocal_005_synthetic.wav",
+      "category": "vocal",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/vocal_005_synthetic.wav",
+      "characteristics": {
+        "fundamental_freq": 220.0,
+        "formants": [
+          800,
+          1200,
+          2600
+        ],
+        "vibrato_rate": 5.0
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9914,
+        "bass_kraft": 1.0,
+        "brillanz": 0.2475,
+        "emotionalitaet": 0.8538,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.9368,
+        "separation_fidelity": 0.8877,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.8361,
+        "tonal_center": 0.9983,
+        "transparenz": 0.4297,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:46.704193"
+      }
+    },
+    {
+      "filename": "instrumental_001_synthetic.wav",
+      "category": "instrumental",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/instrumental_001_synthetic.wav",
+      "characteristics": {
+        "bass_freq": 82.4,
+        "guitar_chords": [
+          110,
+          146.8,
+          220
+        ],
+        "drum_hits": "kick, snare, hihat"
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.0843,
+        "bass_kraft": 1.0,
+        "brillanz": 0.8607,
+        "emotionalitaet": 1.0,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.5066,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.7814,
+        "tonal_center": 0.6368,
+        "transparenz": 0.444,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:48.329239"
+      }
+    },
+    {
+      "filename": "instrumental_002_synthetic.wav",
+      "category": "instrumental",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/instrumental_002_synthetic.wav",
+      "characteristics": {
+        "bass_freq": 82.4,
+        "guitar_chords": [
+          110,
+          146.8,
+          220
+        ],
+        "drum_hits": "kick, snare, hihat"
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.0831,
+        "bass_kraft": 1.0,
+        "brillanz": 0.8616,
+        "emotionalitaet": 1.0,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.5,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.7772,
+        "tonal_center": 0.6389,
+        "transparenz": 0.4447,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:49.951579"
+      }
+    },
+    {
+      "filename": "instrumental_003_synthetic.wav",
+      "category": "instrumental",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/instrumental_003_synthetic.wav",
+      "characteristics": {
+        "bass_freq": 82.4,
+        "guitar_chords": [
+          110,
+          146.8,
+          220
+        ],
+        "drum_hits": "kick, snare, hihat"
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.082,
+        "bass_kraft": 1.0,
+        "brillanz": 0.8624,
+        "emotionalitaet": 1.0,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.5005,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.7774,
+        "tonal_center": 0.6333,
+        "transparenz": 0.4458,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:51.576848"
+      }
+    },
+    {
+      "filename": "classical_001_synthetic.wav",
+      "category": "classical",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/classical_001_synthetic.wav",
+      "characteristics": {
+        "orchestral_range": "40-8000 Hz",
+        "string_section": true,
+        "woodwinds": true
+      },
+      "quality_baseline": {
+        "artikulation": 0.9909,
+        "authentizitaet": 0.9999,
+        "bass_kraft": 1.0,
+        "brillanz": 0.2477,
+        "emotionalitaet": 0.8906,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.9356,
+        "separation_fidelity": 0.7072,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9442,
+        "tonal_center": 0.953,
+        "transparenz": 0.4495,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:52.171317"
+      }
+    },
+    {
+      "filename": "classical_002_synthetic.wav",
+      "category": "classical",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/classical_002_synthetic.wav",
+      "characteristics": {
+        "orchestral_range": "40-8000 Hz",
+        "string_section": true,
+        "woodwinds": true
+      },
+      "quality_baseline": {
+        "artikulation": 0.9909,
+        "authentizitaet": 0.9999,
+        "bass_kraft": 1.0,
+        "brillanz": 0.2477,
+        "emotionalitaet": 0.8906,
+        "groove": 0.94,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.9356,
+        "separation_fidelity": 0.7072,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9442,
+        "tonal_center": 0.953,
+        "transparenz": 0.4495,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:52.590636"
+      }
+    },
+    {
+      "filename": "jazz_001_synthetic.wav",
+      "category": "jazz",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/jazz_001_synthetic.wav",
+      "characteristics": {
+        "swing_feel": true,
+        "walking_bass": 55.0,
+        "saxophone_freq": 440.0
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9671,
+        "bass_kraft": 1.0,
+        "brillanz": 0.3111,
+        "emotionalitaet": 0.611,
+        "groove": 0.94,
+        "micro_dynamics": 0.7594,
+        "natuerlichkeit": 0.8105,
+        "separation_fidelity": 0.8304,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.2396,
+        "tonal_center": 0.4828,
+        "transparenz": 0.4686,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:52.729816"
+      }
+    },
+    {
+      "filename": "jazz_002_synthetic.wav",
+      "category": "jazz",
+      "duration_s": 10.0,
+      "sample_rate": 48000,
+      "source": "synthetic",
+      "reference_file": "references/jazz_002_synthetic.wav",
+      "characteristics": {
+        "swing_feel": true,
+        "walking_bass": 55.0,
+        "saxophone_freq": 440.0
+      },
+      "quality_baseline": {
+        "artikulation": 1.0,
+        "authentizitaet": 0.9671,
+        "bass_kraft": 1.0,
+        "brillanz": 0.3111,
+        "emotionalitaet": 0.611,
+        "groove": 0.94,
+        "micro_dynamics": 0.7594,
+        "natuerlichkeit": 0.8105,
+        "separation_fidelity": 0.8304,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.2396,
+        "tonal_center": 0.4828,
+        "transparenz": 0.4686,
+        "waerme": 1.0
+      },
+      "metadata": {
+        "type": "synthetic",
+        "generator": "SyntheticGoldenSampleGenerator",
+        "date": "2026-02-11T05:47:52.859504"
+      }
+    }
+  ],
+  "metadata": {
+    "total_samples": 12,
+    "target_samples": 100,
+    "categories": {
+      "vocal": {
+        "current": 5,
+        "target": 60
+      },
+      "instrumental": {
+        "current": 3,
+        "target": 20
+      },
+      "classical": {
+        "current": 2,
+        "target": 10
+      },
+      "jazz": {
+        "current": 2,
+        "target": 10
+      }
+    },
+    "last_updated": "2026-02-11T05:54:03.783179",
+    "quality_baseline": {
+      "emotionalitaet": 0.5984664682448942,
+      "bass_kraft": 1.0,
+      "brillanz": 0.15042615169159762,
+      "natuerlichkeit": 0.7610532472929593,
+      "authentizitaet": 0.3084259908181735,
+      "waerme": 0.9959825922080666,
+      "transparenz": 0.3883733478984566
+    }
+  },
+  "instructions": "Generated synthetic golden samples for benchmark/regression testing"
+}

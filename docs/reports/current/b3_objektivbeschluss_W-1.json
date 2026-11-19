@@ -1,0 +1,19 @@
+{
+  "schema": "aurik.objektivbeschluss/1",
+  "flag": "BIGVGAN_V2_HR_ACTIVATED",
+  "stufe": "W-1",
+  "referenz_songs": 3,
+  "seed": 42,
+  "never_worsen": false,
+  "signifikant": false,
+  "defekt_fallbacks": 0,
+  "blind_ausgewertet": true,
+  "messung": "docs/reports/current/b3_stufenmessung_W-1.json",
+  "zielmetrik": {
+    "name": "musik_mos (G-2)",
+    "vorteile": "2/5",
+    "p_wert": 1.0
+  },
+  "ergebnis": "ABGELEHNT",
+  "quelle": "scripts/b3_stufenmessung.py"
+}

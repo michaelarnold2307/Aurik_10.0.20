@@ -1,0 +1,4 @@
+- Problem: `run_tests_safe.sh` konnte bei quiet/systemd-run FAIL melden, waehrend `logs/pytest_safe.log` leer blieb (Truncate + frueher Prozessabbruch/Jitter).
+- Fix: In quiet mode immer Header in Log schreiben (`start_utc`, `mode`, `pytest_args`) und danach Prozessausgabe appenden (`>>`) statt truncate-only redirect.
+- Fix: Bei `rc != 0` und leerem Log in `_print_quiet_summary` diagnostischen Fallback-Hinweis ins Log injizieren, damit Status/Mini-Report nie ohne Kontext bleiben.
+- Praxis: Bei CI-Gate-Debugging zuerst `logs/pytest_safe.status` + `logs/pytest_safe.mini_report.txt` + Log-Header pruefen, bevor Prozessfehler als Testregression interpretiert werden.

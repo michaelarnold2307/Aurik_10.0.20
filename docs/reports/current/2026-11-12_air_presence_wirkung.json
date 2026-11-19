@@ -1,0 +1,136 @@
+{
+  "schema": "aurik.air_presence_wirkung/1",
+  "datum": "2026-11-12",
+  "quelle": "scripts/messe_air_presence_wirkung.py",
+  "proben_anzahl": 6,
+  "rezepte": ["clipping", "kassette"],
+  "panns_singing": null,
+  "zeilen": [
+    {
+      "titel": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl (clipping)",
+      "rezept": "clipping",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": 0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.899994,
+        "decke_out": 0.899994,
+        "decke_ok": true,
+        "rms_delta": 0.0,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      }
+    },
+    {
+      "titel": "Elke Best - Boogie Woogie Mama (1977) HD audio 320 kbps engl (kassette)",
+      "rezept": "kassette",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": -0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.700287,
+        "decke_out": 0.700287,
+        "decke_ok": true,
+        "rms_delta": 4.8e-6,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      }
+    },
+    {
+      "titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320  (clipping)",
+      "rezept": "clipping",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": 0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.900024,
+        "decke_out": 0.900024,
+        "decke_ok": true,
+        "rms_delta": 0.0,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      }
+    },
+    {
+      "titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320  (kassette)",
+      "rezept": "kassette",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": -0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.759827,
+        "decke_out": 0.759827,
+        "decke_ok": true,
+        "rms_delta": 4.27e-5,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      }
+    },
+    {
+      "titel": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320  (clipping)",
+      "rezept": "clipping",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": 0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.900024,
+        "decke_out": 0.900024,
+        "decke_ok": true,
+        "rms_delta": 0.0,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      }
+    },
+    {
+      "titel": "Elke and The Jets - Me I'm So Beautiful (1983) HD audio 320  (kassette)",
+      "rezept": "kassette",
+      "ebene_kern": {
+        "applied": true,
+        "witness_ok": true,
+        "hnr_drop_db": -0.0,
+        "pitch_drift_cents": 0.0,
+        "flat_top_rise": 0.0,
+        "decke_in": 0.849213,
+        "decke_out": 0.848895,
+        "decke_ok": true,
+        "rms_delta": 3.79e-5,
+        "delta_metriken": {
+          "musik_mos_delta": 0.0,
+          "defektlast_delta": 0.0,
+          "nie_schlechter_als_jnd": true
+        }
+      }
+    }
+  ],
+  "zusammenfassung": {
+    "kern_engagiert": 6,
+    "kern_witness_ok": 6,
+    "kern_decke_ok": 6,
+    "kern_nie_schlechter": 6
+  }
+}

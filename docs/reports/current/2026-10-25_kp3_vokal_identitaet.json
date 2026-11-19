@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-25",
+  "script": "scripts/benchmark_identity_oracles.py",
+  "seed": 42,
+  "note": "Golden Set audit/golden_listening_set.json enthält material/degradationsbezogene Metadaten, aber KEINE Sänger-Identitäts-Paare (gleicher Sänger in mehreren Aufnahmen) — für Identitäts-Invarianz werden deterministische synthetische Sänger + degradierte Kopien genutzt (§G8 (copilot-instructions.md), ehrlich dokumentiert).",
+  "identity_pairs": [
+    {
+      "name": "synthetic_singer/hall",
+      "dsp_cosine": 0.4448,
+      "muq_cosine": 0.8735
+    },
+    {
+      "name": "synthetic_singer/saturation",
+      "dsp_cosine": 0.9524,
+      "muq_cosine": 0.9186
+    },
+    {
+      "name": "synthetic_singer/bandlimit_8k",
+      "dsp_cosine": 0.9992,
+      "muq_cosine": 0.9935
+    },
+    {
+      "name": "synthetic_singer/bandlimit_12k",
+      "dsp_cosine": 0.9994,
+      "muq_cosine": 0.9999
+    },
+    {
+      "name": "golden:cassette_hiphop_1980s_hiss/hall",
+      "dsp_cosine": 0.4966,
+      "muq_cosine": 0.2214
+    },
+    {
+      "name": "golden:cassette_hiphop_1980s_hiss/saturation",
+      "dsp_cosine": 0.9794,
+      "muq_cosine": 0.911
+    },
+    {
+      "name": "golden:cassette_hiphop_1980s_hiss/bandlimit_8k",
+      "dsp_cosine": 0.8653,
+      "muq_cosine": 0.3734
+    },
+    {
+      "name": "golden:cassette_hiphop_1980s_hiss/bandlimit_12k",
+      "dsp_cosine": 0.9434,
+      "muq_cosine": 0.8555
+    }
+  ],
+  "different_pairs": [
+    {
+      "name": "other_singer_0",
+      "dsp_cosine": 0.9758,
+      "muq_cosine": 0.9868
+    },
+    {
+      "name": "other_singer_1",
+      "dsp_cosine": 0.9892,
+      "muq_cosine": 0.9807
+    },
+    {
+      "name": "other_singer_2",
+      "dsp_cosine": 0.9602,
+      "muq_cosine": 0.9391
+    }
+  ],
+  "summary": {
+    "identity": {
+      "n": 8,
+      "dsp_mean": 0.8351,
+      "dsp_n_measurable": 8,
+      "muq_mean": 0.7683,
+      "muq_n_measurable": 8,
+      "want_high": true
+    },
+    "different": {
+      "n": 3,
+      "dsp_mean": 0.9751,
+      "dsp_n_measurable": 3,
+      "muq_mean": 0.9689,
+      "muq_n_measurable": 3,
+      "want_high": false
+    },
+    "dsp_separation": -0.14,
+    "muq_separation": -0.2006
+  }
+}

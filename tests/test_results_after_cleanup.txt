@@ -1,0 +1,155 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.12, pytest-9.0.2, pluggy-1.6.0 -- /mnt/1846D15B46D139E8/Aurik_Standalone/.venv_panns/bin/python
+cachedir: .pytest_cache
+rootdir: /mnt/1846D15B46D139E8/Aurik_Standalone
+configfile: pytest.ini
+collecting ... collected 53 items
+
+tests/test_enhancement_safety_wrappers.py::test_harmonic_exciter_with_headroom PASSED [  1%]
+tests/test_enhancement_safety_wrappers.py::test_harmonic_exciter_rejects_hot_audio PASSED [  3%]
+tests/test_enhancement_safety_wrappers.py::test_harmonic_exciter_increases_brightness PASSED [  5%]
+tests/test_enhancement_safety_wrappers.py::test_harmonic_exciter_prevents_harshness PASSED [  7%]
+tests/test_enhancement_safety_wrappers.py::test_harmonic_exciter_detects_imd PASSED [  9%]
+tests/test_enhancement_safety_wrappers.py::test_stereo_widener_normal_stereo PASSED [ 11%]
+tests/test_enhancement_safety_wrappers.py::test_stereo_widener_rejects_mono PASSED [ 13%]
+tests/test_enhancement_safety_wrappers.py::test_stereo_widener_mono_compatibility PASSED [ 15%]
+tests/test_enhancement_safety_wrappers.py::test_stereo_widener_preserves_center PASSED [ 16%]
+tests/test_enhancement_safety_wrappers.py::test_stereo_widener_detects_hollow PASSED [ 18%]
+tests/test_enhancement_safety_wrappers.py::test_stereo_widener_limits_width_increase PASSED [ 20%]
+tests/test_enhancement_safety_wrappers.py::test_sequential_enhancement_processing FAILED [ 22%]
+tests/test_enhancement_safety_wrappers.py::test_enhancement_wrapper_statistics PASSED [ 24%]
+tests/test_enhancement_safety_wrappers.py::test_harmonic_exciter_extreme_amount PASSED [ 26%]
+tests/test_enhancement_safety_wrappers.py::test_stereo_widener_extreme_width PASSED [ 28%]
+tests/test_enhancement_safety_wrappers.py::test_harmonic_exciter_nan_resilience PASSED [ 30%]
+tests/test_enhancement_safety_wrappers.py::test_stereo_widener_inf_resilience PASSED [ 32%]
+tests/test_enhancement_safety_wrappers.py::test_harmonic_exciter_quality_score PASSED [ 33%]
+tests/test_enhancement_safety_wrappers.py::test_stereo_widener_quality_score PASSED [ 35%]
+tests/test_all_wrappers_integration.py::test_complete_vocal_restoration_pipeline FAILED [ 37%]
+tests/test_all_wrappers_integration.py::test_stereo_vocal_enhancement_pipeline PASSED [ 39%]
+tests/test_all_wrappers_integration.py::test_audit_trail_completeness PASSED [ 41%]
+tests/test_all_wrappers_integration.py::test_wrapper_performance_metrics PASSED [ 43%]
+tests/test_all_wrappers_integration.py::test_pipeline_handles_edge_cases PASSED [ 45%]
+tests/test_all_wrappers_integration.py::test_all_wrappers_instantiate_correctly PASSED [ 47%]
+tests/test_defect_safety_wrappers.py::test_declick_safety_clicked_audio FAILED [ 49%]
+tests/test_defect_safety_wrappers.py::test_declick_safety_clean_audio FAILED [ 50%]
+tests/test_defect_safety_wrappers.py::test_declick_safety_preserves_transients PASSED [ 52%]
+tests/test_defect_safety_wrappers.py::test_denoise_safety_noisy_audio FAILED [ 54%]
+tests/test_defect_safety_wrappers.py::test_denoise_safety_clean_audio PASSED [ 56%]
+tests/test_defect_safety_wrappers.py::test_denoise_safety_birdie_detection PASSED [ 58%]
+tests/test_defect_safety_wrappers.py::test_dehum_safety_humming_audio FAILED [ 60%]
+tests/test_defect_safety_wrappers.py::test_dehum_safety_clean_audio PASSED [ 62%]
+tests/test_defect_safety_wrappers.py::test_dehum_safety_bass_preservation PASSED [ 64%]
+tests/test_defect_safety_wrappers.py::test_sequential_defect_processing FAILED [ 66%]
+tests/test_defect_safety_wrappers.py::test_wrapper_statistics_tracking PASSED [ 67%]
+tests/test_defect_safety_wrappers.py::test_declick_with_very_percussive_audio PASSED [ 69%]
+tests/test_defect_safety_wrappers.py::test_denoise_extreme_noise PASSED  [ 71%]
+tests/test_vocal_safety_wrappers.py::test_formant_shifter_safety_clean_audio PASSED [ 73%]
+tests/test_vocal_safety_wrappers.py::test_formant_shifter_safety_excessive_shift PASSED [ 75%]
+tests/test_vocal_safety_wrappers.py::test_formant_shifter_safety_no_voice FAILED [ 77%]
+tests/test_vocal_safety_wrappers.py::test_deesser_safety_sibilant_audio PASSED [ 79%]
+tests/test_vocal_safety_wrappers.py::test_deesser_safety_no_sibilance PASSED [ 81%]
+tests/test_vocal_safety_wrappers.py::test_deesser_safety_excessive_depth PASSED [ 83%]
+tests/test_vocal_safety_wrappers.py::test_vocal_declipping_safety_clipped_audio FAILED [ 84%]
+tests/test_vocal_safety_wrappers.py::test_vocal_declipping_safety_no_clipping PASSED [ 86%]
+tests/test_vocal_safety_wrappers.py::test_vocal_declipping_safety_no_harmonics PASSED [ 88%]
+tests/test_vocal_safety_wrappers.py::test_audit_trail_logging PASSED     [ 90%]
+tests/test_vocal_safety_wrappers.py::test_sequential_processing_pipeline PASSED [ 92%]
+tests/test_vocal_safety_wrappers.py::test_wrapper_statistics PASSED      [ 94%]
+tests/test_vocal_safety_wrappers.py::test_wrapper_with_nan_audio PASSED  [ 96%]
+tests/test_vocal_safety_wrappers.py::test_wrapper_with_inf_audio PASSED  [ 98%]
+tests/test_vocal_safety_wrappers.py::test_wrapper_with_silent_audio PASSED [100%]
+
+=================================== FAILURES ===================================
+____________________ test_sequential_enhancement_processing ____________________
+tests/test_enhancement_safety_wrappers.py:446: in test_sequential_enhancement_processing
+    assert report1_l.decision != ProcessingDecision.ABORT
+E   AssertionError: assert <ProcessingDecision.ABORT: 'abort'> != <ProcessingDecision.ABORT: 'abort'>
+E    +  where <ProcessingDecision.ABORT: 'abort'> = ProcessingReport(timestamp='2026-02-07T20:51:45.320999', module_name='HarmonicExciter', module_version='1.0.0', input_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.5584881739060765, 'rms_level': 0.2645721313714139, 'has_nan': False, 'has_inf': False}, pre_check_result=PreCheckResult(passed=False, confidence=0.0, reasons=['Insufficient headroom: 5.1 dB (min 6.0 dB). Risk of clipping from added harmonics.'], warnings=[], metadata={}), decision=<ProcessingDecision.ABORT: 'abort'>, processing_params={}, post_check_result=None, output_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.5584881739060765, 'rms_level': 0.2645721313714139, 'has_nan': False, 'has_inf': False}, reversibility_data=None, processing_time_ms=0.232).decision
+E    +  and   <ProcessingDecision.ABORT: 'abort'> = ProcessingDecision.ABORT
+------------------------------ Captured log call -------------------------------
+WARNING  HIPS.HarmonicExciter:safety_wrapper_template.py:538 Processing aborted: Pre-check failed
+WARNING  HIPS.HarmonicExciter:safety_wrapper_template.py:538 Processing aborted: Pre-check failed
+___________________ test_complete_vocal_restoration_pipeline ___________________
+tests/test_all_wrappers_integration.py:269: in test_complete_vocal_restoration_pipeline
+    print(f"De-Click: {report.decision.name}, Quality: {quality:.3f if quality else 'N/A'}")
+E   TypeError: unsupported format string passed to NoneType.__format__
+----------------------------- Captured stdout call -----------------------------
+
+=== PHASE 1: DEFECT REMOVAL ===
+------------------------------ Captured log call -------------------------------
+WARNING  HIPS.DeClick:safety_wrapper_template.py:207 Low confidence (0.00 < 0.5). Aborting processing.
+WARNING  HIPS.DeClick:safety_wrapper_template.py:538 Processing aborted: Pre-check failed
+______________________ test_declick_safety_clicked_audio _______________________
+tests/test_defect_safety_wrappers.py:230: in test_declick_safety_clicked_audio
+    assert report.decision in [ProcessingDecision.PROCEED, ProcessingDecision.REDUCE_STRENGTH]
+E   AssertionError: assert <ProcessingDecision.ABORT: 'abort'> in [<ProcessingDecision.PROCEED: 'proceed'>, <ProcessingDecision.REDUCE_STRENGTH: 'reduce_strength'>]
+E    +  where <ProcessingDecision.ABORT: 'abort'> = ProcessingReport(timestamp='2026-02-07T20:51:54.861992', module_name='DeClick', module_version='1.0.0', input_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 1.0996329075067797, 'rms_level': 0.33186651705848486, 'has_nan': False, 'has_inf': False}, pre_check_result=PreCheckResult(passed=False, confidence=0.0, reasons=['Audio appears to be clipping (peak > 0.99)'], warnings=[], metadata={}), decision=<ProcessingDecision.ABORT: 'abort'>, processing_params={}, post_check_result=None, output_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 1.0996329075067797, 'rms_level': 0.33186651705848486, 'has_nan': False, 'has_inf': False}, reversibility_data=None, processing_time_ms=0.165).decision
+------------------------------ Captured log call -------------------------------
+WARNING  HIPS.DeClick:safety_wrapper_template.py:538 Processing aborted: Pre-check failed
+_______________________ test_declick_safety_clean_audio ________________________
+tests/test_defect_safety_wrappers.py:253: in test_declick_safety_clean_audio
+    assert not report.pre_check_result.passed
+E   AssertionError: assert not True
+E    +  where True = PreCheckResult(passed=True, confidence=0.0, reasons=[], warnings=['More musical transients (2) than clicks (0). High risk of damaging musical content.', 'Insufficient epistemic confidence: 0.00'], metadata={'has_clicks': True, 'click_count': 880, 'click_positions': [26, 72, 127, 172, 227, 272, 327, 372, 427, 473], 'true_clicks': 0, 'musical_transients_detected': 2, 'uncertain_transients': 48, 'transient_density_per_sec': 2.0, 'avg_attack_time_ms': 497.43197278911566}).passed
+E    +    where PreCheckResult(passed=True, confidence=0.0, reasons=[], warnings=['More musical transients (2) than clicks (0). High risk of damaging musical content.', 'Insufficient epistemic confidence: 0.00'], metadata={'has_clicks': True, 'click_count': 880, 'click_positions': [26, 72, 127, 172, 227, 272, 327, 372, 427, 473], 'true_clicks': 0, 'musical_transients_detected': 2, 'uncertain_transients': 48, 'transient_density_per_sec': 2.0, 'avg_attack_time_ms': 497.43197278911566}) = ProcessingReport(timestamp='2026-02-07T20:51:54.918097', module_name='DeClick', module_version='1.0.0', input_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.6, 'rms_level': 0.331442927025821, 'has_nan': False, 'has_inf': False}, pre_check_result=PreCheckResult(passed=True, confidence=0.0, reasons=[], warnings=['More musical transients (2) than clicks (0). High risk of damaging musical content.', 'Insufficient epistemic confidence: 0.00'], metadata={'has_clicks': True, 'click_count': 880, 'click_positions': [26, 72, 127, 172, 227, 272, 327, 372, 427, 473], 'true_clicks': 0, 'musical_transients_detected': 2, 'uncertain_transients': 48, 'transient_density_per_sec': 2.0, 'avg_attack_time_ms': 497.43197278911566}), decision=<ProcessingDecision.ABORT: 'abort'>, processing_params={}, post_check_result=None, output_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.6, 'rms_level': 0.331442927025821, 'has_nan': False, 'has_inf': False}, reversibility_data=None, processing_time_ms=47.258).pre_check_result
+------------------------------ Captured log call -------------------------------
+WARNING  HIPS.DeClick:safety_wrapper_template.py:207 Low confidence (0.00 < 0.5). Aborting processing.
+WARNING  HIPS.DeClick:safety_wrapper_template.py:538 Processing aborted: Pre-check failed
+_______________________ test_denoise_safety_noisy_audio ________________________
+tests/test_defect_safety_wrappers.py:298: in test_denoise_safety_noisy_audio
+    assert report.decision in [ProcessingDecision.PROCEED, ProcessingDecision.REDUCE_STRENGTH]
+E   AssertionError: assert <ProcessingDecision.ABORT: 'abort'> in [<ProcessingDecision.PROCEED: 'proceed'>, <ProcessingDecision.REDUCE_STRENGTH: 'reduce_strength'>]
+E    +  where <ProcessingDecision.ABORT: 'abort'> = ProcessingReport(timestamp='2026-02-07T20:51:54.980410', module_name='DeNoise', module_version='1.0.0', input_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.953547903334084, 'rms_level': 0.3468926511750433, 'has_nan': False, 'has_inf': False}, pre_check_result=PreCheckResult(passed=True, confidence=0.8, reasons=[], warnings=['Very low SNR: 0.3 dB. Noise reduction may struggle to preserve signal.'], metadata={'snr_db': 0.2867571557173546, 'noise_type': 'white', 'noise_classification_confidence': 0.8, 'spectral_balance_before': {'sub_bass': 0.00015120343956927612, 'bass': 0.0007717889878608252, 'low_mid': 0.6431987003276695, 'mid': 0.27993605278453726, 'high_mid': 0.00769328009295223, 'presence': 0.007605899579169648, 'brilliance': 0.05299695124201693}, 'temporal_continuity_before': 1.0}), decision=<ProcessingDecision.ABORT: 'abort'>, processing_params={}, post_check_result=None, output_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.953547903334084, 'rms_level': 0.3468926511750433, 'has_nan': False, 'has_inf': False}, reversibility_data=None, processing_time_ms=33.334999999999994).decision
+------------------------------ Captured log call -------------------------------
+WARNING  HIPS.DeNoise:safety_wrapper_template.py:261 Post-check failed. Issues: ['Excessive birdies: 1.00 (max 0.3)']
+WARNING  HIPS.DeNoise:safety_wrapper_template.py:279 Quality score (0.40) below threshold (0.65). Returning original.
+WARNING  HIPS.DeNoise:safety_wrapper_template.py:538 Processing aborted: Quality score too low: 0.40
+_______________________ test_dehum_safety_humming_audio ________________________
+tests/test_defect_safety_wrappers.py:359: in test_dehum_safety_humming_audio
+    assert report.decision in [ProcessingDecision.PROCEED, ProcessingDecision.REDUCE_STRENGTH]
+E   AssertionError: assert <ProcessingDecision.ABORT: 'abort'> in [<ProcessingDecision.PROCEED: 'proceed'>, <ProcessingDecision.REDUCE_STRENGTH: 'reduce_strength'>]
+E    +  where <ProcessingDecision.ABORT: 'abort'> = ProcessingReport(timestamp='2026-02-07T20:51:55.266931', module_name='DeHum', module_version='1.0.0', input_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.7579628196224815, 'rms_level': 0.34230440179567717, 'has_nan': False, 'has_inf': False}, pre_check_result=PreCheckResult(passed=True, confidence=0.20823309877110222, reasons=[], warnings=['Strong harmonic series: 0.98. Audio likely contains musical bass instruments.', 'Insufficient epistemic confidence: 0.19'], metadata={'has_hum': np.True_, 'hum_frequency': 50.0, 'hum_severity': 0.20823309877110222, 'hum_harmonics': [50.0, 100.0, 150.0, 200.0, 250.0, 300.0, 350.0, 400.0, 450.0, 500.0], 'has_bass_content': np.False_, 'bass_energy_ratio': 0.04779198301651244, 'harmonic_series_strength': 0.9777561700041602, 'phase_coherence_before': 1.0}), decision=<ProcessingDecision.ABORT: 'abort'>, processing_params={}, post_check_result=None, output_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.7579628196224815, 'rms_level': 0.34230440179567717, 'has_nan': False, 'has_inf': False}, reversibility_data=None, processing_time_ms=228.56).decision
+------------------------------ Captured log call -------------------------------
+WARNING  HIPS.DeHum:safety_wrapper_template.py:207 Low confidence (0.19 < 0.5). Aborting processing.
+WARNING  HIPS.DeHum:safety_wrapper_template.py:538 Processing aborted: Pre-check failed
+______________________ test_sequential_defect_processing _______________________
+tests/test_defect_safety_wrappers.py:465: in test_sequential_defect_processing
+    assert report1.decision != ProcessingDecision.ABORT or report2.decision != ProcessingDecision.ABORT
+E   AssertionError: assert (<ProcessingDecision.ABORT: 'abort'> != <ProcessingDecision.ABORT: 'abort'> or <ProcessingDecision.ABORT: 'abort'> != <ProcessingDecision.ABORT: 'abort'>)
+E    +  where <ProcessingDecision.ABORT: 'abort'> = ProcessingReport(timestamp='2026-02-07T20:51:55.289352', module_name='DeHum', module_version='1.0.0', input_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.7442318781412387, 'rms_level': 0.36353717646582706, 'has_nan': False, 'has_inf': False}, pre_check_result=PreCheckResult(passed=False, confidence=0.0, reasons=['No hum detected in audio'], warnings=[], metadata={}), decision=<ProcessingDecision.ABORT: 'abort'>, processing_params={}, post_check_result=None, output_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.7442318781412387, 'rms_level': 0.36353717646582706, 'has_nan': False, 'has_inf': False}, reversibility_data=None, processing_time_ms=1.321).decision
+E    +  and   <ProcessingDecision.ABORT: 'abort'> = ProcessingDecision.ABORT
+E    +  and   <ProcessingDecision.ABORT: 'abort'> = ProcessingReport(timestamp='2026-02-07T20:51:55.330065', module_name='DeNoise', module_version='1.0.0', input_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.7442318781412387, 'rms_level': 0.36353717646582706, 'has_nan': False, 'has_inf': False}, pre_check_result=PreCheckResult(passed=True, confidence=0.8, reasons=[], warnings=['Very low SNR: 0.2 dB. Noise reduction may struggle to preserve signal.'], metadata={'snr_db': 0.1582668431043606, 'noise_type': 'white', 'noise_classification_confidence': 0.8, 'spectral_balance_before': {'sub_bass': 0.037858064291155964, 'bass': 0.0001671459759357554, 'low_mid': 0.9435988448372061, 'mid': 0.0013031658925462923, 'high_mid': 0.0017246751459167107, 'presence': 0.0017677819312196873, 'brilliance': 0.011810298996481217}, 'temporal_continuity_before': 1.0}), decision=<ProcessingDecision.ABORT: 'abort'>, processing_params={}, post_check_result=None, output_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.7442318781412387, 'rms_level': 0.36353717646582706, 'has_nan': False, 'has_inf': False}, reversibility_data=None, processing_time_ms=40.474000000000004).decision
+E    +  and   <ProcessingDecision.ABORT: 'abort'> = ProcessingDecision.ABORT
+------------------------------ Captured log call -------------------------------
+WARNING  HIPS.DeHum:safety_wrapper_template.py:538 Processing aborted: Pre-check failed
+WARNING  HIPS.DeNoise:safety_wrapper_template.py:261 Post-check failed. Issues: ['Excessive birdies: 1.00 (max 0.3)']
+WARNING  HIPS.DeNoise:safety_wrapper_template.py:279 Quality score (0.40) below threshold (0.65). Returning original.
+WARNING  HIPS.DeNoise:safety_wrapper_template.py:538 Processing aborted: Quality score too low: 0.40
+WARNING  HIPS.DeClick:safety_wrapper_template.py:207 Low confidence (0.00 < 0.5). Aborting processing.
+WARNING  HIPS.DeClick:safety_wrapper_template.py:538 Processing aborted: Pre-check failed
+_____________________ test_formant_shifter_safety_no_voice _____________________
+tests/test_vocal_safety_wrappers.py:228: in test_formant_shifter_safety_no_voice
+    assert report.decision == ProcessingDecision.ABORT
+E   AssertionError: assert <ProcessingDecision.PROCEED: 'proceed'> == <ProcessingDecision.ABORT: 'abort'>
+E    +  where <ProcessingDecision.PROCEED: 'proceed'> = ProcessingReport(timestamp='2026-02-07T20:51:56.885904', module_name='FormantShifter', module_version='1.0.0', input_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.46874300236014765, 'rms_level': 0.1005598719908671, 'has_nan': False, 'has_inf': False}, pre_check_result=PreCheckResult(passed=True, confidence=0.9628246653705557, reasons=[], warnings=[], metadata={'voice_detected': np.True_, 'voice_confidence': 0.9628246653705557, 'formants_hz': [1096.6035259477687, 2039.9275734074513, 3060.5205818319055, 4035.6097330963703, 4926.7292156701305], 'formant_dispersion': 0.7979428520254921, 'has_singers_formant': np.False_, 'singers_formant_strength': 0.3448852325246348}), decision=<ProcessingDecision.PROCEED: 'proceed'>, processing_params={'shift_hz': 100}, post_check_result=PostCheckResult(passed=True, quality_score=0.0, issues=[], side_effects=['Formant shift error: requested 100 Hz, got -0 Hz'], metrics={'voice_confidence_after': 0.9624076965187851, 'energy_ratio': 0.9801, 'correlation': 1.0, 'formants_before': [1096.6035259477687, 2039.9275734074513, 3060.5205818319055, 4035.6097330963703, 4926.7292156701305], 'formants_after': [1096.6035259477637, 2039.9275734074604, 3060.5205818319, 4035.609733096368, 4926.729215670125], 'actual_formant_shift_hz': -4.547473508864641e-13, 'requested_shift_hz': 100, 'spectral_centroid_before': 11021.005298770522, 'spectral_centroid_after': 11021.005298770522}), output_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.46405557233654615, 'rms_level': 0.09955427327095843, 'has_nan': False, 'has_inf': False}, reversibility_data={'original_hash': -2885529685115838347, 'original_shape': (44100,), 'sample_rate': 44100}, processing_time_ms=720.979).decision
+E    +  and   <ProcessingDecision.ABORT: 'abort'> = ProcessingDecision.ABORT
+__________________ test_vocal_declipping_safety_clipped_audio __________________
+tests/test_vocal_safety_wrappers.py:308: in test_vocal_declipping_safety_clipped_audio
+    assert report.decision in [ProcessingDecision.PROCEED, ProcessingDecision.REDUCE_STRENGTH]
+E   AssertionError: assert <ProcessingDecision.ABORT: 'abort'> in [<ProcessingDecision.PROCEED: 'proceed'>, <ProcessingDecision.REDUCE_STRENGTH: 'reduce_strength'>]
+E    +  where <ProcessingDecision.ABORT: 'abort'> = ProcessingReport(timestamp='2026-02-07T20:51:57.633500', module_name='VocalDeclipping', module_version='1.0.0', input_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.99, 'rms_level': 0.6969459698778888, 'has_nan': False, 'has_inf': False}, pre_check_result=PreCheckResult(passed=True, confidence=0.9944433935192161, reasons=[], warnings=['High initial THD: 52.5%. Audio is heavily distorted.', 'Very low crest factor: 3.0 dB. Indicates severe dynamic range loss.'], metadata={'clipped_samples': 9958, 'total_samples': 44100, 'clipping_ratio': 0.22580498866213153, 'consecutive_clip_regions': 360, 'max_clip_length_samples': 28, 'severity_class': 'severe', 'severity_score': 1.0, 'has_harmonic_structure': np.True_, 'harmonic_strength': 0.9944433935192161, 'thd_before': 0.5247234663445853, 'crest_factor_before': 3.0487217309780417}), decision=<ProcessingDecision.ABORT: 'abort'>, processing_params={}, post_check_result=None, output_metadata={'shape': (44100,), 'dtype': 'float64', 'sample_rate': 44100, 'duration_sec': 1.0, 'channels': 1, 'peak_amplitude': 0.99, 'rms_level': 0.6969459698778888, 'has_nan': False, 'has_inf': False}, reversibility_data=None, processing_time_ms=683.639).decision
+------------------------------ Captured log call -------------------------------
+WARNING  HIPS.VocalDeclipping:safety_wrapper_template.py:261 Post-check failed. Issues: ['Clipping not reduced: 1.00 -> 1.00']
+WARNING  HIPS.VocalDeclipping:safety_wrapper_template.py:279 Quality score (0.25) below threshold (0.65). Returning original.
+WARNING  HIPS.VocalDeclipping:safety_wrapper_template.py:538 Processing aborted: Quality score too low: 0.25
+=========================== short test summary info ============================
+FAILED tests/test_enhancement_safety_wrappers.py::test_sequential_enhancement_processing
+FAILED tests/test_all_wrappers_integration.py::test_complete_vocal_restoration_pipeline
+FAILED tests/test_defect_safety_wrappers.py::test_declick_safety_clicked_audio
+FAILED tests/test_defect_safety_wrappers.py::test_declick_safety_clean_audio
+FAILED tests/test_defect_safety_wrappers.py::test_denoise_safety_noisy_audio
+FAILED tests/test_defect_safety_wrappers.py::test_dehum_safety_humming_audio
+FAILED tests/test_defect_safety_wrappers.py::test_sequential_defect_processing
+FAILED tests/test_vocal_safety_wrappers.py::test_formant_shifter_safety_no_voice
+FAILED tests/test_vocal_safety_wrappers.py::test_vocal_declipping_safety_clipped_audio
+======================== 9 failed, 44 passed in 19.13s =========================

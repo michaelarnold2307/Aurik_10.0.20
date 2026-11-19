@@ -1,0 +1,848 @@
+{
+  "dependencies": [
+    {
+      "name": "altgraph",
+      "version": "0.17.5",
+      "vulns": []
+    },
+    {
+      "name": "annotated-doc",
+      "version": "0.0.4",
+      "vulns": []
+    },
+    {
+      "name": "annotated-types",
+      "version": "0.7.0",
+      "vulns": []
+    },
+    {
+      "name": "anyio",
+      "version": "4.12.1",
+      "vulns": []
+    },
+    {
+      "name": "audioread",
+      "version": "3.1.0",
+      "vulns": []
+    },
+    {
+      "name": "authlib",
+      "version": "1.6.7",
+      "vulns": []
+    },
+    {
+      "name": "autopep8",
+      "version": "2.3.2",
+      "vulns": []
+    },
+    {
+      "name": "backports-datetime-fromisoformat",
+      "version": "2.0.3",
+      "vulns": []
+    },
+    {
+      "name": "bandit",
+      "version": "1.9.3",
+      "vulns": []
+    },
+    {
+      "name": "black",
+      "version": "26.1.0",
+      "vulns": []
+    },
+    {
+      "name": "blinker",
+      "version": "1.9.0",
+      "vulns": []
+    },
+    {
+      "name": "boolean-py",
+      "version": "5.0",
+      "vulns": []
+    },
+    {
+      "name": "cachecontrol",
+      "version": "0.14.4",
+      "vulns": []
+    },
+    {
+      "name": "certifi",
+      "version": "2026.1.4",
+      "vulns": []
+    },
+    {
+      "name": "cffi",
+      "version": "2.0.0",
+      "vulns": []
+    },
+    {
+      "name": "charset-normalizer",
+      "version": "3.4.4",
+      "vulns": []
+    },
+    {
+      "name": "click",
+      "version": "8.3.1",
+      "vulns": []
+    },
+    {
+      "name": "colorama",
+      "version": "0.4.6",
+      "vulns": []
+    },
+    {
+      "name": "coloredlogs",
+      "version": "15.0.1",
+      "vulns": []
+    },
+    {
+      "name": "contourpy",
+      "version": "1.3.2",
+      "vulns": []
+    },
+    {
+      "name": "cryptography",
+      "version": "46.0.5",
+      "vulns": []
+    },
+    {
+      "name": "cuda-bindings",
+      "version": "12.9.4",
+      "vulns": []
+    },
+    {
+      "name": "cuda-pathfinder",
+      "version": "1.3.3",
+      "vulns": []
+    },
+    {
+      "name": "cycler",
+      "version": "0.12.1",
+      "vulns": []
+    },
+    {
+      "name": "cyclonedx-python-lib",
+      "version": "11.6.0",
+      "vulns": []
+    },
+    {
+      "name": "decorator",
+      "version": "5.2.1",
+      "vulns": []
+    },
+    {
+      "name": "defusedxml",
+      "version": "0.7.1",
+      "vulns": []
+    },
+    {
+      "name": "docker",
+      "version": "7.1.0",
+      "vulns": []
+    },
+    {
+      "name": "dparse",
+      "version": "0.6.4",
+      "vulns": []
+    },
+    {
+      "name": "exceptiongroup",
+      "version": "1.3.1",
+      "vulns": []
+    },
+    {
+      "name": "fastapi",
+      "version": "0.128.1",
+      "vulns": []
+    },
+    {
+      "name": "filelock",
+      "version": "3.20.3",
+      "vulns": []
+    },
+    {
+      "name": "flake8",
+      "version": "7.3.0",
+      "vulns": []
+    },
+    {
+      "name": "flask",
+      "version": "3.1.2",
+      "vulns": []
+    },
+    {
+      "name": "flatbuffers",
+      "version": "25.12.19",
+      "vulns": []
+    },
+    {
+      "name": "fonttools",
+      "version": "4.61.1",
+      "vulns": []
+    },
+    {
+      "name": "fsspec",
+      "version": "2026.1.0",
+      "vulns": []
+    },
+    {
+      "name": "h11",
+      "version": "0.16.0",
+      "vulns": []
+    },
+    {
+      "name": "hf-xet",
+      "version": "1.2.0",
+      "vulns": []
+    },
+    {
+      "name": "httpcore",
+      "version": "1.0.9",
+      "vulns": []
+    },
+    {
+      "name": "httpx",
+      "version": "0.28.1",
+      "vulns": []
+    },
+    {
+      "name": "huggingface-hub",
+      "version": "1.4.1",
+      "vulns": []
+    },
+    {
+      "name": "humanfriendly",
+      "version": "10.0",
+      "vulns": []
+    },
+    {
+      "name": "hypothesis",
+      "version": "6.151.5",
+      "vulns": []
+    },
+    {
+      "name": "idna",
+      "version": "3.11",
+      "vulns": []
+    },
+    {
+      "name": "iniconfig",
+      "version": "2.3.0",
+      "vulns": []
+    },
+    {
+      "name": "itsdangerous",
+      "version": "2.2.0",
+      "vulns": []
+    },
+    {
+      "name": "jinja2",
+      "version": "3.1.6",
+      "vulns": []
+    },
+    {
+      "name": "joblib",
+      "version": "1.5.3",
+      "vulns": []
+    },
+    {
+      "name": "kiwisolver",
+      "version": "1.4.9",
+      "vulns": []
+    },
+    {
+      "name": "lazy-loader",
+      "version": "0.4",
+      "vulns": []
+    },
+    {
+      "name": "librosa",
+      "version": "0.11.0",
+      "vulns": []
+    },
+    {
+      "name": "librt",
+      "version": "0.7.8",
+      "vulns": []
+    },
+    {
+      "name": "license-expression",
+      "version": "30.4.4",
+      "vulns": []
+    },
+    {
+      "name": "llvmlite",
+      "version": "0.46.0",
+      "vulns": []
+    },
+    {
+      "name": "loguru",
+      "version": "0.7.3",
+      "vulns": []
+    },
+    {
+      "name": "markdown-it-py",
+      "version": "4.0.0",
+      "vulns": []
+    },
+    {
+      "name": "markupsafe",
+      "version": "3.0.3",
+      "vulns": []
+    },
+    {
+      "name": "marshmallow",
+      "version": "4.2.2",
+      "vulns": []
+    },
+    {
+      "name": "matplotlib",
+      "version": "3.10.8",
+      "vulns": []
+    },
+    {
+      "name": "mccabe",
+      "version": "0.7.0",
+      "vulns": []
+    },
+    {
+      "name": "mdurl",
+      "version": "0.1.2",
+      "vulns": []
+    },
+    {
+      "name": "mpmath",
+      "version": "1.3.0",
+      "vulns": []
+    },
+    {
+      "name": "msgpack",
+      "version": "1.1.2",
+      "vulns": []
+    },
+    {
+      "name": "mypy",
+      "version": "1.19.1",
+      "vulns": []
+    },
+    {
+      "name": "mypy-extensions",
+      "version": "1.1.0",
+      "vulns": []
+    },
+    {
+      "name": "networkx",
+      "version": "3.4.2",
+      "vulns": []
+    },
+    {
+      "name": "nltk",
+      "version": "3.9.2",
+      "vulns": []
+    },
+    {
+      "name": "numba",
+      "version": "0.63.1",
+      "vulns": []
+    },
+    {
+      "name": "numpy",
+      "version": "2.2.6",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cublas-cu12",
+      "version": "12.8.4.1",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cuda-cupti-cu12",
+      "version": "12.8.90",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cuda-nvrtc-cu12",
+      "version": "12.8.93",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cuda-runtime-cu12",
+      "version": "12.8.90",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cudnn-cu12",
+      "version": "9.10.2.21",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cufft-cu12",
+      "version": "11.3.3.83",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cufile-cu12",
+      "version": "1.13.1.3",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-curand-cu12",
+      "version": "10.3.9.90",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cusolver-cu12",
+      "version": "11.7.3.90",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cusparse-cu12",
+      "version": "12.5.8.93",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-cusparselt-cu12",
+      "version": "0.7.1",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-nccl-cu12",
+      "version": "2.27.5",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-nvjitlink-cu12",
+      "version": "12.8.93",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-nvshmem-cu12",
+      "version": "3.4.5",
+      "vulns": []
+    },
+    {
+      "name": "nvidia-nvtx-cu12",
+      "version": "12.8.90",
+      "vulns": []
+    },
+    {
+      "name": "onnxruntime",
+      "version": "1.23.2",
+      "vulns": []
+    },
+    {
+      "name": "packageurl-python",
+      "version": "0.17.6",
+      "vulns": []
+    },
+    {
+      "name": "packaging",
+      "version": "26.0",
+      "vulns": []
+    },
+    {
+      "name": "pathspec",
+      "version": "1.0.4",
+      "vulns": []
+    },
+    {
+      "name": "pillow",
+      "version": "12.1.0",
+      "vulns": [
+        {
+          "aliases": [
+            "GHSA-cfh3-3jmp-rvhc"
+          ],
+          "description": "### Impact An out-of-bounds write may be triggered when loading a specially crafted PSD image. Pillow >= 10.3.0 users are affected.  ### Patches Pillow 12.1.1 will be released shortly with a fix for this.  ### Workarounds `Image.open()` has a `formats` parameter that can be used to prevent PSD images from being opened.  ### References Pillow 12.1.1 will add release notes at https://pillow.readthedocs.io/en/stable/releasenotes/index.html",
+          "fix_versions": [
+            "12.1.1"
+          ],
+          "id": "CVE-2026-25990"
+        }
+      ]
+    },
+    {
+      "name": "pip",
+      "version": "26.0",
+      "vulns": []
+    },
+    {
+      "name": "pip-api",
+      "version": "0.0.34",
+      "vulns": []
+    },
+    {
+      "name": "pip-audit",
+      "version": "2.10.0",
+      "vulns": []
+    },
+    {
+      "name": "pip-requirements-parser",
+      "version": "32.0.1",
+      "vulns": []
+    },
+    {
+      "name": "platformdirs",
+      "version": "4.5.1",
+      "vulns": []
+    },
+    {
+      "name": "pluggy",
+      "version": "1.6.0",
+      "vulns": []
+    },
+    {
+      "name": "pooch",
+      "version": "1.9.0",
+      "vulns": []
+    },
+    {
+      "name": "protobuf",
+      "version": "6.33.5",
+      "vulns": []
+    },
+    {
+      "name": "psutil",
+      "version": "7.2.2",
+      "vulns": []
+    },
+    {
+      "name": "py-serializable",
+      "version": "2.1.0",
+      "vulns": []
+    },
+    {
+      "name": "pycodestyle",
+      "version": "2.14.0",
+      "vulns": []
+    },
+    {
+      "name": "pycparser",
+      "version": "3.0",
+      "vulns": []
+    },
+    {
+      "name": "pydantic",
+      "version": "2.12.5",
+      "vulns": []
+    },
+    {
+      "name": "pydantic-core",
+      "version": "2.41.5",
+      "vulns": []
+    },
+    {
+      "name": "pydub",
+      "version": "0.25.1",
+      "vulns": []
+    },
+    {
+      "name": "pyflakes",
+      "version": "3.4.0",
+      "vulns": []
+    },
+    {
+      "name": "pygments",
+      "version": "2.19.2",
+      "vulns": []
+    },
+    {
+      "name": "pyinstaller",
+      "version": "6.18.0",
+      "vulns": []
+    },
+    {
+      "name": "pyinstaller-hooks-contrib",
+      "version": "2026.0",
+      "vulns": []
+    },
+    {
+      "name": "pyloudnorm",
+      "version": "0.2.0",
+      "vulns": []
+    },
+    {
+      "name": "pyparsing",
+      "version": "3.3.2",
+      "vulns": []
+    },
+    {
+      "name": "pyqt5",
+      "version": "5.15.11",
+      "vulns": []
+    },
+    {
+      "name": "pyqt5-qt5",
+      "version": "5.15.18",
+      "vulns": []
+    },
+    {
+      "name": "pyqt5-sip",
+      "version": "12.18.0",
+      "vulns": []
+    },
+    {
+      "name": "pytest",
+      "version": "9.0.2",
+      "vulns": []
+    },
+    {
+      "name": "python-dateutil",
+      "version": "2.9.0.post0",
+      "vulns": []
+    },
+    {
+      "name": "python-multipart",
+      "version": "0.0.22",
+      "vulns": []
+    },
+    {
+      "name": "pytokens",
+      "version": "0.4.1",
+      "vulns": []
+    },
+    {
+      "name": "pyyaml",
+      "version": "6.0.3",
+      "vulns": []
+    },
+    {
+      "name": "regex",
+      "version": "2026.1.15",
+      "vulns": []
+    },
+    {
+      "name": "requests",
+      "version": "2.32.5",
+      "vulns": []
+    },
+    {
+      "name": "resampy",
+      "version": "0.4.3",
+      "vulns": []
+    },
+    {
+      "name": "rich",
+      "version": "14.3.2",
+      "vulns": []
+    },
+    {
+      "name": "ruamel-yaml",
+      "version": "0.19.1",
+      "vulns": []
+    },
+    {
+      "name": "safetensors",
+      "version": "0.7.0",
+      "vulns": []
+    },
+    {
+      "name": "safety",
+      "version": "3.7.0",
+      "vulns": []
+    },
+    {
+      "name": "safety-schemas",
+      "version": "0.0.16",
+      "vulns": []
+    },
+    {
+      "name": "scikit-learn",
+      "version": "1.7.2",
+      "vulns": []
+    },
+    {
+      "name": "scipy",
+      "version": "1.15.3",
+      "vulns": []
+    },
+    {
+      "name": "setuptools",
+      "version": "59.6.0",
+      "vulns": [
+        {
+          "aliases": [
+            "BIT-setuptools-2022-40897",
+            "CVE-2022-40897",
+            "GHSA-r9hx-vwmv-q579"
+          ],
+          "description": "Python Packaging Authority (PyPA)'s setuptools is a library designed to facilitate packaging Python projects. Setuptools version 65.5.0 and earlier could allow remote attackers to cause a denial of service by fetching malicious HTML from a PyPI package or custom PackageIndex page due to a vulnerable Regular Expression in `package_index`. This has been patched in version 65.5.1.",
+          "fix_versions": [
+            "65.5.1"
+          ],
+          "id": "PYSEC-2022-43012"
+        },
+        {
+          "aliases": [
+            "CVE-2022-40897"
+          ],
+          "description": "Python Packaging Authority (PyPA) setuptools before 65.5.1 allows remote attackers to cause a denial of service via HTML in a crafted package or custom PackageIndex page. There is a Regular Expression Denial of Service (ReDoS) in package_index.py.",
+          "fix_versions": [
+            "65.5.1"
+          ],
+          "id": "PYSEC-2022-43012"
+        },
+        {
+          "aliases": [
+            "GHSA-5rjg-fvgr-3xxf",
+            "CVE-2025-47273",
+            "BIT-setuptools-2025-47273"
+          ],
+          "description": "### Summary  A path traversal vulnerability in `PackageIndex` was fixed in setuptools version 78.1.1  ### Details ```     def _download_url(self, url, tmpdir):         # Determine download filename         #         name, _fragment = egg_info_for_url(url)         if name:             while '..' in name:                 name = name.replace('..', '.').replace('\\\\', '_')         else:             name = \"__downloaded__\"  # default if URL has no path contents          if name.endswith('.[egg.zip](http://egg.zip/)'):             name = name[:-4]  # strip the extra .zip before download   -->       filename = os.path.join(tmpdir, name) ```  Here: https://github.com/pypa/setuptools/blob/6ead555c5fb29bc57fe6105b1bffc163f56fd558/setuptools/package_index.py#L810C1-L825C88  `os.path.join()` discards the first argument `tmpdir` if the second begins with a slash or drive letter. `name` is derived from a URL without sufficient sanitization. While there is some attempt to sanitize by replacing instances of '..' with '.', it is insufficient.  ### Risk Assessment As easy_install and package_index are deprecated, the exploitation surface is reduced. However, it seems this could be exploited in a similar fashion like https://github.com/advisories/GHSA-r9hx-vwmv-q579, and as described by POC 4 in https://github.com/advisories/GHSA-cx63-2mw6-8hw5 report: via malicious URLs present on the pages of a package index.  ### Impact An attacker would be allowed to write files to arbitrary locations on the filesystem with the permissions of the process running the Python code, which could escalate to RCE depending on the context.  ### References https://huntr.com/bounties/d6362117-ad57-4e83-951f-b8141c6e7ca5 https://github.com/pypa/setuptools/issues/4946",
+          "fix_versions": [
+            "78.1.1"
+          ],
+          "id": "PYSEC-2025-49"
+        },
+        {
+          "aliases": [
+            "GHSA-5rjg-fvgr-3xxf",
+            "CVE-2025-47273"
+          ],
+          "description": "setuptools is a package that allows users to download, build, install, upgrade, and uninstall Python packages. A path traversal vulnerability in `PackageIndex` is present in setuptools prior to version 78.1.1. An attacker would be allowed to write files to arbitrary locations on the filesystem with the permissions of the process running the Python code, which could escalate to remote code execution depending on the context. Version 78.1.1 fixes the issue.",
+          "fix_versions": [
+            "78.1.1"
+          ],
+          "id": "PYSEC-2025-49"
+        },
+        {
+          "aliases": [
+            "GHSA-cx63-2mw6-8hw5",
+            "BIT-setuptools-2024-6345"
+          ],
+          "description": "A vulnerability in the `package_index` module of pypa/setuptools versions up to 69.1.1 allows for remote code execution via its download functions. These functions, which are used to download packages from URLs provided by users or retrieved from package index servers, are susceptible to code injection. If these functions are exposed to user-controlled inputs, such as package URLs, they can execute arbitrary commands on the system. The issue is fixed in version 70.0.",
+          "fix_versions": [
+            "70.0.0"
+          ],
+          "id": "CVE-2024-6345"
+        }
+      ]
+    },
+    {
+      "name": "shellingham",
+      "version": "1.5.4",
+      "vulns": []
+    },
+    {
+      "name": "six",
+      "version": "1.17.0",
+      "vulns": []
+    },
+    {
+      "name": "sortedcontainers",
+      "version": "2.4.0",
+      "vulns": []
+    },
+    {
+      "name": "sounddevice",
+      "version": "0.5.5",
+      "vulns": []
+    },
+    {
+      "name": "soundfile",
+      "version": "0.13.1",
+      "vulns": []
+    },
+    {
+      "name": "soxr",
+      "version": "1.0.0",
+      "vulns": []
+    },
+    {
+      "name": "starlette",
+      "version": "0.50.0",
+      "vulns": []
+    },
+    {
+      "name": "stevedore",
+      "version": "5.6.0",
+      "vulns": []
+    },
+    {
+      "name": "sympy",
+      "version": "1.14.0",
+      "vulns": []
+    },
+    {
+      "name": "tenacity",
+      "version": "9.1.4",
+      "vulns": []
+    },
+    {
+      "name": "threadpoolctl",
+      "version": "3.6.0",
+      "vulns": []
+    },
+    {
+      "name": "tokenizers",
+      "version": "0.22.2",
+      "vulns": []
+    },
+    {
+      "name": "tomli",
+      "version": "2.4.0",
+      "vulns": []
+    },
+    {
+      "name": "tomli-w",
+      "version": "1.2.0",
+      "vulns": []
+    },
+    {
+      "name": "tomlkit",
+      "version": "0.14.0",
+      "vulns": []
+    },
+    {
+      "name": "torch",
+      "version": "2.10.0",
+      "vulns": []
+    },
+    {
+      "name": "tqdm",
+      "version": "4.67.3",
+      "vulns": []
+    },
+    {
+      "name": "transformers",
+      "version": "5.1.0",
+      "vulns": []
+    },
+    {
+      "name": "triton",
+      "version": "3.6.0",
+      "vulns": []
+    },
+    {
+      "name": "typer",
+      "version": "0.23.0",
+      "vulns": []
+    },
+    {
+      "name": "typer-slim",
+      "version": "0.21.1",
+      "vulns": []
+    },
+    {
+      "name": "typing-extensions",
+      "version": "4.15.0",
+      "vulns": []
+    },
+    {
+      "name": "typing-inspection",
+      "version": "0.4.2",
+      "vulns": []
+    },
+    {
+      "name": "urllib3",
+      "version": "2.6.3",
+      "vulns": []
+    },
+    {
+      "name": "werkzeug",
+      "version": "3.1.5",
+      "vulns": []
+    }
+  ],
+  "fixes": []
+}

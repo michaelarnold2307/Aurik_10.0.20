@@ -1,0 +1,5175 @@
+from typing import Any
+
+"""
+Phase 12: Professional Wow & Flutter Correction v2.0
+=====================================================
+
+Corrects pitch and speed instability caused by mechanical variations in analog playback equipment.
+
+SCIENTIFIC FOUNDATION (Über-SOTA):
+- **Mauch & Dixon (2014)**: pYIN — probabilistischer Multi-Threshold-Pitch-Estimator
+  → Primärer Algorithmus (ersetzt simples YIN als primäre Methode)
+
+# §G-PYIN-CACHE: Prevent redundant ML pitch detection when phase_12 is called
+# per-channel (stereo) or per-chunk (surgical). Cached by audio hash.
+_PYIN_CACHE: dict[int, Any] = {}
+_PYIN_CACHE_MAX = 8
+- De Cheveigné & Kawahara (2002): YIN — nur noch als Legacy-Fallback referenziert
+- Laroche & Dolson (1999): Improved Phase Vocoder Time-Scale Modification of Audio
+- Driedger & Müller (2016): TSM Toolbox
+
+INDUSTRY BENCHMARKS:
+- iZotope RX 10 De-flutter (Phase Vocoder + Spectral Continuity)
+- Waves X-Speed (Time & Pitch Manipulation with Formant Preservation)
+- Cedar Retouch Pro (Professional Wow/Flutter Removal)
+- Capstan by Plangent Processes (Reference Standard for Analog Transfer)
+- WOW Control by Magix (Spectral Repair based)
+- Steinberg SpectraLayers (Visual Wow/Flutter Correction)
+- iZotope Neutron (Pitch Tracking + Time Correction)
+
+ALGORITHM OVERVIEW:
+
+1. Multi-Resolution Pitch Detection (**pYIN — Mauch & Dixon 2014**)
+   - 50ms windows with 75% overlap (high temporal resolution)
+   - pYIN: Probabilistic Multi-Threshold CMND (Beta-verteilte Gewichte)
+   - Sub-harmonic rejection via gewichtetes Kandidaten-Medioid
+   - Temporal smoothing (exponentiell, α=0.7)
+
+2. Wow vs Flutter Separation
+   - Wow: <4 Hz speed variations (slow pitch drift)
+   - Flutter: 4-100 Hz speed variations (fast mechanical vibrations)
+   - Separate low-pass (<4 Hz) and band-pass (4-100 Hz) filters
+   - Different correction strategies per component
+
+3. Spectral Continuity Preservation
+   - Phase Vocoder with vertical phase coherence
+   - Formant-preserving time-stretching
+   - Harmonic locking (prevent harmonic smearing)
+   - Transient detection and preservation
+
+4. Time-Stretching via Phase Vocoder
+   - STFT with Hann window (2048 samples, 75% overlap)
+   - Phase unwrapping and instantaneous frequency estimation
+   - Time-varying stretch factors from pitch deviation curve
+   - Overlap-add synthesis with phase coherence
+
+5. Wirkungs-Kalibrierung (§G188–§G189 (GEBOTE.md), §7.4d (06_phases_system.md))
+   - Kompensationsgrad 1,0 der GEMESSENEN Defekttiefe bei belastbarer Messung;
+     bei unklarer Messung skaliert die Evidenzqualität (nie feste Prozente)
+   - Materialphysik (dokumentierte Ausnahme §G189) wirkt über
+     DETECTION_THRESHOLD und Warp-Anstieg max_stretch_delta
+   - Geschlossener Regelkreis: Restfehler nachmessen, bounded nachführen
+
+QUALITY TARGETS:
+- Pitch stability: <0.3% residual deviation (Professional standard)
+- Spectral artifacts: <-40 dB (imperceptible)
+- Transient preservation: >95% (no smearing)
+- Realtime factor: <0.8× (faster than playback)
+
+Author: Aurik Professional Team
+Version: 2.0.0 (Professional)
+Date: February 2026
+"""
+# pylint: disable=import-outside-toplevel
+
+import logging
+import os
+import time
+
+import numpy as np
+from scipy import signal
+from scipy.signal import butter, sosfiltfilt
+
+from backend.core.audio_utils import (
+    audio_sample_count,
+    restore_layout,
+    safe_filtfilt,
+    safe_to_mono,
+    stereo_channel_view,
+    stereo_like,
+    to_channels_last,
+)
+from backend.core.defect_scanner import MaterialType
+from backend.core.ml_model_readiness import check_ml_model_ready
+from backend.core.plugin_lifecycle_manager import get_plugin_lifecycle_manager
+
+from .phase_interface import PhaseCategory, PhaseInterface, PhaseMetadata, PhaseResult
+
+# Resource Management for fallback to lightweight algorithms
+try:
+    from backend.core.adaptive_resource_manager import adaptive_resource_manager
+
+    RESOURCE_MANAGER_AVAILABLE = True
+except ImportError:
+    RESOURCE_MANAGER_AVAILABLE = False
+    logging.getLogger(__name__).warning("AdaptiveResourceManager not available, no automatic fallback")
+
+# ML-Hybrid Support (Aurik 10.0.0 - Phase 12 v3.0)
+try:
+    from backend.core.hybrid.hybrid_wow_flutter import HybridWowFlutter, PitchDetectionStrategy, WowFlutterConfig
+
+    ML_HYBRID_AVAILABLE = True
+except ImportError:
+    ML_HYBRID_AVAILABLE = False
+    logging.getLogger(__name__).warning("ML-Hybrid wow/flutter detector not available, using DSP-only mode")
+
+logger = logging.getLogger(__name__)
+
+# §G-PYIN-CACHE: Per-Session pYIN-Resultat-Cache
+_PYIN_CACHE: dict[tuple[int, ...], Any] = {}
+_PYIN_CACHE_MAX: int = 8
+
+# ── §C3 Circuit-Breaker: Polyphonic consensus degradation ────────────
+# When polyphonic estimation fails with consensus=0 on N consecutive
+# chunks, skip the expensive polyphonic estimator for the remainder of
+# the run.  Cassette/tape material with insufficient polyphonic content
+# (T=1–14, no voiced voices) triggers identical pYIN fallback every time,
+# wasting CPU on a known-lost cause.
+# §v10.18: Increased from 3→8. Narrow-bandwidth MP3-encoded material
+# often produces zero-consensus on initial chunks (coding artifacts
+# confuse BasicPitch) but recovers on later passages with more harmonic
+# density. 3 chunks was too aggressive — legitimate polyphonic content
+# was permanently disabled before it had a chance to succeed.
+_POLYPHONIC_CONSECUTIVE_ZERO_CONSENSUS: int = 0
+_POLYPHONIC_CB_MAX_FAILURES: int = 8  # Max consecutive zero-consensus chunks before skipping
+_POLYPHONIC_CB_ACTIVE: bool = False  # True = polyphonic estimator permanently skipped for this run
+
+
+def _pyin_candidate_taus(cmnd: np.ndarray, min_period: int, max_period: int, thresholds: np.ndarray) -> np.ndarray:
+    """§PERF-R18 (2026-10-28): vektorisierte Multi-Threshold-Tau-Suche (pYIN).
+
+    Bit-identische Umsetzung der alten Doppel-Loop-Struktur über alle
+    Thresholds: pro Schwelle der erste tau in [min_period, max_period-2] mit
+    cmnd[tau] < thr UND lokalem Minimum (cmnd[tau] <= Nachbarn); sonst 0 als
+    „nicht gefunden"-Marker (Fallback/Interpolation bleibt im Aufrufer).
+    Gleiche boolesche Vergleiche in gleicher Reihenfolge, Break-Position ==
+    erstes True == argmax (§G5 (copilot-instructions.md)). Motivation:
+    20 Thresholds × ~912 tau Python-Iterationen je Fenster sind der
+    Hot-Fallback (FAST/BALANCED/ohne librosa) — über 224 s ≈ 4·10^8
+    Interpreter-Iterationen.
+    """
+    _thr = np.asarray(thresholds, dtype=np.float64)
+    # Alte Loop: range(min_period, max_period) mit Bedingung 0 < tau < max_period - 1
+    # => gueltige tau: max(min_period,1) .. max_period-2 (inkl.)
+    # => Scan-Bereich [max(min_period,1), max_period-1) (End-Exklusiv).
+    _lo = max(int(min_period), 1)
+    _hi = int(max_period) - 1
+    _found = np.zeros(_thr.shape[0], dtype=np.int64)
+    if _hi > _lo:
+        _idx = np.arange(_lo, _hi, dtype=np.int64)
+        _vals = cmnd[_idx]
+        _is_local_min = (_vals <= cmnd[_idx - 1]) & (_vals <= cmnd[_idx + 1])
+        _hits = (_vals[None, :] < _thr[:, None]) & _is_local_min[None, :]
+        _any = _hits.any(axis=1)
+        _first = np.argmax(_hits, axis=1)
+        _found = np.where(_any, _idx[_first], 0)
+    _found_arr: np.ndarray = np.asarray(_found)
+    return _found_arr
+
+
+def _reset_polyphonic_circuit_breaker() -> None:
+    """Reset circuit breaker state at the start of each restoration run."""
+    global _POLYPHONIC_CONSECUTIVE_ZERO_CONSENSUS, _POLYPHONIC_CB_ACTIVE
+    _POLYPHONIC_CONSECUTIVE_ZERO_CONSENSUS = 0
+    _POLYPHONIC_CB_ACTIVE = False
+    _PYIN_CACHE.clear()  # §G-PYIN-CACHE: reset per-run
+
+
+class WowFlutterFix(PhaseInterface):
+    """Professional Wow & Flutter Correction with YIN pitch detection and Phase Vocoder time-stretching."""
+
+    # §G188 (GEBOTE.md): feste material-spezifische Stärke-Kappen (früher
+    # CORRECTION_STRENGTH 0,1–0,8) sind VERBOTEN — der Kompensationsgrad folgt
+    # der gemessenen Defekttiefe des Einzelfalls (§7.4d (06_phases_system.md)).
+    # Materialphysik bleibt als dokumentierte Ausnahme §G189 (GEBOTE.md) in
+    # DETECTION_THRESHOLD und max_stretch_delta wirksam.
+
+    # Detection sensitivity (minimum pitch deviation to correct, in %)
+    DETECTION_THRESHOLD = {
+        MaterialType.TAPE: 0.3,  # 0.3% pitch deviation (high sensitivity)
+        MaterialType.CASSETTE: 0.3,  # v10.0.0: same as TAPE — compact cassette transport bumps
+        #   (Bandhopser) cause local pitch deviations of 0.3-0.8%; the previous 0.5% default
+        #   missed borderline transport bumps. IEC 60094-1 cassette flutter spec: ≤ 0.2% WRMS
+        #   at 4.75 cm/s → any detected deviation ≥ 0.3% is above spec → correct it.
+        MaterialType.VINYL: 0.5,  # 0.5% pitch deviation
+        MaterialType.SHELLAC: 0.8,  # 0.8% pitch deviation
+        MaterialType.CD_DIGITAL: 2.0,  # 2.0% pitch deviation (low sensitivity)
+        MaterialType.STREAMING: 3.0,  # 3.0% pitch deviation (rarely triggered)
+    }
+
+    # YIN algorithm parameters
+    YIN_THRESHOLD = 0.15  # Confidence threshold for pitch detection
+    PITCH_WINDOW_MS = 100  # Larger window for stability (was 50ms)
+    # v10.0.0: Restored to 75 % overlap (factor=4, was 2=50 %) for 4× better
+    # temporal resolution in pYIN flutter detection. At 48 kHz and 100 ms window:
+    #   factor=2 → hop=50 ms — insufficient for 4–20 Hz flutter (20–250 ms periods)
+    #   factor=4 → hop=25 ms — 2+ samples per flutter cycle (Nyquist-safe)
+    # librosa.pyin fast-path ≪ 200 ms even for 20-min files. §9.10.80
+    # Quality-first: no RT sacrifice in main path.
+    PITCH_HOP_FACTOR = 4  # 75 % overlap — restored from 2 (v10.0.0)
+
+    # Phase Vocoder / STFT parameters
+    STFT_WINDOW_SIZE = 2048  # 23 Hz/bin @ 48 kHz — restored from 1024 (v10.0.0)
+    STFT_HOP_SIZE = 512  # 75 % overlap with 2048 window — restored from 256
+
+    # Formant preservation (prevent "chipmunk" effect)
+    PRESERVE_FORMANTS = True
+    _MAX_PERCENTILE_PEAK = 0.985
+
+    def __init__(self):
+        super().__init__()
+        self.name = "Wow & Flutter Correction v2 Professional"
+        self._quality_mode_hint: str = "quality"
+        self._quality_first_unleashed: bool = False
+        # §P3 Chunk-Overlap-State: Hält die letzten 1 s Audio des vorherigen
+        # Chunks für Crossfade an Chunk-Grenzen, um Artefakte durch UV3-
+        # Chunking (typisch 5 s) zu eliminieren.
+        self._chunk_overlap_tail: np.ndarray | None = None
+        self._chunk_overlap_sr: int = 48000
+        self._chunk_overlap_dur_s: float = 1.0  # 1 s overlap = 20 % bei 5 s Chunks
+
+    @staticmethod
+    def _compute_adaptive_threshold_profile(
+        material: MaterialType,
+        quality_mode: str | None,
+        restorability_score: float,
+    ) -> dict[str, float]:
+        """Berechnet adaptive detection/confidence thresholds for phase_12.
+
+        Values are bounded to stable ranges and tuned to keep fast mode more
+        conservative than quality while allowing low-restorability material to
+        pass with a slightly lower correction-confidence floor.
+        """
+        _qm = str(quality_mode or "balanced").lower().replace("-", "_")
+        _rest = float(np.clip(restorability_score, 0.0, 100.0))
+        _mk = material.value if isinstance(material, MaterialType) else material  # §v10.113
+
+        _det_base = WowFlutterFix.DETECTION_THRESHOLD.get(_mk, 0.5)  # type: ignore[call-overload]
+        _yin_base = float(WowFlutterFix.YIN_THRESHOLD)
+
+        _ml_conf_base_by_mat = {
+            "shellac": 0.62,
+            "wax_cylinder": 0.64,
+            "vinyl": 0.60,
+            "tape": 0.56,
+            "reel_tape": 0.56,
+            "cd_digital": 0.58,
+            "streaming": 0.60,
+        }
+        _ml_conf_base = float(_ml_conf_base_by_mat.get(_mk, 0.60))
+
+        _min_conf_base_by_mat = {
+            "shellac": 0.30,
+            "wax_cylinder": 0.28,
+            "vinyl": 0.26,
+            "tape": 0.22,
+            "reel_tape": 0.22,
+            "cd_digital": 0.30,
+            "streaming": 0.32,
+        }
+        _min_conf_base = float(_min_conf_base_by_mat.get(_mk, 0.26))
+
+        _mode_det_adj = {
+            "fast": +0.25,
+            "balanced": 0.0,
+            "quality": -0.10,
+            "maximum": -0.15,
+            "restoration": -0.05,
+            "studio_2026": -0.15,
+        }.get(_qm, 0.0)
+        _mode_yin_adj = {
+            "fast": +0.02,
+            "balanced": 0.0,
+            "quality": -0.01,
+            "maximum": -0.015,
+            "restoration": -0.005,
+            "studio_2026": -0.015,
+        }.get(_qm, 0.0)
+        _mode_ml_adj = {
+            "fast": +0.06,
+            "balanced": 0.0,
+            "quality": -0.03,
+            "maximum": -0.05,
+            "restoration": -0.02,
+            "studio_2026": -0.05,
+        }.get(_qm, 0.0)
+
+        # Lower restorability: allow slightly lower correction-confidence floor.
+        _rest_min_conf_adj = ((_rest - 50.0) / 50.0) * 0.06
+
+        detection_threshold = float(np.clip(_det_base + _mode_det_adj, 0.20, 3.50))
+        yin_threshold = float(np.clip(_yin_base + _mode_yin_adj, 0.08, 0.25))
+        ml_confidence_threshold = float(np.clip(_ml_conf_base + _mode_ml_adj, 0.45, 0.85))
+        min_confidence_for_correction = float(np.clip(_min_conf_base + _rest_min_conf_adj, 0.18, 0.60))
+
+        return {
+            "detection_threshold": detection_threshold,
+            "yin_threshold": yin_threshold,
+            "ml_confidence_threshold": ml_confidence_threshold,
+            "min_confidence_for_correction": min_confidence_for_correction,
+        }
+
+    @staticmethod
+    def _derive_safe_timing_profile(
+        material: MaterialType,
+        mean_confidence: float,
+        vocals_confidence: float,
+        *,
+        polyphonic_fallback: bool = False,
+    ) -> tuple[float, float]:
+        """§G188–§G189 (GEBOTE.md), §7.4d (06_phases_system.md): Evidenzbasierte
+        Stärke-Skalierung + Warp-Sicherheitsgrenze.
+
+        Die wirksame Stärke skaliert AUSSCHLIESSLICH mit der Evidenzqualität
+        der Messung (Posterior-Zuverlässigkeit), nie mit festen Medium-/
+        Inhalts-Dämpfungs-Prozenten (§G188 (GEBOTE.md): feste konservative
+        Kappen sind verboten). max_stretch_delta bleibt die dokumentierte
+        Ausnahme §G189 (GEBOTE.md): Materialphysik begrenzt den Warp-Anstieg
+        pro Fenster gegen Schätz-Ausreißer — nie den Kompensationsgrad eines
+        gemessenen Defekts.
+        """
+        max_stretch_delta = 0.05
+        # Evidenzqualität: mittlere Pitch-Konfidenz als Posterior der Messung
+        strength_scale = float(np.clip(mean_confidence, 0.0, 1.0))
+
+        # Dokumentierte Ausnahmen §G189 (GEBOTE.md): Warp-Sicherheitsgrenzen
+        if vocals_confidence >= 0.40:
+            max_stretch_delta = min(max_stretch_delta, 0.035)
+
+        if (
+            material
+            in {
+                MaterialType.VINYL,
+                MaterialType.SHELLAC,
+                MaterialType.WAX_CYLINDER,
+                MaterialType.WIRE_RECORDING,
+                MaterialType.LACQUER_DISC,
+            }
+            and mean_confidence < 0.75
+        ):
+            max_stretch_delta = min(max_stretch_delta, 0.03)
+        elif mean_confidence < 0.60:
+            max_stretch_delta = min(max_stretch_delta, 0.04)
+
+        if polyphonic_fallback:
+            # Estimator-Implausibilität = schwächste Evidenzklasse: der
+            # Kompensationsgrad folgt der gesunkenen Posterior-Zuverlässigkeit.
+            strength_scale = min(strength_scale, 0.75)
+            max_stretch_delta = min(max_stretch_delta, 0.02)
+
+        return float(strength_scale), float(max_stretch_delta)
+
+    @staticmethod
+    def _should_bypass_unsafe_polyphonic_fallback(
+        material: MaterialType,
+        mean_confidence: float,
+        vocals_confidence: float,
+        *,
+        polyphonic_fallback: bool,
+    ) -> bool:
+        """Bypass correction entirely when the estimator already proved unstable.
+
+        If the polyphonic speed estimator rejects the input as implausible, a second,
+        still-global pitch correction pass on vocal-heavy analog material often harms
+        tonal center more than it helps. In that case, minimal intervention is safer
+        than a likely rollback.
+        """
+        if not polyphonic_fallback:
+            return False
+        if vocals_confidence < 0.40:
+            return False
+        if mean_confidence >= 0.80:
+            return False
+        return material in {
+            MaterialType.VINYL,
+            MaterialType.SHELLAC,
+            MaterialType.WAX_CYLINDER,
+            MaterialType.WIRE_RECORDING,
+            MaterialType.LACQUER_DISC,
+        }
+
+    @staticmethod
+    def _polyphonic_estimate_is_insufficient(pitch_trajectory: np.ndarray, confidence: np.ndarray) -> bool:
+        """Bewertet polyphone Schätzung auf minimale Evidenz.
+
+        Ein einzelner Pitch-Frame (z. B. T=1) oder nahezu keine validen Frames
+        ist für eine stabile Wow/Flutter-Korrektur nicht belastbar.
+        In diesem Fall erzwingen wir Re-Estimate via pYIN statt Komplett-Skip.
+        """
+        if pitch_trajectory.size < 4:
+            return True
+        if confidence.size == 0:
+            return True
+        valid_pitch = int(np.sum(np.asarray(pitch_trajectory) > 0.0))
+        valid_conf = int(np.sum(np.asarray(confidence) > 0.15))
+        return valid_pitch < 4 or valid_conf < 4
+
+    def get_metadata(self) -> PhaseMetadata:
+        """Gibt zurück: phase metadata."""
+        return PhaseMetadata(
+            phase_id="phase_12_wow_flutter_fix",
+            name="Wow & Flutter Correction v2 Professional",
+            category=PhaseCategory.DEFECT_REMOVAL,
+            priority=8,  # HIGH priority (wow/flutter very audible)
+            dependencies=["phase_01_click_removal", "phase_09_crackle_removal"],
+            estimated_time_factor=0.15,  # 15% of audio duration
+            version="2.0.0",
+            memory_requirement_mb=150,
+            is_cpu_intensive=True,
+            is_io_intensive=False,
+            quality_impact=0.92,  # Professional-grade wow/flutter correction
+            description=(
+                "Professional wow & flutter correction with YIN pitch detection and Phase Vocoder time-stretching"
+            ),
+        )
+
+    def _apply_scrape_flutter_rest(
+        self, audio: np.ndarray, sample_rate: int, material: MaterialType, metadata: dict
+    ) -> np.ndarray:
+        """§SOTA-WF-CASS: Scrape-Flutter-Restpfad für Cassette.
+
+        Kompensiert breitbandige Amplitudenmodulation (Bandkante kratzt am Kopf),
+        getrennt vom gemeinsamen Warp. Nur tape/cassette, Gate über confidence,
+        non-blocking (§V6 (copilot-instructions.md)).
+        """
+        _mat_name = material.value if isinstance(material, MaterialType) else str(material)
+        if _mat_name not in {"tape", "cassette", "reel_tape"}:
+            return audio
+        try:
+            from backend.core.dsp.scrape_flutter_rest import (  # pylint: disable=import-outside-toplevel
+                compensate_scrape_flutter,
+                detect_scrape_flutter,
+            )
+
+            _sfr = detect_scrape_flutter(audio, sample_rate)
+            if _sfr.confidence >= 0.55:
+                _before = audio
+                audio = compensate_scrape_flutter(audio, sample_rate, _sfr)
+                if not np.array_equal(audio, _before):
+                    metadata["scrape_flutter_rest"] = {
+                        "confidence": round(_sfr.confidence, 3),
+                        "severity": round(_sfr.severity, 3),
+                        "mod_freqs": _sfr.mod_freqs,
+                    }
+                    logger.info(
+                        "WF-CASS: Scrape-Flutter-Rest aktiv (conf=%.2f, sev=%.3f, f=%s)",
+                        _sfr.confidence,
+                        _sfr.severity,
+                        _sfr.mod_freqs,
+                    )
+        except Exception as _sfr_exc:
+            logger.warning("WF-CASS: Scrape-Flutter-Rest nicht verfügbar: %s", _sfr_exc)
+        return audio
+
+    def process(  # type: ignore[override]  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, audio: np.ndarray, sample_rate: int = 48000, material_type: str = "unknown", **kwargs: Any
+    ) -> PhaseResult:
+        check_ml_model_ready("BasicPitch", phase_name="12")
+        check_ml_model_ready("CREPE", phase_name="12")
+        check_ml_model_ready("FCPE", phase_name="12")
+        check_ml_model_ready("PANNs", phase_name="12")
+        check_ml_model_ready("Whisper", phase_name="12")
+        """
+        Correct wow & flutter using professional pitch detection + Phase Vocoder.
+
+        Args:
+            audio: Audio samples (mono: [samples], stereo: [samples, 2])
+            sample_rate: Sample rate in Hz
+            material: Material type for adaptive parameters
+
+        Returns:
+            PhaseResult with wow/flutter corrected audio
+        """
+        _material_raw = kwargs.get("material", material_type) if material_type == "unknown" else material_type
+        material: MaterialType = (
+            _material_raw
+            if isinstance(_material_raw, MaterialType)
+            else MaterialType(_material_raw)
+            if isinstance(_material_raw, str) and _material_raw in {m.value for m in MaterialType}
+            else MaterialType.VINYL
+        )
+        self.validate_input(audio)
+        assert sample_rate == 48000, f"Interne SR muss 48000 Hz sein, erhalten: {sample_rate}"
+        start_time = time.monotonic()
+        _progress_cb = kwargs.get("progress_sub_callback")
+
+        def _report_progress(pct: float, label: str) -> None:
+            if callable(_progress_cb):
+                try:
+                    _progress_cb(float(np.clip(pct, 0.0, 100.0)), label, time.monotonic() - start_time)
+                except Exception:
+                    logger.debug("_report_progress: silent except suppressed", exc_info=True)
+
+        _original_audio = np.asarray(audio, dtype=np.float32).copy()
+
+        # §2.51: Stereo-Layout-Normalisierung — akzeptiere (2,N) und (N,2),
+        # verarbeite kanonisch channels-last, stelle am Ausgang wieder her
+        # (Rev. 2026-08-16: test_stereo_axis_matrix[phase_12] schlug fehl, weil
+        # process() channels-first-Input unnormalisiert weitergab).
+        audio, _was_channels_first = to_channels_last(_original_audio)
+        _original_audio = np.asarray(audio, dtype=np.float32).copy()
+
+        # §P3 Chunk-Overlap: Wenn ein vorheriger Chunk existiert, prepend den
+        # 1s-Überlapp mit Crossfade, um Artefakte an Chunk-Grenzen zu eliminieren.
+        _overlap_samples = int(self._chunk_overlap_dur_s * sample_rate)
+        _chunk_has_overlap = False
+        if self._chunk_overlap_tail is not None and self._chunk_overlap_tail.size > 0:
+            _tail = self._chunk_overlap_tail
+            if _tail.shape == audio.shape or (_tail.ndim == audio.ndim):
+                _tail_len = min(_overlap_samples, _tail.shape[0])
+                _crossfade_len = min(_tail_len, _original_audio.shape[0])
+                if _crossfade_len > 0:
+                    _tail_use = _tail[-_tail_len:] if _tail.shape[0] >= _tail_len else _tail
+                    # Hanning-crossfade an der Chunk-Grenze
+                    _fade_in = np.hanning(_crossfade_len * 2)[:_crossfade_len]
+                    _fade_out = 1.0 - _fade_in
+                    if _original_audio.ndim == 2 and _tail_use.ndim == 1:
+                        _tail_use = np.column_stack([_tail_use, _tail_use])
+                    if _original_audio.ndim == 2:
+                        _fade_in = _fade_in[:, np.newaxis]
+                        _fade_out = _fade_out[:, np.newaxis]
+                    _overlap_region = _tail_use[:_crossfade_len] * _fade_out.astype(np.float32) + _original_audio[
+                        :_crossfade_len
+                    ] * _fade_in.astype(np.float32)
+                    _original_audio[:_crossfade_len] = _overlap_region
+                    _chunk_has_overlap = True
+                    logger.debug(
+                        "Verarbeitungsschritt 12 chunk-overlap: crossfaded %d samples from previous chunk",
+                        _crossfade_len,
+                    )
+            self._chunk_overlap_tail = None  # consumed
+
+        # §2.60/§2.51 STCG pre-phase: L/R-Alignment VOR Chunk-Verarbeitung.
+        # Phase 12's M/S-domain processing (§2.51) prevents NEW L/R time drift,
+        # but it must START with aligned channels. A residual lag from earlier
+        # pipeline stages (DC-offset removal, TDP) will cause the M/S matrix to
+        # mix temporally offset channels, creating phantom spatial artefacts.
+        # Sub-sample correction via GCC-PHAT + scipy.ndimage.shift.
+        # §v10.13: STCG NUR auf vollständigem Audio (≥15s), nicht auf Chunks.
+        # MP3-Joint-Stereo-Artefakte auf 5s-Chunks werden von XCorr als
+        # Zeitversatz fehlinterpretiert → unterschiedliche Korrekturen pro
+        # Chunk erzeugen echten L/R-Drift. Der M/S-Gleichlauf-Fix (Side =
+        # selber Algorithmus wie Mid) verhindert Lag-Entstehung ohne STCG.
+        _p12_dur_s = audio.shape[0] / sample_rate if audio.ndim >= 1 else 0.0
+        if audio.ndim == 2 and _p12_dur_s >= 15.0:
+            try:
+                from backend.core.stereo_temporal_coherence_guard import (
+                    get_stereo_temporal_coherence_guard,
+                )
+
+                audio = get_stereo_temporal_coherence_guard().correct_interchannel_delay(
+                    audio, sample_rate, phase_id="phase_12_pre_chunking"
+                )
+            except Exception as _stcg_p12_exc:
+                logger.debug("Verarbeitungsschritt 12 STCG pre-chunking uebersprungen: %s", _stcg_p12_exc)
+
+        phase_locality_factor = float(kwargs.get("phase_locality_factor", 1.0))
+        phase_locality_factor = float(np.clip(phase_locality_factor, 0.35, 1.0))
+        _pmgg_strength = float(kwargs.get("strength", 1.0))
+        _effective_strength = float(np.clip(_pmgg_strength * phase_locality_factor, 0.0, 1.0))
+
+        # §v10.96 Defekt-basiertes Skip-Gate: Wow/Flutter-Detektion vor Ausführung.
+        # Wenn weder Wow noch Flutter vom DefectScanner detektiert wurden,
+        # ist die teure ML-Hybrid-Pitch-Detektion (221 s) unnötig.
+        # Transport-Bump-Repair (135 Bumps, ~5 s) läuft trotzdem — ist schnell.
+        _wow_kw = kwargs.get("wow_severity", kwargs.get("wow"))
+        _flutter_kw = kwargs.get("flutter_severity", kwargs.get("flutter"))
+        _explicit_defect_data = _wow_kw is not None or _flutter_kw is not None
+        _wow_sev_defect = float(_wow_kw or 0.0)
+        _flutter_sev_defect = float(_flutter_kw or 0.0)
+        # §v10.200 Fallback: DefectScanner-Daten aus _restoration_context abrufen,
+        # da kwargs nach Resampling (44100→48000) die Werte verlieren können.
+        if not _explicit_defect_data:
+            _rctx_fb = kwargs.get("_restoration_context", {}) or {}
+            _defect_scores_fb = _rctx_fb.get("defect_scores", _rctx_fb.get("defect_focus_scores", {})) or {}
+            if isinstance(_defect_scores_fb, dict) and any(
+                _k in _defect_scores_fb for _k in ("wow", "flutter", "wow_severity", "flutter_severity")
+            ):
+                _explicit_defect_data = True
+            _wow_sev_defect = float(
+                _defect_scores_fb.get("wow", _defect_scores_fb.get("wow_severity", _wow_sev_defect)) or 0.0
+            )
+            _flutter_sev_defect = float(
+                _defect_scores_fb.get("flutter", _defect_scores_fb.get("flutter_severity", _flutter_sev_defect)) or 0.0
+            )
+        # §v10.96: Nur skippen, wenn der DefectScanner WOW/FLUTTER EXPLIZIT als
+        # abwesend (< 0.15) gemeldet hat. Ohne Defect-Daten (Direktaufruf/Unit)
+        # fail-open — die Phase läuft normal.
+        _wow_flutter_skip = _explicit_defect_data and _wow_sev_defect < 0.15 and _flutter_sev_defect < 0.15
+        if _wow_flutter_skip:
+            # §v10.303: Erste Meldung als INFO, Wiederholungen als DEBUG (Log-Spam-Prävention)
+            _log_fn = logger.info if not getattr(self, "_wow_skip_logged", False) else logger.debug
+            self._wow_skip_logged = True
+            _log_fn(
+                "§v10.96 Wow/Flutter-Skip: wow=%.3f flutter=%.3f < 0.15 → ML-Hybrid skipped, transport-bump only",
+                _wow_sev_defect,
+                _flutter_sev_defect,
+            )
+            # Setze wow/flutter-spezifische Parameter auf Minimalwerte
+            _effective_strength = 0.0  # Keine Pitch-Detektion, nur Transport-Repair
+
+        if _effective_strength <= 0.0:
+            # §2.74: Transport-Defekte (tape_head_level_dip/transport_bump) werden auch
+            # bei Wow/Flutter-Skip repariert — kein Pitch-Tracking nötig.
+            _TAPE_MATS_Z = {MaterialType.TAPE, MaterialType.REEL_TAPE, MaterialType.CASSETTE}
+            _mat_z = material if isinstance(material, MaterialType) else None
+            _dl_z = kwargs.get("defect_locations") or {}
+            _has_dip_z = bool(_dl_z.get("tape_head_level_dip") or _dl_z.get("transport_bump"))
+            _n_dips_z = 0
+            passthrough = np.nan_to_num(audio.copy(), nan=0.0, posinf=0.0, neginf=0.0)
+            passthrough = np.clip(passthrough, -1.0, 1.0)
+            if _mat_z in _TAPE_MATS_Z or _has_dip_z:
+                passthrough, _n_dips_z = self._stabilize_tape_level(
+                    passthrough,
+                    sample_rate,
+                    1.0,
+                    is_primary_tape=(_mat_z in _TAPE_MATS_Z),
+                    confirmed_tape_dip=_has_dip_z,
+                    protected_zones=self._collect_vfa_protected_zones(kwargs),
+                )
+                passthrough = np.clip(np.nan_to_num(passthrough, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+            return PhaseResult(
+                success=True,
+                audio=restore_layout(passthrough, _was_channels_first),
+                resolved_defects={},
+                metrics={
+                    "wow_flutter_detected": False,
+                    "max_deviation_percent": 0.0,
+                    "correction_applied": 1.0 if _n_dips_z > 0 else 0.0,
+                    "material": material.value,
+                    "mean_confidence": 0.0,
+                    "quality_mode": kwargs.get("quality_mode", "balanced"),
+                    "tape_level_dips_repaired": _n_dips_z,
+                },
+                execution_time_seconds=time.monotonic() - start_time,
+                metadata={
+                    "algorithm": "skipped_zero_strength",
+                    "version": "4.1_locality",
+                    "phase_locality_factor": phase_locality_factor,
+                    # §2.51 Locality-Vertrag: die skalierte Soll-Stärke bleibt sichtbar,
+                    # auch wenn der §v10.96-Skip-Gate die Verarbeitung überspringt.
+                    "effective_strength": float(np.clip(_pmgg_strength * phase_locality_factor, 0.0, 1.0)),
+                    "rms_drop_db": 0.0,
+                    "loudness_makeup_db": 0.0,
+                },
+            )
+
+        # Get material-specific parameters
+        _mk = material.value if isinstance(material, MaterialType) else material  # §v10.113
+        # §G188 (GEBOTE.md): Kompensationsgrad folgt PMGG-Ziel × Lokalität —
+        # keine feste Material-Dämpfung mehr (Ausnahme-Mechanik §G189 bleibt in
+        # DETECTION_THRESHOLD und max_stretch_delta).
+        strength = float(_effective_strength)
+        threshold = self.DETECTION_THRESHOLD.get(_mk, 0.5)  # type: ignore[call-overload]
+
+        is_stereo = audio.ndim == 2
+        mono = safe_to_mono(audio).astype(np.float32) if is_stereo else audio.copy()
+
+        _report_progress(5.0, "Wow/Flutter: Tonhöhen-Analyse startet")
+        # ML-Hybrid Mode Routing (v3.0)
+        quality_mode = kwargs.get("quality_mode", "quality")
+        self._quality_mode_hint = str(quality_mode).strip().lower()
+        self._quality_first_unleashed = bool(
+            kwargs.get("quality_first_unleashed", self._quality_mode_hint in {"quality", "maximum"})
+        )
+        use_lightweight = False
+        if RESOURCE_MANAGER_AVAILABLE:
+            use_lightweight = adaptive_resource_manager.should_use_lightweight_mode()
+            # Quality-first contract: do not downgrade to lightweight in quality tiers.
+            if quality_mode in ["quality", "maximum"]:
+                use_lightweight = False
+            elif use_lightweight:
+                logger.info(
+                    "Verarbeitungsschritt 12: Resource constraint erkannt, forcing DSP-only Betriebsart (CPU: %.1f%%, Memory: %.1f%%)",
+                    adaptive_resource_manager.get_cpu_usage(),
+                    adaptive_resource_manager.get_memory_usage(),
+                )
+
+        # Strategy routing v4.0 — Capstan-kompetitiv:
+        # maximum  → PolyphonicSpeedCurveEstimator (multi-F0 consensus, §2.12)
+        # quality  → HybridWowFlutter pYIN+FCPE/CREPE (ML-Hybrid, HYBRID strategy)
+        # balanced → HybridWowFlutter pYIN+FCPE/CREPE (ML-Hybrid, ADAPTIVE strategy)
+        # fast / lightweight → pYIN DSP
+        _poly_applied = False
+        _poly_fallback = False
+        pitch_trajectory: np.ndarray = np.zeros(1)
+        confidence: np.ndarray = np.zeros(1)
+
+        if quality_mode in ["quality", "maximum"] and not use_lightweight:
+            # §C3 Circuit-Breaker: skip polyphonic estimator after N consecutive
+            # zero-consensus failures (e.g. cassette with no polyphonic content).
+            global _POLYPHONIC_CB_ACTIVE, _POLYPHONIC_CONSECUTIVE_ZERO_CONSENSUS
+            if _POLYPHONIC_CB_ACTIVE:
+                logger.debug(
+                    "Verarbeitungsschritt 12: Polyphoner Pfad per Circuit-Breaker deaktiviert "
+                    "(nach %d konsekutiven Zero-Consensus-Chunks) — pYIN direkt",
+                    _POLYPHONIC_CB_MAX_FAILURES,
+                )
+            else:
+                try:
+                    from backend.core.hybrid.hybrid_wow_flutter import (
+                        PolyphonicSpeedCurveEstimator,
+                    )
+
+                    _poly_est = PolyphonicSpeedCurveEstimator()
+                    pitch_trajectory, confidence = _poly_est.estimate(mono, sample_rate)
+                    _poly_applied = True
+                    logger.info(
+                        "Verarbeitungsschritt 12 polyphoner Konsensus: T=%d Frames, material=%s",
+                        len(pitch_trajectory),
+                        material.value,
+                    )
+                except Exception as _poly_exc:
+                    logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+                    _poly_fallback = True
+                    logger.warning(
+                        "PolyphonicSpeedCurveEstimator fehlgeschlagen (%s) — ML-Hybrid-Ersatzpfad",
+                        _poly_exc,
+                    )
+
+        # ML-Hybrid only if polyphonic path did not succeed and resources permit
+        use_ml_hybrid = (
+            not _poly_applied
+            and ML_HYBRID_AVAILABLE
+            and quality_mode in ["balanced", "quality", "maximum"]
+            and not use_lightweight
+        )
+
+        if _poly_fallback and quality_mode in ["quality", "maximum"]:
+            # Conservative restoration fallback: keep Phase 12 in narrow DSP mode
+            # after an implausible polyphonic estimate instead of escalating again.
+            use_ml_hybrid = False
+
+        if use_ml_hybrid:
+            try:
+                # §G-PYIN-CACHE: Avoid re-running ML detection for same audio (per-channel calls)
+                _audio_hash = hash(mono.tobytes())
+                if _audio_hash in _PYIN_CACHE:
+                    ml_result = _PYIN_CACHE[_audio_hash]  # type: ignore[index]
+                    logger.debug(
+                        "Verarbeitungsschritt 12 ML-Hybrid: zwischengespeichert pitch Ergebnis reused (confidence=%.3f)",
+                        ml_result.mean_confidence,
+                    )
+                else:
+                    logger.info(
+                        "Verarbeitungsschritt 12 ML-Hybrid: Betriebsart=%s, material=%s", quality_mode, material.value
+                    )
+
+                    # Configure ML pitch detector strategy
+                    if quality_mode in ["quality", "maximum"]:
+                        strategy = PitchDetectionStrategy.HYBRID
+                    else:
+                        strategy = PitchDetectionStrategy.ADAPTIVE
+
+                    # §v10.14 PLM-Guard: FCPE+CREPE vor Eviction schützen
+                    _plm12 = None
+                    try:
+                        _plm12 = get_plugin_lifecycle_manager()
+                        _plm12.set_active("FCPE", True)
+                        _plm12.set_active("CREPE", True)
+                    except Exception:
+                        _plm12 = None
+                    try:
+                        detector = HybridWowFlutter(
+                            config=WowFlutterConfig(
+                                strategy=strategy,
+                                crepe_model="full" if quality_mode in ["quality", "maximum"] else "medium",
+                                confidence_threshold=0.7,
+                                enable_preprocessing=True,
+                            )
+                        )
+
+                        ml_result = detector.detect_pitch(mono, sample_rate=sample_rate)
+                    finally:
+                        if _plm12 is not None:
+                            try:
+                                _plm12.set_active("CREPE", False)
+                                _plm12.set_active("FCPE", False)
+                            except Exception as _plm_exc:
+                                logger.debug("PLM-Deaktivierung nicht möglich: %s", _plm_exc)
+                    if len(_PYIN_CACHE) >= _PYIN_CACHE_MAX:
+                        _PYIN_CACHE.pop(next(iter(_PYIN_CACHE)))
+                    _PYIN_CACHE[_audio_hash] = ml_result  # type: ignore[index]
+
+                logger.info(
+                    "ML-Hybrid Pitch-Detektion abgeschlossen: pYIN=%s, CREPE=%s, confidence=%.3f",
+                    ml_result.pyin_applied,
+                    ml_result.crepe_applied,
+                    ml_result.mean_confidence,
+                )
+
+                # Use ML-detected pitch trajectory
+                pitch_trajectory = ml_result.pitch_trajectory
+                confidence = ml_result.confidence
+
+            except Exception as e:
+                logger.warning(
+                    "ML-Hybrid Pitch-Detektion fehlgeschlagen: %s, Ersatzpfad auf pYIN DSP. Fehlertyp: %s",
+                    e,
+                    type(e).__name__,
+                )
+                # Fall through to DSP path below
+                use_ml_hybrid = False
+
+        # DSP-Only (Fast-Modus oder Fallback): pYIN
+        if not _poly_applied and not use_ml_hybrid:
+            logger.info("Verarbeitungsschritt 12 pYIN DSP: material=%s", material.value)
+            pitch_trajectory, confidence = self._estimate_pitch_yin(mono, sample_rate)
+
+        # Polyphonie-Guard: Wenn der Konsensus nur minimale Evidenz liefert
+        # (typisch T=1 oder fast keine validen Frames), nicht sofort skippen.
+        # Stattdessen robust auf pYIN neu schätzen, damit transportbedingte
+        # Instabilitäten (Bandhopser/Wow) nicht unentdeckt bleiben.
+        if _poly_applied and self._polyphonic_estimate_is_insufficient(pitch_trajectory, confidence):
+            logger.info(
+                "Verarbeitungsschritt 12: Polyphoner Konsensus unzureichend (T=%d, valid_pitch=%d, valid_conf=%d) — "
+                "Re-Estimate via pYIN",
+                int(pitch_trajectory.size),
+                int(np.sum(np.asarray(pitch_trajectory) > 0.0)),
+                int(np.sum(np.asarray(confidence) > 0.15)),
+            )
+            # §C3: Track consecutive zero-consensus — circuit-breaker.
+            _consensus_frames = (
+                int(np.sum(~np.isnan(np.full(pitch_trajectory.size, np.nan)))) if pitch_trajectory.size > 0 else 0
+            )
+            if _consensus_frames == 0:
+                _POLYPHONIC_CONSECUTIVE_ZERO_CONSENSUS += 1
+                if _POLYPHONIC_CONSECUTIVE_ZERO_CONSENSUS >= _POLYPHONIC_CB_MAX_FAILURES:
+                    _POLYPHONIC_CB_ACTIVE = True
+                    # §C3 SOTA: Circuit-Breaker ist KEIN Fehler, sondern eine
+                    # normale Fallback-Strategie für Material ohne polyphone
+                    # Inhalte (Solo-Gesang, Sprache, Mono-Aufnahmen). Der
+                    # pYIN-Schätzer (Mauch & Dixon 2014) übernimmt zuverlässig.
+                    logger.info(
+                        "Verarbeitungsschritt 12 Circuit-Breaker: %d konsekutive Zero-Consensus-Chunks — "
+                        "polyphoner Pfad für diesen Lauf deaktiviert",
+                        _POLYPHONIC_CONSECUTIVE_ZERO_CONSENSUS,
+                    )
+            else:
+                _POLYPHONIC_CONSECUTIVE_ZERO_CONSENSUS = 0
+            pitch_trajectory, confidence = self._estimate_pitch_yin(mono, sample_rate)
+            _poly_applied = False
+            _poly_fallback = True
+
+        _report_progress(52.0, "Wow/Flutter: Tonhöhen-Analyse abgeschlossen")
+        # Continue with standard wow/flutter correction pipeline
+        # (regardless of detection method)
+
+        # Confidence-Guard: Bei sehr niedriger mittlerer Konfidenz die Phase gar nicht
+        # erst anwenden — Phase-Vocoder-Timestretch auf Basis unzuverlässiger Pitch-Daten
+        # erzeugt Artefakte (0.09 PMGG-Regression im E2E) ohne tatsächlichen Nutzen.
+        # Timing-Phasen haben keine Wet/Dry-Retries, daher frühes Bail-out.
+        #
+        # v10.0.0: Tape-Start Confidence Adaptation.
+        # Cassette motor startup (0–20 s) produces low-confidence pitch regions because
+        # the signal is genuinely unstable (speed ramp-up).  The confidence guard must
+        # NOT skip the ENTIRE phase just because the first few seconds have low confidence.
+        # For tape material: lower the threshold to 0.25 (from 0.40) to prevent skipping
+        # precisely where correction is most needed.
+        # Scientific basis: Mauch & Dixon (2014) §3.2 "Voiced probability in noisy signals";
+        # pYIN confidence degrades with speed instability but pitch estimates remain usable
+        # above 0.20 threshold in the low-Hz (<200 Hz) tape flutter range.
+        _valid_conf = confidence[confidence > 0]
+        _mean_conf = float(np.mean(_valid_conf)) if len(_valid_conf) > 0 else 0.0
+        # §SOTA-Gate-Fix (2026-09-11): RMVPE-Salienz ist KEIN Voiced-Probability-
+        # Maß wie pYIN — der Gesamtmittelwert (inkl. Sibilanten/Fast-Stille)
+        # lag auf Gesangsmaterial bei 0.035 und aktivierte fälschlich den
+        # konservativen Ersatzpfad, obwohl das Modell auf stimmhaften Frames
+        # sicher war. Gate jetzt auf die Konfidenz der Frames, die das Modell
+        # selbst als stimmhaft führt (conf ≥ 0.5): pYIN ≈ 0.9+, RMVPE ≥ 0.5.
+        _voiced_frames = _valid_conf[_valid_conf >= 0.5]
+        if len(_voiced_frames) >= max(8, int(0.05 * len(_valid_conf))):
+            _gate_conf = float(np.mean(_voiced_frames))
+        else:
+            _gate_conf = _mean_conf
+        _MIN_CONFIDENCE_FOR_CORRECTION = 0.40
+        if material in (MaterialType.TAPE, MaterialType.CASSETTE):
+            _MIN_CONFIDENCE_FOR_CORRECTION = 0.25  # tape/cassette: transport-start-aware lower threshold
+        if _gate_conf < _MIN_CONFIDENCE_FOR_CORRECTION:
+            # -------------------------------------------------------------------
+            # Tier-3-Fallback: Instantan-Frequenz-Tracking (IEC 60386, SNR-robust)
+            # Wird aktiviert wenn pYIN/BasicPitch für rauschiges Kassetten-/
+            # Bandmaterial völlig scheitert (Konfidenz ≈ 0.000).
+            # Funktioniert ohne Voiced-Detection; bei Pitch-Unsicherheit bleibt
+            # die nicht-destruktive Transport-Level-Stabilisierung aktiv.
+            # -------------------------------------------------------------------
+            _TAPE_LEVEL_MATERIALS = {MaterialType.TAPE, MaterialType.REEL_TAPE, MaterialType.CASSETTE}
+            _mat_enum = material if isinstance(material, MaterialType) else None
+            _is_primary_tape = _mat_enum in _TAPE_LEVEL_MATERIALS
+            _centroid_succeeded = False
+
+            if _is_primary_tape and _effective_strength > 0.0:
+                try:
+                    _c_pitch, _c_conf = self._estimate_speed_curve_from_instantaneous_frequency(mono, sample_rate)
+                    _c_valid = _c_conf[_c_conf > 0]
+                    _c_mean_conf = float(np.mean(_c_valid)) if len(_c_valid) > 0 else 0.0
+                    if _c_pitch.size >= 4 and _c_mean_conf >= 0.15:
+                        pitch_trajectory = _c_pitch
+                        confidence = _c_conf
+                        _mean_conf = _c_mean_conf
+                        _centroid_succeeded = True
+                        logger.info(
+                            "Verarbeitungsschritt 12: Instantan-Frequenz-Ersatzpfad aktiviert — "
+                            "Konfidenz %.3f, T=%d Frames, material=%s",
+                            _mean_conf,
+                            len(pitch_trajectory),
+                            material.value,
+                        )
+                except Exception as _c_exc:
+                    logger.warning(
+                        "Verarbeitungsschritt 12 IF-Ersatzpfad fehlgeschlagen (%s) — Transportstabilisierung", _c_exc
+                    )
+
+            if not _centroid_succeeded:
+                logger.info(
+                    "Verarbeitungsschritt 12: konservativer Ersatzpfad aktiv (Konfidenz %.3f < %.2f) — "
+                    "Transportstabilisierung statt Vollkorrektur",
+                    _gate_conf,
+                    _MIN_CONFIDENCE_FOR_CORRECTION,
+                )
+                # Transport-Level-Stabilisierung auch im Low-Confidence-Pfad,
+                # damit kein Komplett-Skip bei Kassetten-/Bandmaterial entsteht.
+                n_level_dips_repaired = 0
+                # §2.74: BOTH tape_head_level_dip AND transport_bump trigger
+                # the tape level stabilizer. These are genuine analog defects that
+                # MP3 cannot produce — transport_bump was previously excluded by
+                # the MP3 guard but is now properly passed through.
+                _dl = kwargs.get("defect_locations") or {}
+                _has_tape_dip_defect = bool(_dl.get("tape_head_level_dip") or _dl.get("transport_bump"))
+                if (_is_primary_tape or _has_tape_dip_defect) and _effective_strength > 0.0:
+                    audio, n_level_dips_repaired = self._stabilize_tape_level(
+                        audio,
+                        sample_rate,
+                        _effective_strength,
+                        is_primary_tape=_is_primary_tape,
+                        confirmed_tape_dip=_has_tape_dip_defect,
+                        protected_zones=self._collect_vfa_protected_zones(kwargs),
+                    )
+                    if n_level_dips_repaired > 0:
+                        logger.info(
+                            "Verarbeitungsschritt 12 tape level stabilizer (low confidence path): %d dips repaired",
+                            n_level_dips_repaired,
+                        )
+                # §v10.60 Modulation-Noise-Reduction: Wenn Pitch-Confidence zu niedrig
+                # für Vollkorrektur ist, trotzdem konservative Envelope-Stabilisierung
+                # anwenden. Reduziert das "Flattern" (10-100Hz Amplitudenmodulation)
+                # das bei Kassetten/Tapes auch ohne messbare Tonhöhenschwankung auftritt.
+                if _effective_strength > 0.0:
+                    try:
+                        from scipy.signal import butter, filtfilt
+
+                        # §v10.14.1 Transient-preserving Envelope Stabilizer:
+                        # Die ursprüngliche Implementierung (8 Hz Cutoff, 60% Blend)
+                        # zerstörte Transienten: Kick-Drums (50-200 Hz Envelope-Mod)
+                        # wurden als "Modulationsrauschen" fehlinterpretiert und
+                        # um bis zu 30% gedämpft → onsets_orig=180, onsets_rest=15.
+                        #
+                        # Fix: 2 Hz Cutoff (nur sehr langsame Modulation wie
+                        # Capstan-Wow), 15% Blend-Stärke, Gain-Floor 0.85 (max
+                        # -15% statt -30%), und Transienten-Gate: Frames mit
+                        # onset energy > 3σ des lokalen Kontexts werden preserved.
+                        _mod_cutoff = 2.0  # Hz — nur Capstan-Wow (<2 Hz)
+                        _mod_strength = float(np.clip(_effective_strength * 0.15, 0.05, 0.20))
+                        b_mod, a_mod = butter(2, _mod_cutoff / (sample_rate / 2), btype="low")
+
+                        def _stabilize_envelope(sig: np.ndarray) -> np.ndarray:
+                            env = np.abs(sig.astype(np.float64))
+                            env_smooth = safe_filtfilt(b_mod, a_mod, env)  # §v10.103 Längen-Guard
+                            env_out = _mod_strength * env_smooth + (1.0 - _mod_strength) * env
+                            gain = np.divide(env_out, env, out=np.ones_like(env), where=env > 1e-10)
+                            # §v10.14.1 Transient-Gate: Onsets > 3σ → gain=1.0 (preserve)
+                            _onset = np.abs(np.diff(env, prepend=env[:1]))
+                            _onset_sigma = float(np.std(_onset) + 1e-10)
+                            _onset_mask = _onset > 3.0 * _onset_sigma
+                            # Dilate mask by 5ms to protect the full attack
+                            _dilate_n = int(0.005 * sample_rate)
+                            if _dilate_n > 1:
+                                _kernel = np.ones(_dilate_n) / _dilate_n
+                                _onset_mask = np.convolve(_onset_mask.astype(float), _kernel, mode="same") > 0.3
+                            gain[_onset_mask] = 1.0
+                            gain = np.clip(gain, 0.85, 1.30)  # Floor 0.85 statt 0.70
+                            return cast(np.ndarray, (sig.astype(np.float64) * gain).astype(np.float32))
+
+                        if audio.ndim == 2:
+                            ch_first = audio.shape[0] == 2 and audio.shape[1] > 2
+                            if ch_first:
+                                for ch in range(audio.shape[0]):
+                                    audio[ch] = _stabilize_envelope(audio[ch])
+                            else:
+                                for ch in range(audio.shape[1]):
+                                    audio[:, ch] = _stabilize_envelope(audio[:, ch])
+                        else:
+                            audio = _stabilize_envelope(audio)
+                        logger.debug(
+                            "Verarbeitungsschritt 12: Envelope-Stabilisierung (mod=%.2f, cutoff=%.0f Hz)",
+                            _mod_strength,
+                            _mod_cutoff,
+                        )
+                    except Exception as _mod_exc:
+                        logger.debug("Verarbeitungsschritt 12 Envelope nicht blockierend: %s", _mod_exc)
+                audio, _rms_drop_db, _makeup_db = self._preserve_phase_loudness(
+                    _original_audio,
+                    audio,
+                    material,
+                )
+                audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
+                # Früher Pfad (keine Wow/Flutter-Reparatur nötig): Befund wird
+                # nur geloggt, nicht zurückgemeldet.
+                audio = self._apply_scrape_flutter_rest(audio, sample_rate, material, {})
+                audio = np.clip(audio, -1.0, 1.0)
+                return PhaseResult(
+                    success=True,
+                    audio=restore_layout(audio, _was_channels_first),
+                    metrics={
+                        "wow_flutter_detected": False,
+                        "max_deviation_percent": 0.0,
+                        "correction_applied": _effective_strength if n_level_dips_repaired > 0 else 0.0,
+                        "material": material.value,
+                        "mean_confidence": _mean_conf,
+                        "quality_mode": quality_mode,
+                        "skipped_reason": "low_confidence_fallback",
+                        "tape_level_dips_repaired": n_level_dips_repaired,
+                    },
+                    execution_time_seconds=time.monotonic() - start_time,
+                    metadata={
+                        "algorithm": "confidence_guard_conservative_fallback",
+                        "version": "4.2_confidence_guard_fallback",
+                        "ml_hybrid": use_ml_hybrid,
+                        "polyphonic": _poly_applied,
+                        "phase_locality_factor": phase_locality_factor,
+                        "effective_strength": _effective_strength,
+                        "rms_drop_db": _rms_drop_db,
+                        "loudness_makeup_db": _makeup_db,
+                    },
+                )
+            # IF-Fallback erfolgreich → weiter mit normaler Korrekturpipeline
+            # (_fit_sinusoidal_wow_curve → _separate_wow_flutter → _calculate_stretch_factors)
+
+        # §7.4c (06_phases_system.md) Scanner-Konsultation: die
+        # Wow-Modulationsfrequenz aus der DefectScanner-Evidenz
+        # (wow-Metadatum dominant_mod_freq_hz) als Saat für den Sinus-Fit.
+        _wow_hint_hz_12: float | None = None
+        # §7.4c-L3 (2026-09-27): auch der bandabhängige Flutter-Fall liefert
+        # die Modulationsfrequenz als Scanner-Evidenz (HF-Kanal) — ohne Hint
+        # bleibt der Phasen-Messkanal im 4-kHz-Grid blind. Auswahl nach
+        # SEVERITY (dominierender Defekt), nicht nach Registry-Reihenfolge:
+        # ein Rest-Wow-Score (sev ~0) mit Rausch-Hint darf den Multiband-Hint
+        # (5 Hz) nicht verdecken (Befund: Hint blieb 0,28 Hz statt 5 Hz).
+        _hint_candidates_12: list[tuple[float, float, str]] = []
+        for _k12, _v12 in (kwargs.get("defect_scores") or {}).items():
+            _key12 = str(getattr(_k12, "value", _k12))
+            if _key12 not in ("wow", "multiband_wow_flutter"):
+                continue
+            try:
+                _hz12 = float((getattr(_v12, "metadata", None) or {}).get("dominant_mod_freq_hz", 0.0) or 0.0)
+                _sev12 = float(getattr(_v12, "severity", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                continue
+            if _hz12 > 0.0:
+                _hint_candidates_12.append((_sev12, _hz12, _key12))
+        if _hint_candidates_12:
+            # Band-Flutter-Hint (Multiband, > 4 Hz) ist bei aktiver
+            # Multiband-Diagnose (sev ≥ 0,15) AUTORITATIV — der Defekt ist
+            # bandselektiv, der Wow-Hint (Rest-Score, breitbandig) wäre der
+            # falsche Warp. Sonst Severity absteigend.
+            _mb_hints = [
+                _c for _c in _hint_candidates_12 if _c[2] == "multiband_wow_flutter" and _c[1] > 4.0 and _c[0] >= 0.15
+            ]
+            if _mb_hints:
+                _wow_hint_hz_12 = max(_mb_hints, key=lambda _c: _c[0])[1]
+            else:
+                _wow_hint_hz_12 = max(_hint_candidates_12, key=lambda _c: _c[0])[1]
+        pitch_trajectory, _sinusoidal_wow_profile = self._fit_sinusoidal_wow_curve(
+            pitch_trajectory,
+            confidence,
+            sample_rate,
+            hint_freq_hz=_wow_hint_hz_12,
+        )
+        if _sinusoidal_wow_profile.get("applied", False):
+            logger.info(
+                "Verarbeitungsschritt 12 sinusförmiger Wow-Fit aktiv: freq=%.2f Hz amp=%.1f cents r2=%.2f",
+                float(_sinusoidal_wow_profile.get("frequency_hz", 0.0)),
+                float(_sinusoidal_wow_profile.get("amplitude_cents", 0.0)),
+                float(_sinusoidal_wow_profile.get("r2", 0.0)),
+            )
+        else:
+            # §7.4c Cluster-A-Finale (2026-09-26): der Teilband-Kanal läuft
+            # jetzt auch OHNE Scanner-Saat — sein kohärenter √N-Frequenzscan
+            # findet die Modulationsfrequenz selbst (Befund 4-Akkord-Musik:
+            # Blind 20,1 → 49,1 cents, Hint 49,2, GT 53). Die Konsens-
+            # Trajektorie ist auf Akkord-Musik reines Noten-Rauschen
+            # (Befund 2026-09-25: ±1000 cents Streuung vs. ±8,6 cents FM-Signal
+            # — Sinus-/Trend-/IRLS-Fit lehnen korrekt ab). Der Hilbert-IF-Kanal
+            # (_estimate_speed_curve_from_instantaneous_frequency, IEC 60386,
+            # SNR-robust) misst die GEMEINSAME Transport-Modulation direkt.
+            try:
+                # Teilband-√N-Schätzer zuerst (Befund 2026-09-25: der Mix-IF-
+                # Kanal sieht die Gemeinschafts-FM unter Inter-Ton-Beating
+                # nicht — 0,89 statt 8,6 cents gemessen).
+                _if_pitch_12, _if_conf_12 = self._estimate_wow_track_subband(
+                    mono, sample_rate, hint_freq_hz=_wow_hint_hz_12
+                )
+                if _if_pitch_12.size < 32:
+                    _if_pitch_12, _if_conf_12 = self._estimate_speed_curve_from_instantaneous_frequency(
+                        mono, sample_rate
+                    )
+                if _if_pitch_12.size >= 32:
+                    _if_smoothed_12, _if_profile_12 = self._fit_sinusoidal_wow_curve(
+                        _if_pitch_12,
+                        _if_conf_12,
+                        sample_rate,
+                        hint_freq_hz=_wow_hint_hz_12,
+                    )
+                    if _if_profile_12.get("applied", False):
+                        pitch_trajectory = _if_smoothed_12
+                        confidence = _if_conf_12
+                        _sinusoidal_wow_profile = _if_profile_12
+                        _sinusoidal_wow_profile["freq_source"] = "scanner_hint+if_track"
+                        _sinusoidal_wow_profile["witness"] = "scanner+if"
+                        logger.info(
+                            "Verarbeitungsschritt 12 Wow-Fit auf IF-Kanal aktiv: freq=%.2f Hz amp=%.1f cents r2=%.2f",
+                            float(_if_profile_12.get("frequency_hz", 0.0)),
+                            float(_if_profile_12.get("amplitude_cents", 0.0)),
+                            float(_if_profile_12.get("r2", 0.0)),
+                        )
+                    else:
+                        # §7.4c Irregulärer Gemeinschafts-Drift (2026-09-26):
+                        # reales Band-Material („13 Tage“: 15 cents irregulärer
+                        # Drift) ist KEIN Sinus — der kohärent gewichtete
+                        # Gemeinschafts-Verlauf wird OHNE Sinus-Modell als
+                        # Warp-Trajektorie übernommen, wenn er tragfähig ist
+                        # (Spanne ≥ 3 cents, Kohärenz ≥ 0,55).
+                        _med_c12 = (
+                            float(np.median(_if_pitch_12[_if_pitch_12 > 0]))
+                            if bool(np.any(_if_pitch_12 > 0))
+                            else 440.0
+                        )
+                        _dev_c12 = 1200.0 * np.log2(np.maximum(_if_pitch_12, 1e-6) / max(_med_c12, 1e-6))
+                        _pkpk_12 = float(np.percentile(_dev_c12, 95) - np.percentile(_dev_c12, 5))
+                        _conf_mean_12 = float(np.mean(_if_conf_12))
+                        if _pkpk_12 >= 3.0 and _conf_mean_12 >= 0.55:
+                            pitch_trajectory = np.asarray(_if_pitch_12, dtype=pitch_trajectory.dtype)
+                            confidence = np.asarray(_if_conf_12, dtype=confidence.dtype)
+                            _sinusoidal_wow_profile = {
+                                "applied": True,
+                                "frequency_hz": float(_wow_hint_hz_12 or 0.0),
+                                "amplitude_cents": _pkpk_12 / 2.0,
+                                "r2": _conf_mean_12,
+                                "dominance": _conf_mean_12,
+                                "span_cents": _pkpk_12,
+                                "freq_source": "subband_common_track",
+                                "witness": "subband+common",
+                            }
+                            logger.info(
+                                "Verarbeitungsschritt 12 Gemeinschafts-Drift übernommen: span=%.1f cents, Kohärenz=%.2f",
+                                _pkpk_12,
+                                _conf_mean_12,
+                            )
+            except Exception as _if_exc_12:
+                logger.debug("Verarbeitungsschritt 12 IF-Wow-Fit nicht blockierend: %s", _if_exc_12)
+
+        # Step 1: Separate wow (<4 Hz) and flutter (4-100 Hz) components
+        wow_component, flutter_component = self._separate_wow_flutter(pitch_trajectory, sample_rate)
+
+        # Step 3: Detect significant wow/flutter (check if correction needed)
+        wow_flutter_detected, max_deviation = self._detect_wow_flutter(pitch_trajectory, confidence, threshold)
+
+        # §Witness-Schutz (t14, §v10.709-Befund): Pitch-Korrektur nur bei
+        # belastbarer Evidenz — sonst erzeugt die Korrektur selbst Pitch-Wobble
+        # in Gesang UND Musik (Produktionsbefund: verschlimmerte Aufnahme).
+        if wow_flutter_detected:
+            _wf_strong_conf = confidence[confidence > 0.5]
+            _wf_mean_conf = float(np.mean(_wf_strong_conf)) if _wf_strong_conf.size else 0.0
+            # §7.4c: Scanner+IF-Evidenzkette ist eine belastbare Evidenz
+            # alternativ zur Pitch-Konfidenz (der IF-Kanal liefert keine
+            # Voiced-Konfidenz; Scanner-Saaten-+r²-Chain trägt das Verdikt).
+            _wf_seeded = str(_sinusoidal_wow_profile.get("witness", "")) == "scanner+if"
+            if not _wf_seeded and (_wf_strong_conf.size < 4 or _wf_mean_conf < 0.5):
+                logger.info(
+                    "Verarbeitungsschritt 12: Wow/Flutter-Korrektur übersprungen — "
+                    "Pitch-Evidenz unzureichend (frames=%d mean_conf=%.2f)",
+                    int(_wf_strong_conf.size),
+                    _wf_mean_conf,
+                )
+                wow_flutter_detected = False
+
+        if not wow_flutter_detected:
+            # No significant wow/flutter detected
+            metadata: dict[str, Any] = {
+                "algorithm": (
+                    "polyphonic_multi_f0_consensus_v1"
+                    if _poly_applied
+                    else "hybrid_ml_pyin_crepe_v3"
+                    if use_ml_hybrid
+                    else "pyin_phase_vocoder"
+                ),
+                "version": "4.0_polyphonic" if _poly_applied else "3.0_ml_hybrid" if use_ml_hybrid else "3.0_pyin",
+                "ml_hybrid": use_ml_hybrid,
+                "polyphonic": _poly_applied,
+                "sinusoidal_wow_profile": _sinusoidal_wow_profile,
+            }
+
+            if use_ml_hybrid:
+                metadata["pyin_applied"] = ml_result.pyin_applied
+                metadata["crepe_applied"] = ml_result.crepe_applied
+                metadata["strategy_used"] = str(ml_result.strategy_used)
+                metadata["ml_metadata"] = ml_result.metadata
+
+            # Step 6c (also in no-wow/flutter path): Tape level stabilization
+            n_level_dips_repaired = 0
+            _TAPE_LEVEL_MATERIALS = {MaterialType.TAPE, MaterialType.REEL_TAPE, MaterialType.CASSETTE}
+            _mat_enum = material if isinstance(material, MaterialType) else None
+            _dl_high = kwargs.get("defect_locations") or {}
+            _has_tape_dip_defect = bool(_dl_high.get("tape_head_level_dip") or _dl_high.get("transport_bump"))
+            _is_primary_tape = _mat_enum in _TAPE_LEVEL_MATERIALS
+            if (_is_primary_tape or _has_tape_dip_defect) and _effective_strength > 0.0:
+                audio, n_level_dips_repaired = self._stabilize_tape_level(
+                    audio,
+                    sample_rate,
+                    _effective_strength,
+                    is_primary_tape=_is_primary_tape,
+                    confirmed_tape_dip=_has_tape_dip_defect,
+                    protected_zones=self._collect_vfa_protected_zones(kwargs),
+                )
+                if n_level_dips_repaired > 0:
+                    logger.info(
+                        "Verarbeitungsschritt 12 tape level stabilizer (no wow/flutter): %d dips repaired",
+                        n_level_dips_repaired,
+                    )
+
+            audio, _rms_drop_db, _makeup_db = self._preserve_phase_loudness(
+                _original_audio,
+                audio,
+                material,
+            )
+
+            audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
+            audio = self._apply_scrape_flutter_rest(audio, sample_rate, material, metadata)
+            audio = np.clip(audio, -1.0, 1.0)
+            return PhaseResult(
+                success=True,
+                audio=restore_layout(audio, _was_channels_first),
+                metrics={
+                    "wow_flutter_detected": False,
+                    "max_deviation_percent": max_deviation,
+                    "correction_applied": _effective_strength if n_level_dips_repaired > 0 else 0.0,
+                    "material": material.value,
+                    "mean_confidence": float(np.mean(confidence[confidence > 0])),
+                    "quality_mode": quality_mode,
+                    "tape_level_dips_repaired": n_level_dips_repaired,
+                },
+                execution_time_seconds=time.monotonic() - start_time,
+                metadata={
+                    **metadata,
+                    "phase_locality_factor": phase_locality_factor,
+                    "effective_strength": _effective_strength,
+                    "rms_drop_db": _rms_drop_db,
+                    "loudness_makeup_db": _makeup_db,
+                },
+            )
+
+        vocals_conf = float(kwargs.get("panns_vocals_confidence", 0.0))
+        if vocals_conf == 0.0:  # Fallback: direct callers may use panns_singing key
+            vocals_conf = float(kwargs.get("panns_singing", 0.0))
+        _timing_safe_strength_scale, _max_stretch_delta = self._derive_safe_timing_profile(
+            material,
+            _mean_conf,
+            vocals_conf,
+            polyphonic_fallback=_poly_fallback,
+        )
+        # §G188 (GEBOTE.md) — Kompensationsgrad 1,0 bei belastbarer Deterministik:
+        # ein sauberer Sinus-Fit (r² ≥ 0,90) oder die Scanner+IF-Evidenzkette ist
+        # eine exakte Messung der Modulation — dann wird der GEMESSENE Defekt
+        # vollständig kompensiert, nicht pauschal gedämpft.
+        _wf2_fit_r2 = float(_sinusoidal_wow_profile.get("r2", 0.0) or 0.0)
+        _wf2_conclusive = (bool(_sinusoidal_wow_profile.get("applied", False)) and _wf2_fit_r2 >= 0.90) or (
+            str(_sinusoidal_wow_profile.get("witness", "")) in {"scanner+if", "subband+common"}
+        )
+        if _wf2_conclusive:
+            _timing_safe_strength_scale = 1.0
+        _timing_safe_strength = float(np.clip(strength * _timing_safe_strength_scale, 0.0, max(0.15, strength)))
+
+        if self._should_bypass_unsafe_polyphonic_fallback(
+            material,
+            _mean_conf,
+            vocals_conf,
+            polyphonic_fallback=_poly_fallback,
+        ):
+            restored = np.nan_to_num(audio.copy(), nan=0.0, posinf=0.0, neginf=0.0)
+            restored = np.clip(restored, -1.0, 1.0)
+            processing_time = time.monotonic() - start_time
+            return PhaseResult(
+                success=True,
+                audio=restore_layout(restored, _was_channels_first),
+                metrics={
+                    "wow_flutter_detected": True,
+                    "max_deviation_percent": max_deviation,
+                    "residual_deviation_percent": max_deviation,
+                    "wow_magnitude_percent": 0.0,
+                    "flutter_magnitude_percent": 0.0,
+                    "correction_strength": 0.0,
+                    "mean_confidence": float(_mean_conf),
+                    "material": material.value,
+                    "quality_mode": quality_mode,
+                    "transport_bumps_repaired": 0,
+                    "tape_level_dips_repaired": 0,
+                },
+                execution_time_seconds=processing_time,
+                metadata={
+                    "algorithm": "unsafe_polyphonic_fallback_bypass",
+                    "version": "4.1_locality",
+                    "ml_hybrid": False,
+                    "panns_vocals_confidence": vocals_conf,
+                    "threshold": threshold,
+                    "polyphonic_fallback": _poly_fallback,
+                    "timing_safe_strength": 0.0,
+                    "timing_safe_strength_scale": _timing_safe_strength_scale,
+                    "max_stretch_delta": _max_stretch_delta,
+                    "phase_locality_factor": phase_locality_factor,
+                    "effective_strength": _effective_strength,
+                    "bypassed_due_to_unsafe_polyphonic_fallback": True,
+                    "rms_drop_db": 0.0,
+                    "loudness_makeup_db": 0.0,
+                },
+                warnings=[
+                    "Wow/flutter correction bypassed: polyphonic estimator was"
+                    " implausible and fallback was unsafe for vocal analog material"
+                ],
+            )
+
+        # Step 4: Calculate time-stretching factors from pitch deviation
+        # §2.46b: Computed wow severity for adaptive pitch-span threshold
+        self._mat_type_for_stretch = str(material_type)
+        _wow_sev = float(kwargs.get("wow_severity", kwargs.get("flutter_severity", 0.0)) or 0.0)
+        # Fallback: restoration_context → conservative default for analog tape
+        if _wow_sev == 0.0:
+            _ctx = getattr(self, "_restoration_context", {}) or {}
+            _wow_sev = float(_ctx.get("wow_severity", _ctx.get("flutter_severity", 0.0)) or 0.0)
+        if _wow_sev == 0.0 and str(material_type).lower() in ("cassette", "reel_tape", "tape", "vinyl"):
+            _wow_sev = 0.30  # Conservative minimum for analog tape/disc
+        self._wow_sev_for_stretch = float(_wow_sev)
+        # §WF-V2-Melodie-Guard-Kopplung (2026-09-23): Der Melodie-Guard in
+        # _calculate_stretch_factors lehnt F0-Stretch bei musikalischer
+        # Tonhöhen-Spanne ab (pitch span > Limit = Melodie/Bends, kein Wow).
+        # Die Spektral-Warp-Versorgung MUSS diese Ablehnung respektieren —
+        # sonst überschreibt sie den Guard mit ihrer eigenen langsamen Warp-
+        # Schätzung und „korrigiert" Synth-LFO/Vibrato (Produktionsbefund
+        # „Vogel der Nacht": pitch_instability 13,8–15,3 c nach phase_12
+        # trotz wow=0.00 und Melodie-Guard-Ablehnung).
+        self._melody_guard_refused = False
+        stretch_factors = self._calculate_stretch_factors(
+            pitch_trajectory,
+            confidence,
+            _timing_safe_strength,
+            max_stretch_delta=_max_stretch_delta,
+        )
+        # §P5 Wow/Flutter getrennt korrigieren (2026-09-25 vervollständigt):
+        # Wow (<4 Hz, Capstan-Unwucht) und Flutter (4–100 Hz, mechanische
+        # Vibration) sind getrennte Komponenten (_separate_wow_flutter) und
+        # werden ADDITIV mit eigenen Stärken korrigiert (Wow aggressiver,
+        # Flutter konservativer). Der frühere 55/45-Blend zweier Vollband-
+        # Schätzungen warf 45 % des Korrekturbudgets auf eine Flutter-Kopie
+        # des Wow-Signals (gemessen: Rest-FM 8,8 statt 5,4 cents bei 18 cents
+        # Eingangs-Wow). Die Summe bleibt auf max_stretch_delta gekappt. Der
+        # Melodie-Guard entscheidet weiterhin auf der VOLLEN Trajektorie (die
+        # Spanne der Einzelkomponenten wäre immer klein und der Guard stumm).
+        if (
+            not getattr(self, "_melody_guard_refused", False)
+            and float(np.max(np.abs(wow_component))) + float(np.max(np.abs(flutter_component))) > 1e-9
+        ):
+            _wf_med = float(np.median(pitch_trajectory[pitch_trajectory > 0])) if np.any(pitch_trajectory > 0) else 0.0
+            if _wf_med > 0.0:
+                # §G188 (GEBOTE.md): beide Komponenten werden VOLL kompensiert —
+                # keine festen „10 % aggressiver"/„30 % konservativer"-Faktoren;
+                # die Selektivität steckt in der Band-Trennung selbst. Die engere
+                # Warp-Delta-Kappe für schnelle Variationen bleibt als
+                # dokumentierte Ausnahme §G189 (Schutz gegen Schätz-Ausreißer).
+                _wow_stretch = self._calculate_stretch_factors(
+                    (_wf_med * (1.0 + wow_component / 100.0)).astype(pitch_trajectory.dtype, copy=False),
+                    confidence,
+                    _timing_safe_strength,
+                    max_stretch_delta=_max_stretch_delta,
+                )
+                _flutter_stretch = self._calculate_stretch_factors(
+                    (_wf_med * (1.0 + flutter_component / 100.0)).astype(pitch_trajectory.dtype, copy=False),
+                    confidence,
+                    _timing_safe_strength,
+                    max_stretch_delta=_max_stretch_delta * 0.60,
+                )
+                # §AUTH-P12 (§v10.709-Befund 2026-09-08): Vibrato/Intonations-Bends der
+                # Performance sind authentischer Ausdruck — Flutter-Korrektur nur
+                # mechanisch plausibel anwenden (Root-Cause, §V7 (copilot-instructions.md) kein Workaround).
+                _flutter_stretch = self._preserve_musical_modulation(
+                    _flutter_stretch, pitch_trajectory, confidence, sample_rate
+                )
+                stretch_factors = np.clip(
+                    1.0 + (_wow_stretch - 1.0) + (_flutter_stretch - 1.0),
+                    1.0 - _max_stretch_delta,
+                    1.0 + _max_stretch_delta,
+                ).astype(stretch_factors.dtype, copy=False)
+        _locality_coverage = 0.0
+        # §7.4c globale Transport-Modulation = globale Reparatur (2026-09-25):
+        # Eine kontinuierliche Wow-/Flutter-Modulation hat KEINE Ereignis-Fenster
+        # — die Event-Lokalitäts-Maske schnitt den Warp auf ~38 % der Timeline
+        # und erzeugte an den Maskenrändern Pitch-Sprünge (gemessen −80 cents,
+        # Never-worsen-Verstoß). Bei saatemgestütztem Sinus-Fit (Scanner+IF-
+        # Evidenzkette) bleibt der Warp vollflächig.
+        if str(_sinusoidal_wow_profile.get("witness", "")) == "scanner+if":
+            _locality_coverage = 1.0
+        else:
+            stretch_factors, _locality_coverage = self._apply_defect_locality_to_stretch_factors(
+                stretch_factors,
+                audio_length_samples=audio_sample_count(audio),
+                sample_rate=sample_rate,
+                defect_locations=kwargs.get("defect_locations"),
+            )
+
+        # §Witness-SOTA WF-V2: F0-unabhängige Spektral-Warp-Schätzung (Capstan-
+        # Prinzip). Versorgt den Zero-Consensus-Fall (pYIN/CREPE ohne Befund →
+        # flache Trajektorie, typisch instrumental/dicht). EINMAL auf der Mono-
+        # Referenz geschätzt — Mid/Side erhalten identische Faktoren
+        # (§2.51 L/R-Timing-Invariante; kein per-Kanal-Schätzer, sonst L/R-Zeitversatz).
+        # §WF-V2-Fit-Vorrang (2026-09-25): Bei erfolgreichem deterministischem
+        # Sinus-Fit (r² ≥ 0,90) ist die Fit-Trajektorie bereits die beste
+        # Schätzung (§7.4c Evidenzkette). Der Konsens mit dem schwächeren
+        # Spektral-Kanal mischt einen unterschätzenden Zweit-Schätzer ein und
+        # halbiert die Korrektur messbar (tol=0,01 stuft flache Spektral-
+        # Schätzungen als „übereinstimmend“ ein) — dann nur als Zero-Consensus-
+        # Versorgung behalten.
+        # §WF-V2-Melodie-Guard-Kopplung: Hat der Melodie-Guard den F0-Stretch
+        # abgelehnt (musikalische Spanne), darf die Versorgung NICHT anspringen.
+        _wf2_fit_r2 = float(_sinusoidal_wow_profile.get("r2", 0.0) or 0.0)
+        if _wf2_conclusive:
+            logger.info(
+                "§WF-V2 Konsens übersprungen: Sinus-Fit r²=%.2f trägt die Warp-Schätzung",
+                _wf2_fit_r2,
+            )
+        elif not getattr(self, "_melody_guard_refused", False):
+            stretch_factors = self._spectral_warp_supply_or_consensus(
+                safe_to_mono(np.asarray(audio, dtype=np.float32)),
+                np.asarray(stretch_factors, dtype=np.float32),
+                sample_rate,
+            )
+        else:
+            logger.info(
+                "§WF-V2 übersprungen: Melodie-Guard hat F0-Stretch abgelehnt (musikalischer Inhalt, kein Wow-Verdacht)"
+            )
+
+        # === SOTA-M12 WF-V4 (D-K4-7): Warp-Head-Challenger ===
+        # Challenger zur heuristischen Stretch-Schätzung der WF-V1/V2/V3-Kette.
+        # Flag `use_wf4_warp_head` (backend/core/music_model_flags.py, Default
+        # False) AUS ⇒ Block nicht betreten (bit-identisch). §V6 (copilot-instructions.md):
+        # Kein ONNX-Artefakt/Inferenz-Fehler ⇒
+        # heuristische Schätzung bleibt + logger.warning. Anwendung VOR dem
+        # §WF-V3-Slope-Limit (_smooth_stretch_factors), damit die Warp-Delta-
+        # Kappe des Heads und die Slope-Limit-Logik erhalten bleiben. Die
+        # 40-fps-Kurve des Heads wird auf die Länge der Stretch-Faktoren
+        # interpoliert (layout-robust, Stereo-Layout-Invariante AGENTS.md §3).
+        try:
+            from backend.core.dsp.wf4_warp_head import apply_wf4_warp_stage
+            from backend.core.music_model_flags import use_wf4_warp_head  # pylint: disable=import-outside-toplevel
+        except Exception as _wf4_import_exc:  # pragma: no cover
+            use_wf4_warp_head = False
+            logger.warning(
+                "SOTA-M12 WF4-Warp-Head nicht importierbar (%s) — heuristische "
+                "Phase-12-Schätzung bleibt aktiv (§V6 (copilot-instructions.md)).",
+                _wf4_import_exc,
+            )
+        if use_wf4_warp_head:
+            try:
+                _wf4_stretch, _wf4_used = apply_wf4_warp_stage(
+                    np.asarray(pitch_trajectory, dtype=np.float32),
+                    np.asarray(confidence, dtype=np.float32),
+                    sample_rate,
+                    audio=safe_to_mono(np.asarray(audio, dtype=np.float32)),
+                )
+            except Exception as _wf4_exc:  # pragma: no cover
+                logger.warning(
+                    "SOTA-M12 WF4-Warp-Head fehlgeschlagen (%s) — heuristische "
+                    "Phase-12-Schätzung bleibt aktiv (§V6 (copilot-instructions.md)).",
+                    _wf4_exc,
+                )
+                _wf4_stretch, _wf4_used = None, False
+            if _wf4_used and _wf4_stretch is not None:
+                _wf4_curve = np.asarray(_wf4_stretch, dtype=np.float64)
+                if _wf4_curve.size >= 2 and stretch_factors.size >= 2:
+                    _wf4_x_src = np.linspace(0.0, 1.0, num=_wf4_curve.size)
+                    _wf4_x_dst = np.linspace(0.0, 1.0, num=stretch_factors.size)
+                    stretch_factors = np.interp(_wf4_x_dst, _wf4_x_src, _wf4_curve).astype(
+                        stretch_factors.dtype, copy=False
+                    )
+                    logger.info(
+                        "SOTA-M12 WF4-Warp-Head aktiv (D-K4-7): Challenger ersetzt "
+                        "heuristische Stretch-Schätzung (%d → %d Stützstellen).",
+                        int(_wf4_curve.size),
+                        int(stretch_factors.size),
+                    )
+        # === ENDE WF-V4-Warp-Head Challenger (SOTA-M12, D-K4-7) ===
+
+        # §WF-V3 (Root-Cause §v10.709, Produktionsbefund vinyl/1970):
+        # Stufen in den Stretch-Faktoren (F0-Blend 55/45, Konsens-Umschaltung der
+        # Spektral-Warp-Versorgung, Melodie-Guard-Grenzen) erzeugen Zeitwarp-
+        # Sprünge → Energie-Sprünge >6 dB/100 ms + Pre-Echo-Befunde + timbre_
+        # authentizitaet-Degradation. Slope-Limit VOR der Anwendung — gekoppelt
+        # an max_stretch_delta (Identität für alles, was der Algorithmus selbst
+        # ausgibt: Wow ≤5 %/Fenster, Flutter ≤3 %/Fenster).
+        stretch_factors = self._smooth_stretch_factors(stretch_factors, max_step=float(_max_stretch_delta))
+
+        # Step 5: Inverse Geschwindigkeits-Warp (variabel ratiges Resampling)
+        # §WF-R1 (Root-Cause-Befund 2026-09-25): Wow/Flutter ist ein
+        # GESCHWINDIGKEITS-Defekt x_d(t) = x(φ(t)) mit φ' = 1+δ(t). Das exakte
+        # Inverse ist der variabel ratige Resample y(t) = x_d(φ⁻¹(t)) — er
+        # korrigiert Pitch UND Timing gemeinsam (Capstan-Prinzip). Pitch-
+        # erhaltende Zeitdehner (PSOLA-Grain-OLA, STFT-Phase-Vocoder) können
+        # eine Pitch-Modulation dagegen gar nicht entfernen, sondern nur zeitlich
+        # umverteilen (gemessen: FM-Tiefe 18,0 → 18,0 cents trotz Sinus-Fit
+        # r²=0,99 — Wirksamkeitslücke). Formanten und Rausch-Textur kehren beim
+        # Inverse-Warp automatisch zurück; Formant-Schutz ist nur bei
+        # intentionalem Pitch-Shifting nötig, nicht beim Entfernen eines
+        # Laufwerksfehlers.
+        # §7.4c-L3 (2026-09-27): Bandabhängiges Flutter (Hint > 4 Hz) wird
+        # bandbegrenzt gewarpt — ein globaler Warp würde das unmodulierte
+        # Tieffrequenz-Band neu modulieren (Regression, der Defekt ist
+        # bandselektiv). Hint ≤ 4 Hz = klassischer globaler Transport-Wow.
+        _band_limited_warp_12 = _wow_hint_hz_12 is not None and float(_wow_hint_hz_12) > 4.0
+
+        _report_progress(65.0, "Wow/Flutter: Geschwindigkeits-Korrektur (Resample) läuft...")
+        if is_stereo:
+            # §2.51 M/S-Domain Stereo Processing: Mid und Side erhalten
+            # denselben Warp (gleiche Faktoren, identische Sample-Abbildung)
+            # ⇒ L/R-Timing-Invariante, kein L/R-Zeitversatz.
+            _left_ch, _right_ch = stereo_channel_view(audio)
+            _mid_ch = (_left_ch.astype(np.float32) + _right_ch.astype(np.float32)) * 0.5
+            _side_ch = (_left_ch.astype(np.float32) - _right_ch.astype(np.float32)) * 0.5
+            if _band_limited_warp_12:
+                _mid_stretched = self._band_limited_warp(_mid_ch, stretch_factors, sample_rate)
+                _side_stretched = self._band_limited_warp(_side_ch, stretch_factors, sample_rate)
+            else:
+                _mid_stretched = self._speed_warp_resample(_mid_ch, stretch_factors, sample_rate)
+                _side_stretched = self._speed_warp_resample(_side_ch, stretch_factors, sample_rate)
+            # §2.51 Amplituden-Sicherheitsnetz: selbst kleinere Pegelsprünge
+            # durch Warp-/Resample-Artefakte triggern MDEM/correct_arc auf eine
+            # globale Makeup-Kaskade (Pegelexplosion Intro/Outro). Mid-RMS auf
+            # die Eingabe normalisieren (max. ±6 dB).
+            _mid_rms_in = float(np.sqrt(np.mean(_mid_ch**2) + 1e-12))
+            _n_ms = min(len(_mid_stretched), len(_side_stretched))
+            _mid_rms_out = float(np.sqrt(np.mean(_mid_stretched[:_n_ms] ** 2) + 1e-12))
+            if _mid_rms_in > 1e-9 and _mid_rms_out > 1e-9:
+                _mid_norm_gain = float(np.clip(_mid_rms_in / _mid_rms_out, 0.5, 2.0))  # ±6 dB
+                _mid_stretched = np.clip(_mid_stretched * _mid_norm_gain, -1.0, 1.0)
+                logger.debug(
+                    "Verarbeitungsschritt_12: M/S Mid-RMS-Normalisierung: in=%.1f dBFS out=%.1f dBFS gain=%.1f dB",
+                    20.0 * np.log10(_mid_rms_in + 1e-12),
+                    20.0 * np.log10(_mid_rms_out + 1e-12),
+                    20.0 * np.log10(_mid_norm_gain + 1e-12),
+                )
+            restored_left = (_mid_stretched[:_n_ms] + _side_stretched[:_n_ms]).astype(audio.dtype)
+            restored_right = (_mid_stretched[:_n_ms] - _side_stretched[:_n_ms]).astype(audio.dtype)
+            _p12_n = min(len(restored_left), len(restored_right), audio_sample_count(audio))
+            if _p12_n < audio_sample_count(audio):
+                logger.debug(
+                    "Verarbeitungsschritt_12: M/S-Längenangleichung: orig=%d → %d",
+                    audio_sample_count(audio),
+                    _p12_n,
+                )
+            restored = stereo_like(restored_left[:_p12_n], restored_right[:_p12_n], audio)
+        else:
+            if _band_limited_warp_12:
+                restored = self._band_limited_warp(audio, stretch_factors, sample_rate)
+            else:
+                restored = self._speed_warp_resample(audio, stretch_factors, sample_rate)
+
+        # §G188–§G189 (GEBOTE.md), §7.4d (06_phases_system.md) — Autonome
+        # Wirkungs-Kalibrierung, geschlossener Regelkreis: Restfehler der
+        # Transport-Modulation auf dem EIGENEN Ausgang nachmessen und bounded
+        # nachführen (max. ein Nachlauf, nie-schlechter, deterministisch).
+        _refine_hint_hz = float(_sinusoidal_wow_profile.get("frequency_hz", 0.0) or 0.0)
+        if _refine_hint_hz <= 0.0 and _wow_hint_hz_12 is not None:
+            _refine_hint_hz = float(_wow_hint_hz_12)
+        restored, _refine = self._closed_loop_warp_refine(
+            restored,
+            sample_rate=sample_rate,
+            hint_freq_hz=_refine_hint_hz,
+            max_stretch_delta=_max_stretch_delta,
+            pre_warp=audio,
+        )
+
+        # §7.4c Flutter-Pfad (Sample-Rate, 2026-09-26): die schnelle gemeinsame
+        # Modulation (15–50 Hz, Seitenband-Struktur) wird per per-sample-Warp
+        # korrigiert — die 40-fps-Trajektorie (Nyquist 20 Hz) bildet sie
+        # strukturell nicht ab. Nie-schlechter (Hörordnung §8a).
+        restored, _flutter_info = self._flutter_correction_pass(restored, sample_rate=sample_rate)
+
+        # §C3 Neural Phase Vocoder — post-stretch phase coherence restoration.
+        # PSOLA/Phase-Vocoder time-stretching can introduce phase incoherence in
+        # voiced regions (harmonic misalignment). Apply PGHI-consistent phase
+        # regularisation to restore natural harmonic phase relationships.
+        try:
+            _orig_mono = safe_to_mono(audio).astype(np.float64) if is_stereo else np.asarray(audio, dtype=np.float64)
+            if is_stereo:
+                _res_mid = safe_to_mono(restored).astype(np.float64)
+                _res_mid_coh = self._apply_neural_phase_coherence(_res_mid, sample_rate, reference=_orig_mono)
+                _coh_diff = _res_mid_coh - _res_mid
+                _res_left, _res_right = stereo_channel_view(restored)
+                _n_coh = min(len(_res_left), len(_res_right), len(_coh_diff))
+                _left_coh = _res_left.copy()
+                _right_coh = _res_right.copy()
+                _left_coh[:_n_coh] += _coh_diff[:_n_coh] * 0.5
+                _right_coh[:_n_coh] += _coh_diff[:_n_coh] * 0.5
+                restored = stereo_like(_left_coh, _right_coh, restored)
+                restored = np.clip(restored, -1.0, 1.0)
+            else:
+                _rest_ref = np.asarray(audio, dtype=np.float64) if len(audio) == len(restored) else None
+                restored = self._apply_neural_phase_coherence(restored, sample_rate, reference=_rest_ref)
+        except Exception as _c3_proc_exc:
+            logger.debug("§C3 Verarbeitungsschritt coherence integration nicht blockierend: %s", _c3_proc_exc)
+
+        _report_progress(82.0, "Wow/Flutter: Zeitstreckung abgeschlossen")
+        # Step 6: Verify correction (measure residual deviation)
+        restored_mono = safe_to_mono(restored) if is_stereo else restored
+
+        # Step 6b: Targeted transport bump repair (impulsive micro-speed jumps 50–300 ms)
+        bump_locations = kwargs.get("transport_bump_locations")
+        if not bump_locations:
+            # Fallback: extract from defect_locations dict (UV3 passes defect_locations kwarg)
+            _dl = kwargs.get("defect_locations") or {}
+            bump_locations = _dl.get("transport_bump", []) if isinstance(_dl, dict) else []
+        n_bumps_repaired = 0
+        if bump_locations and len(bump_locations) > 0:
+            # Confidence-aware bump repair: keep defect removal active while avoiding
+            # over-processing when pitch certainty is marginal.
+            _bump_strength = float(
+                np.clip(
+                    _timing_safe_strength * (0.65 + 0.35 * np.clip(_mean_conf, 0.0, 1.0)),
+                    0.15,
+                    max(0.15, _timing_safe_strength),
+                )
+            )
+            if len(bump_locations) > 120:
+                # §G188 (GEBOTE.md): keine festen Multiplikatoren je Material/
+                # Ereigniszahl (1,20/0,85) mehr — die Stärke folgt bereits der
+                # Evidenz (_timing_safe_strength × Konfidenz). Materialphysik
+                # wirkt über DETECTION_THRESHOLD/max_stretch_delta (§G189).
+                logger.debug(
+                    "Verarbeitungsschritt 12: %d Transport-Bumps — Stärke evidenzbasiert (%.3f)",
+                    len(bump_locations),
+                    _bump_strength,
+                )
+            # Schutzzonen für per-Bump individuelle Stärke zusammenstellen (§0p Vocal-Supremacy)
+            _p12_protected_zones: list[tuple[float, float, float]] = []
+            for _z in kwargs.get("vibrato_zones") or []:
+                try:
+                    _p12_protected_zones.append((float(_z[0]), float(_z[1]), 0.20))  # §0p Vibrato-Schutz
+                except Exception:
+                    logger.debug("_report_progress: silent except suppressed", exc_info=True)
+            for _z in kwargs.get("frisson_zones") or []:
+                try:
+                    _fz_s = float(getattr(_z, "start_s", None) or _z[0])
+                    _fz_e = float(getattr(_z, "end_s", None) or _z[1])
+                    _p12_protected_zones.append((_fz_s, _fz_e, 0.30))  # Frisson sakrosankt
+                except Exception:
+                    logger.debug("_report_progress: silent except suppressed", exc_info=True)
+            for _z in kwargs.get("whisper_zones") or []:
+                try:
+                    _p12_protected_zones.append((float(_z[0]), float(_z[1]), 0.25))  # Flüsterpassagen
+                except Exception:
+                    logger.debug("_report_progress: silent except suppressed", exc_info=True)
+            for _z in kwargs.get("passaggio_zones") or []:
+                try:
+                    _p12_protected_zones.append((float(_z[0]), float(_z[1]), 0.35))  # Passaggio-Übergänge
+                except Exception:
+                    logger.debug("_report_progress: silent except suppressed", exc_info=True)
+            restored, n_bumps_repaired = self._repair_transport_bumps(
+                restored,
+                sample_rate,
+                bump_locations,
+                _bump_strength,
+                protected_zones=_p12_protected_zones or None,
+            )
+            restored_mono = safe_to_mono(restored) if is_stereo else restored
+            logger.info(
+                "Verarbeitungsschritt 12 transport_bump repair: %d/%d bumps repaired (strength=%.3f, conf=%.3f)",
+                n_bumps_repaired,
+                len(bump_locations),
+                _bump_strength,
+                _mean_conf,
+            )
+
+        # Step 6c: Tape head contact level stabilization (autonomous detection + repair)
+        # Repairs gradual level dips caused by tape-head pressure variation / capstan
+        # irregularity in cassette recordings.  These dips fall through Phase 24 dropout
+        # repair (threshold too aggressive for gradual 60-100 ms fades) and are not
+        # covered by transport_bump repair (which requires DefectScanner locations).
+        # Also triggers for multi-chain material (e.g. vinyl→tape→mp3) when
+        # TAPE_HEAD_LEVEL_DIP was detected via defect_locations (§2.46a).
+        n_level_dips_repaired = 0
+        _TAPE_LEVEL_MATERIALS = {MaterialType.TAPE, MaterialType.REEL_TAPE, MaterialType.CASSETTE}
+        _mat_enum = material if isinstance(material, MaterialType) else None
+        _report_progress(90.0, "Wow/Flutter: Impuls-Reparaturen abgeschlossen")
+        _dl_post = kwargs.get("defect_locations") or {}
+        _has_tape_dip_defect = bool(_dl_post.get("tape_head_level_dip") or _dl_post.get("transport_bump"))
+        _is_primary_tape = _mat_enum in _TAPE_LEVEL_MATERIALS
+        if (_is_primary_tape or _has_tape_dip_defect) and _effective_strength > 0.0:
+            restored, n_level_dips_repaired = self._stabilize_tape_level(
+                restored,
+                sample_rate,
+                _effective_strength,
+                is_primary_tape=_is_primary_tape,
+                confirmed_tape_dip=_has_tape_dip_defect,
+                protected_zones=self._collect_vfa_protected_zones(kwargs),
+            )
+            if n_level_dips_repaired > 0:
+                restored_mono = safe_to_mono(restored) if is_stereo else restored
+                logger.info(
+                    "Verarbeitungsschritt 12 tape level stabilizer: %d dips repaired",
+                    n_level_dips_repaired,
+                )
+
+        residual_pitch, residual_conf = self._estimate_pitch_yin(restored_mono, sample_rate)
+        residual_deviation = self._calculate_max_deviation(residual_pitch, residual_conf)
+
+        # Chroma Pearson rollback guard: if tonal center drifts, revert to original
+        # (Phase Vocoder / PSOLA can introduce pitch shifts that destroy tonal center)
+        try:
+            _orig_mono = safe_to_mono(audio) if is_stereo else audio
+            _n_chroma = min(len(_orig_mono), len(restored_mono))
+            _hop_chroma = 512
+            _n_frames = max(1, _n_chroma // _hop_chroma)
+            _chroma_orig = np.zeros(12, dtype=np.float64)
+            _chroma_rest = np.zeros(12, dtype=np.float64)
+            for _ci in range(min(_n_frames, 200)):  # sample up to 200 frames
+                _s = _ci * _hop_chroma
+                _e = _s + _hop_chroma
+                if _e > _n_chroma:
+                    break
+                _sp_o = np.abs(np.fft.rfft(_orig_mono[_s:_e]))
+                _sp_r = np.abs(np.fft.rfft(restored_mono[_s:_e]))
+                _freqs_c = np.fft.rfftfreq(_hop_chroma, 1.0 / sample_rate)
+                for _b in range(12):
+                    _f_lo = 65.41 * (2 ** (_b / 12.0))
+                    _f_hi = 65.41 * (2 ** ((_b + 1) / 12.0))
+                    _mask_c = (_freqs_c >= _f_lo) & (_freqs_c < _f_hi)
+                    _chroma_orig[_b] += np.sum(_sp_o[_mask_c] ** 2)
+                    _chroma_rest[_b] += np.sum(_sp_r[_mask_c] ** 2)
+            _norm_o = np.sqrt(np.sum(_chroma_orig**2)) + 1e-10
+            _norm_r = np.sqrt(np.sum(_chroma_rest**2)) + 1e-10
+            # §2.44: Pearson-Korrelation der 12 Chroma-Bins (tonal-center guard).
+            _co_mean = float(_chroma_orig.mean())
+            _cr_mean = float(_chroma_rest.mean())
+            _pearson_num = float(np.sum((_chroma_orig - _co_mean) * (_chroma_rest - _cr_mean)))
+            _pearson_den = float(
+                np.sqrt(np.sum((_chroma_orig - _co_mean) ** 2) * np.sum((_chroma_rest - _cr_mean) ** 2))
+            )
+            _chroma_pearson = _pearson_num / _pearson_den if _pearson_den > 1e-12 else 1.0
+        except Exception:
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            _chroma_pearson = 1.0  # fallback: assume OK
+
+        if _chroma_pearson < 0.95:
+            logger.warning(
+                "Verarbeitungsschritt 12 chroma guard: Pearson %.3f < 0.95 — reverting to Originalsignal audio "
+                "(wow/flutter correction caused tonal center drift)",
+                _chroma_pearson,
+            )
+            restored = audio.copy()
+            residual_deviation = max_deviation  # unchanged
+
+        processing_time = time.monotonic() - start_time
+
+        # Calculate wow/flutter statistics
+        wow_magnitude = np.std(wow_component[wow_component != 0])
+        flutter_magnitude = np.std(flutter_component[flutter_component != 0])
+
+        # Build metadata (wow/flutter detected path — avoid redefinition of 'metadata' from line 589)
+        _meta_detected: dict[str, Any] = {
+            "algorithm": (
+                "polyphonic_multi_f0_consensus_v1"
+                if _poly_applied
+                else (
+                    "hybrid_ml_pyin_crepe_psola_v3"
+                    if (use_ml_hybrid and vocals_conf >= 0.4)
+                    else (
+                        "hybrid_ml_pyin_crepe_v3"
+                        if use_ml_hybrid
+                        else "pyin_psola"
+                        if vocals_conf >= 0.4
+                        else "pyin_phase_vocoder"
+                    )
+                )
+            ),
+            "version": "4.0_polyphonic" if _poly_applied else "3.0_ml_hybrid" if use_ml_hybrid else "3.0_pyin",
+            "ml_hybrid": use_ml_hybrid,
+            "panns_vocals_confidence": vocals_conf,
+            "threshold": threshold,
+            "closed_loop_refine": _refine,
+            "flutter_pass": _flutter_info,
+            "stft_window": self.STFT_WINDOW_SIZE,
+            "stft_hop": self.STFT_HOP_SIZE,
+            "polyphonic_fallback": _poly_fallback,
+            "timing_safe_strength": _timing_safe_strength,
+            "timing_safe_strength_scale": _timing_safe_strength_scale,
+            "max_stretch_delta": _max_stretch_delta,
+            "sinusoidal_wow_profile": _sinusoidal_wow_profile,
+        }
+
+        if use_ml_hybrid:
+            _meta_detected["pyin_applied"] = ml_result.pyin_applied
+            _meta_detected["crepe_applied"] = ml_result.crepe_applied
+            _meta_detected["strategy_used"] = str(ml_result.strategy_used)
+            _meta_detected["pitch_detection_time"] = ml_result.processing_time
+            _meta_detected["ml_metadata"] = ml_result.metadata
+
+        restored = np.nan_to_num(restored, nan=0.0, posinf=0.0, neginf=0.0)
+        restored = np.clip(restored, -1.0, 1.0)
+        if 0.0 < _effective_strength < 1.0:
+            restored = audio + _effective_strength * (restored - audio)
+            restored = np.clip(restored, -1.0, 1.0)
+
+        # §2.46f NPA-Guard: Natürliches Vibrato/Portamento (F0-Mod 4–7 Hz, ≤±50 Cent)
+        # darf nicht durch Wow/Flutter-Korrektur geglättet werden — Pitch-Segmente restaurieren.
+        try:
+            from backend.core.natural_performance_detector import get_natural_performance_detector
+
+            _mono12 = safe_to_mono(_original_audio) if _original_audio.ndim == 2 else _original_audio
+            _npa_mask12 = (
+                get_natural_performance_detector()
+                .detect(_mono12, sample_rate)
+                .get_protected_mask(len(_mono12), sample_rate)
+            )
+            if _npa_mask12 is not None and _npa_mask12.any():
+                if restored.ndim == 2:
+                    _rest_left, _rest_right = stereo_channel_view(restored)
+                    _orig_left, _orig_right = stereo_channel_view(_original_audio)
+                    _n_mask = min(
+                        len(_npa_mask12), len(_rest_left), len(_rest_right), len(_orig_left), len(_orig_right)
+                    )
+                    _mask = _npa_mask12[:_n_mask]
+                    _left_guarded = _rest_left.copy()
+                    _right_guarded = _rest_right.copy()
+                    _mask_idx = np.flatnonzero(_mask)
+                    _left_guarded[_mask_idx] = _orig_left[_mask_idx]
+                    _right_guarded[_mask_idx] = _orig_right[_mask_idx]
+                    restored = stereo_like(_left_guarded, _right_guarded, restored)
+                else:
+                    restored[_npa_mask12] = _original_audio[_npa_mask12]
+        except Exception as _npa12_exc:
+            logger.debug("§2.46f Verarbeitungsschritt12 NPA-Guard (nicht blockierend): %s", _npa12_exc)
+
+        restored, _rms_drop_db, _makeup_db = self._preserve_phase_loudness(
+            _original_audio,
+            restored,
+            material,
+        )
+        # §GGB-1: Global Gain Budget — cap cumulative makeup gain
+        if _makeup_db > 0.0:
+            try:
+                from backend.core.global_gain_budget import get_global_gain_budget
+
+                _approved = get_global_gain_budget().request("phase_12_wow_flutter_fix", _makeup_db, priority="normal")
+                if _approved < _makeup_db:
+                    _scale = float(10.0 ** ((_approved - _makeup_db) / 20.0))
+                    restored = restored * _scale + _original_audio * (1.0 - _scale)
+                    restored = np.clip(restored, -1.0, 1.0)
+                    _makeup_db = _approved
+            except Exception as _e:
+                logger.debug("%s: unkritisch exception: %s", __name__, _e)
+        if abs(_makeup_db) > 0.01:
+            logger.info(
+                "Verarbeitungsschritt 12 loudness-preservation: material=%s rms_drop=%+.2f dB via makeup %+.2f dB",
+                material.value,
+                _rms_drop_db,
+                _makeup_db,
+            )
+        _report_progress(96.0, "Wow/Flutter: Abschluss-Validierung")
+        return PhaseResult(
+            success=True,
+            audio=restore_layout(restored, _was_channels_first),
+            resolved_defects={
+                "WOW": float(np.clip(residual_deviation / 100.0, 0.0, 0.3)),
+                "FLUTTER": float(np.clip(residual_deviation / 100.0, 0.0, 0.3)),
+            },
+            metrics={
+                "wow_flutter_detected": True,
+                "max_deviation_percent": max_deviation,
+                "residual_deviation_percent": residual_deviation,
+                "wow_magnitude_percent": float(wow_magnitude) if not np.isnan(wow_magnitude) else 0.0,
+                "flutter_magnitude_percent": float(flutter_magnitude) if not np.isnan(flutter_magnitude) else 0.0,
+                "correction_strength": _timing_safe_strength,
+                "mean_confidence": float(np.mean(confidence[confidence > 0])),
+                "material": material.value,
+                "quality_mode": quality_mode,
+                "transport_bumps_repaired": n_bumps_repaired,
+                "tape_level_dips_repaired": n_level_dips_repaired,
+            },
+            execution_time_seconds=processing_time,
+            metadata={
+                **_meta_detected,
+                "phase_locality_factor": phase_locality_factor,
+                "stretch_locality_coverage": _locality_coverage,
+                "effective_strength": _effective_strength,
+                "rms_drop_db": _rms_drop_db,
+                "loudness_makeup_db": _makeup_db,
+            },
+        )
+
+    def _fit_sinusoidal_wow_curve(
+        self,
+        pitch_trajectory: np.ndarray,
+        confidence: np.ndarray,
+        sample_rate: int,
+        hint_freq_hz: float | None = None,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
+        """Glättet dominante sinusförmige Wow-Modulationen in der Pitch-Kurve.
+
+        Der Fit ist absichtlich konservativ: Er greift nur bei kleiner Pitch-Spanne
+        (Transportfehler, keine Melodie) und einem klaren 0.1-3 Hz Peak.
+
+        §7.4c (06_phases_system.md) Scanner-Konsultation (2026-09-25): Liegt die
+        Modulationsfrequenz als Scanner-Evidenz vor (defect_scores wow-Metadatum
+        dominant_mod_freq_hz), wird die Spann-/Dominanz-Verweigerung überbrückt —
+        ein globaler Transport-Wow moduliert ALLE Stimmen gleich (FM ±0,5 % auf
+        Musikträgern) und ist kein Melodie-Phänomen. Amplitude (4..60 cents) und
+        r² ≥ 0.45 bleiben als Never-worsen-Guards (Hörordnung §8a
+        (hoerordnung.instructions.md)).
+        """
+        profile: dict[str, Any] = {
+            "applied": False,
+            "frequency_hz": 0.0,
+            "amplitude_cents": 0.0,
+            "r2": 0.0,
+        }
+        pitch = np.asarray(pitch_trajectory, dtype=np.float64)
+        conf = np.asarray(confidence, dtype=np.float64)
+        if pitch.size < 32 or conf.size != pitch.size:
+            return pitch_trajectory, profile
+
+        confident_mask = (pitch > 0.0) & (conf > 0.5)
+        if int(np.sum(confident_mask)) < 24:
+            return pitch_trajectory, profile
+
+        confident_pitches = pitch[confident_mask]
+        p5 = float(np.percentile(confident_pitches, 5))
+        p95 = float(np.percentile(confident_pitches, 95))
+        if p5 <= 0.0 or p95 <= p5:
+            return pitch_trajectory, profile
+        span_cents = float(1200.0 * np.log2(p95 / p5))
+        if span_cents > 100.0 and hint_freq_hz is None:
+            return pitch_trajectory, profile
+
+        median_pitch = float(np.median(confident_pitches))
+        if median_pitch <= 0.0:
+            return pitch_trajectory, profile
+
+        residual_cents = np.zeros_like(pitch, dtype=np.float64)
+        valid_idx = np.flatnonzero(pitch > 0.0)
+        residual_cents[valid_idx] = 1200.0 * np.log2(np.maximum(pitch[valid_idx], 1e-8) / median_pitch)
+        conf_idx = np.flatnonzero(confident_mask)
+        if conf_idx.size < 24:
+            return pitch_trajectory, profile
+        residual_interp = np.interp(np.arange(pitch.size), conf_idx, residual_cents[conf_idx])
+        residual_interp = residual_interp - float(np.median(residual_interp))
+
+        window_samples = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
+        hop_samples = max(1, window_samples // self.PITCH_HOP_FACTOR)
+        frame_rate = float(sample_rate) / float(hop_samples)
+        _use_hint = hint_freq_hz is not None and 0.10 <= float(hint_freq_hz) <= 6.0
+        if _use_hint:
+            # Scanner-Saat (§7.4c): Frequenz aus der Evidenz — kein Blind-Peak,
+            # keine Dominanz-Verweigerung (Amplitude/r²-Guards bleiben).
+            peak_freq = float(hint_freq_hz or 0.0)
+            dominance = 1.0
+        else:
+            freqs = np.fft.rfftfreq(pitch.size, d=1.0 / frame_rate)
+            window = np.hanning(pitch.size)
+            spectrum = np.fft.rfft(residual_interp * window)
+            band_mask = (freqs >= 0.10) & (freqs <= 3.0)
+            if not np.any(band_mask):
+                return pitch_trajectory, profile
+            band_indices = np.flatnonzero(band_mask)
+            band_power = np.abs(spectrum[band_indices]) ** 2
+            if band_power.size == 0 or float(np.sum(band_power)) <= 1e-12:
+                return pitch_trajectory, profile
+            peak_local = int(np.argmax(band_power))
+            peak_index = int(band_indices[peak_local])
+            peak_freq = float(freqs[peak_index])
+            # §G188 (GEBOTE.md): Frequenz-Feininterpolation (log-parabolisch
+            # über die drei Peak-Bins). Das rohe FFT-Raster lief bei kurzen
+            # Fenstern 1,026 statt 1,000 Hz — das Korrektursinus driftete
+            # phasenverschoben dagegen und löschte die Modulation nur zu ~70 %.
+            if 0 < peak_local < band_power.size - 1:
+                _a_bin = float(np.log(band_power[peak_local - 1] + 1e-30))
+                _b_bin = float(np.log(band_power[peak_local] + 1e-30))
+                _c_bin = float(np.log(band_power[peak_local + 1] + 1e-30))
+                _denom_bin = _a_bin - 2.0 * _b_bin + _c_bin
+                if abs(_denom_bin) > 1e-12:
+                    _df_bin = float(freqs[1] - freqs[0]) if freqs.size > 1 else 0.0
+                    peak_freq = float(
+                        freqs[peak_index] + np.clip(0.5 * (_a_bin - _c_bin) / _denom_bin, -1.0, 1.0) * _df_bin
+                    )
+            dominance = float(band_power[peak_local] / (np.sum(band_power) + 1e-12))
+            if dominance < 0.45:
+                return pitch_trajectory, profile
+
+        t = np.arange(pitch.size, dtype=np.float64) / frame_rate
+        omega_t = 2.0 * np.pi * peak_freq * t[confident_mask]
+        # Trend-Auskopplung (L3-Befund 2026-09-25): Auf Musikträgern trug die
+        # Melodie-Drift (~2700 cents Spanne) die Sinus-Basis und verfälschte die
+        # Amplitude auf 386 cents (Amp-Guard ≤ 60 lehnte korrekt ab). Ein linearer
+        # Trend in der Design-Matrix scheidet die Melodie-Drift aus — der Sinus
+        # misst nur die PERIODISCHE Transport-Modulation (FM-Wow ±0,5 % ≈ 8,6
+        # cents). Der Trend ist reines Entzerrungs-Mittel und geht NICHT in die
+        # geglättete Trajektorie ein (der Warp darf nur den Wow-Sinus enthalten).
+        _trend_norm = (t - float(np.mean(t))) / max(float(np.ptp(t)), 1e-9)
+        design = np.column_stack(
+            [np.sin(omega_t), np.cos(omega_t), np.ones(int(np.sum(confident_mask))), _trend_norm[confident_mask]]
+        )
+        y = residual_cents[confident_mask]
+        # Robuste IRLS-Schätzung (Huber-Gewichte, 4 Runden): Akkordwechsel sind
+        # SPRUENGE in der Trajektorie und verfaelschten die Kleinste-Quadrate-
+        # Schätzung auf ~430 cents (Befund 2026-09-25: 4-Akkord-Musikträger,
+        # Schritte alle ~3,75 s). Heruntergewichtete Ausreißer lassen den Sinus
+        # nur die PERIODISCHE FM messen (FM-Wow ±0,5 % ≈ 8,6 cents).
+        _w_12 = np.ones(y.size, dtype=np.float64)
+        coeffs = np.zeros(design.shape[1], dtype=np.float64)
+        for _irls_12 in range(8):
+            try:
+                _sw_12 = np.sqrt(_w_12)
+                coeffs, *_ = np.linalg.lstsq(design * _sw_12[:, None], y * _sw_12, rcond=None)
+            except Exception as e:
+                logger.warning(
+                    "Verarbeitungsschritt_12_wow_flutter_fix.py::_fit_sinusoidal_wow_curve Ersatzpfad: %s", e
+                )
+                return pitch_trajectory, profile
+            _resid_12 = y - design @ coeffs
+            _scale_12 = float(np.median(np.abs(_resid_12))) * 1.4826 + 1e-9
+            _w_12 = 1.0 / (1.0 + (np.abs(_resid_12) / (1.5 * _scale_12)) ** 2)
+        amp_cents = float(np.hypot(coeffs[0], coeffs[1]))
+        # Amp-Band: IEC-60386-Slow-Wow-Band (3–80 cents) für den Scanner-
+        # gesähten Pfad (Ground-Truth-Check: FM-Wow ±0,5 % ≈ 53 cents — nahe
+        # der alten 60-Grenze); der Blind-Pfad behält die historischen 60.
+        _amp_hi_12 = 80.0 if _use_hint else 60.0
+        if amp_cents < 4.0 or amp_cents > _amp_hi_12:
+            return pitch_trajectory, profile
+
+        fitted_conf = design @ coeffs
+        # r² auf dem AKZEPTIERTEN Support (gewichtet): die Ausreißer, die die
+        # IRLS verwirft (Akkordspitzen ±60 cents), dürfen die Fit-Güte des
+        # Sinus nicht verfälschen (Befund 2026-09-25: ungewichtet r²=0,38 →
+        # fälschlich abgelehnt, gewichtet trägt die Sinus-Messung).
+        _resid_full = y - fitted_conf
+        _wsum_r = float(np.sum(_w_12)) + 1e-12
+        _wmean_y = float(np.sum(_w_12 * y) / _wsum_r)
+        ss_res = float(np.sum(_w_12 * _resid_full**2))
+        ss_tot = float(np.sum(_w_12 * (y - _wmean_y) ** 2) + 1e-12)
+        r2 = float(np.clip(1.0 - ss_res / ss_tot, 0.0, 1.0))
+        if r2 < 0.45:
+            return pitch_trajectory, profile
+
+        full_design = np.column_stack(
+            [
+                np.sin(2.0 * np.pi * peak_freq * t),
+                np.cos(2.0 * np.pi * peak_freq * t),
+                np.ones(pitch.size),
+            ]
+        )
+        fitted_cents = full_design @ coeffs[:3]  # Sinus+Offset — Trend bleibt draußen
+        fitted_pitch = median_pitch * np.power(2.0, fitted_cents / 1200.0)
+        smoothed = pitch.copy()
+        smoothed[pitch > 0.0] = fitted_pitch[pitch > 0.0]
+        profile.update(
+            {
+                "applied": True,
+                "frequency_hz": peak_freq,
+                "amplitude_cents": amp_cents,
+                "r2": r2,
+                "dominance": dominance,
+                "span_cents": span_cents,
+                "freq_source": "scanner_hint" if _use_hint else "blind_peak",
+            }
+        )
+        return smoothed.astype(pitch_trajectory.dtype, copy=False), profile
+
+    def _preserve_phase_loudness(
+        self,
+        original_audio: np.ndarray,
+        processed_audio: np.ndarray,
+        material: MaterialType,
+    ) -> tuple[np.ndarray, float, float]:
+        """Keep Phase-12 loudness close to input while preserving defect repairs.
+
+        Returns:
+            (audio_out, rms_delta_db, applied_makeup_db)
+        """
+        orig = np.asarray(original_audio, dtype=np.float64)
+        proc = np.asarray(processed_audio, dtype=np.float64)
+        if orig.shape != proc.shape:
+            return np.clip(np.asarray(processed_audio, dtype=np.float32), -1.0, 1.0), 0.0, 0.0
+
+        # §v10.13 SOTA: Normierte XCorr, kein ≥15s-Guard nötig.
+        _stcg_applied = False
+        if proc.ndim == 2:
+            try:
+                from backend.core.stereo_temporal_coherence_guard import get_stereo_temporal_coherence_guard
+
+                proc_aligned = get_stereo_temporal_coherence_guard().correct_interchannel_delay(
+                    proc.astype(np.float32),
+                    48000,
+                    phase_id="phase_12_wow_flutter_fix",
+                )
+                proc = np.asarray(proc_aligned, dtype=np.float64)
+                _stcg_applied = True
+            except Exception as exc:
+                logger.debug("Verarbeitungsschritt 12 loudness-preservation: STCG uebersprungen (%s)", exc)
+
+        # §2.51 Stereo-lag xcorr fallback — NUR wenn STCG fehlgeschlagen ist.
+        # GCC-PHAT (used by STCG) fails for narrow-band (near-sinusoidal) audio.
+        # Der Fallback wird NUR als Notlösung verwendet, NICHT als konkurrierende
+        # Zweitkorrektur nach erfolgreichem STCG-Lauf.
+        if proc.ndim == 2 and proc.shape[0] >= 1024 and not _stcg_applied:
+            try:
+                _n_onset = min(proc.shape[0], 4096)
+                _cl = proc[:_n_onset, 0].astype(np.float64)
+                _cr = proc[:_n_onset, 1].astype(np.float64)
+                # Per-channel RMS envelope (4-sample blocks) to find first active block.
+                _block = 4
+                _env_l = np.array(
+                    [float(np.sqrt(np.mean(_cl[i : i + _block] ** 2))) for i in range(0, _n_onset - _block, _block)]
+                )
+                _env_r = np.array(
+                    [float(np.sqrt(np.mean(_cr[i : i + _block] ** 2))) for i in range(0, _n_onset - _block, _block)]
+                )
+                _global_rms = max(float(np.sqrt(np.mean(_cl**2 + _cr**2))), 1e-10)
+                _thresh = _global_rms * 0.05  # 5 % of global RMS = "active"
+                # Find first active block in each channel.
+                _act_l = int(np.argmax(_env_l > _thresh)) if np.any(_env_l > _thresh) else len(_env_l)
+                _act_r = int(np.argmax(_env_r > _thresh)) if np.any(_env_r > _thresh) else len(_env_r)
+                _lag_samples = (_act_r - _act_l) * _block  # positive = R is delayed
+                _max_corr_lag = 2048
+                if abs(_lag_samples) > 2 and abs(_lag_samples) <= _max_corr_lag:
+                    # _lag_samples > 0 → R delayed → advance R (remove leading samples)
+                    # _lag_samples < 0 → L delayed → delay R (add leading zeros)
+                    _N_proc = proc.shape[0]
+                    if _lag_samples > 0:
+                        _new_r = np.concatenate([proc[_lag_samples:, 1], np.zeros(_lag_samples)])
+                    else:
+                        _new_r = np.concatenate([np.zeros(-_lag_samples), proc[: _N_proc + _lag_samples, 1]])
+                    proc = np.column_stack([proc[:, 0], _new_r])
+                    logger.debug(
+                        "§2.51 Verarbeitungsschritt-12 xcorr Ersatzpfad: L/R lag=%d → correction=%+d samples",
+                        _lag_samples,
+                        _lag_samples,
+                    )
+            except Exception as _xc_exc:
+                logger.debug("§2.51 Verarbeitungsschritt-12 xcorr Ersatzpfad nicht blockierend: %s", _xc_exc)
+
+        _max_rms_drop_db = {  # type: ignore[call-overload]
+            MaterialType.SHELLAC: 1.2,
+            MaterialType.WAX_CYLINDER: 1.2,
+            MaterialType.WIRE_RECORDING: 1.3,
+            MaterialType.VINYL: 1.5,
+            MaterialType.TAPE: 1.7,
+            MaterialType.REEL_TAPE: 1.6,
+            MaterialType.CD_DIGITAL: 2.0,
+            MaterialType.DAT: 2.0,
+            MaterialType.MP3_LOW: 2.2,
+            MaterialType.MP3_HIGH: 2.0,
+            MaterialType.AAC: 2.0,
+            MaterialType.STREAMING: 2.0,
+        }.get(material if isinstance(material, MaterialType) else material, 1.8)
+        _max_rms_lift_db = 1.0
+
+        # §2.45a-I: Gated RMS — only frames > -50 dBFS (kein Stille-inflationierter RMS)
+        # §V04-EXEMPT: compute_gated_rms_linear() RMS measurement,
+        # NOT apply_musical_gain_envelope() — no reference_for_gate needed
+        from backend.core.audio_utils import compute_gated_rms_linear as _grl_p12  # pylint: disable=import-outside-toplevel # noqa: I001
+
+        _orig_rms = float(_grl_p12(orig, gate_dbfs=-50.0))
+        _proc_rms = float(_grl_p12(proc, gate_dbfs=-50.0))
+        if _orig_rms < 1e-10 or _proc_rms < 1e-12:
+            return np.clip(proc.astype(np.float32), -1.0, 1.0), 0.0, 0.0
+
+        _delta_db = float(20.0 * np.log10(max(_proc_rms / _orig_rms, 1e-30)))
+        _gain_db = 0.0
+
+        if _delta_db < -_max_rms_drop_db:
+            _gain_db = (-_max_rms_drop_db) - _delta_db
+        elif _delta_db > _max_rms_lift_db:
+            _gain_db = _max_rms_lift_db - _delta_db
+
+        if abs(_gain_db) > 0.01:
+            _gain = float(10.0 ** (_gain_db / 20.0))
+            _peak_p999 = float(np.percentile(np.abs(proc), 99.9) + 1e-12)
+            if _gain > 1.0:
+                _gain = min(_gain, float(0.985 / _peak_p999))
+            # §2.45a-I: Einfache Multiplikation — kein Frame-Gate (hier globale Lautheitskorrektur,
+            # nicht UV3-Mid-Pipeline-Drift-Guard; peak_p999 schützt gegen Clipping)
+            proc = np.clip(proc * _gain, -1.0, 1.0)
+
+        # Final preventive cap: no phase output above percentile ceiling.
+        _peak_p999_out = float(np.percentile(np.abs(proc), 99.9) + 1e-12)
+        if _peak_p999_out > self._MAX_PERCENTILE_PEAK:
+            proc = np.clip(proc * (self._MAX_PERCENTILE_PEAK / _peak_p999_out), -1.0, 1.0)
+
+        _out_rms = float(_grl_p12(proc, gate_dbfs=-50.0))
+        _out_delta_db = float(20.0 * np.log10(max(_out_rms / _orig_rms, 1e-30)))
+        _applied_makeup_db = float(20.0 * np.log10(max(_out_rms / _proc_rms, 1e-30)))
+
+        return np.clip(proc.astype(np.float32), -1.0, 1.0), _out_delta_db, _applied_makeup_db
+
+    def _estimate_pitch_yin(self, audio: np.ndarray, sample_rate: int) -> tuple[np.ndarray, np.ndarray]:
+        """Rückwärts-kompatibles Alias auf pYIN (Mauch & Dixon 2014).
+
+        Aufruf-Schnittstelle identisch mit YIN, aber probabilistische
+        Multilevel-Threshold-Auswertung für höhere Robustheit.
+        """
+        return self._estimate_pitch_pyin(audio, sample_rate)
+
+    def _estimate_pitch_pyin(self, audio: np.ndarray, sample_rate: int) -> tuple[np.ndarray, np.ndarray]:
+        """Probabilistic YIN (pYIN) nach Mauch & Dixon (2014).
+
+        Primary path: librosa.pyin (vectorised C++ backend, ~100× faster than
+        the pure-Python triple-loop fallback). Falls back to the Python
+        implementation capped at 30 s centre if librosa is unavailable.
+
+        Args:
+            audio: Mono float32 [-1,1]
+            sample_rate: Sample rate (expected: 48000 Hz)
+
+        Returns:
+            (pitch_trajectory, confidence): Pitch Hz and confidence [0,1] per frame
+        """
+        # Kurzsignal-Guard: pYIN ist fuer sehr kleine Fenster numerisch instabil und
+        # erzeugt sonst irrefuehrende n_fft-Warnungen aus librosa.
+        _n_samples = int(len(audio))
+        if _n_samples < 256:
+            _hop = max(1, int(self.PITCH_WINDOW_MS * sample_rate / 1000) // self.PITCH_HOP_FACTOR)
+            _frames = max(1, int(np.ceil(_n_samples / max(1, _hop))))
+            return np.zeros(_frames, dtype=np.float64), np.zeros(_frames, dtype=np.float64)
+
+        # -----------------------------------------------------------------
+        # High-quality path: librosa.pyin (C-accelerated)
+        # Env override semantics:
+        #   AURIK_ENABLE_LIBROSA_PYIN=1  -> force enable
+        #   AURIK_ENABLE_LIBROSA_PYIN=0  -> force disable
+        #   unset/auto                   -> enable in quality/maximum
+        # -----------------------------------------------------------------
+        _qm_hint = str(getattr(self, "_quality_mode_hint", "quality")).strip().lower()
+        _quality_first_unleashed = bool(getattr(self, "_quality_first_unleashed", _qm_hint in {"quality", "maximum"}))
+        _pyin_env = os.environ.get("AURIK_ENABLE_LIBROSA_PYIN", "auto").strip().lower()
+        if _pyin_env in {"1", "true", "yes", "on"}:
+            _enable_librosa_pyin = True
+        elif _pyin_env in {"0", "false", "no", "off"}:
+            _enable_librosa_pyin = False
+        else:
+            _enable_librosa_pyin = _quality_first_unleashed
+        if _enable_librosa_pyin:
+            try:
+                import librosa  # always available in .venv_aurik
+
+                from backend.core.dsp.pyin_viterbi_fast import pyin_fast as _pyin_fast12
+
+                hop_samples = max(1, int(self.PITCH_WINDOW_MS * sample_rate / 1000) // self.PITCH_HOP_FACTOR)
+                _safe_frame_length = 1 << int(np.floor(np.log2(min(2048, _n_samples))))
+                _safe_frame_length = max(256, _safe_frame_length)
+                hop_samples = min(hop_samples, max(1, _safe_frame_length // 4))
+                # §PERF-R8 (2026-09-19): band-begrenztes Viterbi (bit-identisch
+                # zu librosa 0.11.0, ~2,4× schneller; Unit-Test pinnt die
+                # Identität) — Fallback librosa.pyin bei jeder Abweichung.
+                try:
+                    f0, voiced_flag, voiced_prob = _pyin_fast12(
+                        audio.astype(np.float32),
+                        fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
+                        fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
+                        sr=sample_rate,
+                        hop_length=hop_samples,
+                        frame_length=_safe_frame_length,
+                        fill_na=0.0,
+                    )
+                except Exception as _fast12_exc:
+                    logger.debug(
+                        "Verarbeitungsschritt_12 §PERF-R8-pyin_fast nicht nutzbar (%s) — librosa.pyin",
+                        _fast12_exc,
+                    )
+                    f0, voiced_flag, voiced_prob = librosa.pyin(
+                        audio.astype(np.float32),
+                        fmin=float(librosa.note_to_hz("C2")),  # ~65 Hz
+                        # §PERF-R (2026-09-18): fmax C7→C6 — der Wow/Flutter-
+                        # Schätzer braucht nur die f0-Trajektorie (Stimm-/Lead-f0
+                        # ≲ 1 kHz); der Kandidatenraum des Viterbi wächst mit dem
+                        # f0-Bereich und kostete ~11 s/10 s (reines Python). C6
+                        # halbiert den Raum (~4× schneller) — f0 > 1 kHz liefert
+                        # der CREPE-Konsens, der in denselben Schätzer mündet.
+                        fmax=float(librosa.note_to_hz("C6")),  # ~1047 Hz
+                        sr=sample_rate,
+                        hop_length=hop_samples,
+                        frame_length=_safe_frame_length,
+                        fill_na=0.0,
+                    )
+                # voiced_prob gives per-frame confidence; unvoiced → 0
+                f0 = np.nan_to_num(f0, nan=0.0)
+                confidence = np.where(voiced_flag, voiced_prob, 0.0).astype(np.float64)
+                pitch_trajectory = f0.astype(np.float64)
+
+                logger.debug(
+                    "pYIN (librosa): %d frames, μ_pitch=%.1f Hz, μ_conf=%.3f",
+                    len(pitch_trajectory),
+                    float(np.mean(pitch_trajectory[pitch_trajectory > 0]) or 0),
+                    float(np.mean(confidence)),
+                )
+                return pitch_trajectory, confidence
+
+            except Exception as _lib_exc:
+                logger.debug("librosa.pyin nicht verfuegbar (%s) — falling back to Python pYIN (30 s cap)", _lib_exc)
+        else:
+            logger.debug(
+                "librosa.pyin deaktiviert by policy/env (quality_Betriebsart=%s, env=%s) — using Python pYIN Ersatzpfad",
+                _qm_hint,
+                _pyin_env,
+            )
+
+        # -----------------------------------------------------------------
+        # Fallback: pure-Python pYIN.
+        # In quality/maximum, do not cap to center window; in balanced/fast keep 30 s cap.
+        # -----------------------------------------------------------------
+        _PYIN_CAP_S = 0 if _quality_first_unleashed else 30
+        _cap_samples = int(_PYIN_CAP_S * sample_rate) if _PYIN_CAP_S > 0 else 0
+        _analysis_offset_samples = 0  # sample index where the analysed window starts in full audio
+        if _PYIN_CAP_S > 0 and len(audio) > _cap_samples:
+            _mid = len(audio) // 2
+            _half = _cap_samples // 2
+            audio_pyin = audio[_mid - _half : _mid + _half]
+            _analysis_offset_samples = _mid - _half
+            logger.debug(
+                "pYIN Python Ersatzpfad: %.0f s audio capped to %d s centre", len(audio) / sample_rate, _PYIN_CAP_S
+            )
+        else:
+            audio_pyin = audio
+
+        window_samples = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
+        hop_samples = window_samples // self.PITCH_HOP_FACTOR
+
+        min_period = int(sample_rate / 1000)  # max 1000 Hz
+        max_period = int(sample_rate / 50)  # min 50 Hz
+        max_period = min(max_period, window_samples // 2)
+
+        num_windows = max(1, (len(audio_pyin) - window_samples) // hop_samples + 1)
+        pitch_trajectory = np.zeros(num_windows, dtype=np.float64)
+        confidence = np.zeros(num_windows, dtype=np.float64)
+
+        # pYIN: Multi-Threshold weights via Beta(2,18)-like distribution
+        N_thr = 20
+        thresholds = np.linspace(0.01, 0.30, N_thr)
+        beta_weights = (1 - thresholds) ** 17 * thresholds
+        beta_weights /= beta_weights.sum() + 1e-10
+
+        for i in range(num_windows):
+            start = i * hop_samples
+            end = start + window_samples
+            if end > len(audio_pyin):
+                break
+
+            window = audio_pyin[start:end] * np.hanning(window_samples)
+
+            # CMND function (YIN) — FFT-based autocorrelation O(N log N)
+            from backend.core.core_utils import fft_autocorr
+
+            autocorr = fft_autocorr(window)
+            diff = 2.0 * (autocorr[0] - autocorr[:max_period])
+            cmnd = np.ones(max_period)
+            cumsum = np.cumsum(diff[1:])
+            tau_range = np.arange(1, max_period)
+            cmnd[1:] = diff[1:] * tau_range / (cumsum + 1e-10)
+
+            # Multi-threshold pYIN
+            cand_pitches: list = []
+            cand_weights: list = []
+
+            # §PERF-R18 (2026-10-28): die tau-Suche ist vektorisiert (gleiche
+            # Vergleiche in gleicher Reihenfolge, bit-identisch — die
+            # Schleifen-Restlogik unten ist unverändert).
+            _tau_found = _pyin_candidate_taus(cmnd, min_period, max_period, thresholds)
+
+            for w, tau_search in zip(beta_weights, _tau_found):
+                tau_est: float | int = int(tau_search)
+                if tau_est == 0:
+                    tau_est = min_period + int(np.argmin(cmnd[min_period:max_period]))
+
+                # Parabolic interpolation
+                if 0 < tau_est < max_period - 1:
+                    _tau_i = int(tau_est)
+                    s0, s1, s2 = cmnd[_tau_i - 1], cmnd[_tau_i], cmnd[_tau_i + 1]
+                    denom = s0 - 2 * s1 + s2
+                    if abs(denom) > 1e-10:
+                        delta = 0.5 * (s0 - s2) / denom
+                        tau_est = tau_est + delta
+
+                if tau_est > 0:
+                    cand_pitches.append(float(sample_rate) / float(tau_est))
+                    cand_weights.append(w)
+
+            if cand_pitches:
+                cand_arr = np.array(cand_pitches)
+                wgt_arr = np.array(cand_weights)
+                wgt_arr /= wgt_arr.sum() + 1e-10
+                mu = float(np.dot(cand_arr, wgt_arr))
+                mask = np.abs(cand_arr - mu) < 0.10 * mu
+                if mask.any():
+                    pitch_trajectory[i] = float(np.dot(cand_arr[mask], wgt_arr[mask]) / (wgt_arr[mask].sum() + 1e-10))
+                    confidence[i] = float(wgt_arr[mask].sum())
+                else:
+                    pitch_trajectory[i] = mu
+                    confidence[i] = 0.3
+            else:
+                pitch_trajectory[i] = 0.0
+                confidence[i] = 0.0
+
+        # Temporal smoothing (simplified HMM tracking via exp smoothing)
+        alpha_smooth = 0.7
+        for i in range(1, num_windows):
+            if pitch_trajectory[i] > 0 and pitch_trajectory[i - 1] > 0:
+                pitch_trajectory[i] = alpha_smooth * pitch_trajectory[i - 1] + (1 - alpha_smooth) * pitch_trajectory[i]
+
+        # §2.54 Temporal alignment — when pYIN analysed only a center window of a longer
+        # audio, expand the trajectory to the full audio length.
+        # Without this, N frames from a 30 s window get linspace-interpolated across
+        # the full audio in _speed_warp_resample, applying the center-window
+        # pitch-variation pattern to completely different temporal positions (intro/outro).
+        # Frames outside the analysed window receive: pitch = center median (neutral),
+        # confidence = 0.05 → below the >0.3 / >0.5 thresholds → stretch_factor = 1.0.
+        if _analysis_offset_samples > 0 and len(audio) > len(audio_pyin):
+            _full_windows = max(1, (len(audio) - window_samples) // hop_samples + 1)
+            _center_first = _analysis_offset_samples // hop_samples
+            _center_last = _center_first + num_windows
+            _neutral_hz = (
+                float(np.median(pitch_trajectory[pitch_trajectory > 0])) if np.any(pitch_trajectory > 0) else 0.0
+            )
+            _full_pitch = np.full(_full_windows, _neutral_hz, dtype=np.float64)
+            _full_conf = np.full(_full_windows, 0.05, dtype=np.float64)
+            _s = min(_center_first, _full_windows)
+            _e = min(_center_last, _full_windows)
+            _n = min(_e - _s, len(pitch_trajectory))
+            _full_pitch[_s : _s + _n] = pitch_trajectory[:_n]
+            _full_conf[_s : _s + _n] = confidence[:_n]
+            pitch_trajectory = _full_pitch
+            confidence = _full_conf
+            num_windows = _full_windows
+            logger.debug(
+                "pYIN Python Ersatzpfad: trajectory expanded to %d frames (full audio),"
+                " center window at frames %d..%d, neutral pitch=%.1f Hz outside window",
+                _full_windows,
+                _s,
+                _s + _n,
+                _neutral_hz,
+            )
+
+        logger.debug(
+            "pYIN (Python): %d frames, μ_pitch=%.1f Hz, μ_conf=%.3f",
+            num_windows,
+            float(np.mean(pitch_trajectory[pitch_trajectory > 0]) or 0),
+            float(np.mean(confidence)),
+        )
+        return pitch_trajectory, confidence
+
+    def _yin_algorithm(
+        self, window: np.ndarray, sample_rate: int, min_period: int, max_period: int
+    ) -> tuple[float, float]:
+        """Legacy YIN — nur noch als Fallback, primär wird pYIN verwendet.
+
+        De Cheveigné & Kawahara (2002): \"YIN, a fundamental frequency
+        estimator for speech and music\".
+        ACHTUNG: Nicht als primärer Algorithmus verwenden \u2014 pYIN bevorzugen.
+        """
+        from backend.core.core_utils import fft_autocorr
+
+        autocorr = fft_autocorr(window)
+        diff = 2.0 * (autocorr[0] - autocorr[:max_period])
+        cmnd = np.ones(max_period)
+        cumsum = np.cumsum(diff[1:])
+        tau_range = np.arange(1, max_period)
+        cmnd[1:] = diff[1:] * tau_range / (cumsum + 1e-10)
+
+        tau_estimate = 0
+        min_cmnd = 1.0
+        for tau in range(min_period, max_period):
+            if cmnd[tau] < self.YIN_THRESHOLD and 0 < tau < max_period - 1:
+                if cmnd[tau] < cmnd[tau - 1] and cmnd[tau] < cmnd[tau + 1]:
+                    tau_estimate = tau
+                    min_cmnd = cmnd[tau]
+                    break
+        if tau_estimate == 0:
+            tau_estimate = min_period + int(np.argmin(cmnd[min_period:max_period]))
+            min_cmnd = cmnd[tau_estimate]
+
+        if 0 < tau_estimate < max_period - 1:
+            s0, s1, s2 = cmnd[tau_estimate - 1], cmnd[tau_estimate], cmnd[tau_estimate + 1]
+            denom = s0 - 2 * s1 + s2
+            if abs(denom) > 1e-10:
+                delta = 0.5 * (s0 - s2) / denom
+                tau_estimate = tau_estimate + delta
+
+        pitch_hz = float(sample_rate) / float(tau_estimate) if tau_estimate > 0 else 0.0
+        conf = max(0.0, 1.0 - min_cmnd)
+        return pitch_hz, conf
+
+    @staticmethod
+    def _compute_bump_local_strength(
+        mono_audio: np.ndarray,
+        bump_start: int,
+        bump_end: int,
+        sample_rate: int,
+        base_strength: float,
+        protected_zones: list,
+    ) -> float:
+        """Berechnet die individuelle Korrekturstärke für einen einzelnen Transport-Bump.
+
+        Je größer die lokale Energieanomalie, desto stärker die Korrektur.
+        In Vibrato- (§0p), Frisson-, Flüster- und Passaggio-Schutzzonen wird
+        die Stärke auf ein Zone-spezifisches Cap begrenzt.
+
+        Args:
+            mono_audio:      Mono-Signal für Kontext-RMS-Messung
+            bump_start:      Start-Sample des Bumps
+            bump_end:        End-Sample des Bumps
+            sample_rate:     Sample-Rate in Hz
+            base_strength:   Basis-Stärke (Material/Confidence-adaptiv)
+            protected_zones: [(start_s, end_s, max_strength), ...] — Schutzzonen
+
+        Returns:
+            Individuelle Korrekturstärke ∈ [0.10, 1.0]
+        """
+        ctx_pad = int(0.250 * max(sample_rate, 1))
+        n = len(mono_audio)
+        bump_region = mono_audio[bump_start:bump_end]
+        if len(bump_region) < 4:
+            return float(np.clip(base_strength, 0.10, 1.0))
+        ctx_pre = mono_audio[max(0, bump_start - ctx_pad) : bump_start]
+        ctx_post = mono_audio[bump_end : min(n, bump_end + ctx_pad)]
+        ctx_parts = [a for a in (ctx_pre, ctx_post) if len(a) >= 4]
+        if not ctx_parts:
+            return float(np.clip(base_strength, 0.10, 1.0))
+        ctx_audio = np.concatenate(ctx_parts)
+        bump_rms = float(np.sqrt(np.mean(bump_region**2) + 1e-12))
+        ctx_rms = float(np.sqrt(np.mean(ctx_audio**2) + 1e-12))
+        energy_ratio = bump_rms / (ctx_rms + 1e-12)
+        if energy_ratio < 1.0:
+            # Energie-Einbruch: typischer Kassetten-/Bandhopper (tape-head-lift)
+            local_severity = float(np.clip(1.0 - energy_ratio, 0.0, 1.0))
+        else:
+            # Energie-Spike: mechanischer Schlag (selten)
+            local_severity = float(np.clip((energy_ratio - 1.0) / 1.5, 0.0, 1.0))
+        # Magnitude-Faktor: Mindest 0.40 — auch leichte Bumps werden sicher repariert
+        mag_factor = float(np.clip(0.40 + 0.60 * local_severity, 0.40, 1.0))
+        local_strength = base_strength * mag_factor
+        # Schutzzone: Stärke auf Zone-spezifisches Cap begrenzen
+        if protected_zones:
+            bump_center_s = float(bump_start + bump_end) * 0.5 / float(max(sample_rate, 1))
+            for _zone in protected_zones:
+                try:
+                    pz_start, pz_end, pz_cap = float(_zone[0]), float(_zone[1]), float(_zone[2])
+                    if pz_start <= bump_center_s <= pz_end:
+                        local_strength = min(local_strength, pz_cap)
+                        break
+                except Exception:
+                    logger.debug("_berechnen_bump_local_strength: silent except suppressed", exc_info=True)
+                    continue
+        if base_strength < 1e-6:
+            return 0.0
+        return float(np.clip(local_strength, 0.10, 1.0))
+
+    @staticmethod
+    def _collect_vfa_protected_zones(phase_kwargs: dict[str, Any]) -> list[tuple[float, float, float]]:
+        """Sammelt Vokal-/Performance-Schutzzonen fuer per-Event-Staerkecaps."""
+        protected_zones: list[tuple[float, float, float]] = []
+        for zone in phase_kwargs.get("vibrato_zones") or []:
+            try:
+                protected_zones.append((float(zone[0]), float(zone[1]), 0.20))
+            except Exception:
+                logger.debug("_collect_vfa_protected_zones: silent except suppressed", exc_info=True)
+                continue
+        for zone in phase_kwargs.get("frisson_zones") or []:
+            try:
+                start_s = float(getattr(zone, "start_s", None) or zone[0])
+                end_s = float(getattr(zone, "end_s", None) or zone[1])
+                protected_zones.append((start_s, end_s, 0.30))
+            except Exception:
+                logger.debug("_collect_vfa_protected_zones: silent except suppressed", exc_info=True)
+                continue
+        for zone in phase_kwargs.get("whisper_zones") or []:
+            try:
+                protected_zones.append((float(zone[0]), float(zone[1]), 0.25))
+            except Exception:
+                logger.debug("_collect_vfa_protected_zones: silent except suppressed", exc_info=True)
+                continue
+        for zone in phase_kwargs.get("passaggio_zones") or []:
+            try:
+                protected_zones.append((float(zone[0]), float(zone[1]), 0.35))
+            except Exception:
+                logger.debug("_collect_vfa_protected_zones: silent except suppressed", exc_info=True)
+                continue
+        return protected_zones
+
+    @staticmethod
+    def _compute_tape_level_local_strength(
+        mono_audio: np.ndarray,
+        event_start: int,
+        event_end: int,
+        sample_rate: int,
+        base_strength: float,
+        max_deficit_db: float,
+        max_gain_db: float,
+        *,
+        is_primary_tape: bool,
+        confirmed_tape_dip: bool,
+        protected_zones: list[tuple[float, float, float]],
+    ) -> float:
+        """Berechnet per Tape-Level-Dip die kleinste plausible, aber wirksame Korrekturstaerke."""
+        if base_strength < 1e-6:
+            return 0.0
+        n = len(mono_audio)
+        event_start = int(np.clip(event_start, 0, max(0, n - 1)))
+        event_end = int(np.clip(event_end, event_start + 1, n))
+        event_len = max(1, event_end - event_start)
+
+        ctx_pad = int(0.250 * max(sample_rate, 1))
+        ctx_pre = mono_audio[max(0, event_start - ctx_pad) : event_start]
+        ctx_post = mono_audio[event_end : min(n, event_end + ctx_pad)]
+        ctx_parts = [part for part in (ctx_pre, ctx_post) if len(part) >= 8]
+        context_loss_db = 0.0
+        if ctx_parts:
+            ctx_audio = np.concatenate(ctx_parts)
+            event_audio = mono_audio[event_start:event_end]
+            event_rms = float(np.sqrt(np.mean(event_audio**2) + 1e-12))
+            ctx_rms = float(np.sqrt(np.mean(ctx_audio**2) + 1e-12))
+            context_loss_db = float(np.clip(20.0 * np.log10((ctx_rms + 1e-12) / (event_rms + 1e-12)), 0.0, max_gain_db))
+
+        depth_ref_db = max(1.0, max_gain_db - 3.0)
+        depth_factor = float(np.clip(max_deficit_db / depth_ref_db, 0.0, 1.0))
+        context_factor = float(np.clip(context_loss_db / max(1.0, max_gain_db), 0.0, 1.0))
+        duration_s = event_len / float(max(sample_rate, 1))
+        duration_factor = float(np.clip((duration_s - 0.030) / 0.270, 0.0, 1.0))
+
+        if is_primary_tape:
+            floor = 0.58
+            cap = 0.94
+        elif confirmed_tape_dip:
+            floor = 0.45
+            cap = 0.88
+        else:
+            floor = 0.10
+            cap = 0.45
+
+        local_strength = max(
+            float(base_strength),
+            floor + 0.26 * depth_factor + 0.08 * context_factor + 0.08 * duration_factor,
+        )
+        local_strength = float(np.clip(local_strength, 0.0, cap))
+
+        if protected_zones:
+            center_s = float(event_start + event_end) * 0.5 / float(max(sample_rate, 1))
+            for zone_start, zone_end, zone_cap in protected_zones:
+                if float(zone_start) <= center_s <= float(zone_end):
+                    local_strength = min(local_strength, float(zone_cap))
+                    break
+
+        return float(np.clip(local_strength, 0.0, 1.0))
+
+    def _repair_transport_bumps(
+        self,
+        audio: np.ndarray,
+        sample_rate: int,
+        bump_locations: list[tuple[float, float]],
+        strength: float = 0.85,
+        protected_zones: list | None = None,
+    ) -> tuple[np.ndarray, int]:
+        """Repariert impulsive transport bumps at known locations.
+
+        Multi-stage repair strategy (v2):
+            1. Amplitude envelope smoothing toward context RMS level
+            2. Local pitch correction via context-guided resampling
+            3. Spectral context interpolation: blend bump spectrum toward
+               weighted average of pre/post context spectra (removes LF thump
+               and spectral centroid disruption that characterize transport bumps)
+            4. Hanning-crossfade at margins for seamless integration
+
+        Args:
+            audio:          Audio signal (mono [N] or stereo [N, 2])
+            sample_rate:    Sample rate in Hz
+            bump_locations: List of (start_s, end_s) time pairs from DefectScanner
+            strength:       Correction strength 0.0–1.0 (material-adaptive)
+
+        Returns:
+            (repaired_audio, n_bumps_repaired)
+        """
+        result, _was_channels_first = to_channels_last(audio.copy())
+        is_stereo = audio.ndim == 2
+        n_samples = audio_sample_count(result)
+        margin_s = 0.030  # 30 ms crossfade margin
+        margin_samples = int(margin_s * sample_rate)
+        n_repaired = 0
+
+        _mono_ref = safe_to_mono(result) if is_stereo else result
+        for bump_start_s, bump_end_s in bump_locations:
+            bump_start = int(bump_start_s * sample_rate)
+            bump_end = int(bump_end_s * sample_rate)
+
+            if bump_start < 0 or bump_end > n_samples or bump_end <= bump_start:
+                continue
+            # Per-Bump individuelle Stärke: lokale Energieanomalie + Schutzzonen-Check (§0l/§0p)
+            _per_bump_s = self._compute_bump_local_strength(
+                _mono_ref, bump_start, bump_end, sample_rate, strength, protected_zones or []
+            )
+
+            region_start = max(0, bump_start - margin_samples)
+            region_end = min(n_samples, bump_end + margin_samples)
+            region_len = region_end - region_start
+
+            if region_len < sample_rate // 100:  # minimum 10 ms
+                continue
+
+            ctx_before_start = max(0, region_start - sample_rate // 4)
+            ctx_after_end = min(n_samples, region_end + sample_rate // 4)
+
+            if is_stereo:
+                mono_ctx_before = np.mean(result[ctx_before_start:region_start], axis=1)
+                mono_ctx_after = np.mean(result[region_end:ctx_after_end], axis=1)
+            else:
+                mono_ctx_before = result[ctx_before_start:region_start]
+                mono_ctx_after = result[region_end:ctx_after_end]
+
+            # 1. Reference RMS from surrounding context
+            ctx_audio = np.concatenate([mono_ctx_before, mono_ctx_after])
+            ref_rms = float(np.sqrt(np.mean(ctx_audio**2) + 1e-12)) if len(ctx_audio) > 0 else 1.0
+
+            # 2. Amplitude envelope smoothing
+            if is_stereo:
+                for ch in range(result.shape[1]):
+                    result[region_start:region_end, ch] = self._smooth_bump_envelope(
+                        result[region_start:region_end, ch],
+                        ref_rms,
+                        margin_samples,
+                        _per_bump_s,
+                    )
+            else:
+                result[region_start:region_end] = self._smooth_bump_envelope(
+                    result[region_start:region_end],
+                    ref_rms,
+                    margin_samples,
+                    _per_bump_s,
+                )
+
+            # 3. Local pitch correction
+            bump_len = bump_end - bump_start
+            if bump_len >= sample_rate // 50:
+                if is_stereo:
+                    for ch in range(result.shape[1]):
+                        result[bump_start:bump_end, ch] = self._local_pitch_flatten(
+                            result[bump_start:bump_end, ch],
+                            mono_ctx_before,
+                            mono_ctx_after,
+                            sample_rate,
+                            _per_bump_s,
+                        )
+                else:
+                    result[bump_start:bump_end] = self._local_pitch_flatten(
+                        result[bump_start:bump_end],
+                        mono_ctx_before,
+                        mono_ctx_after,
+                        sample_rate,
+                        _per_bump_s,
+                    )
+
+            # 4. Spectral context interpolation — remove LF thump and timbral disruption
+            #    by blending the bump's magnitude spectrum toward the surrounding context
+            if bump_len >= 256:
+                if is_stereo:
+                    for ch in range(result.shape[1]):
+                        result[bump_start:bump_end, ch] = self._spectral_context_blend(
+                            result[bump_start:bump_end, ch],
+                            (
+                                result[ctx_before_start:region_start, ch]
+                                if ctx_before_start < region_start
+                                else np.zeros(1)
+                            ),
+                            result[region_end:ctx_after_end, ch] if region_end < ctx_after_end else np.zeros(1),
+                            _per_bump_s,
+                        )
+                else:
+                    result[bump_start:bump_end] = self._spectral_context_blend(
+                        result[bump_start:bump_end],
+                        result[ctx_before_start:region_start] if ctx_before_start < region_start else np.zeros(1),
+                        result[region_end:ctx_after_end] if region_end < ctx_after_end else np.zeros(1),
+                        _per_bump_s,
+                    )
+
+            n_repaired += 1
+
+        # Safety: NaN/Inf guard + clip
+        result = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
+        result = np.clip(result, -1.0, 1.0)
+        return restore_layout(result, _was_channels_first), n_repaired
+
+    @staticmethod
+    def _smooth_bump_envelope(
+        segment: np.ndarray,
+        ref_rms: float,
+        margin_samples: int,
+        strength: float,
+    ) -> np.ndarray:
+        """Glättet the amplitude envelope of a bump region toward the reference RMS level.
+
+        Uses a Hanning-weighted crossfade at margins and local RMS gain correction
+        in the bump interior to eliminate sudden amplitude jumps.
+        """
+        result = segment.copy()
+        n = len(result)
+        if n < 4 or ref_rms < 1e-10:
+            return result
+
+        # Compute local RMS in short windows (5 ms)
+        win = max(1, min(n, 240))  # ~5 ms at 48 kHz
+        local_rms = np.array(
+            [float(np.sqrt(np.mean(result[i : i + win] ** 2) + 1e-12)) for i in range(0, n - win + 1, max(1, win // 2))]
+        )
+
+        if len(local_rms) == 0:
+            return result
+
+        # Gain correction: target is ref_rms, blend with strength
+        for i, lr in enumerate(local_rms):
+            if lr > 1e-10:
+                gain = 1.0 + strength * (ref_rms / lr - 1.0)
+                gain = np.clip(gain, 0.5, 2.0)  # Safety clamp
+                start_idx = i * max(1, win // 2)
+                end_idx = min(n, start_idx + win)
+                result[start_idx:end_idx] *= gain
+
+        # Apply Hanning crossfade at margins
+        fade_len = min(margin_samples, n // 2)
+        if fade_len > 1:
+            fade_in = np.hanning(fade_len * 2)[:fade_len]
+            fade_out = np.hanning(fade_len * 2)[fade_len:]
+            # Blend: corrected × fade + original × (1 - fade)
+            result[:fade_len] = segment[:fade_len] * (1.0 - fade_in) + result[:fade_len] * fade_in
+            result[-fade_len:] = segment[-fade_len:] * (1.0 - fade_out) + result[-fade_len:] * fade_out
+
+        return np.clip(result, -1.0, 1.0)  # type: ignore[no-any-return]
+
+    @staticmethod
+    def _spectral_context_blend(
+        bump_audio: np.ndarray,
+        ctx_before: np.ndarray,
+        ctx_after: np.ndarray,
+        strength: float,
+    ) -> np.ndarray:
+        """Mischt the magnitude spectrum of a bump region toward surrounding context.
+
+        Transport bumps inject spurious low-frequency energy (mechanical thump) and
+        cause abrupt spectral centroid shifts. This method:
+          1. Computes average magnitude spectrum of pre/post context
+          2. Computes magnitude spectrum of the bump region
+          3. Blends bump magnitudes toward context magnitudes (strength-weighted)
+          4. Preserves original phase (no phase distortion)
+          5. RMS-normalizes output to prevent amplitude drift
+
+        Uses raw FFT (no windowing) to avoid edge-amplification artifacts.
+        """
+        n = len(bump_audio)
+        if n < 128 or strength < 0.01:
+            return bump_audio
+
+        fft_size = 1
+        while fft_size < n:
+            fft_size *= 2
+
+        # Compute reference spectrum from context (weighted average)
+        ref_mag = None
+        n_ref = 0
+        for ctx in (ctx_before, ctx_after):
+            if len(ctx) < 64:
+                continue
+            chunk = ctx[-n:] if ctx is ctx_before else ctx[:n]
+            if len(chunk) < 64:
+                continue
+            padded = np.zeros(fft_size, dtype=np.float64)
+            padded[: len(chunk)] = chunk.astype(np.float64)
+            mag = np.abs(np.fft.rfft(padded))
+            if ref_mag is None:
+                ref_mag = mag
+            else:
+                ref_mag = ref_mag + mag
+            n_ref += 1
+
+        if ref_mag is None or n_ref == 0:
+            return bump_audio
+
+        ref_mag /= n_ref
+
+        # Compute bump spectrum (no windowing — avoids edge amplification)
+        bump_padded = np.zeros(fft_size, dtype=np.float64)
+        bump_f64 = bump_audio.astype(np.float64)
+        bump_padded[:n] = bump_f64
+        bump_fft = np.fft.rfft(bump_padded)
+        bump_mag = np.abs(bump_fft)
+        bump_phase = np.angle(bump_fft)
+
+        # Only suppress frequencies where bump exceeds context (remove thump),
+        # don't boost missing frequencies (that would add artifacts)
+        blended_mag = bump_mag.copy()
+        excess = bump_mag > ref_mag * 1.2
+        blended_mag[excess] = bump_mag[excess] * (1.0 - strength * 0.7) + ref_mag[excess] * strength * 0.7
+
+        # Reconstruct with original phase
+        blended_fft = blended_mag * np.exp(1j * bump_phase)
+        result_full = np.fft.irfft(blended_fft, n=fft_size)
+        result = result_full[:n].astype(np.float32)
+
+        # RMS-normalize to match original bump level (prevent amplitude drift)
+        orig_rms = float(np.sqrt(np.mean(bump_f64**2) + 1e-12))
+        result_rms = float(np.sqrt(np.mean(result.astype(np.float64) ** 2) + 1e-12))
+        if result_rms > 1e-10:
+            result *= np.float32(orig_rms / result_rms)
+
+        # Blend with original using strength
+        result = bump_audio * (1.0 - strength * 0.5) + result * (strength * 0.5)
+
+        return np.clip(result, -1.0, 1.0).astype(np.float32)  # type: ignore[no-any-return]
+
+    # ------------------------------------------------------------------
+    # Step 6c: Tape Head Contact Level Stabilizer
+    # ------------------------------------------------------------------
+    # Repairs gradual envelope dips caused by tape-head pressure
+    # variation or capstan irregularity in cassette/reel recordings.
+    #
+    # Defect morphology (from real-world cassette analysis):
+    #   - Gradual fade-down: 60-100 ms onset
+    #   - Minimum depth: 10-25 dB below local context level
+    #   - Sharp recovery: < 25 ms back to normal level
+    #   - Distributed across entire song, not just intro
+    #   - Average rate: ~0.5-1.0 per second
+    #
+    # These dips are NOT caught by Phase 24 dropout repair:
+    #   - Phase 24 requires > 75 % energy drop (these are 10-20 dB = 50-90 %)
+    #   - Phase 24 max_dropout_ms = 200 ms (many dips last 150-300 ms)
+    #   - Phase 24 detects sudden drops, not gradual fades
+    #
+    # Algorithm (Tape Head Contact Level Stabilizer v1):
+    #   1. Compute RMS envelope in 20 ms windows, 10 ms hop
+    #   2. Compute slow-moving reference via percentile filter (500 ms)
+    #   3. Detect dips: envelope < reference - dip_threshold_db
+    #   4. For each dip region: compute compensating gain, smooth edges
+    #   5. Limit max gain to avoid noise amplification
+    #   6. Apply gain with smooth interpolation
+    #
+    # Scientific basis:
+    #   - Camras (1988): Magnetic Recording Handbook - head contact mechanics
+    #   - Fastl & Zwicker (2007): equal-loudness perception of level dips
+    # ------------------------------------------------------------------
+
+    def _estimate_speed_curve_from_instantaneous_frequency(
+        self, audio: np.ndarray, sample_rate: int
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Geschwindigkeitskurve via Hilbert Instantan-Frequenz (IEC 60386, SNR-robust).
+
+        Sicherheitsdesign (IEC 60386 §5.2):
+          - Dieselbe Methode wie DefectScanner._detect_wow() — funktioniert bei
+            SNR = -1 dB (bestätigt: DefectScanner erkennt wow=1.00 für Testkünstlerin (Schlager))
+          - Keine Voiced-Detection nötig — arbeitet auf beliebigem Audiosignal
+          - Bandpass 80–4000 Hz isoliert stimmhafte/Instruments-Frequenzen
+          - Hilbert-Transform → Instantan-Phase → Instantan-Frequenz pro Sample
+          - Normierung auf Median-IF → relative Geschwindigkeitsabweichung
+          - Wow-Isolierung: Bandpassfilter 0.2–4 Hz auf IF-Zeitreihe
+          - Plausibilitätsprüfung: Amplitude 3–80 Cents + Dominanz ≥ 0.10
+
+        Rückgabe kompatibel mit _fit_sinusoidal_wow_curve / _calculate_stretch_factors:
+          virtual_pitch[t] = 440 * relative_IF_deviation[t]
+        """
+        from scipy.signal import butter as _butter12
+        from scipy.signal import hilbert as _hilbert
+        from scipy.signal import sosfiltfilt as _sosfiltfilt12
+
+        # --- Konstanten ---
+        BP_LOW = 80.0  # Hz — Untergrenze Bandpass (Stimminhalt / Instrumente)
+        BP_HIGH = 4000.0  # Hz — Obergrenze
+        IF_WIN_MS = 50.0  # ms — Glättungsfenster für Instantan-Frequenz
+        WOW_LOW_HZ = 0.2  # Hz — Untergrenze Wow-Band (IEC 60386 Slow-Wow)
+        WOW_HIGH_HZ = 4.0  # Hz — Obergrenze Wow-Band
+        AMP_MIN_CENTS = 3.0
+        AMP_MAX_CENTS = 80.0
+        VALID_FRAC_MIN = 0.05  # mind. 5 % valide IF-Frames
+
+        mono = (safe_to_mono(audio) if audio.ndim == 2 else audio).astype(np.float32)
+
+        # Kurzsignal-Guard: mindestens 4 s für Sub-Hz Auflösung
+        if len(mono) < sample_rate * 4:
+            logger.debug("Verarbeitungsschritt 12 IF-Ersatzpfad: Audio zu kurz (%d Samples < 4s)", len(mono))
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+        try:
+            # Segment-Limit (120 s) — Hilbert auf dem vollständigen Segment zu teuer
+            _max_samples = min(len(mono), sample_rate * 120)
+            seg = mono[:_max_samples].astype(np.float64)
+
+            # Bandpass 80–4000 Hz
+            _nyq = sample_rate / 2.0
+            bp_sos = _butter12(
+                3,
+                [max(BP_LOW / _nyq, 0.001), min(BP_HIGH / _nyq, 0.999)],
+                btype="band",
+                output="sos",
+            )
+            bp_audio = _sosfiltfilt12(bp_sos, seg)
+
+            # Hilbert-Transform → Instantan-Phase → Instantan-Frequenz (Hz)
+            analytic = np.asarray(_hilbert(bp_audio), dtype=np.complex128)
+            inst_phase = np.unwrap(np.angle(analytic))
+            inst_freq = np.diff(inst_phase) * float(sample_rate) / (2.0 * np.pi)  # [N-1]
+
+            # Valide IF-Frames: nur pitched-Frequenzen
+            valid_mask = (inst_freq > 50.0) & (inst_freq < 5000.0)
+            valid_fraction = float(np.sum(valid_mask)) / float(max(1, len(valid_mask)))
+            if valid_fraction < VALID_FRAC_MIN:
+                logger.debug(
+                    "Verarbeitungsschritt 12 IF-Ersatzpfad: zu wenig valide IF-Frames (%.1f %% < %.0f %%)",
+                    valid_fraction * 100,
+                    VALID_FRAC_MIN * 100,
+                )
+                return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+            # Normalisierung: IF / Median-IF → relative Abweichung (dimensionslos)
+            median_if = float(np.median(inst_freq[valid_mask]))
+            if median_if < 50.0:
+                return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+            if_norm = inst_freq / (median_if + 1e-6)
+            if_norm = np.nan_to_num(if_norm, nan=1.0)
+            if_norm = np.clip(if_norm, 0.80, 1.20)  # max ±20 % (physikalisch plausibel)
+
+            # Glätten: 50-ms-Fester (entspricht Capstan-Meter-Bandbreite)
+            if_win = max(1, int(IF_WIN_MS * sample_rate / 1000))
+            if_smooth = np.convolve(if_norm, np.ones(if_win) / if_win, mode="valid")
+            if len(if_smooth) < 8:
+                return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+            # Wow-Band isolieren: Bandpass 0.2–4 Hz auf der IF-Zeitreihe
+            if_frame_rate = float(sample_rate) / float(if_win)
+            _if_nyq = if_frame_rate / 2.0
+            _wow_lo = max(WOW_LOW_HZ / _if_nyq, 0.001)
+            _wow_hi = min(WOW_HIGH_HZ / _if_nyq, 0.999)
+            if _wow_lo >= _wow_hi:
+                return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+            sos_wow = butter(4, [_wow_lo, _wow_hi], btype="band", output="sos")
+            wow_component = sosfiltfilt(sos_wow, if_smooth - 1.0)
+            wow_component = np.nan_to_num(wow_component, nan=0.0)
+
+            # Amplitude prüfen (RMS → Peak-Schätzung via sqrt(2))
+            wow_rms = float(np.sqrt(np.mean(wow_component**2)))
+            amplitude_cents = float(abs(1200.0 * np.log2(1.0 + wow_rms * np.sqrt(2.0) + 1e-10)))
+            if amplitude_cents < AMP_MIN_CENTS or amplitude_cents > AMP_MAX_CENTS:
+                logger.debug(
+                    "Verarbeitungsschritt 12 IF-Ersatzpfad: Amplitude außerhalb Bereich (%.2f Cents)", amplitude_cents
+                )
+                return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+            # Dominanz: Wow-Peak vs. Breitband-IF-Energie (0.2–4 Hz)
+            _freqs_fft = np.fft.rfftfreq(len(wow_component), d=1.0 / if_frame_rate)
+            _spectrum = np.abs(np.fft.rfft(wow_component)) ** 2
+            _peak_band = (_freqs_fft >= 0.5) & (_freqs_fft <= 3.0)
+            _total_wow = float(np.sum(_spectrum[(_freqs_fft >= WOW_LOW_HZ) & (_freqs_fft <= WOW_HIGH_HZ)]) + 1e-12)
+            if _peak_band.any():
+                _bp_power = _spectrum[_peak_band]
+                _peak_local = int(np.argmax(_bp_power))
+                _peak_freq = float(_freqs_fft[_peak_band][_peak_local])
+                _dominance = float(_bp_power[_peak_local]) / _total_wow
+            else:
+                _peak_freq, _dominance = 0.0, 0.0
+
+            if _dominance < 0.10:
+                logger.debug(
+                    "Verarbeitungsschritt 12 IF-Ersatzpfad: keine dominante Wow-Komponente (peak=%.2f Hz, dominance=%.4f < 0.10)",
+                    _peak_freq,
+                    _dominance,
+                )
+                return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+            # IF (Wow-Anteil) auf Phase-12-Frame-Rate resamplen
+            _hop_samples = int(self.PITCH_WINDOW_MS * sample_rate / 1000) // self.PITCH_HOP_FACTOR  # typisch 1200
+            _target_len = max(4, len(mono) // _hop_samples)
+            if_resampled = np.interp(
+                np.linspace(0, len(wow_component) - 1, _target_len),
+                np.arange(len(wow_component)),
+                wow_component,
+            )
+
+            # Virtueller Pitch: 440 * (1 + wow_component)
+            virtual_pitch = (440.0 * (1.0 + if_resampled)).astype(np.float64)
+            virtual_pitch = np.clip(virtual_pitch, 20.0, 4000.0)
+
+            # Konfidenz: abhängig von IF-Valid-Fraction und Wow-Dominanz
+            _conf_level = float(np.clip(valid_fraction * _dominance * 8.0, 0.25, 0.75))
+            confidence = np.full(len(virtual_pitch), _conf_level, dtype=np.float64)
+
+            logger.info(
+                "Verarbeitungsschritt 12 IF-Ersatzpfad (IEC 60386): T=%d Frames, "
+                "Wow-Peak=%.2f Hz, Amplitude=%.1f Cents, Dominanz=%.3f, valid_frac=%.2f",
+                len(virtual_pitch),
+                _peak_freq,
+                amplitude_cents,
+                _dominance,
+                valid_fraction,
+            )
+            return virtual_pitch, confidence
+
+        except Exception as _exc:
+            logger.warning("Verarbeitungsschritt 12 IF-Ersatzpfad fehlgeschlagen: %s", _exc)
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+    @staticmethod
+    def _scan_subband_modulation_frequency(
+        dev_stack: np.ndarray, val_stack: np.ndarray, sample_rate: int
+    ) -> float | None:
+        """§7.4c Cluster-A-Finale: kohärenter √N-Frequenzscan der Gemeinschafts-FM.
+
+        Die Transport-Modulation verschiebt ALLE Teilbänder IN PHASE; das
+        Beating-Fremd-Ton-Rauschen je Band ist unkorreliert. Pro Kandidat-
+        Frequenz läuft der Matched-Filter je Band mit r²-/Amp-Gate (wie im
+        Hint-Pfad — tote Bänder ohne Partial tragen sonst nur Rauschen) und
+        die kohärente Summe der Sinus-Koeffizienten gewinnt √N: FM wächst mit
+        N, Rauschen nur mit √N. Rückgabe: Frequenz des Kohärenz-Peaks
+        (parabolisch verfeinert) oder None (Score < 3 cents).
+        """
+        if dev_stack.ndim != 2 or dev_stack.shape[0] < 4:
+            return None
+        _dec = max(1, int(round(sample_rate / 20.0)))
+        _n_blk = int(dev_stack.shape[1]) // _dec
+        if _n_blk < 32:
+            return None
+        _d = (
+            np.asarray(dev_stack[:, : _n_blk * _dec], dtype=np.float64)
+            .reshape(dev_stack.shape[0], _n_blk, _dec)
+            .mean(axis=2)
+        )
+        _c = (
+            np.asarray(val_stack[:, : _n_blk * _dec], dtype=np.float64)
+            .reshape(val_stack.shape[0], _n_blk, _dec)
+            .mean(axis=2)
+        )
+        # Bedingte Mittel-Spur (dev ≈ coverage × mean) je Band
+        _y_all = np.where(_c > 0.5, _d / np.maximum(_c, 1e-3), 0.0)
+        _w_all = np.clip(_c, 0.0, 1.0)
+        _t = np.arange(_n_blk, dtype=np.float64) * (_dec / float(sample_rate))
+
+        # §D-K3-38 (Perf, 2026-10-09 — Register): Band-Gates und Gewichtssummen
+        # hängen NICHT von der Testfrequenz ab — einmal vorberechnen; der
+        # Band-Fit läuft als GEBÜNDELTE Normalengleichung je Frequenz
+        # (np.linalg.solve gestapelt) statt als ~15 619 Einzel-lstsq-Aufrufe
+        # (cProfile 2026-10-09: 129 Kandidaten × ~121 Bänder). lstsq bleibt
+        # Singular-Ausweichpfad je Band (continue-Semantik erhalten,
+        # §V6 copilot-instructions.md); Gate-Semantik unverändert (r² ≥ 0,30,
+        # 1,0 ≤ amp ≤ 80 cents, mindestens 4 Bänder).
+        _gate_mask = np.sum(_w_all > 0.5, axis=1) >= _n_blk // 3
+        _wsum_all = np.sum(_w_all, axis=1)
+
+        def _score_at(_f: float) -> float:
+            _des = np.column_stack([np.sin(2.0 * np.pi * _f * _t), np.cos(2.0 * np.pi * _f * _t), np.ones(_n_blk)])
+            _idx = np.flatnonzero(_gate_mask)
+            if _idx.size == 0:
+                return 0.0
+            _W = _w_all[_idx]
+            _Y = _y_all[_idx]
+            # Gewichtete Normalengleichungen je Band, gestapelt:
+            #   N[b] = des^T diag(w_b) des (3×3) ; rhs[b] = des^T (w_b ⊙ y_b).
+            _N = np.einsum("nc,bn,nd->bcd", _des, _W, _des, optimize=True)
+            _rhs = np.einsum("nc,bn,bn->bc", _des, _W, _Y, optimize=True)
+            _valid = np.ones(_idx.size, dtype=bool)
+            try:
+                _cb = np.linalg.solve(_N, _rhs)
+            except np.linalg.LinAlgError:
+                logger.debug(
+                    "Teilband-Scan: Normalengleichungen singulär bei %.3f Hz — Einzelband-Ausweichlösung aktiv", _f
+                )
+                _cb = np.zeros((_idx.size, 3), dtype=np.float64)
+                _ok_fb = np.zeros(_idx.size, dtype=bool)
+                for _li in range(_idx.size):
+                    _sw = np.sqrt(_W[_li])
+                    try:
+                        _row, *_ = np.linalg.lstsq(_des * _sw[:, None], _Y[_li] * _sw, rcond=None)
+                        _cb[_li] = _row
+                        _ok_fb[_li] = True
+                    except Exception as _scan_lsq_exc:
+                        logger.debug("Teilband-Scan: Band bei %.3f Hz übersprungen (%s)", _f, _scan_lsq_exc)
+                _valid = _ok_fb
+            _fit = _cb @ _des.T
+            _res = _Y - _fit
+            _ssr = np.einsum("bn,bn->b", _W, _res * _res)
+            _Sw = _wsum_all[_idx]
+            _Sy = np.einsum("bn,bn->b", _W, _Y)
+            _wmu = _Sy / (_Sw + 1e-12)
+            _dY = _Y - _wmu[:, None]
+            _sst = np.einsum("bn,bn->b", _W, _dY * _dY) + 1e-12
+            _r2 = np.clip(1.0 - _ssr / _sst, 0.0, 1.0)
+            _amp = np.hypot(_cb[:, 0], _cb[:, 1])
+            _sel = (_r2 >= 0.30) & (_amp >= 1.0) & (_amp <= 80.0) & _valid
+            _n_used = int(np.count_nonzero(_sel))
+            if _n_used < 4:
+                return 0.0
+            _r2s = _r2[_sel]
+            _acc = np.sum(_r2s[:, None] * _cb[_sel][:, :2], axis=0)
+            _wsum = float(np.sum(_r2s))
+            if _wsum <= 1e-12:
+                return 0.0
+            return float(np.hypot(_acc[0], _acc[1]) / _wsum)
+
+        _freqs = np.linspace(0.05, 4.0, 129)
+        _scores = np.array([_score_at(float(_f)) for _f in _freqs], dtype=np.float64)
+        _pk = int(np.argmax(_scores))
+        _best_s = float(_scores[_pk])
+        if _best_s < 3.0:
+            return None
+        _f_peak = float(_freqs[_pk])
+        # Fein-Scan um den Peak (±0,04 Hz, 0,002-Schritte): die Grob-Raster-
+        # Parabel liefert ±0,008 Hz — bei 15 s Laufzeit 0,12 Zyklen Drift und
+        # ~15 % Amplituden-Verlust im nachfolgenden Matched-Pfad.
+        _fine = np.linspace(max(0.05, _f_peak - 0.04), min(4.0, _f_peak + 0.04), 41)
+        _fscores = np.array([_score_at(float(_f)) for _f in _fine], dtype=np.float64)
+        _pk2 = int(np.argmax(_fscores))
+        _f_peak = float(_fine[_pk2])
+        if 0 < _pk2 < _fscores.size - 1:
+            _a = float(_fscores[_pk2 - 1])
+            _b2 = float(_fscores[_pk2])
+            _c2 = float(_fscores[_pk2 + 1])
+            _den = _a - 2.0 * _b2 + _c2
+            if abs(_den) > 1e-12:
+                _f_peak += float(np.clip(0.5 * (_a - _c2) / _den, -1.0, 1.0)) * float(_fine[1] - _fine[0])
+        return _f_peak
+
+    def _common_track_from_stacks(
+        self,
+        _dev_stack: np.ndarray,
+        _val_stack: np.ndarray,
+        sample_rate: int,
+        _target_len: int,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """§7.4c Irregulärer Gemeinschafts-Drift (2026-09-26): modellfreie Extraktion.
+
+        Erste Hauptkomponente der zeilen-normierten Band-Matrix (20 Hz): die
+        gemeinsame Drift-Form ist der dominante Korrelations-Modus — tote/
+        Wild-Bänder (±400 cents Beating) tragen unkorreliertes Rauschen und
+        verschieben die Hauptkomponente nicht (√N-Gewinn, ohne Sinus-Modell).
+        """
+        _dec_c = max(1, int(round(sample_rate / 20.0)))
+        _n_c = int(_dev_stack.shape[1]) // _dec_c
+        if _n_c < 16:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _dm_c = (
+            (_dev_stack[:, : _n_c * _dec_c] / np.maximum(_val_stack[:, : _n_c * _dec_c], 1e-3))
+            .reshape(_dev_stack.shape[0], _n_c, _dec_c)
+            .mean(axis=2)
+        )
+        _dm_c = np.where(
+            _val_stack[:, : _n_c * _dec_c].reshape(_dev_stack.shape[0], _n_c, _dec_c).mean(axis=2) > 0.5,
+            _dm_c,
+            0.0,
+        )
+        # Form + Amplitude getrennt (2026-09-26): die FORM des irregulären
+        # Drifts kommt aus dem tiefpass-gefilterten Zeilenmittel (Beating
+        # 5–50 Hz stirbt, √N über Bänder); die AMPLITUDE aus per-Band-
+        # Matched-Fits gegen diese Form mit r²-Selektion (≥ 0,3) — derselbe
+        # Mechanismus, der im periodischen Pfad trägt. Messbarer Vorlauf:
+        # Z-Scoring kippte auf Beating (GT-Korr 0,04), Energie-Selektion auf
+        # Wild-Bänder (Amp 137 statt 6,9 cents).
+        _k_iv = np.ones(31) / 31.0  # ≈1,55 s Tiefpass (GT-Befund: 450 ms ließ
+        # korreliertes Beating zu 14 % durch — das Zeilenmittel zeigte 17,4
+        # cents Beating-Rest statt Drift, corr zur Wahrheit −0,15). Erste
+        # Nullstelle ≈ 0,65 Hz: 5–50 Hz Beating → < 2 %, Drift 0,05–1 Hz → > 95 %.
+        _mean_s = np.convolve(np.pad(np.mean(_dm_c, axis=0), (15, 15), mode="edge"), _k_iv, mode="valid")
+        _mean_s = _mean_s - float(np.median(_mean_s))
+        # Zeilen gegen die GEGlÄTTETE Form fitten (GT-Befund: rohe Zeilen
+        # drückte das Beating-Rauschen unter r²=0,3 — das Gate verweigerte
+        # alle tragenden Bänder und die Extraktion fiel auf Null).
+        _dm_s = np.stack(
+            [np.convolve(np.pad(_dm_c[_b], (15, 15), mode="edge"), _k_iv, mode="valid") for _b in range(_dm_c.shape[0])]
+        )
+        if float(np.ptp(_mean_s)) < 1.0:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _den_u = float(np.dot(_mean_s, _mean_s)) + 1e-12
+        _g_fit = np.zeros(_dm_c.shape[0], dtype=np.float64)
+        _r2_fit = np.zeros(_dm_c.shape[0], dtype=np.float64)
+        for _b_iv in range(_dm_c.shape[0]):
+            _row_iv = _dm_s[_b_iv] - float(np.median(_dm_s[_b_iv]))
+            _g_fit[_b_iv] = float(np.dot(_row_iv, _mean_s) / _den_u)
+            _res_r2 = _row_iv - _g_fit[_b_iv] * _mean_s
+            _var_r2 = float(np.dot(_row_iv, _row_iv)) + 1e-12
+            _r2_fit[_b_iv] = float(np.clip(1.0 - np.dot(_res_r2, _res_r2) / _var_r2, 0.0, 1.0))
+        _good = _r2_fit >= 0.30
+        if int(np.sum(_good)) < 2:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _gain = float(np.median(_g_fit[_good]))
+        _dev_ds = _mean_s * _gain
+        _coh_mean = float(np.mean(_r2_fit[_good]))
+        # Zeitachse EXAKT in Sekunden (Block-Mitten (m+0,5)/20 ↔ Frame-Mitten
+        # k·PITCH_WINDOW_MS/4000): die frühere linspace-/convolve-Kette stauchte
+        # die Spur um ~0,8 % und verschob sie um ~200 ms — gemessen: der Warp
+        # traf die Drift ~45° versetzt und löschte sie nicht (28,1 → 32,5
+        # cents im Isolations-Test). Glättung (≈350 ms) längentreu auf dem
+        # 20-Hz-Raster.
+        _dev_ds = np.convolve(np.pad(_dev_ds, (3, 3), mode="edge"), np.ones(7) / 7.0, mode="valid")
+        _dev_ds = _dev_ds - float(np.median(_dev_ds))  # Rest-Offset entfernen
+        _t_blk = (np.arange(_n_c, dtype=np.float64) + 0.5) / 20.0
+        _t_frm = np.arange(_target_len, dtype=np.float64) * (float(self.PITCH_WINDOW_MS) / 4000.0)
+        dev_res = np.interp(_t_frm, _t_blk, _dev_ds)
+        conf_res = np.clip(0.50 + 0.45 * _coh_mean, 0.0, 0.95) * np.ones(_target_len, dtype=np.float64)
+        virtual_pitch = (440.0 * np.power(2.0, dev_res / 1200.0)).astype(np.float64)
+        virtual_pitch = np.clip(virtual_pitch, 20.0, 4000.0)
+        logger.info(
+            "Verarbeitungsschritt 12 Gemeinschafts-Drift: %d Bänder, T=%d Frames, "
+            "Span(p5..p95)=%.1f cents, Kohärenz=%.2f",
+            _dev_stack.shape[0],
+            _target_len,
+            float(np.percentile(dev_res, 95) - np.percentile(dev_res, 5)) if dev_res.size else 0.0,
+            _coh_mean,
+        )
+        return virtual_pitch, conf_res.astype(np.float64)
+
+    def _flutter_track_from_stacks(
+        self, _dev_stack: np.ndarray, _val_stack: np.ndarray, sample_rate: int
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """§7.4c Flutter-Pfad: Matched-Scan 0,5–50 Hz auf 200-Hz-Raster.
+
+        Die schnelle gemeinsame Modulation ist PERIODISCH (Seitenbänder des
+        Songs = FM-Spektrum) — dieselbe bewährte Matched-Filter-Mechanik wie
+        im Slow-Pfad, nur auf dem 200-Hz-Raster (Nyquist 100 Hz): per-Band-
+        Sinus-Fits mit r²-/Amp-Gate + kohärente Koeffizienten-Mittelung (√N,
+        Zeilen im Abstand 3 teilen kein Partial). Die Common-Mean-Variante
+        war von Beating kontaminiert (GT: 98,5 statt 36 cents). Rückgabe:
+        (virtual_pitch auf 200-Hz-Raster, conf).
+        """
+        _dec_f = max(1, int(round(sample_rate / 200.0)))
+        _n_f = int(_dev_stack.shape[1]) // _dec_f
+        if _n_f < 32:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        _dev_stack = _dev_stack[::3]
+        _val_stack = _val_stack[::3]
+        # Stride-Decimation (KEINE 50-ms-Blockmittelung: deren Sinc-Null liegt
+        # bei exakt 20 Hz und löschte die Flutter-Frequenz komplett — gemessen
+        # r² ≈ 0,00 über 0,5–50 Hz). Der 5-ms-Box-Laufmittel-Filter der
+        # Teilband-Spur ist bereits der Anti-Alias für 200 Hz (Null bei 200 Hz).
+        _dm_f = _dev_stack[:, : _n_f * _dec_f : _dec_f] / np.maximum(_val_stack[:, : _n_f * _dec_f : _dec_f], 1e-3)
+        _cov_f = _val_stack[:, : _n_f * _dec_f : _dec_f]
+        _dm_f = np.where(_cov_f > 0.5, _dm_f, 0.0)
+        _t_f = np.arange(_n_f, dtype=np.float64) / 200.0
+
+        # §D-K3-38 (Perf, 2026-10-09 — Register): Gewichte und Band-Gates hängen
+        # NICHT von der Testfrequenz ab — einmal vorberechnen. Der eigentliche
+        # Band-Fit läuft dann als GEBÜNDELTE Normalengleichung je Frequenz
+        # (np.linalg.solve gestapelt über alle Bänder) statt als 37 677
+        # Einzel-lstsq-SVD-Aufrufe (gemessen: 2,63 s je 15-s-Lauf, cProfile
+        # 2026-10-09). Bewusste, dokumentierte Abweichung (§G8 copilot-instructions.md):
+        # Normalengleichungen (cond²) und vektorisierte Summenreihenfolge sind
+        # NICHT bit-exakt zur lstsq-SVD — der E2E-A/B (Audio-Differenz) und der
+        # Vertragstest test_flutter_score_fast_batched_vs_lstsq pinnen die
+        # Toleranz; die Gate-Semantik (Zeugen-Gate r² ≥ 0,10, Beating-Cap
+        # amp ≤ 120 cents, mindestens ein Zeuge) bleibt unverändert.
+        _W_all = np.clip(_cov_f, 0.0, 1.0)
+        _gate_mask = np.sum(_W_all > 0.5, axis=1) >= _n_f // 3
+        _wsum_all = np.sum(_W_all, axis=1)
+
+        def _score_fast(_f: float) -> tuple[float, np.ndarray, np.ndarray, float, float]:
+            _des = np.column_stack([np.sin(2.0 * np.pi * _f * _t_f), np.cos(2.0 * np.pi * _f * _t_f), np.ones(_n_f)])
+            _idx = np.flatnonzero(_gate_mask)
+            if _idx.size == 0:
+                return 0.0, np.zeros(2), np.zeros(2), 0.0, 0.0
+            _W = _W_all[_idx]
+            _Y = _dm_f[_idx]
+            # Gewichtete Normalengleichungen je Band, gestapelt:
+            #   N[b] = des^T diag(w_b) des (3×3) ; rhs[b] = des^T (w_b ⊙ y_b).
+            _N = np.einsum("nc,bn,nd->bcd", _des, _W, _des, optimize=True)
+            _rhs = np.einsum("nc,bn,bn->bc", _des, _W, _Y, optimize=True)
+            _valid = np.ones(_idx.size, dtype=bool)
+            try:
+                _cb = np.linalg.solve(_N, _rhs)
+            except np.linalg.LinAlgError:
+                # Singuläre Normalengleichung (praktisch unerreichbar: des ist
+                # wohldefiniert) — konservativ je Band über lstsq wie zuvor,
+                # Band-Fehler bleiben pro Band isoliert (continue-Semantik).
+                logger.debug(
+                    "Flutter-Scan: Normalengleichungen singulär bei %.2f Hz — Einzelband-Ausweichlösung aktiv", _f
+                )
+                _cb = np.zeros((_idx.size, 3), dtype=np.float64)
+                _ok_fb = np.zeros(_idx.size, dtype=bool)
+                for _li in range(_idx.size):
+                    _sw = np.sqrt(_W[_li])
+                    try:
+                        _row, *_ = np.linalg.lstsq(_des * _sw[:, None], _Y[_li] * _sw, rcond=None)
+                        _cb[_li] = _row
+                        _ok_fb[_li] = True
+                    except Exception as _fl_exc:
+                        logger.debug("Flutter-Scan: Band bei %.2f Hz übersprungen (%s)", _f, _fl_exc)
+                _valid = _ok_fb
+            _fit = _cb @ _des.T
+            _res = _Y - _fit
+            _ssr = np.einsum("bn,bn->b", _W, _res * _res)
+            _Sw = _wsum_all[_idx]
+            _Sy = np.einsum("bn,bn->b", _W, _Y)
+            _wmu = _Sy / (_Sw + 1e-12)
+            _dY = _Y - _wmu[:, None]
+            _sst = np.einsum("bn,bn->b", _W, _dY * _dY) + 1e-12
+            _r2 = np.clip(1.0 - _ssr / _sst, 0.0, 1.0)
+            _amp = np.hypot(_cb[:, 0], _cb[:, 1])
+            # r²-Gewichtung mit Zeugen-Gate: die FM sitzt in 1–2 starken
+            # Bändern (GT-Befund 2026-09-26: 1 von 41 Zeilen trägt amp
+            # 22,9 cents, r² 0,36 — uniformer Mittel verwässerte auf 1,07
+            # cents). Bänder mit r² < 0,10 werden gar nicht akkumuliert:
+            # rauschende Großamplituden-Fits (amp bis 120 cents, r² ~0,04)
+            # trieben sonst den gewichteten Mittelwert auf 48,8 cents und
+            # gewannen die Peak-Suche gegen das echte 6-Hz-Signal
+            # (22,9 cents, r² 0,36). Gefordert wird am Ende mindestens EIN
+            # Zeuge mit r² ≥ 0,25. Beating-Artefakte (amp > 120 cents)
+            # werden verworfen.
+            _sel = (_amp <= 120.0) & (_r2 >= 0.10) & _valid
+            if not np.any(_sel):
+                return 0.0, np.zeros(2), np.zeros(2), 0.0, 0.0
+            _r2s = _r2[_sel]
+            _acc = np.sum(_r2s[:, None] * _cb[_sel][:, :2], axis=0)
+            _wsum = float(np.sum(_r2s))
+            _n_used = int(_r2s.size)
+            if _n_used < 1 or _wsum <= 1e-12:
+                return 0.0, np.zeros(2), np.zeros(2), 0.0, 0.0
+            return (
+                float(np.hypot(_acc[0], _acc[1]) / _wsum),
+                _acc,
+                np.array([_wsum, float(_n_used)]),
+                float(np.sum(_r2s)) / _n_used,
+                float(np.max(_r2s)),
+            )
+
+        # Grob-Raster 0,1 Hz (r²-Selektivität verträgt keinen 0,5-Hz-Schritt),
+        # Fein-Raster 0,005 Hz; das Zeugen-Gate (max r² ≥ 0,25) gilt erst für
+        # die Finale-Frequenz — auf dem Grob-Raster bricht r² bei Raster-
+        # Versatz sonst schon vor der Fein-Suche ein.
+        _freqs_fl = np.linspace(0.5, 50.0, 496)
+        _scores = np.array([_score_fast(float(_f))[0] for _f in _freqs_fl])
+        _pk = int(np.argmax(_scores))
+        _f_peak = float(_freqs_fl[_pk])
+        _fine = np.linspace(max(0.5, _f_peak - 0.1), min(50.0, _f_peak + 0.1), 41)
+        _fscores = np.array([_score_fast(float(_f))[0] for _f in _fine])
+        _pk2 = int(np.argmax(_fscores))
+        _f_peak = float(_fine[_pk2])
+        _sc, _acc_f, _w_f, _r2m, _max_r2 = _score_fast(_f_peak)
+        if _sc < 3.0 or _max_r2 < 0.25:
+            logger.info(
+                "Verarbeitungsschritt 12 Flutter-Matched verworfen: "
+                "Peak %.2f Hz, Wert=%.2f (< 3.0), max r²=%.2f (< 0.25)",
+                _f_peak,
+                _sc,
+                _max_r2,
+            )
+            # FLACHE Spur statt zeros(1): „keine signifikante Modulation“ ist
+            # die Signatur SAUBEREN Materials (score 0 über alle Frequenzen)
+            # und darf vom Nie-schlechter-Pass als Spanne 0.0 gelesen werden.
+            # zeros(1) signalisiert allein Messkanal-Ausfall (_n_f < 32).
+            return (
+                np.full(_n_f, 440.0, dtype=np.float64),
+                np.zeros(_n_f, dtype=np.float64),
+            )
+        _c0, _c1 = _acc_f / _w_f[0]
+        _dev_f = _c0 * np.sin(2.0 * np.pi * _f_peak * _t_f) + _c1 * np.cos(2.0 * np.pi * _f_peak * _t_f)
+        virtual_pitch = (440.0 * np.power(2.0, _dev_f / 1200.0)).astype(np.float64)
+        virtual_pitch = np.clip(virtual_pitch, 20.0, 4000.0)
+        conf_res = np.clip(0.50 + 0.45 * _r2m, 0.0, 0.95) * np.ones(_n_f, dtype=np.float64)
+        logger.info(
+            "Verarbeitungsschritt 12 Flutter-Matched: %.2f Hz, amp=%.1f cents, Bänder=%d, mittleres r²=%.2f",
+            _f_peak,
+            float(np.hypot(_c0, _c1)),
+            int(_w_f[1]),
+            _r2m,
+        )
+        return virtual_pitch, conf_res
+
+    def _flutter_correction_pass(self, restored: np.ndarray, *, sample_rate: int) -> tuple[np.ndarray, dict[str, Any]]:
+        """§7.4c Flutter-Pfad: per-sample-Warp der schnellen gemeinsamen Modulation.
+
+        Misst die 15–50-Hz-Modulation (200-Hz-Raster), bildet per-sample-SF
+        (exaktes Pitch-Ratio 2^(dev/1200)) und warped pro Kanal. Nie-schlechter
+        (Hörordnung §8a): der Nachlauf wird nur behalten, wenn die gemessene
+        Flutter-Spanne sinkt.
+        """
+        _info: dict[str, Any] = {
+            "applied": False,
+            "flutter_before_cents": 0.0,
+            "flutter_after_cents": 0.0,
+            "skipped_reason": "",
+        }
+        mono = (
+            safe_to_mono(restored).astype(np.float32)
+            if np.asarray(restored).ndim == 2
+            else np.asarray(restored, dtype=np.float32)
+        )
+        _tr_f, _cf_f = self._estimate_wow_track_subband(mono, sample_rate, flutter_band=True)
+        if _tr_f is None or len(_tr_f) < 16:
+            _info["skipped_reason"] = "kein belastbarer Flutter-Messkanal"
+            return restored, _info
+        _med_f = float(np.median(_tr_f[_tr_f > 0])) if bool(np.any(_tr_f > 0)) else 440.0
+        _dev_f = 1200.0 * np.log2(np.maximum(_tr_f, 1e-6) / max(_med_f, 1e-6))
+        _before = float(np.percentile(_dev_f, 95) - np.percentile(_dev_f, 5))
+        _info["flutter_before_cents"] = _before
+        if _before < 3.0:
+            _info["skipped_reason"] = "Flutter-Spanne unter Relevanz-Schwelle"
+            _info["flutter_after_cents"] = _before
+            return restored, _info
+        n_s = audio_sample_count(restored)
+        _sf_samples = np.interp(
+            np.arange(n_s, dtype=np.float64),
+            np.arange(len(_dev_f), dtype=np.float64) * (float(sample_rate) / 200.0),
+            np.power(2.0, _dev_f / 1200.0),
+        ).astype(np.float32)
+        if np.asarray(restored).ndim == 2:
+            _l, _r = stereo_channel_view(restored)
+            _candidate = stereo_like(
+                self._speed_warp_resample(_l, _sf_samples, sample_rate),
+                self._speed_warp_resample(_r, _sf_samples, sample_rate),
+                restored,
+            )
+        else:
+            _candidate = self._speed_warp_resample(restored, _sf_samples, sample_rate)
+        _mono_c = (
+            safe_to_mono(_candidate).astype(np.float32)
+            if np.asarray(_candidate).ndim == 2
+            else np.asarray(_candidate, dtype=np.float32)
+        )
+        _tr_c, _cf_c = self._estimate_wow_track_subband(_mono_c, sample_rate, flutter_band=True)
+        if _tr_c is None or len(_tr_c) < 16:
+            _info["skipped_reason"] = "Nachlauf nicht messbar — verworfen (nie-schlechter)"
+            return restored, _info
+        _med_c = float(np.median(_tr_c[_tr_c > 0])) if bool(np.any(_tr_c > 0)) else 440.0
+        _dev_c = 1200.0 * np.log2(np.maximum(_tr_c, 1e-6) / max(_med_c, 1e-6))
+        _after = float(np.percentile(_dev_c, 95) - np.percentile(_dev_c, 5))
+        _info["flutter_after_cents"] = _after
+        if _after < _before:
+            _info["applied"] = True
+            logger.info(
+                "§G188 (GEBOTE.md) Flutter-Nachlauf: Spanne %.1f → %.1f cents",
+                _before,
+                _after,
+            )
+            return _candidate, _info
+        _info["skipped_reason"] = "Flutter-Nachlauf ohne Verbesserung verworfen (nie-schlechter)"
+        return restored, _info
+
+    def _estimate_wow_track_subband(
+        self, audio: np.ndarray, sample_rate: int, hint_freq_hz: float | None = None, *, flutter_band: bool = False
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Teilband-IF-Mittelwert-Estimator für Gemeinschafts-Wow (L3 2026-09-25).
+
+        1/3-Oktavbänder (125–4000 Hz, 16 Bänder) tragen je ~1 Partial: die
+        normierte IF-Abweichung je Band misst die GEMEINSAME FM direkt, und die
+        gewichtete Mittelung über Bänder gewinnt √N an SNR (N ≈ 10–20 ⇒ ~4×).
+        Befund 2026-09-25: der Mix-IF-Kanal konnte FM-Wow ±0,5 % (8,6 cents)
+        unter Inter-Ton-Beating nicht sehen (0,89 cents gemessen) — je Band
+        entfällt das Beating-Fremd-Ton-Rauschen der jeweils anderen Bänder.
+
+        Rückgabe kompatibel zum IF-Ersatzpfad:
+        ``virtual_pitch = 440 * 2**(dev_cents/1200)`` auf dem Phase-12-Frame-Raster.
+        """
+        from scipy.signal import butter as _butter_sb
+        from scipy.signal import hilbert as _hilbert_sb
+        from scipy.signal import sosfiltfilt as _sosfiltfilt_sb
+
+        mono = (safe_to_mono(audio) if audio.ndim == 2 else audio).astype(np.float64)
+        if len(mono) < sample_rate * 4:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+        # §7.4c-WF-HF (2026-09-27): bandabhängiges Flutter (multiband_wow_flutter)
+        # moduliert Bänder oberhalb 4 kHz (L3-Synth: 4–12 kHz @ 5 Hz) — dafür
+        # Grid bis 12 kHz und 32-kHz-Arbeitsspur (Nyquist ≥ 12,4 kHz). Der
+        # Standard-Wow-Pfad (Hint ≤ 4 Hz) bleibt beim 16-kHz-/4-kHz-Grid
+        # (§G5 (GEBOTE.md) Bestandsverhalten, §G190 Laufzeit).
+        _hint_pre_hz = hint_freq_hz
+        _grid_top_hz = 4000.0
+        if _hint_pre_hz is not None and float(_hint_pre_hz) > 4.0:
+            _grid_top_hz = 12000.0
+        # §G190 (GEBOTE.md) Laufzeit: Filterbank + Hilbert laufen auf einer
+        # 16-kHz-Arbeitsspur (Bänder ≤ 4 kHz) — Vollsongs brauchten sonst
+        # > 20 min je Messkanal. Zeitraster (fps = 4000/PITCH_WINDOW_MS)
+        # bleibt identisch.
+        _worktrack_hz = 32000 if _grid_top_hz > 4000.0 else 16000
+        if sample_rate > _worktrack_hz:
+            from scipy.signal import resample_poly as _resample_poly_sb
+
+            _gcd_sb = int(np.gcd(_worktrack_hz, int(sample_rate)))
+            mono = _resample_poly_sb(mono, _worktrack_hz // _gcd_sb, int(sample_rate) // _gcd_sb).astype(np.float64)
+            sample_rate = _worktrack_hz
+
+        IF_WIN_MS = 5.0  # §7.4c Flutter-Pfad: 5 ms (statt 50 ms) — nur so
+        # bleibt die schnelle gemeinsame Modulation (15–50 Hz) im Stack; der
+        # Slow-Pfad glättet ohnehin über Block-Mittel + 1,55-s-Tiefpass.
+        _nyq = sample_rate / 2.0
+        # 1/24-Oktav-Grid mit ±3 %-Bandbreite (überlappend): Chord-Partials
+        # stehen 50–150 Hz auseinander; zu schmale (±1,5 %) Bänder verfehlten
+        # die Töne zwischen den Zentren (gemessen amp ~3 cents), ±3 % trifft
+        # jeden Partial und isoliert ihn noch (Partial-Check 2026-09-25:
+        # Grundtöne/Harmonische lesen amp 20–37 cents, r² 0,3–0,4 — die FM
+        # IST auf Musik messbar, Ground-Truth ±53 cents).
+        _centers = [125.0 * (2.0 ** (_i / 24.0)) for _i in range(0, int(24 * np.log2(_grid_top_hz / 125.0)) + 1)]
+        if_win = max(1, int(IF_WIN_MS * sample_rate / 1000))
+        band_devs: list[np.ndarray] = []
+        band_valid: list[np.ndarray] = []
+        for _fc in _centers:
+            _lo = max(_fc * 0.970 / _nyq, 0.001)
+            _hi = min(_fc * 1.030 / _nyq, 0.999)
+            if _lo >= _hi:
+                continue
+            try:
+                _sos_b = _butter_sb(3, [_lo, _hi], btype="band", output="sos")
+                _band = _sosfiltfilt_sb(_sos_b, mono)
+                _analytic_b = np.asarray(_hilbert_sb(_band), dtype=np.complex128)
+                _if_b = np.diff(np.unwrap(np.angle(_analytic_b))) * float(sample_rate) / (2.0 * np.pi)
+                # Valide Frames: IF nahe der Band-Mitte (±15 % — Partial-Fenster;
+                # Beating-Wanderer und Nachbar-Töne werden verworfen)
+                _valid_b = (_if_b > _fc * 0.85) & (_if_b < _fc * 1.15)
+                if int(np.sum(_valid_b)) < max(32, 0.2 * len(_if_b)):
+                    continue
+                _med_b = float(np.median(_if_b[_valid_b]))
+                _dev_b = np.zeros_like(_if_b)
+                _dev_b[_valid_b] = 1200.0 * np.log2(np.maximum(_if_b[_valid_b] / _med_b, 1e-6))
+                _k_50 = np.ones(if_win) / if_win
+                _dev_s = np.convolve(np.where(_valid_b, _dev_b, 0.0), _k_50, mode="valid")
+                _val_s = np.convolve(_valid_b.astype(np.float64), _k_50, mode="valid")
+                band_devs.append(_dev_s)
+                band_valid.append(_val_s)
+            except Exception as _band_exc:
+                logger.debug("Teilband-IF: Band um %.0f Hz übersprungen (%s)", _fc, _band_exc)
+                continue
+        if len(band_devs) < 4:
+            return np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+
+        _hop_samples = int(self.PITCH_WINDOW_MS * sample_rate / 1000) // self.PITCH_HOP_FACTOR
+        _target_len = max(4, len(mono) // _hop_samples)
+        _min_len = int(min(d.size for d in band_devs))
+        _dev_stack = np.stack([d[-_min_len:] for d in band_devs])
+        _val_stack = np.stack([v[-_min_len:] for v in band_valid])
+
+        if flutter_band:
+            # §7.4c Flutter-Pfad: schnelle gemeinsame Modulation (15–50 Hz) auf
+            # 200-Hz-Raster — die 40-fps-Trajektorie bildet > 15 Hz nicht ab.
+            return self._flutter_track_from_stacks(_dev_stack, _val_stack, sample_rate)
+        _use_hint_72 = hint_freq_hz is not None and 0.05 <= float(hint_freq_hz) <= 6.0
+        if not _use_hint_72:
+            # §7.4c Cluster-A-Finale (2026-09-26): Blind-Frequenz über den
+            # KOHÄRENTEN √N-Frequenzscan — danach läuft der bewährte
+            # Matched-Filter-Pfad bei geschätzter Frequenz (Befund auf
+            # 4-Akkord-Musik: Blind-Rohspur 20,1 statt 53 cents, Matched 49,2).
+            _f_scan_72 = self._scan_subband_modulation_frequency(_dev_stack, _val_stack, sample_rate)
+            if _f_scan_72 is not None:
+                hint_freq_hz = _f_scan_72
+                _use_hint_72 = True
+        if _use_hint_72:
+            # Matched-Filter je Band + kohärente Koeffizienten-Mittelung (Befund
+            # 2026-09-25): der Least-Squares-Sinus bei BEKANNTER Frequenz ist der
+            # optimale Detektor — Beating-Rauschen wird je Band abgelehnt, die
+            # gewichtete Mittelung der Sinus-Koeffizienten gewinnt √N. Die
+            # Roh-Track-Mittelung unterschätzte die FM um 3–4× (Tiefbänder waren
+            # ±400-cents-Wildbänder); Ground-Truth-Check: ±53 cents FM (0,3 Hz).
+            _f_hint = float(hint_freq_hz or 0.0)
+            _acc_2 = np.zeros(2, dtype=np.float64)
+            _acc_w = 0.0
+            _n_used = 0
+            for _d_b, _v_b in zip(_dev_stack, _val_stack):
+                _t_b = np.arange(_d_b.size, dtype=np.float64) / float(sample_rate)
+                _om_b = 2.0 * np.pi * _f_hint * _t_b
+                _des_b = np.column_stack([np.sin(_om_b), np.cos(_om_b), np.ones(_d_b.size)])
+                _wb = np.clip(_v_b, 0.0, 1.0)
+                try:
+                    _sw_b = np.sqrt(_wb)
+                    _cb, *_ = np.linalg.lstsq(_des_b * _sw_b[:, None], _d_b * _sw_b, rcond=None)
+                except Exception as _lstsq_exc:
+                    logger.debug("Teilband-IF: Matched-Filter-Band übersprungen (%s)", _lstsq_exc)
+                    continue
+                _fit_b = _des_b @ _cb
+                _ssr_b = float(np.sum(_wb * (_d_b - _fit_b) ** 2))
+                _wmu_b = float(np.sum(_wb * _d_b) / (float(np.sum(_wb)) + 1e-12))
+                _sst_b = float(np.sum(_wb * (_d_b - _wmu_b) ** 2) + 1e-12)
+                _r2_b = float(np.clip(1.0 - _ssr_b / _sst_b, 0.0, 1.0))
+                _amp_b = float(np.hypot(_cb[0], _cb[1]))
+                # §7.4c-L3 (2026-09-27, Konsistenz-Fix): harte Schwellen
+                # r² ≥ 0.30 + n ≥ 4 verwarfen nicht-stationäre Musikträger
+                # (L3-Akkord-Träger mit Hüllkurven/Percussion: nur 3 Bänder
+                # erreichen r² ≈ 0,33–0,36) — der periodische Pfad fiel in die
+                # irregulär-Drift-Extraktion zurück, die auf periodischem Wow
+                # 27× unterschätzte (2,01 statt 53 cents). Neu: KOHÄRENTE
+                # EVIDENZ (Σ r² ≥ 1.0) statt Band-Anzahl — äquivalent zu
+                # 4 Bändern à 0,25; die Einzel-R²-Schwelle sinkt auf 0,25
+                # (Rauschzeugen), Amplitude 1–80 cents und der nachfolgende
+                # Sinus-Fit (r² ≥ 0,45) + Never-worsen bleiben unverändert.
+                if _r2_b < 0.25 or _amp_b < 1.0 or _amp_b > 80.0:
+                    continue
+                _acc_2 += _r2_b * _cb[:2]
+                _acc_w += _r2_b
+                _n_used += 1
+            # §7.4c-L3 (2026-09-27): Band-Flutter (> 4 Hz) betrifft per
+            # Definition nur WENIGE Bänder (L3-Synth: 2 HF-Bänder, Σ r² ≈ 0,55) —
+            # die Evidenz-Anforderung skaliert mit der Band-Zahl: n ≥ 2 und
+            # Σ r² ≥ 0,5. Der nachfolgende Sinus-Fit (r² ≥ 0,45) + Never-worsen
+            # bleiben unverändert; der Breitband-Wow-Pfad behält Σ r² ≥ 1,0.
+            _evid_floor_72 = 0.5 if (_use_hint_72 and _f_hint > 4.0) else 1.0
+            if _n_used < 2 or _acc_w < _evid_floor_72:
+                # §7.4c (2026-09-26): die periodische Matched-Verweigerung ist
+                # KEIN Fehlen des Defekts — irregulärer Drift („13 Tage“) wird
+                # modellfrei in der Gemeinschafts-Extraktion (Hauptkomponente)
+                # gemessen.
+                return self._common_track_from_stacks(_dev_stack, _val_stack, sample_rate, _target_len)
+            _c0, _c1 = _acc_2 / _acc_w
+            _r2_mean = float(np.clip(_acc_w / max(1, _n_used), 0.0, 1.0))
+            _t_grid = np.arange(_target_len, dtype=np.float64) * (_hop_samples / float(sample_rate))
+            dev_res = _c0 * np.sin(2.0 * np.pi * _f_hint * _t_grid) + _c1 * np.cos(2.0 * np.pi * _f_hint * _t_grid)
+            # Konfidenz: kohärente Band-Evidenz (Σ r², Schwellen oben) auf die
+            # Fit-Evidenz-Skala abgebildet (nie unter der Schwelle des
+            # nachfolgenden Sinus-Fits, gewichtet mit mittlerem r²).
+            conf_res = np.clip(0.55 + 0.4 * _r2_mean, 0.0, 0.95) * np.ones(_target_len, dtype=np.float64)
+            virtual_pitch = (440.0 * np.power(2.0, dev_res / 1200.0)).astype(np.float64)
+            virtual_pitch = np.clip(virtual_pitch, 20.0, 4000.0)
+            logger.info(
+                "Verarbeitungsschritt 12 Teilband-Matched-Filter-Wow: %d/%d Bänder genutzt, "
+                "amp=%.1f cents (Ground-Truth-Referenz ±53), mittleres r²=%.2f",
+                _n_used,
+                len(band_devs),
+                float(np.hypot(_c0, _c1)),
+                _r2_mean,
+            )
+            return virtual_pitch, conf_res
+
+        return self._common_track_from_stacks(_dev_stack, _val_stack, sample_rate, _target_len)
+
+    def _stabilize_tape_level(
+        self,
+        audio: np.ndarray,
+        sample_rate: int,
+        strength: float,
+        *,
+        is_primary_tape: bool = True,
+        confirmed_tape_dip: bool = False,
+        protected_zones: list[tuple[float, float, float]] | None = None,
+    ) -> tuple[np.ndarray, int]:
+        """Erkennt and repair tape head contact level dips — STFT-domain SOTA v2.
+
+        Physics basis (Wallace 1951):
+            When head-tape contact pressure varies, effective head-tape spacing
+            Δd increases → spacing loss L(f) = e^(-2π·Δd·f/v).
+            HF loss is exponentially greater than LF loss: a 1 µm spacing
+            increase at cassette speed (v=47.6 mm/s) causes ~11 dB loss at
+            10 kHz but only ~1 dB at 1 kHz.  Wideband-only gain therefore
+            restores loudness but leaves a residual HF spectral tilt.
+
+        v2 SOTA upgrades (2026-04-09):
+          1. STFT-domain frequency-dependent gain (HF boosted proportional to
+             estimated spacing loss derived from per-dip context comparison)
+          2. Per-dip HF tilt estimated adaptively from spectral centroid shift
+             in context vs. dip frames — no fixed tape-speed assumption needed
+          3. SNR guard per frequency bin: bins at noise floor are not boosted
+             (prevents amplification of residual tape hiss during deep dips)
+          4. Asymmetric gain envelope: slow onset (~30 % of dip duration) /
+             fast recovery (~10 %) matches the physical capstan-irregularity
+             dip morphology
+          5. §2.51 linked stereo: spectral gain derived from mono, applied
+             identically to L and R channels
+
+        Args:
+            audio:       Audio signal (mono [N] or stereo [N, 2] — float32/64)
+            sample_rate: Sample rate in Hz (expected: 48000)
+            strength:    Correction strength [0.0, 1.0]
+
+        Returns:
+            (stabilized_audio, n_dips_repaired)
+
+        References:
+            Wallace, R.L. (1951) The Reproduction of Magnetically Recorded
+            Signals. Bell System Technical Journal 30(4):1145–1173.
+            Camras, M. (1988) Magnetic Recording Handbook. §8.3.
+            McKnight, J.G. (1969) Tape Reproducer Response Measurements.
+        """
+        if strength < 0.01:
+            return audio, 0
+
+        audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
+
+        is_stereo = audio.ndim == 2
+        n_samples = audio_sample_count(audio)
+
+        if is_stereo:
+            mono = safe_to_mono(audio).astype(np.float64)
+        else:
+            mono = audio.astype(np.float64)
+
+        # ── Step 1: RMS envelope (20 ms / 10 ms) + percentile-75 reference ──
+        env_win_s = 0.020
+        env_hop_s = 0.010
+        ref_win_s = 0.500
+        # Material-adaptive thresholds:
+        # Primary tape (reel_tape/cassette): standard tape-head contact physics → tight params.
+        # Chain material (vinyl→tape→mp3 etc.): stabilizer runs because tape is in chain but the
+        # primary material is NOT tape → use conservative params to avoid false positives on
+        # natural musical dynamics (reverb tails, note decays, breath pauses = 30–80 ms).
+        if is_primary_tape:
+            dip_thresh_db = 3.0
+            min_dip_frames = 3  # 30 ms — tight for cassette capstan bumps
+            max_gain_db = 15.0
+        elif confirmed_tape_dip:
+            dip_thresh_db = 4.5
+            min_dip_frames = 6  # 60 ms — detected tape-stage dips in transferred material
+            max_gain_db = 13.0
+        else:
+            dip_thresh_db = 6.0  # only repair severe dips (> 6 dB below rolling p75)
+            min_dip_frames = 20  # 200 ms minimum — real tape contact dips last 200–500 ms
+            max_gain_db = 6.0  # max 6 dB boost for chain material (§0 Primum non nocere)
+        # Intro/outro protection: ignore only true edge zones. Primary tape/cassette can contain
+        # audible head-contact dips immediately after start; blanket 5-s protection masks exactly
+        # the defect class phase_12 is supposed to repair. Chain-material stays conservative.
+        _protect_s = 0.5 if is_primary_tape else 5.0
+        _protect_frames = int(_protect_s / env_hop_s)
+
+        env_win = max(1, int(env_win_s * sample_rate))
+        env_hop = max(1, int(env_hop_s * sample_rate))
+        n_frames = max(0, (n_samples - env_win) // env_hop)
+
+        if n_frames < 10:
+            return audio, 0
+
+        # rms_env — vectorised via stride_tricks (replaces Python list comprehension)
+        _n_needed = (n_frames - 1) * env_hop + env_win
+        if _n_needed <= len(mono):
+            _rms_frames = np.lib.stride_tricks.sliding_window_view(mono[:_n_needed], env_win)[::env_hop][:n_frames]
+            rms_env = np.sqrt(np.mean(_rms_frames**2, axis=1) + 1e-15)
+        else:
+            rms_env = np.array(
+                [np.sqrt(np.mean(mono[i * env_hop : i * env_hop + env_win] ** 2) + 1e-15) for i in range(n_frames)],
+                dtype=np.float64,
+            )
+        rms_db = 20.0 * np.log10(rms_env + 1e-15)
+
+        from scipy.ndimage import percentile_filter
+
+        ref_n = max(3, int(ref_win_s / env_hop_s))
+        ref_n = ref_n + (1 - ref_n % 2)  # ensure odd
+        # mode='nearest' repeats the edge value at signal boundaries.
+        # mode='reflect' (former setting) mirrors the signal: for a quiet intro the reflected
+        # window contained the louder song body → ref_db[0] = loud → intro detected as dip
+        # → up-to-15 dB boost at beginning/end of song (root cause of level surge artifact).
+        ref_db = percentile_filter(rms_db, percentile=75, size=ref_n, mode="nearest")
+
+        dip_mask_rms = rms_db < (ref_db - dip_thresh_db)
+        # Intro/outro protection: force dip_mask=False in first/last _protect_frames
+        if _protect_frames > 0 and n_frames > 2 * _protect_frames:
+            dip_mask_rms[:_protect_frames] = False
+            dip_mask_rms[-_protect_frames:] = False
+
+        from scipy.ndimage import label as nd_label
+
+        labeled, n_dips_raw = nd_label(dip_mask_rms)  # type: ignore[misc]  # type: ignore[misc]
+
+        if n_dips_raw == 0:
+            return audio, 0
+
+        # ── Step 2: Collect valid dip events ─────────────────────────────
+        rms_centres = np.arange(n_frames) * env_hop + env_win // 2  # sample pos
+
+        dip_events: list[tuple[np.ndarray, np.ndarray]] = []
+        for i in range(1, n_dips_raw + 1):
+            frames = np.where(labeled == i)[0]
+            if len(frames) < min_dip_frames:
+                continue
+            deficit = ref_db[frames] - rms_db[frames]
+            if np.max(deficit) > max_gain_db + 5.0:
+                continue  # likely genuine silence gap
+            if np.mean(rms_db[frames]) < -55.0:
+                continue  # noise floor — nothing to restore
+            dip_events.append((frames, deficit))
+
+        if not dip_events:
+            return audio, 0
+
+        # ── Step 3: STFT setup ────────────────────────────────────────────
+        # fft_size = 2048 → 42.7 ms @ 48 kHz; hop = 512 → 10.7 ms (75 % OV)
+        fft_size = 2048
+        hop_stft = fft_size // 4
+        n_freqs = fft_size // 2 + 1
+        freqs_hz = np.fft.rfftfreq(fft_size, d=1.0 / sample_rate)
+
+        _, _, X_mono = signal.stft(
+            mono,
+            fs=sample_rate,
+            window="hann",
+            nperseg=fft_size,
+            noverlap=fft_size - hop_stft,
+            boundary="even",
+            padded=True,
+        )
+        n_stft_frames = X_mono.shape[1]
+        stft_centres = np.arange(n_stft_frames) * hop_stft + fft_size // 2  # samples
+
+        X_mag_db = 20.0 * np.log10(np.abs(X_mono) + 1e-15)  # [n_freqs, n_stft_frames]
+
+        # Spectral gain mask: identity (1.0) everywhere — modified per dip below
+        spectral_gain = np.ones((n_freqs, n_stft_frames), dtype=np.float64)
+
+        # ── Step 4: Build per-dip spectral gain (broadband + HF tilt) ────
+        n_repaired = 0
+        ctx_n = 64  # context window ≈ 680 ms before dip onset
+
+        for rms_frames, deficit in dip_events:
+            _event_max_deficit_db = float(np.max(deficit))
+            _event_start = int(rms_frames[0] * env_hop)
+            _event_end = int(min(n_samples, (rms_frames[-1] + 1) * env_hop + env_win))
+            event_strength = self._compute_tape_level_local_strength(
+                mono,
+                _event_start,
+                _event_end,
+                sample_rate,
+                strength,
+                _event_max_deficit_db,
+                max_gain_db,
+                is_primary_tape=is_primary_tape,
+                confirmed_tape_dip=confirmed_tape_dip,
+                protected_zones=protected_zones or [],
+            )
+
+            # Map RMS dip frames → nearest STFT frame indices
+            rms_ctrs = rms_centres[rms_frames]
+            stft_idx = np.searchsorted(stft_centres, rms_ctrs)
+            stft_idx = np.unique(np.clip(stft_idx, 0, n_stft_frames - 1))
+            if len(stft_idx) == 0:
+                continue
+
+            # Per-STFT-frame broadband gain: interpolate from per-RMS-frame deficit
+            bb_gain_db_stft = np.interp(
+                stft_centres[stft_idx].astype(float),
+                rms_centres[rms_frames].astype(float),
+                np.clip(deficit * event_strength, 0.0, max_gain_db),
+            )  # dB, shape [n_stft_dip]
+
+            # ── HF spectral-tilt correction (Wallace spacing-loss inversion) ──
+            first_stft = int(stft_idx[0])
+            ctx_start = max(0, first_stft - ctx_n)
+            ctx_end = max(0, first_stft - 2)
+            hf_tilt_db = np.zeros(n_freqs, dtype=np.float64)  # per-bin
+
+            if ctx_end - ctx_start >= 4:
+                ctx_mag = X_mag_db[:, ctx_start:ctx_end]  # [n_freqs, ctx]
+                dip_mag = X_mag_db[:, stft_idx]  # [n_freqs, n_dip_stft]
+
+                # Reference: p75 of context per bin (robust to note-onset transients)
+                ref_spec = np.percentile(ctx_mag, 75, axis=1)  # [n_freqs]
+                dip_spec = np.mean(dip_mag, axis=1)  # [n_freqs]
+
+                spectral_loss = ref_spec - dip_spec  # positive = dropped in dip
+
+                # Remove broadband component (median of LF bins < 4 kHz)
+                lf_mask = freqs_hz < 4000.0
+                if lf_mask.any():
+                    broadband_loss = float(np.median(spectral_loss[lf_mask]))
+                else:
+                    broadband_loss = float(np.median(spectral_loss))
+
+                tilt_raw = spectral_loss - broadband_loss  # frequency-dep. residual
+
+                # SNR guard: bins where signal ≤ noise floor + 6 dB → no HF boost
+                noise_floor = np.percentile(ctx_mag, 10, axis=1)  # p10 ≈ noise floor
+                snr_in_dip = dip_spec - noise_floor
+                tilt_raw = np.where(snr_in_dip > 6.0, tilt_raw, 0.0)
+
+                # Cap HF tilt at 10 dB; only positive values (loss → boost)
+                hf_tilt_db = np.clip(tilt_raw, 0.0, 10.0) * event_strength
+
+            # ── Asymmetric gain envelope (slow onset / fast recovery) ────
+            # §2.35b Energie-Kontinuität (2026-09-26): Die frühere lineare
+            # Rampen-Länge max(1, 30 %) degenerierte bei kurzen Dips (3–6
+            # Frames = 30–60 ms) zu EINEM Fade-Frame → Sprung 1,0→Gain in
+            # ~11 ms; der TemporalConsistencyGuard maß 18 Energie-Sprünge
+            # > 6 dB/100 ms (Import-Song-Befund). Cosinus-Zügelung mit
+            # Mindestrampen (≥ 2 Frames) + finale Masken-Glättung sorgen für
+            # stufenfreie Flanken; sehr kurze Dips bekommen eine durchgehende
+            # Zügelung 0 → 1 → 0.
+            n_sf = len(stft_idx)
+            if n_sf <= 4:
+                fade_env = np.sin(np.linspace(0.0, np.pi, n_sf)) ** 2
+            else:
+                onset_n = min(max(2, int(n_sf * 0.30)), n_sf - 2)
+                recovery_n = min(max(2, int(n_sf * 0.10)), n_sf - onset_n)
+                fade_env = np.ones(n_sf, dtype=np.float64)
+                fade_env[:onset_n] = 0.5 - 0.5 * np.cos(np.linspace(0.0, np.pi, onset_n))
+                if n_sf > onset_n + recovery_n:
+                    fade_env[-recovery_n:] = 0.5 + 0.5 * np.cos(np.linspace(0.0, np.pi, recovery_n))
+
+            # ── Combine broadband + HF-tilt into spectral_gain mask — vectorised ──
+            tilt_lin = 10.0 ** (hf_tilt_db / 20.0)  # [n_freqs] — per-bin extra boost
+            max_lin = 10.0 ** (max_gain_db / 20.0)
+
+            _active_mask = bb_gain_db_stft >= 0.3
+            if np.any(_active_mask):
+                _active_idx = stft_idx[_active_mask]
+                _bb_lin = 10.0 ** (bb_gain_db_stft[_active_mask] / 20.0)  # (m,)
+                _fe = fade_env[_active_mask]  # (m,)
+                # combined[frame, freq] = 1 + (bb_lin[frame] * tilt_lin[freq] - 1) * fade_env[frame]
+                _comb = _bb_lin[:, None] * tilt_lin[None, :]  # (m, n_freqs)
+                _comb = 1.0 + (_comb - 1.0) * _fe[:, None]  # (m, n_freqs)
+                _comb = np.clip(_comb, 1.0, max_lin)  # (m, n_freqs)
+                spectral_gain[:, _active_idx] = _comb.T  # (n_freqs, m)
+
+            n_repaired += 1
+
+        if n_repaired == 0:
+            return audio, 0
+
+        # §2.35b Flankenglätte: 3-Frame-Mittel der Gain-Maske entlang der Zeit
+        # (OLA-freundlich) — stufenfreie Überblendung auch bei überlappenden
+        # Dips und harten Masken-Kanten; Identität-Regionen bleiben unverändert.
+        if spectral_gain.shape[1] >= 3:
+            _sg_pad = np.pad(spectral_gain, ((0, 0), (1, 1)), mode="edge")
+            spectral_gain = (_sg_pad[:, :-2] + _sg_pad[:, 1:-1] + _sg_pad[:, 2:]) / 3.0
+
+        # ── Step 5: Apply spectral gain to each channel (§2.51 linked) ──
+        def _apply_gain_to_channel(sig_ch: np.ndarray) -> np.ndarray:
+            """Wendet an: the spectral_gain mask to one audio channel via STFT."""
+            _, _, X_ch = signal.stft(
+                sig_ch.astype(np.float64),
+                fs=sample_rate,
+                window="hann",
+                nperseg=fft_size,
+                noverlap=fft_size - hop_stft,
+                boundary="even",
+                padded=True,
+            )
+            n_apply = min(X_ch.shape[1], spectral_gain.shape[1])
+            X_ch[:, :n_apply] *= spectral_gain[:, :n_apply]
+            _, y = signal.istft(
+                X_ch,
+                fs=sample_rate,
+                window="hann",
+                nperseg=fft_size,
+                noverlap=fft_size - hop_stft,
+                boundary="even",
+            )
+            # Trim / zero-pad to original length
+            y_out = np.zeros(n_samples, dtype=np.float64)
+            n_trim = min(len(y), n_samples)
+            y_out[:n_trim] = y[:n_trim]
+            return y_out  # type: ignore[no-any-return]
+
+        if is_stereo:
+            left, right = stereo_channel_view(audio)
+            L_out = _apply_gain_to_channel(left)
+            R_out = _apply_gain_to_channel(right)
+            result = stereo_like(L_out, R_out, audio)
+        else:
+            result = _apply_gain_to_channel(mono)
+
+        result = np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0)
+        result = np.clip(result, -1.0, 1.0).astype(np.float32)
+
+        logger.debug(
+            "Tape level stabilizer v2 (STFT): %d dips repaired, HF-tilt correction active, strength=%.2f",
+            n_repaired,
+            strength,
+        )
+
+        return result, n_repaired
+
+    def _local_pitch_flatten(
+        self,
+        bump_audio: np.ndarray,
+        ctx_before: np.ndarray,
+        ctx_after: np.ndarray,
+        sample_rate: int,
+        strength: float,
+    ) -> np.ndarray:
+        """Flatten pitch excursion in a bump region using context-guided resampling.
+
+        Algorithm:
+            1. Estimate reference pitch from context (before + after bump)
+            2. Estimate pitch within the bump
+            3. Compute per-sample resampling ratio to flatten toward reference
+            4. Apply via linear interpolation (fast, no phase vocoder overhead)
+        """
+        n = len(bump_audio)
+        if n < 64:
+            return bump_audio
+
+        # Estimate reference pitch from context
+        ref_pitch_before = self._quick_pitch_estimate(ctx_before, sample_rate) if len(ctx_before) > 256 else 0.0
+        ref_pitch_after = self._quick_pitch_estimate(ctx_after, sample_rate) if len(ctx_after) > 256 else 0.0
+
+        if ref_pitch_before > 0 and ref_pitch_after > 0:
+            ref_pitch = (ref_pitch_before + ref_pitch_after) / 2.0
+        elif ref_pitch_before > 0:
+            ref_pitch = ref_pitch_before
+        elif ref_pitch_after > 0:
+            ref_pitch = ref_pitch_after
+        else:
+            return bump_audio  # Cannot determine reference → skip
+
+        # Estimate pitch in bump
+        bump_pitch = self._quick_pitch_estimate(bump_audio, sample_rate)
+        if bump_pitch <= 0 or ref_pitch <= 0:
+            return bump_audio
+
+        # Compute pitch ratio
+        ratio = ref_pitch / bump_pitch
+        # Only correct if there's a meaningful deviation (> 0.5 %)
+        if abs(ratio - 1.0) < 0.005:
+            return bump_audio
+
+        # Clamp correction to avoid extreme warping
+        correction = 1.0 + strength * (ratio - 1.0)
+        correction = np.clip(correction, 0.9, 1.1)  # max ±10 % correction
+
+        # Resample via linear interpolation
+        new_len = int(n * correction)
+        if new_len < 4 or new_len > n * 3:
+            return bump_audio
+
+        indices = np.linspace(0, n - 1, new_len)
+        resampled = np.interp(indices, np.arange(n), bump_audio).astype(np.float32)
+
+        # Fit back to original length via truncation or zero-pad + crossfade
+        if len(resampled) >= n:
+            result = resampled[:n]
+        else:
+            result = np.zeros(n, dtype=np.float32)
+            result[: len(resampled)] = resampled
+            # Fade out tail
+            fade = max(1, n - len(resampled))
+            result[len(resampled) :] = bump_audio[len(resampled) :] * np.linspace(1.0, 0.0, fade)[: n - len(resampled)]
+
+        return np.clip(result, -1.0, 1.0)  # type: ignore[no-any-return]
+
+    def _quick_pitch_estimate(self, audio: np.ndarray, sample_rate: int) -> float:
+        """Fast autocorrelation-based pitch estimate for short segments.
+
+        Returns estimated pitch in Hz, or 0.0 if unvoiced/unreliable.
+        """
+        n = len(audio)
+        if n < 128:
+            return 0.0
+
+        # Use center portion
+        center = audio[n // 4 : 3 * n // 4]
+        center = center - np.mean(center)
+        if np.max(np.abs(center)) < 1e-6:
+            return 0.0
+
+        # Autocorrelation via FFT
+        n_fft = 1
+        while n_fft < len(center) * 2:
+            n_fft *= 2
+        fft_x = np.fft.rfft(center, n=n_fft)
+        acf = np.fft.irfft(fft_x * np.conj(fft_x))[: len(center)]
+
+        if acf[0] < 1e-10:
+            return 0.0
+        acf = acf / acf[0]
+
+        # Find first peak after initial decline
+        min_lag = max(2, int(sample_rate / 1000.0))  # 1000 Hz max
+        max_lag = min(len(acf) - 1, int(sample_rate / 50.0))  # 50 Hz min
+
+        if max_lag <= min_lag:
+            return 0.0
+
+        search = acf[min_lag : max_lag + 1]
+        if len(search) < 3:
+            return 0.0
+
+        peak_idx = int(np.argmax(search))
+        peak_val = search[peak_idx]
+
+        if peak_val < 0.3:  # low confidence
+            return 0.0
+
+        lag = min_lag + peak_idx
+        return float(sample_rate) / float(lag) if lag > 0 else 0.0
+
+    def _separate_wow_flutter(self, pitch_trajectory: np.ndarray, sample_rate: int) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Separate wow (<4 Hz) and flutter (4-100 Hz) components.
+
+        Wow: Slow speed variations (<4 Hz) - from motor/belt issues
+        Flutter: Fast speed variations (4-100 Hz) - from mechanical vibrations
+
+        Args:
+            pitch_trajectory: Pitch estimates (Hz) over time
+            sample_rate: Original audio sample rate (used to determine analysis frame rate)
+
+        Returns:
+            (wow_component, flutter_component): Separated pitch deviation components
+        """
+        # Remove zero values (unvoiced frames)
+        valid_mask = pitch_trajectory > 0
+        valid_pitches = pitch_trajectory[valid_mask]
+
+        if len(valid_pitches) < 10:
+            # Too few valid estimates
+            return np.zeros_like(pitch_trajectory), np.zeros_like(pitch_trajectory)
+
+        # Calculate median pitch (stable reference)
+        median_pitch = np.median(valid_pitches)
+
+        # Pitch deviation from median (as percentage)
+        deviation = np.zeros_like(pitch_trajectory)
+        deviation[valid_mask] = (valid_pitches - median_pitch) / median_pitch * 100
+
+        # Calculate frame rate of pitch trajectory
+        window_samples = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
+        hop_samples = window_samples // self.PITCH_HOP_FACTOR
+        frame_rate = sample_rate / hop_samples
+
+        # Low-pass filter for wow (<4 Hz)
+        wow_cutoff = 4.0  # Hz
+        nyquist = frame_rate / 2
+        if wow_cutoff < nyquist:
+            sos_wow = signal.butter(4, wow_cutoff / nyquist, btype="low", output="sos")
+            wow_component = signal.sosfiltfilt(sos_wow, deviation)
+        else:
+            wow_component = deviation  # Frame rate too low, treat all as wow
+
+        # Band-pass filter for flutter (4-100 Hz)
+        flutter_low = 4.0  # Hz
+        flutter_high = 100.0  # Hz
+        if flutter_high < nyquist:
+            sos_flutter = signal.butter(4, [flutter_low / nyquist, flutter_high / nyquist], btype="band", output="sos")
+            flutter_component = signal.sosfiltfilt(sos_flutter, deviation)
+        else:
+            flutter_component = deviation - wow_component
+
+        return wow_component, flutter_component
+
+    def _detect_wow_flutter(
+        self, pitch_trajectory: np.ndarray, confidence: np.ndarray, threshold: float
+    ) -> tuple[bool, float]:
+        """
+        Erkennt wow & flutter by analyzing pitch deviations with confidence weighting.
+
+        Args:
+            pitch_trajectory: Pitch estimates (Hz)
+            confidence: Confidence scores (0.0-1.0)
+            threshold: Detection threshold (percent deviation)
+
+        Returns:
+            (detected, max_deviation_percent)
+        """
+        max_deviation = self._calculate_max_deviation(pitch_trajectory, confidence)
+
+        # Detect if max deviation exceeds threshold
+        detected = max_deviation > threshold
+
+        return detected, max_deviation
+
+    def _calculate_max_deviation(self, pitch_trajectory: np.ndarray, confidence: np.ndarray) -> float:
+        """Calculate max pitch deviation weighted by confidence."""
+        # Only use confident pitch estimates (confidence > 0.5)
+        confident_mask = (pitch_trajectory > 0) & (confidence > 0.5)
+
+        if np.sum(confident_mask) < 10:
+            return 0.0
+
+        confident_pitches = pitch_trajectory[confident_mask]
+        median_pitch = np.median(confident_pitches)
+
+        # Deviation from median (percentage)
+        deviations = np.abs((confident_pitches - median_pitch) / median_pitch) * 100
+
+        # Max deviation
+        max_dev = np.max(deviations) if len(deviations) > 0 else 0.0
+
+        return max_dev
+
+    def _calculate_stretch_factors(
+        self,
+        pitch_trajectory: np.ndarray,
+        confidence: np.ndarray,
+        strength: float,
+        *,
+        max_stretch_delta: float = 0.05,
+    ) -> np.ndarray:
+        """
+        Calculate time-stretching factors to correct pitch deviations.
+
+        Stretch factor > 1.0: slow down (pitch was too high)
+        Stretch factor < 1.0: speed up (pitch was too low)
+
+        Args:
+            pitch_trajectory: Pitch estimates (Hz)
+            confidence: Confidence scores (0.0-1.0)
+            strength: Correction strength (0.0-1.0)
+
+        Returns:
+            Array of stretch factors (one per pitch estimate)
+        """
+        # Use confident estimates to determine target pitch
+        confident_mask = (pitch_trajectory > 0) & (confidence > 0.5)
+
+        if np.sum(confident_mask) < 10:
+            # Not enough confident estimates, no correction
+            return np.ones_like(pitch_trajectory)  # type: ignore[no-any-return]
+
+        confident_pitches = pitch_trajectory[confident_mask]
+
+        # §0 Primum non nocere — Melody-Detection Guard:
+        # pYIN measures ALL pitch variation, including melodic note changes.
+        # A span > 100 cents (1 semitone P5..P95) cannot be wow/flutter:
+        # real wow/flutter is < 50 cents; melody spans multiple semitones.
+        # Applying melody-derived stretch_factors destroys the recording.
+        if len(confident_pitches) >= 10:
+            _cp_p5 = np.percentile(confident_pitches, 5)
+            _cp_p95 = np.percentile(confident_pitches, 95)
+            if _cp_p5 > 0.0 and _cp_p95 > _cp_p5:
+                _span_cents = 1200.0 * np.log2(_cp_p95 / _cp_p5)
+                _mat_key = str(getattr(self, "_mat_type_for_stretch", "") or "").lower()
+                _wow_sev = float(getattr(self, "_wow_sev_for_stretch", 0.0) or 0.0)
+                # Smooth: limit = 100 + 300 × severity, clamped to [100, 400]
+                _adaptive_limit = 100.0 + 300.0 * min(_wow_sev, 1.0)
+                _adaptive_limit = max(100.0, min(_adaptive_limit, 400.0))
+                if _span_cents > _adaptive_limit:
+                    self._melody_guard_refused = True
+                    logger.info(
+                        "Verarbeitungsschritt 12 pitch span %.0f cents > %.0f (mat=%s wow=%.2f)",
+                        _span_cents,
+                        _adaptive_limit,
+                        _mat_key,
+                        _wow_sev,
+                    )
+                    _res_typed_3275: np.ndarray = np.ones_like(pitch_trajectory)
+                    return _res_typed_3275
+                else:
+                    logger.info(
+                        "Verarbeitungsschritt 12 pitch span %.0f cents within limit %.0f (mat=%s wow=%.2f)",
+                        _span_cents,
+                        _adaptive_limit,
+                        _mat_key,
+                        _wow_sev,
+                    )
+
+        target_pitch = np.median(confident_pitches)
+
+        # Calculate stretch factors for each frame — vectorised (replaces Python for-loop)
+        _valid_mask = (pitch_trajectory > 0) & (confidence > 0.3)
+        _raw_stretch = np.where(_valid_mask, pitch_trajectory / max(float(target_pitch), 1e-8), 1.0)
+        _unclamped = 1.0 + strength * (_raw_stretch - 1.0)
+        stretch_factors = np.where(
+            _valid_mask,
+            np.clip(_unclamped, 1.0 - max_stretch_delta, 1.0 + max_stretch_delta),
+            1.0,
+        ).astype(pitch_trajectory.dtype)
+
+        # Stretch-Faktoren glätten mit Savitzky-Golay (polynomialer Least-Squares-Smoother)
+        # Ersetzt signal.medfilt: Savitzky-Golay erhält Peaks und liefert glatteren Verlauf
+        try:
+            from scipy.signal import savgol_filter
+
+            stretch_factors = savgol_filter(stretch_factors, window_length=5, polyorder=2)
+        except Exception:
+            # Notfall-Fallback: Uniform-Smoothing
+            from scipy.ndimage import uniform_filter1d
+
+            stretch_factors = uniform_filter1d(stretch_factors, size=5, mode="nearest")
+        stretch_factors = np.clip(
+            stretch_factors,
+            1.0 - max_stretch_delta,
+            1.0 + max_stretch_delta,
+        )
+
+        return stretch_factors  # type: ignore[no-any-return]
+
+    def _preserve_musical_modulation(
+        self,
+        flutter_stretch: np.ndarray,
+        pitch_trajectory: np.ndarray,
+        confidence: np.ndarray,
+        sample_rate: int,
+    ) -> np.ndarray:
+        """§AUTH-P12 (§v10.709-Befund 2026-09-08): Erhält Vibrato/Intonations-Bends.
+
+        Root-Cause: _flutter_stretch korrigiert das gesamte schnelle Pitch-Band
+        (4–100 Hz) einschließlich musikalischer Modulation (Vibrato 3.5–8 Hz,
+        Intonations-Bends) — authentizitaet (versa_similarity) fällt nach
+        Verarbeitungsschritt_12. Mechanischer Flutter ist global + flach,
+        musikalische Modulation lokal + tief (Vokal-Frames). Wo die musikalische
+        Modulationstiefe die Flutter-Korrektur dominiert, wird die Korrektur
+        proportional Richtung Identität zurückgenommen (max. 85 %) — Wow/
+        Flutter an mechanisch belasteten Stellen bleibt voll korrigiert.
+        Deterministisch, NaN/Inf-geschützt (§0a), keine neuen Abhängigkeiten.
+        """
+        sf = np.asarray(flutter_stretch, dtype=np.float64)
+        if sf.size < 8 or float(np.max(np.abs(sf - 1.0))) < 1e-4:
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
+        pt = np.asarray(pitch_trajectory, dtype=np.float64)
+        cf = np.asarray(confidence, dtype=np.float64)
+        n = int(min(len(sf), len(pt)))
+        if n < 8:
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
+        sf, pt, cf = sf[:n], pt[:n], cf[:n]
+        _valid = (np.isfinite(pt)) & (pt > 0.0) & (np.isfinite(cf)) & (cf > 0.3)
+        if not bool(_valid.any()):
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
+        _target = float(np.nanmedian(pt[_valid]))
+        if not np.isfinite(_target) or _target <= 1e-6:
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
+        _dev = np.where(_valid, pt / _target - 1.0, 0.0)
+        try:
+            from scipy.signal import savgol_filter
+
+            _hop = max(1, int(self.PITCH_WINDOW_MS * sample_rate / 1000) // int(self.PITCH_HOP_FACTOR))
+            _frame_rate = max(1.0, float(sample_rate) / _hop)
+            # Savitzky-Golay-Fenster ≈ 3-Hz-Grenze: trennt Wow (langsam) vom
+            # schnellen Flutter+Vibrato-Band
+            _win = int(round(_frame_rate / 3.0))
+            _win = max(5, _win if _win % 2 == 1 else _win + 1)
+            if _win >= n:
+                _win = n - 1 if (n - 1) % 2 == 1 else n - 2
+            if _win < 5:
+                return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
+            _slow = savgol_filter(_dev, window_length=_win, polyorder=2, mode="interp")
+        except Exception as _savg_exc:
+            logger.debug("§AUTH-P12: Savitzky-Golay nicht verfügbar — keine Vibrato-Erhaltung: %s", _savg_exc)
+            return np.asarray(flutter_stretch)  # type: ignore[no-any-return]
+        _fast = _dev - _slow
+        _fast = np.nan_to_num(_fast, nan=0.0, posinf=0.0, neginf=0.0)
+        try:
+            from scipy.ndimage import uniform_filter1d
+
+            _fast_env = uniform_filter1d(np.abs(_fast), size=_win, mode="nearest")
+        except Exception:
+            _fast_env = np.abs(_fast)
+        _flutter_env = np.abs(sf - 1.0)
+        _eps = 1e-6
+        _w = np.clip(_fast_env / np.maximum(_flutter_env, _eps), 0.0, 1.0)
+        _preserved = 1.0 + (sf - 1.0) * (1.0 - 0.85 * _w)
+        _preserved = np.nan_to_num(_preserved, nan=1.0, posinf=1.0, neginf=1.0)
+        _preserved = np.clip(_preserved, 0.9, 1.1)
+        _preservation_ratio = float(np.clip(np.mean(_w), 0.0, 1.0))
+        if _preservation_ratio > 0.05:
+            logger.info(
+                "§AUTH-P12: Vibrato-Erhaltung aktiv — %.0f %% der Flutter-Korrektur "
+                "zugunsten musikalischer Modulation zurückgenommen",
+                _preservation_ratio * 100.0,
+            )
+        return _preserved.astype(flutter_stretch.dtype, copy=False)  # type: ignore[no-any-return]
+
+    @staticmethod
+    def _apply_defect_locality_to_stretch_factors(
+        stretch_factors: np.ndarray,
+        *,
+        audio_length_samples: int,
+        sample_rate: int,
+        defect_locations: dict[str, list[tuple[float, float]]] | None,
+    ) -> tuple[np.ndarray, float]:
+        """Begrenzt Stretch-Faktoren auf erkannte Wow/Flutter-nahe Defektsegmente."""
+        sf = np.asarray(stretch_factors, dtype=np.float32)
+        if sf.size == 0 or audio_length_samples <= 0 or sample_rate <= 0:
+            return sf, 0.0
+        if not isinstance(defect_locations, dict) or not defect_locations:
+            return sf, 0.0
+
+        location_keys = (
+            "wow",
+            "flutter",
+            "wow_flutter",
+            "multiband_wow_flutter",
+            "scrape_flutter",
+            "flutter_spectral_sidebands",
+        )
+        merged_locations: list[tuple[float, float]] = []
+        for key in location_keys:
+            for loc in defect_locations.get(key) or []:
+                if not isinstance(loc, tuple) or len(loc) != 2:
+                    continue
+                try:
+                    start_s = max(0.0, float(loc[0]))
+                    end_s = max(start_s, float(loc[1]))
+                except Exception:
+                    logger.debug(
+                        "_anwenden_defect_locality_to_stretch_factors: silent except suppressed", exc_info=True
+                    )
+                    continue
+                merged_locations.append((start_s, end_s))
+
+        if not merged_locations:
+            return sf, 0.0
+
+        n_frames = int(sf.size)
+        duration_s = float(audio_length_samples) / float(sample_rate)
+        frame_centers_s = ((np.arange(n_frames, dtype=np.float32) + 0.5) / max(float(n_frames), 1.0)) * duration_s
+        active_mask = np.zeros(n_frames, dtype=bool)
+        pad_s = 0.05
+        for start_s, end_s in merged_locations:
+            active_mask |= (frame_centers_s >= max(0.0, start_s - pad_s)) & (frame_centers_s <= end_s + pad_s)
+
+        if not np.any(active_mask):
+            return np.ones_like(sf), 0.0
+
+        masked = np.where(active_mask, sf, 1.0).astype(np.float32)
+        return masked, float(np.mean(active_mask.astype(np.float32)))
+
+    def _smooth_stretch_factors(self, factors: np.ndarray, max_step: float = 0.05) -> np.ndarray:
+        """§WF-V3: Slope-Limit der Stretch-Faktor-Trajektorie vor der Zeitstreckung.
+
+        Root-Cause-Fix (§v10.709-Befund): Stufen in den Stretch-Faktoren erzeugen
+        Zeitwarp-Sprünge → Energie-Sprünge >6 dB/100 ms, Pre-Echo-Befunde und
+        timbre_authentizitaet-Degradation (Produktionsbefund vinyl/1970).
+        Lipschitz-Projektion (4 Durchläufe, O(n)) mit |Δ| ≤ max_step pro
+        Pitch-Fenster (42,7 ms). max_step wird an max_stretch_delta des
+        Algorithmus gekoppelt (Wow 5 %, Flutter 3 %): die Projektion ist damit
+        die IDENTITÄT für jede legitime _calculate_stretch_factors-Ausgabe und
+        entfernt ausschließlich Blend-/Konsens-Sprungartefakte oberhalb der
+        algorithmischen Kappe. Ein hartes 2,5-%-Limit war zu streng und
+        dämpfte die Wow/Flutter-Korrektur hörbar (Nutzerbefund).
+
+        Deterministisch (§G5 copilot-instructions.md), kausalfrei (Vorwärts+
+        Rückwärts), begrenzt auf [min, max] der Eingabe (kein Overshoot).
+        """
+        _f = np.asarray(factors, dtype=np.float64)
+        if _f.ndim != 1 or _f.size < 5:
+            return np.array(factors, dtype=np.float32, copy=True)  # type: ignore[no-any-return]
+        _max_step = float(max(1e-4, min(float(max_step), 1.0)))
+        _out = _f.copy()
+        # Vorwärts: Anstiege begrenzen, dann Abfälle begrenzen
+        for _i in range(1, _out.size):
+            _out[_i] = min(_out[_i], _out[_i - 1] + _max_step)
+        for _i in range(1, _out.size):
+            _out[_i] = max(_out[_i], _out[_i - 1] - _max_step)
+        # Rückwärts: Abfälle begrenzen, dann Anstiege begrenzen (Symmetrie)
+        for _i in range(_out.size - 2, -1, -1):
+            _out[_i] = max(_out[_i], _out[_i + 1] - _max_step)
+        for _i in range(_out.size - 2, -1, -1):
+            _out[_i] = min(_out[_i], _out[_i + 1] + _max_step)
+        return np.asarray(_out, dtype=np.float32)  # type: ignore[no-any-return]
+
+    def _spectral_warp_supply_or_consensus(
+        self, audio_mono: np.ndarray, sf_samples: np.ndarray, sample_rate: int
+    ) -> np.ndarray:
+        """§Witness-SOTA WF-V2: F0-unabhängige Spektral-Warp-Schätzung (Capstan-Prinzip).
+
+        Zwei Rollen:
+        1. VERSORGUNG im Zero-Consensus-Fall (sf ≈ konstant 1 — pYIN/CREPE
+           fanden nichts, typisch instrumental/dicht): Die Spektral-Schätzung
+           liefert die Warp-Trajektorie, wenn ihre Qualität hoch ist.
+        2. KONSENS-Verfeinerung, wenn eine F0-Trajektorie existiert: Überein-
+           stimmende Frames werden gemittelt, widersprechende bleiben bei der
+           F0-Schätzung (Vorsicht vor falschen Spektral-Schätzungen).
+        """
+        try:
+            from backend.core.dsp.warp_estimator import (  # pylint: disable=import-outside-toplevel
+                consensus_warp,
+                spectral_warp_estimate,
+            )
+
+            # Perf-Guard: die Spektral-Schätzung ist O(Frames × Shifts) — für
+            # sehr lange Signale nicht im Fallback-Pfad erzwingen.
+            if len(audio_mono) > 300 * max(1, sample_rate):
+                return sf_samples
+            times, warp_est, quality = spectral_warp_estimate(audio_mono, sample_rate)
+            if len(warp_est) < 4:
+                return sf_samples
+            # §WF-V2-Amplituden-Gate (2026-09-13, Witness-Befund 11:24: pitch_instability/
+            # air_loss/roughness/pre_echo): Mechanisches Wow liegt bei ±0,2…±2 % —
+            # die Versorgung wird auf ±2 % gedeckelt (statt ±10 %). Größere
+            # Abweichungen sind kein Wow, sondern musikalischer Inhalt oder
+            # Schätzfehler und gehören NICHT in den Zero-Consensus-Pfad.
+            stretch_est = 1.0 / np.clip(warp_est, 0.98, 1.02)
+            _flat = bool(np.max(np.abs(sf_samples - 1.0)) < 0.002)
+
+            # §WF-V2-Härtung (2026-09-13, §v10.709-Befund): Wow ist mechanisch und
+            # langsam (< 4 Hz) — musikalische Modulation (Vibrato, Bends) und
+            # Schätzrauschen liegen höher. Die Versorgung darf nur anspringen,
+            # wenn die Deviation-Trajektorie vom Wow-Band dominiert wird — sonst
+            # korrigiert sie musikalischen Inhalt (artikulation/tonal_center-
+            # Degradation, Produktionsbefund nach Verarbeitungsschritt 12).
+            def _wow_band_fraction(dev_traj: np.ndarray, t_grid: np.ndarray) -> float:
+                _d = np.asarray(dev_traj, dtype=np.float64)
+                if _d.size < 8:
+                    return 0.0
+                _d = _d - float(np.mean(_d))  # Trend entfernen
+                _sp = np.abs(np.fft.rfft(_d)) ** 2
+                if t_grid.size > 1 and t_grid[-1] > t_grid[0]:
+                    _dt = float((t_grid[-1] - t_grid[0]) / max(t_grid.size - 1, 1))
+                else:
+                    _dt = 1.0 / max(1, sample_rate)
+                _freqs = np.fft.rfftfreq(_d.size, d=_dt)
+                _total = float(np.sum(_sp)) + 1e-12
+                return float(np.sum(_sp[_freqs <= 4.0]) / _total)
+
+            _wow_frac = _wow_band_fraction(stretch_est - 1.0, times)
+            if _flat:
+                # Zero-Consensus-Versorgung: nur bei hoher, konsistenter Qualität
+                # UND mechanischem Wow-Profil (< 4 Hz dominiert).
+                if (
+                    float(np.median(quality)) >= 0.55
+                    and float(np.max(np.abs(stretch_est - 1.0))) >= 0.004
+                    and _wow_frac >= 0.6
+                ):
+                    logger.info(
+                        "§WF-V2 Spektral-Warp-Versorgung (Zero-Consensus): median_quality=%.3f, max_dev=%.4f, wow_band=%.2f",
+                        float(np.median(quality)),
+                        float(np.max(np.abs(stretch_est - 1.0))),
+                        _wow_frac,
+                    )
+                    # Auf das Raster der Eingabe-Trajektorie interpolieren — die
+                    # Spektral-Schätzung hat ihr eigenes Frame-Grid (hop=1024).
+                    _supplied: np.ndarray
+                    if len(sf_samples) > 1:
+                        _frac = np.linspace(0.0, 1.0, len(sf_samples), dtype=np.float64)
+                        _t_frac = times.astype(np.float64) / max(float(times[-1]), 1e-9)
+                        _supplied = np.asarray(np.interp(_frac, _t_frac, stretch_est))
+                    else:
+                        _supplied = np.array([float(np.median(stretch_est))], dtype=np.float64)
+                    return np.array(_supplied, dtype=np.float32)  # type: ignore[no-any-return]
+                return sf_samples
+            _cons_arr: np.ndarray
+            _agree_arr: np.ndarray
+            _cons_arr, _agree_arr = consensus_warp(
+                sf_samples, None, stretch_est, times, quality_b=quality, tol=0.01, min_quality=0.5
+            )
+            # Konsens nur bei belastbarer Mehrheit (≥ 50 %) UND hoher Spektral-
+            # Qualität — 25 % reichte für jitter-behaftete Verfeinerungen.
+            if float(_agree_arr.mean()) >= 0.5 and float(np.median(quality)) >= 0.55:
+                logger.info(
+                    "§WF-V2 Spektral-Warp-Konsens: %.0f%% Frames übereinstimmend", float(_agree_arr.mean()) * 100.0
+                )
+                return np.array(_cons_arr, dtype=np.float32)  # type: ignore[no-any-return]
+            return sf_samples
+        except Exception as _wf2_exc:  # pylint: disable=broad-except
+            logger.debug("§WF-V2 nicht anwendbar (%s) — Trajektorie unverändert", _wf2_exc)
+            return sf_samples
+
+    def _speed_warp_resample(self, audio: np.ndarray, stretch_factors: np.ndarray, sample_rate: int) -> np.ndarray:
+        """§WF-R1 Inverse Geschwindigkeits-Warp — variabel ratiges Resampling.
+
+        Wow/Flutter ist ein Laufgeschwindigkeits-Defekt x_d(t) = x(φ(t)) mit
+        φ' = 1+δ(t); das exakte Inverse ist der Resample y(t) = x_d(φ⁻¹(t))
+        (Capstan-Prinzip). Nur dieser Operator korrigiert Pitch UND Timing
+        gemeinsam — pitch-erhaltende Zeitdehner (PSOLA/Phase-Vocoder) lassen
+        die Modulation unverändert. Stretch > 1 = langsamer (Pitch-Korrektur
+        nach unten); gleiche Faktoren ergeben für alle Kanäle identische
+        Sample-Abbildung (§2.51 L/R-Timing-Invariante). Bandbegrenztes
+        Fenster-Sinc-Resampling (WF-V1) statt linearer Interpolation.
+        """
+        audio_f = np.nan_to_num(np.asarray(audio, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
+        n_samples = len(audio_f)
+
+        sf = np.asarray(stretch_factors, dtype=np.float32)
+        sf = np.clip(sf, 0.90, 1.10)
+        if len(sf) == 1:
+            sf_samples = np.full(n_samples, sf[0], dtype=np.float32)
+        elif len(sf) == n_samples:
+            sf_samples = sf  # bereits Sample-Raster
+        else:
+            # §G188 (GEBOTE.md) Frame-Ausrichtung: die Schätzer referenzieren
+            # Frame k auf Sample k·hop (center=True-Konvention des Fensters).
+            # Die frühere linspace-Abbildung über die volle Länge verzerrte das
+            # Raster (1241 statt 1200 Samples/Frame) und verschob die Korrektur
+            # phasenverschoben dagegen (gemessen −18,7° bei 1 Hz → nur ~70 %
+            # statt ~99 % Auslöschung; Offset-Sweep: k·hop → Rest 1,7 statt 5,8).
+            _win = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
+            _hop = max(1, _win // self.PITCH_HOP_FACTOR)
+            _pos = np.arange(len(sf), dtype=np.float64) * _hop
+            dst_idx = np.arange(n_samples, dtype=np.float64)
+            sf_samples = np.interp(dst_idx, _pos, sf.astype(np.float64)).astype(np.float32)
+
+        try:
+            from scipy.signal import savgol_filter
+
+            win = max(5, (n_samples // 400) | 1)
+            win = min(win, n_samples if n_samples % 2 == 1 else n_samples - 1)
+            if win >= 5:
+                sf_samples = savgol_filter(sf_samples, window_length=win, polyorder=2, mode="interp")
+        except Exception as _exc:
+            logger.debug("Operation fehlgeschlagen (unkritisch): %s", _exc)
+
+        sf_samples = np.clip(sf_samples, 0.90, 1.10)
+
+        # §Witness-SOTA WF-V2: Die Spektral-Warp-Versorgung lief bereits EINMAL
+        # im Hauptfluss (Mono-Referenz, §2.51). Hier NICHT je Kanal erneut
+        # schätzen — sonst divergieren Mid/Side-Trajektorien (L/R-Zeitversatz).
+        if np.max(np.abs(sf_samples - 1.0)) < 0.002:
+            return audio.copy()
+
+        # §Witness-SOTA WF-V3: Kalman-Glättung der Stretch-Trajektorie —
+        # der pYIN/CREPE-Jitter darf nicht direkt ins Warping übertragen werden.
+        try:
+            from backend.core.dsp.warp_kalman import kalman_smooth_warp  # pylint: disable=import-outside-toplevel
+
+            sf_samples = kalman_smooth_warp(sf_samples, q=1e-8, r=1e-5).astype(np.float32)
+        except Exception as _wk_exc:  # pylint: disable=broad-except
+            logger.debug("§WF-V3 Kalman-Glättung nicht anwendbar (%s) — ungeglättet", _wk_exc)
+
+        # §WF-R1 (2026-09-25): Warp-Position in FLOAT64 akkumulieren. Ein
+        # float32-cumsum quantisiert ab |phi| > 2^18 die Schrittweite
+        # (ulp = 1/32 > Schritt ≈ 1) — gemessene Schritt-Extrema 0,99219/
+        # 1,01562 (Float-Quanten) statt ±0,73 %; die Korrektur löschte sich
+        # dadurch größtenteils aus (FM-Rest 11,8 statt theoretisch 5,4 cents).
+        sf64 = np.asarray(sf_samples, dtype=np.float64)
+        src_step = 1.0 / np.clip(sf64, 0.85, 1.15)
+        src_pos = np.cumsum(src_step)  # float64: keine Rasterung der Position
+        src_pos -= src_pos[0]
+        max_pos = float(src_pos[-1]) + 1e-12
+        src_pos *= (n_samples - 1) / max_pos
+        src_pos = np.clip(src_pos, 0.0, n_samples - 1)
+
+        # §Witness-SOTA WF-V1: Bandbegrenztes Fenster-Sinc-Resampling statt
+        # linearer np.interp-Interpolation (kein HF-Aliasing). §V6 (copilot-instructions.md)-
+        # Ersatzpfad: bei Fehler bleibt np.interp.
+        try:
+            from backend.core.dsp.bandlimited_resampler import (
+                bandlimited_warp,  # pylint: disable=import-outside-toplevel
+            )
+
+            corrected = bandlimited_warp(audio_f, src_pos)
+        except Exception as _bw_exc:  # pylint: disable=broad-except
+            logger.warning(
+                "§V6 (copilot-instructions.md) WF-V1 Resampler nicht anwendbar (%s) — np.interp-Ersatzpfad",
+                _bw_exc,
+            )
+            corrected = np.interp(src_pos, np.arange(n_samples, dtype=np.float32), audio_f)
+        corrected = np.nan_to_num(corrected, nan=0.0, posinf=0.0, neginf=0.0)
+        return corrected.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
+
+    def _band_limited_warp(
+        self,
+        audio: np.ndarray,
+        stretch_factors: np.ndarray,
+        sample_rate: int,
+        *,
+        lo_hz: float = 4000.0,
+        hi_hz: float = 12000.0,
+    ) -> np.ndarray:
+        """§7.4c-L3 (2026-09-27): Bandbegrenzter Inverse-Warp für bandabhängiges
+        Flutter (multiband_wow_flutter, Hint > 4 Hz).
+
+        Ein globaler Warp würde das NICHT modulierte Tieffrequenz-Band neu
+        modulieren (Regression auf unberührtem Material — der Defekt ist
+        bandselektiv). Deshalb: exakt komplementäre Aufspaltung — nur das Band
+        [lo, hi] wird gewarpt, der Rest (x − Band) bleibt bit-identisch
+        (Hörordnung §8a Never-worsen; deterministisch §G5 (copilot-instructions.md)).
+        """
+        from scipy.signal import butter as _butter_blw
+        from scipy.signal import sosfiltfilt as _sosfiltfilt_blw
+
+        x = np.nan_to_num(np.asarray(audio, dtype=np.float64), nan=0.0, posinf=0.0, neginf=0.0)
+        nyq = float(sample_rate) / 2.0
+        _sos_lp = _butter_blw(4, min(hi_hz / nyq, 0.995), btype="lowpass", output="sos")
+        _sos_hp = _butter_blw(4, max(lo_hz / nyq, 0.005), btype="highpass", output="sos")
+        _bp = _sosfiltfilt_blw(_sos_hp, _sosfiltfilt_blw(_sos_lp, x))
+        _bp_warped = self._speed_warp_resample(_bp.astype(np.float32), stretch_factors, sample_rate).astype(np.float64)
+        _n_blw = min(len(x), len(_bp_warped))
+        _out = x.copy()
+        _out[:_n_blw] += _bp_warped[:_n_blw] - _bp[:_n_blw]
+        out_blw: np.ndarray = np.clip(np.nan_to_num(_out, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0).astype(
+            audio.dtype
+        )
+        return out_blw
+
+    def _closed_loop_warp_refine(
+        self,
+        restored: np.ndarray,
+        *,
+        sample_rate: int,
+        hint_freq_hz: float,
+        max_stretch_delta: float,
+        pre_warp: np.ndarray | None = None,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
+        """§G188–§G189 (GEBOTE.md) — Autonome Wirkungs-Kalibrierung, geschlossener Regelkreis.
+
+        Misst die RESTLICHE Transport-Modulation auf dem eigenen Ausgang
+        (Teilband-IF-Messkanal, Matched-Fit bei bekannter Modulationsfrequenz)
+        und führt bei relevantem Restfehler einmal nach, bis das Optimum
+        erreicht ist. Nie-schlechter: der Nachlauf wird nur behalten, wenn die
+        gemessene Restmodulation tatsächlich sinkt (Hörordnung §8a). Bounded
+        (max. ein Nachlauf) und deterministisch (§G5 (copilot-instructions.md))
+        — das Optimum rechnet Aurik selbst, ohne manuelle Nachjustierung
+        (§G189 (GEBOTE.md)).
+        """
+        _info: dict[str, Any] = {
+            "applied": False,
+            "residual_before_cents": 0.0,
+            "residual_after_cents": 0.0,
+            "skipped_reason": "",
+        }
+
+        def _measure_residual(sig: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
+            _mono = (
+                safe_to_mono(sig).astype(np.float32) if np.asarray(sig).ndim == 2 else np.asarray(sig, dtype=np.float32)
+            )
+            _p, _c = self._estimate_wow_track_subband(_mono, sample_rate, hint_freq_hz=float(hint_freq_hz))
+            if _p is None or len(_p) < 32:
+                # §G189 (GEBOTE.md): der Restfehler kann neben der Fit-Frequenz
+                # liegen (Residuum aus Fit-Frequenz vs. echter FM) — Blind-Suche
+                # (der √N-Scan findet die dominante Modulation selbst).
+                _p, _c = self._estimate_wow_track_subband(_mono, sample_rate, hint_freq_hz=None)
+            if _p is None or len(_p) < 32:
+                # §G189 (GEBOTE.md) Messkanal-Fallback: der Teilband-IF-Kanal ist
+                # bei dünn besetztem Spektrum blind (< 4 valide Bänder, z. B.
+                # Einzeltöne) — dann misst der pYIN-Kanal den Restfehler.
+                _p, _c = self._estimate_pitch_yin(_mono, sample_rate)
+            if _p is None or len(_p) < 32:
+                return -1.0, np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+            # §G188 (GEBOTE.md) Raster-Normierung: die Messkanäle liefern
+            # unterschiedliche Frame-Raster (pYIN 512er-Hop vs. kanonisch
+            # win/4) — der Fit rechnet im Estimator-Raster (len // hop).
+            _win_m = int(self.PITCH_WINDOW_MS * sample_rate / 1000)
+            _hop_m = max(1, _win_m // self.PITCH_HOP_FACTOR)
+            _k_m = max(4, len(_mono) // _hop_m)
+            if len(_p) != _k_m:
+                _xs = np.linspace(0.0, 1.0, len(_p))
+                _xd = np.linspace(0.0, 1.0, _k_m)
+                _p = np.interp(_xd, _xs, np.asarray(_p, dtype=np.float64))
+                _c = np.interp(_xd, _xs, np.asarray(_c, dtype=np.float64))
+            _smoothed, _profile = self._fit_sinusoidal_wow_curve(
+                _p,
+                _c,
+                sample_rate,
+                hint_freq_hz=float(hint_freq_hz),
+            )
+            if not _profile.get("applied", False):
+                # Blind-Fit: die Restmodulation trägt ihre eigene Frequenz.
+                _smoothed, _profile = self._fit_sinusoidal_wow_curve(_p, _c, sample_rate)
+            if not _profile.get("applied", False):
+                return -1.0, np.zeros(1, dtype=np.float64), np.zeros(1, dtype=np.float64)
+            return float(_profile.get("amplitude_cents", 0.0) or 0.0), _smoothed, _c
+
+        if hint_freq_hz <= 0.0:
+            _info["skipped_reason"] = "keine Modulationsfrequenz bekannt"
+            return restored, _info
+
+        _resid_before, _traj, _conf = _measure_residual(restored)
+        _info["residual_before_cents"] = _resid_before if _resid_before >= 0.0 else 0.0
+        if pre_warp is not None and _resid_before > 0.0:
+            # §G189 (GEBOTE.md) Nie-schlechter (Hörordnung §8a) auch für den
+            # HAUPTWARP: bei irregulärem Drift („13 Tage“) konnte die
+            # Messung den Verlauf überschätzen — wird der Zustand vor dem
+            # Warp gemessen besser, bleibt er erhalten.
+            _resid_pre, _traj_p, _conf_p = _measure_residual(pre_warp)
+            if 0.0 <= _resid_pre < _resid_before:
+                _info["skipped_reason"] = "Hauptwarp verworfen — Original gemessen besser (nie-schlechter)"
+                _info["residual_after_cents"] = _resid_pre
+                return pre_warp, _info
+        if _resid_before <= 0.0:
+            _info["skipped_reason"] = "kein belastbarer Restfehler-Messkanal"
+            return restored, _info
+        if _resid_before < 1.5:
+            _info["skipped_reason"] = "Restfehler unter Relevanz-Schwelle"
+            _info["residual_after_cents"] = _resid_before
+            return restored, _info
+
+        _sf = self._calculate_stretch_factors(_traj, _conf, 1.0, max_stretch_delta=max_stretch_delta)
+        if float(np.max(np.abs(np.asarray(_sf, dtype=np.float64) - 1.0))) < 1e-4:
+            _info["skipped_reason"] = "Rest-Stretch vernachlässigbar"
+            _info["residual_after_cents"] = _resid_before
+            return restored, _info
+
+        if np.asarray(restored).ndim == 2:
+            _l, _r = stereo_channel_view(restored)
+            if hint_freq_hz > 4.0:
+                _candidate = stereo_like(
+                    self._band_limited_warp(_l, _sf, sample_rate),
+                    self._band_limited_warp(_r, _sf, sample_rate),
+                    restored,
+                )
+            else:
+                _candidate = stereo_like(
+                    self._speed_warp_resample(_l, _sf, sample_rate),
+                    self._speed_warp_resample(_r, _sf, sample_rate),
+                    restored,
+                )
+        else:
+            if hint_freq_hz > 4.0:
+                _candidate = self._band_limited_warp(restored, _sf, sample_rate)
+            else:
+                _candidate = self._speed_warp_resample(restored, _sf, sample_rate)
+
+        _resid_after, _t2, _c2 = _measure_residual(_candidate)
+        _info["residual_after_cents"] = _resid_after if _resid_after >= 0.0 else _resid_before
+        if 0.0 <= _resid_after < _resid_before:
+            _info["applied"] = True
+            logger.info(
+                "§G188 (GEBOTE.md) Nachlauf: Restmodulation %.2f → %.2f cents",
+                _resid_before,
+                _resid_after,
+            )
+            return _candidate, _info
+        _info["skipped_reason"] = "Nachlauf ohne Verbesserung verworfen (nie-schlechter)"
+        return restored, _info
+
+    def _apply_neural_phase_coherence(
+        self, audio: np.ndarray, sample_rate: int, reference: np.ndarray | None = None
+    ) -> np.ndarray:
+        """§C3 Neural Phase Vocoder post-processing — PGHI-consistent phase coherence.
+
+        After wow/flutter time-stretching via Phase Vocoder the STFT phases can
+        become incoherent in voiced regions (harmonic misalignment, phasiness).
+        This method applies spectral-coherence-guided phase propagation (Marafioti
+        et al. 2019 PGHI-based approach) to restore natural phase relationships.
+
+        Algorithm:
+        1. Compute STFT of corrected signal and (optional) reference signal.
+        2. Measure per-bin group-delay coherence: C_k = |H_corr·H_ref*|/(|H_corr||H_ref|)
+           where H is the complex STFT coefficient (or autocorrelation proxy without ref).
+        3. Build a frequency-smoothed coherence mask: bins with C ≥ 0.85 are well-aligned;
+           bins with C < 0.50 are candidates for phase regularisation.
+        4. Phase regularisation: for low-coherence bins propagate phase from the
+           already-coherent neighbouring bin via instantaneous frequency estimation
+           (≈PGHI derivative of log-magnitude spectrogram):
+               φ_new[k, t] = φ[k, t-1] + 2π × f_instantaneous × hop/sr
+        5. Reconstruct via iSTFT with regularised phases.
+        6. Blend blend_weight of regularised output with original (conservative default 0.30).
+
+        References:
+            Marafioti et al. (2019) ICASSP — Phase Gradient Heap Integration (PGHI).
+            Laroche & Dolson (1999) IEEE TSAP — instantaneous frequency estimation.
+
+        Returns phase-coherence-improved audio (same shape as input).
+        """
+        if len(audio) < 1024:
+            return audio.copy()
+
+        try:
+            assert sample_rate == 48000, "Phase 12 neural coherence: sr must be 48000"
+            n_fft = 2048
+            hop = n_fft // 4
+            win = np.hanning(n_fft).astype(np.float32)
+            audio_f = np.asarray(audio, dtype=np.float32)
+            orig_len = len(audio_f)
+
+            # Step 1: STFT of corrected audio — vectorised via stride_tricks + batched rfft
+            n_frames = 1 + (orig_len - n_fft) // hop
+            if n_frames < 2:
+                return audio.copy()
+
+            # Framing: zero-copy view, shape (n_frames, n_fft)
+            _frames = np.lib.stride_tricks.sliding_window_view(audio_f, n_fft)[::hop][:n_frames]
+            stft = np.fft.rfft(_frames * win, axis=1)  # (T, F) — 1 batched call
+
+            mag = np.abs(stft)
+            phase = np.angle(stft)
+
+            # Step 2: Coherence proxy — if reference available, use it; else use autocorrelation
+            if reference is not None and len(reference) == orig_len:
+                ref_f = np.asarray(reference, dtype=np.float32)
+                _frames_ref = np.lib.stride_tricks.sliding_window_view(ref_f, n_fft)[::hop][:n_frames]
+                stft_ref = np.fft.rfft(_frames_ref * win, axis=1)
+                # Per-bin Pearson-like correlation magnitude
+                mag_ref = np.abs(stft_ref)
+                coherence = np.abs(stft * np.conj(stft_ref)) / (mag * mag_ref + 1e-14)
+            else:
+                # Autocorrelation-based coherence: temporal consistency of phase increments
+                phase_diff = np.diff(phase, axis=0)  # (T-1, F)
+                # Coherence ≈ circular std of phase increments (low spread = high coherence)
+                phase_std = np.std(phase_diff, axis=0)  # (F,)
+                coherence = np.clip(1.0 - phase_std / np.pi, 0.0, 1.0)
+                coherence = np.tile(coherence, (n_frames, 1))
+
+            # Step 3: Identify incoherent bins (C < 0.5)
+            incoherent_mask = coherence < 0.50
+            n_incoherent = int(np.sum(incoherent_mask))
+            if n_incoherent == 0 or n_incoherent > 0.80 * coherence.size:
+                # All coherent (already OK) or all incoherent (PGHI propagation becomes unstable).
+                # Use a conservative temporal STFT coherence smoothing fallback instead of passthrough.
+                return self._phase_coherence_emergency_smoothing(audio, sample_rate)
+
+            # Step 4: PGHI-inspired phase propagation — vectorised inner loop
+            # Instantaneous frequency estimation via log-magnitude gradient
+            log_mag = np.log(mag.astype(np.float64) + 1e-14)
+            # Horizontal gradient (time direction) → IF estimate
+            d_log_mag_dt = np.gradient(log_mag, axis=0)
+            f_bins = np.fft.rfftfreq(n_fft, d=1.0 / sample_rate)
+            omega_bins = 2.0 * np.pi * f_bins  # (F,)
+
+            phase_reg = phase.astype(np.float64)
+            _hop_sr = hop / sample_rate
+            for t in range(1, n_frames):
+                _mask_t = incoherent_mask[t]
+                if np.any(_mask_t):
+                    _if_est = omega_bins + d_log_mag_dt[t]  # (F,) — vectorised
+                    _propagated = phase_reg[t - 1] + _if_est * _hop_sr  # (F,)
+                    phase_reg[t] = np.where(_mask_t, _propagated, phase_reg[t])
+
+            # Step 5: Reconstruct with regularised phases — vectorised irfft + OLA
+            stft_reg = mag.astype(np.float64) * np.exp(1j * phase_reg)
+            # Batch irfft: (T, n_fft) — much faster than individual calls
+            frames_out = np.fft.irfft(stft_reg, axis=1)[:, :n_fft] * win.astype(np.float64)
+            win_sq = (win**2).astype(np.float64)
+            output = np.zeros(orig_len, dtype=np.float64)
+            norm = np.zeros(orig_len, dtype=np.float64)
+            for t in range(n_frames):
+                s = t * hop
+                output[s : s + n_fft] += frames_out[t]
+                norm[s : s + n_fft] += win_sq
+            norm = np.where(norm > 1e-10, norm, 1.0)
+            output = output / norm
+
+            output = np.nan_to_num(output, nan=0.0, posinf=0.0, neginf=0.0)
+
+            # Step 6: Conservative blend (0.30 weight to avoid over-smoothing attack transients)
+            blend = 0.30
+            result = (1.0 - blend) * audio_f + blend * output
+            result = np.clip(result, -1.0, 1.0)
+            logger.debug(
+                "§C3 Neural Verarbeitungsschritt Coherence: repaired %d incoherent STFT bins (blend=%.2f)",
+                n_incoherent,
+                blend,
+            )
+            return result.astype(audio.dtype)  # type: ignore[no-any-return]
+
+        except Exception as _c3_exc:
+            logger.debug("§C3 Neural Verarbeitungsschritt Coherence nicht blockierend: %s", _c3_exc)
+            return self._phase_coherence_emergency_smoothing(audio, sample_rate)
+
+    def _phase_coherence_emergency_smoothing(self, audio: np.ndarray, sample_rate: int) -> np.ndarray:
+        """Konservativer Notfallpfad fuer C3: leichte STFT-Temporalglättung statt Pass-Through."""
+        try:
+            if sample_rate <= 0:
+                return audio.copy()
+
+            if len(audio) < 1024:
+                # Kurzsignal-Notfallpfad: leichte zeitliche Kohärenzglättung statt No-op.
+                audio_f = np.asarray(audio, dtype=np.float64)
+                if len(audio_f) < 3:
+                    return np.nan_to_num(audio_f, nan=0.0, posinf=0.0, neginf=0.0).astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
+                kernel = np.array([0.25, 0.5, 0.25], dtype=np.float64)
+                smooth = np.convolve(audio_f, kernel, mode="same")
+                blend = 0.12
+                result = (1.0 - blend) * audio_f + blend * smooth
+                result = np.clip(np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+                return result.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
+
+            n_fft = 1024
+            hop = n_fft // 4
+            win = np.hanning(n_fft).astype(np.float64)
+            audio_f = np.asarray(audio, dtype=np.float64)
+            n = len(audio_f)
+
+            n_frames = 1 + max(0, (n - n_fft) // hop)
+            if n_frames < 3:
+                kernel = np.array([0.25, 0.5, 0.25], dtype=np.float64)
+                smooth = np.convolve(audio_f, kernel, mode="same")
+                blend = 0.12
+                result = (1.0 - blend) * audio_f + blend * smooth
+                result = np.clip(np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+                return result.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
+
+            frames = np.lib.stride_tricks.sliding_window_view(audio_f, n_fft)[::hop][:n_frames]
+            stft = np.fft.rfft(frames * win, axis=1)
+
+            # Leichte zeitliche Kohärenzglättung im komplexen Spektrum.
+            stft_smooth = stft.copy()
+            stft_smooth[1:-1] = 0.70 * stft[1:-1] + 0.15 * stft[:-2] + 0.15 * stft[2:]
+
+            frames_out = np.fft.irfft(stft_smooth, n=n_fft, axis=1) * win[np.newaxis, :]
+            out = np.zeros(n, dtype=np.float64)
+            norm = np.zeros(n, dtype=np.float64)
+            win_sq = win**2
+            for i in range(n_frames):
+                s = i * hop
+                out[s : s + n_fft] += frames_out[i]
+                norm[s : s + n_fft] += win_sq
+
+            norm = np.where(norm > 1e-10, norm, 1.0)
+            out = out / norm
+            out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
+
+            # Sehr konservativer Blend, um Transienten zu schonen.
+            blend = 0.18
+            result = (1.0 - blend) * audio_f + blend * out
+            result = np.clip(np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+            return result.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
+        except Exception as _c3_fallback_exc:
+            logger.warning("ML→DSP-Ersatzpfad aktiviert", exc_info=True)  # §V6 (copilot-instructions.md)
+            if "result" in locals():
+                return result.astype(audio.dtype, copy=False)  # type: ignore[no-any-return]
+            logger.debug("§C3 emergency smoothing Ersatzpfad fehlgeschlagen: %s", _c3_fallback_exc)
+            return audio.copy()
+
+
+# Standalone test
+def _run_test() -> None:  # pragma: no cover
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    logger.debug("=" * 80)
+    logger.debug("Verarbeitungsschritt 12: Professional Wow & Flutter Correction v2.0")
+    logger.debug("=" * 80)
+    logger.debug("")
+
+    # Generate test audio with synthetic wow/flutter
+    duration = 5.0  # seconds
+    sample_rate = 44100
+    t = np.linspace(0, duration, int(sample_rate * duration))
+
+    # Generate 440 Hz tone with combined wow (1 Hz) + flutter (20 Hz)
+    wow_freq = 1.0  # Hz (slow speed variation)
+    wow_depth = 0.015  # 1.5% pitch variation
+
+    flutter_freq = 20.0  # Hz (fast mechanical vibration)
+    flutter_depth = 0.005  # 0.5% pitch variation
+
+    # Combined instantaneous pitch variation
+    pitch_variation = (
+        1.0 + wow_depth * np.sin(2 * np.pi * wow_freq * t) + flutter_depth * np.sin(2 * np.pi * flutter_freq * t)
+    )
+    instantaneous_freq = 440 * pitch_variation
+
+    # Generate audio with varying pitch
+    phase = np.cumsum(2 * np.pi * instantaneous_freq / sample_rate)
+    audio = 0.3 * np.sin(phase)
+
+    # Add harmonics for more realistic tone
+    audio += 0.15 * np.sin(2 * phase)  # 2nd harmonic
+    audio += 0.10 * np.sin(3 * phase)  # 3rd harmonic
+
+    logger.debug("erzeugt %ss test audio @ %s Hz", duration, sample_rate)
+    logger.debug("Base frequency: 440 Hz with harmonics (2nd, 3rd)")
+    logger.debug("Wow: %s Hz, Depth: %.2f%%", wow_freq, wow_depth * 100)
+    logger.debug("Flutter: %s Hz, Depth: %.2f%%", flutter_freq, flutter_depth * 100)
+    logger.debug("Total pitch variation: %.2f%%", (wow_depth + flutter_depth) * 100)
+    logger.debug("")
+
+    # Test with different materials
+    materials = [
+        (MaterialType.TAPE, "TAPE (Aggressive correction)"),
+        (MaterialType.VINYL, "VINYL (Moderate correction)"),
+        (MaterialType.SHELLAC, "SHELLAC (Conservative correction)"),
+    ]
+
+    for material, material_name in materials:
+        logger.debug("─" * 80)
+        logger.debug("Material: %s", material_name)
+        logger.debug("─" * 80)
+        logger.debug("")
+
+        phase = WowFlutterFix()
+        result = phase.process(audio, sample_rate, material.value)
+
+        if result.metrics["wow_flutter_detected"]:
+            logger.debug("✅ Professional Wow & Flutter Correction:")
+            logger.debug("   erkannt: YES")
+            logger.debug("   Max Deviation: %.3f%%", result.metrics["max_deviation_percent"])
+            logger.debug("   Wow Magnitude: %.3f%%", result.metrics["wow_magnitude_percent"])
+            logger.debug("   Flutter Magnitude: %.3f%%", result.metrics["flutter_magnitude_percent"])
+            logger.debug("   Residual Deviation: %.3f%% (target <0.3%%)", result.metrics["residual_deviation_percent"])
+            logger.debug("   Correction Strength: %s", result.metrics["correction_strength"])
+            logger.debug("   Mean Confidence: %.2f", result.metrics["mean_confidence"])
+            logger.debug(
+                "   Processing time: %.3fs (%.2f\u00d7 realtime)",
+                result.execution_time_seconds,
+                result.execution_time_seconds / duration,
+            )
+            logger.debug("")
+        else:
+            logger.debug("⚠️  No significant wow/flutter erkannt")
+            logger.debug("   Max Deviation: %.3f%%", result.metrics["max_deviation_percent"])
+            logger.debug("   Schwelle: %s%%", phase.DETECTION_THRESHOLD.get(material, 0.5))  # _mat_enum_
+            logger.debug("")
+
+    logger.debug("=" * 80)
+    logger.debug("Test abgeschlossen")
+    logger.debug("=" * 80)
+
+
+if __name__ == "__main__":
+    _run_test()
+from typing import cast

@@ -1,0 +1,13 @@
+# CD-Konfiguration: typische Defekte und Policy
+medium: cd
+defects:
+  - clipping
+  - noise
+policy:
+  prefer_ml: true
+  max_chain_length: 4
+  audit: false
+  quality:
+    min_hf_ratio: 0.8
+    max_loudness: -13.0
+    min_transparency: 0.85

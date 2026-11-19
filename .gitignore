@@ -1,0 +1,216 @@
+# Aurik: Ignoriere große/vermeidbare Ordner und temporäre Dateien
+
+# ── Generierte Repo-Karte (scripts/repo_graph.py --write-json) ───────────────
+.github/repo_graph.json
+
+# ── Virtuelle Umgebungen ─────────────────────────────────────────────────────
+.venv_aurik/
+.venv_sota/
+.venv_dsp/
+.venv_encodec/
+.venv_matplotlib/
+.venv_singmos/
+.venv/
+venv/
+.venv_gpu/
+
+# ── Python-Caches ────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+
+# ── Build / Distribution ─────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+*.egg
+MANIFEST
+
+# ── ML-Modelle & Gewichte (lokal gebündelt, nicht ins Repo) ─────────────────
+# Nur das Top-Level-Verzeichnis ignorieren (anchored): vendorter Code in
+# plugins/_vendor_* nutzt eigene models/-Unterverzeichnisse und MUSS ins Repo
+# (sonst ImportError auf frischen Checkouts + I001-Drift im CI-Lint-Gate).
+/models/*
+# Ausnahme: Das Modell-Manifest ist Metadaten (keine Gewichte) und wird vom
+# model_downloader (§13.3) sowie von Tests auf frischen Checkouts benötigt.
+!/models/manifest.json
+# Ausnahme (2026-10-05): Kandidaten-Eval TODO-P1-2 — vendored MSST-SCNet-Architektur
+# (MIT, models/scnet_4stems/zfturbo_scnet/) + Konfiguration müssen ins Repo;
+# Gewichte (.ckpt/.onnx) bleiben über die Dateityp-Regeln ignoriert; das
+# Referenz-Klon-Repo scnet_pytorch/ bleibt ausgeschlossen.
+!/models/scnet_4stems/
+/models/scnet_4stems/scnet_pytorch/
+pretrained_models/
+*.pt
+*.pth
+*.onnx
+*.onnx.data
+*.safetensors
+*.ckpt
+*.bin
+
+# ── Audio-Dateien ────────────────────────────────────────────────────────────
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+*.aac
+*.wma
+*.opus
+*.aiff
+*.aif
+
+# ── Laufzeit-Ausgaben & Sessions ─────────────────────────────────────────────
+output_audio/
+sessions/
+exports/
+logs/
+*.log
+*.ndjson
+*.export_metrics.json
+*.repair_report.json
+nohup.out
+
+# ── AMRB-Benchmark-Ergebnisse (Laufzeit-Artefakte) ───────────────────────────
+benchmarks/amrb_baseline_log.jsonl
+benchmarks/amrb_baseline_restoration_*.json
+
+# ── Daten & Trainingsdaten ───────────────────────────────────────────────────
+datasets/
+data/
+# Ausnahme: Mikrofon-Referenzprofile (EQ-Kurven) sind Referenzdaten und werden
+# von backend/core/microphone_response_library.py + Tests benötigt.
+!backend/data/
+!backend/data/microphone_profiles.json
+testdata/
+golden_snippet_library/
+golden_snippets/
+audioseal/
+
+# ── Audit-Laufzeitdaten (enthalten lokale Pfade) ─────────────────────────────
+audit_logs/
+audit_reports/
+audit/audit_trail.json
+audit/*.yaml
+audit/*.ndjson
+
+# ── Nutzer-GP-Gedächtnis & Künstler-Signaturen ───────────────────────────────
+# ~/.aurik/ wird nicht ins Repo eingecheckt (Nutzerdaten, lokal)
+
+# ── Pakete & Archive ─────────────────────────────────────────────────────────
+node_modules/
+*.zip
+*.tar.gz
+*.tar.bz2
+*.tgz
+
+# ── Betriebssystem ───────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── IDE / Editor ─────────────────────────────────────────────────────────────
+.vscode/settings.json
+.vscode/launch.json
+.vscode/.ropeproject
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Umgebungsvariablen & Secrets ─────────────────────────────────────────────
+.env
+.env.*
+.env.local
+*.local
+secrets/
+config/local*
+
+# ── Temporäre Dateien ────────────────────────────────────────────────────────
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# ── Test-Ausgaben ────────────────────────────────────────────────────────────
+coverage.xml
+.coverage
+.coverage.*
+htmlcov/
+junit.xml
+
+# ── PyInstaller / AppImage ───────────────────────────────────────────────────
+*.spec.bak
+AppDir/
+
+# Lokaler Tool-Cache
+.cache/
+
+# Lokale Git-Backups
+.git.bak-*/
+
+# ── Generierte Scan-/Audit-Artefakte ─────────────────────────────────────────
+*.sarif
+test_output/
+.venv_sgmse_export/
+
+# ── Temporäre Reproduktions-/Debug-Ordner ─────────────────────────────────────
+temp_repro/
+
+# ── Laufzeit-Artefakte (kein Source-Code) ────────────────────────────────────
+output/
+pip_list.txt
+pip_check.txt
+grep_results.txt
+todo_results.txt
+ausnahmen_results.txt
+reports/*
+# Commit-basierte Drift-Baseline (spec_drift_check.py) — muss für Prettier sichtbar bleiben
+!reports/spec_drift_baseline.json
+!docs/reports/
+!docs/reports/spec_evidence/
+!docs/reports/spec_evidence/*.md
+
+# §v10.101 SOTA modules
+backend/core/dsp/__pycache__/
+
+# Kun runtime UI state
+.kun-canvas/
+export_log.txt
+
+# Release-Ausschluss (2026-09-21): interne Dev-Artefakte bleiben lokal,
+# werden aber nicht veröffentlicht.
+docs/SESSION_INSIGHTS_*.md
+docs/reports/current/FEATURE_COMPLETION_REPORT_*.md
+docs/reports/phase_completion/
+gpu_capabilities.json
+# Audit-Laufzeit-Artefakt (entpubliziert in eeeae73f; bleibt lokal)
+error_guard_gaps.json
+log_parser_analysis.py
+full_run_warning_audit.py
+validate_real_audio_elke_best.py
+validate_real_audio_fast.py
+post_sota_fix_validation.py
+scripts/_scan_elke_best.py
+scripts/_debug_restoration_run.py
+scripts/run30_elke_verify.py
+
+# Setupfile-Bauartefakte (29-GB-.deb niemals committen)
+Setupfile/aurik/
+Setupfile/*.deb
+# 24-GB Modell-Archiv für DEB-Builds (lokal erzeugt, nicht versionieren)
+Setupfile/aurik_modelle_*.tar.zst
+
+# Lauf-Artefakt-Ordner (von Skripten lokal erzeugt, nie versioniert)
+study_stimuli/
+.ohr_panel/

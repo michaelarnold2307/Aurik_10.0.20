@@ -1,0 +1,17 @@
+medium: cd
+defects:
+  - clipping
+  - dropouts
+chain: default
+policy:
+  name: CD Restoration
+  audit: true
+  quality:
+    hf_ratio: 0.88
+    min_transparency: 0.92
+    artefact_energy: 0.08
+    max_loudness: -10.0
+result:
+  passed: true
+  details: "CD: Alle Qualitätsziele und Compliance-Anforderungen erfüllt."
+  timestamp: "2026-02-02T13:10:00Z"

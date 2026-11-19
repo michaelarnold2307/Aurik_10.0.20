@@ -1,0 +1,16 @@
+# Beispiel für Policy- und Kontextdatei für die DSP-Kettenauswahl
+# Diese Datei kann von der Entscheidungslogik eingelesen werden
+
+medium: vinyl
+defects:
+  - noise
+  - crackle
+  - sibilance
+policy:
+  prefer_ml: true
+  max_chain_length: 6
+  audit: true
+  quality:
+    min_hf_ratio: 0.75
+    max_loudness: -14.0
+    min_transparency: 0.8

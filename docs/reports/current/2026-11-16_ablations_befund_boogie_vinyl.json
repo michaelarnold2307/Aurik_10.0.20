@@ -1,0 +1,39 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "datum": "2026-11-16",
+  "lauf": "ablations_befund_boogie_vinyl_per_kanal",
+  "befund": "Per-Kanal-Ablation auf Boogie-vinyl (Input bit-identisch, DRT-12): KEIN Kanal neutralisiert — alle 10 verbessern defektlast (Bestand -0,016 -> Kanaele -0,004 bis -0,079), aber JEDER opfert den musik_mos-Gewinn (Bestand +0,107 -> Kanaele +0,011 bis +0,050; mos-Verlust 0,06-0,10 > JND 0,05). ⇒ Die Ganz-Titel-Zwei-Metrik-Pflicht (DRT-8/10) ist AUCH pro Einzelkanal verfehlt — Regions-Gates bestanden, Ganz-Titel-mos scheitert. Der v4-„Neutralisierungs\"-Wert (0,000/0,000) war KEIN Kanal-Effekt: das v4-Restaurat ist bit-gleich dem Schaden (Pass-Through der Pipeline im v4-Lauf-Kontext, verifiziert). KOMBINATIONS-CHECK laeuft separat (alle 10 AN im frischen Prozess). Konsequenz fuer den Q≈0-Weg: Die Koepfe brauchen einen mos-schonenderen Blend (global_scalar-Daempfung) oder einen Regionen-begrenzten Einsatz — der aktuelle Voll-Einsatz scheitert an DRT-8/10.",
+  "werte": {
+    "bestand": {
+      "defektlast": -0.0158,
+      "mos": 0.107
+    },
+    "je_kanal": {
+      "clicks_etc_8_kanaele": {
+        "defektlast": -0.0794,
+        "mos": 0.029
+      },
+      "groove_echo": {
+        "defektlast": -0.0279,
+        "mos": 0.05
+      },
+      "tape_head_level_dip": {
+        "defektlast": -0.0041,
+        "mos": 0.011
+      }
+    }
+  },
+  "kombination": {
+    "defektlast": -0.0279,
+    "mos": 0.05,
+    "befund": "Frischer Prozess, alle 10 AN: -0,028/+0,050 — defektlast verbessert gegen Bestand (-0,016), aber mos-Verlust 0,057 > JND 0,05 ⇒ Zwei-Metrik-Pflicht (DRT-8/10) KNAPP verfehlt. Der Wert entspricht exakt dem groove_echo-Einzelwert — groove_echo dominiert die Kombination (die uebrigen 9 Kanaele bypassen offenbar in der Kombination). Der v4-Pass-Through (0,000/0,000) ist damit endgueltig als Kontext-Artefakt eingeordnet. NAECHSTER KANDIDAT: global_scalar-Daempfung des Kombi-Blends (z.B. 0,5×) — mos-Gewinn >= +0,05 halten und defektlast verbessern waere der erste Zwei-Metrik-bestandene Kandidat (§V7 (copilot-instructions.md): Staerke zentral ueber global_scalar)."
+  },
+  "daempfung": {
+    "alpha": 0.5,
+    "defektlast": -0.0251,
+    "mos": 0.047,
+    "befund": "Pipeline-Test mit 0,5×-Blend (Monkey-Patch zur Laufzeit, 10/10 Kanäle gedämpft, Report-only): -0,025/+0,047 — die Dämpfung verschiebt nur LINEAR zwischen Bestand (-0,016/+0,107) und Voll-Blend (-0,028/+0,050). Der mos-Verlust (~0,06) bleibt bei JEDER Blend-Stärke ⇒ der Verlust ist KANDIDATEN-INHÄRENT (die Kopf-Ausgabe opfert Wohlklang), kein Stärke-Problem. URSACHE (§V7 (copilot-instructions.md)): Der Trainings-Loss (L1 + λ·BCE(Witness(out), 0)) zieht in Richtung „kein Defekt\", aber nie in Richtung „mos-gut\" — die Modellauswahl (kleinster Holdout-Score L1 + λ·Witness) hat den Wohlklang nie gemessen. NAECHSTER ANSATZ: musik_mos/Wohlklang-Term im Trainings-Loss + Zwei-Metrik-Modellauswahl (defektlast UND mos, DRT-8/10) — GPU-Block."
+  },
+  "status": "korrigiert_durch_bestand_solo_kontrolle",
+  "korrektur": "KORRIGIERT durch den Bestand-Solo-Kontroll-Lauf: alle Kanal-Werte sind identisch zum Bestand solo — die Kanaele wirkten nicht; der mos-Unterschied ist Solo- vs. 3-Titel-Kontext der Bestands-Pipeline."
+}

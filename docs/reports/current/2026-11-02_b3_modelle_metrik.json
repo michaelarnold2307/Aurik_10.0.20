@@ -1,0 +1,6 @@
+{
+  "verfahren": "B3 Objektivbeschluss 4 Modelle",
+  "status": "Lauft abgebrochen",
+  "fehler": "UV3-Restaurierung wirft roformer_fallback_result (sota_vocal_model_router.py:113, Stem-Separator). B3-Messung nicht durchfuehrbar solange die Restaurierung auf manchen Samples abbricht.",
+  "offen": "roformer_fallback_result muss gefangen/gefixt werden (§V6), dann B3-Lauf wiederholen. Material-CRNN 95.3% vs 40.2% bleibt groesster Qualitaets-Hebel ohne Ohr."
+}

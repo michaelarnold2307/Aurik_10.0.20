@@ -1,0 +1,12 @@
+# Härtefall: Extreme Sibilanz (Zischlaute)
+medium: any
+defects:
+  - severe_sibilance
+policy:
+  prefer_ml: true
+  max_chain_length: 8
+  audit: true
+  quality:
+    min_hf_ratio: 0.8
+    max_loudness: -13.0
+    min_transparency: 0.85

@@ -1,0 +1,27 @@
+{
+  "stufe": "W-4 MP-SENet auf degradierten Vocals (SCNet-baseline)",
+  "metrik": "seg-SNR vs gt_vocals",
+  "rows": [
+    {
+      "sample": "Heart_Peripheral",
+      "seg_snr_in": -0.0,
+      "seg_snr_out": -0.0,
+      "delta_db": -0.0
+    },
+    {
+      "sample": "olboy_Facination",
+      "seg_snr_in": -0.01,
+      "seg_snr_out": -0.01,
+      "delta_db": 0.01
+    },
+    {
+      "sample": "or_Tapes_-_Shore",
+      "seg_snr_in": -3.02,
+      "seg_snr_out": -2.4,
+      "delta_db": 0.62
+    }
+  ],
+  "befund": "SCNet-baseline-Vocals bereits sauber (segSNR ~0 vs gt). MP-SENet-Nutzen klein: nur Motor_Tapes (degradiert) +0.62dB.",
+  "schlussfolgerung": "W-4 realer Nutzen auf WIRKLICH degradierten Vocals (nicht auf sauberen SCNet-Stems). SCNet-Separation ist schon gut; die Degradation muss echter sein (Rauschen/Artefakte) damit W-4 mehr bringt.",
+  "wohlklang_fazit": "Fuer echte Qualitaet ist W-1 (Harmonic Repair) der Haupt-Hebel (aktiv, belegt). W-4 bringt auf degradierten Vocals +0.62dB — klein aber real. W-5 braucht c0-Referenz."
+}

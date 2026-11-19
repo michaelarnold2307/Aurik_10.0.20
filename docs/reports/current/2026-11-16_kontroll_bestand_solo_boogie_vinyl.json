@@ -1,0 +1,20 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "datum": "2026-11-16",
+  "lauf": "kontroll_bestand_solo_boogie_vinyl",
+  "befund": "KONTROLL-LAUF (frischer Prozess, alle Flags AUS): BESTAND SOLO = -0,028/+0,050 — IDENTISCH zu allen Kanal-Laeufen. KORREKTUR: Die Ablations-/Dämpfungs-Kette war ein SOLO-KONTEXT-Artefakt — die Kanaele wirkten auf Boogie-vinyl gar nicht (DRT-11-Sperre + Harmonik-Proxy lehnen ab, konsistent mit dem Direkt-Aufruf-Befund None). Der echte Befund: Die BESTANDS-PIPELINE unterscheidet sich zwischen Solo- und 3-Titel-Kontext (mos +0,050 solo vs +0,107 im 3-Titel-Lauf — der 3-Titel-Kontext repariert Boogie-vinyl BESSER). NAECHSTER SCHRITT: Kontext-Isolation der Bestands-Pipeline (warum Solo != 3-Titel trotz des Reset-Katalogs) — die Kanal-/Kopf-Interpretationen der Runden 1-2 sind damit hinfaellig; keine weiteren GPU-Runden, solange die Kontext-Frage offen ist. DRT-12-Disziplin hat den Fehlschluss erneut erzwungen.",
+  "werte": {
+    "bestand_solo": {
+      "defektlast": -0.0279,
+      "mos": 0.05
+    },
+    "kanaele_alle": {
+      "defektlast": -0.0279,
+      "mos": 0.05
+    },
+    "bestand_3titel": {
+      "defektlast": -0.0158,
+      "mos": 0.107
+    }
+  }
+}

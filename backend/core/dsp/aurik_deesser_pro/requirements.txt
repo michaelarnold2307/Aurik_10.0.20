@@ -1,0 +1,16 @@
+# Empfohlene requirements.txt für aurik_deesser_pro (Python 3.10.12+)
+# Aktualisiert: 14. Mai 2026
+# Validierte Versionen
+# Sicherheitshinweis: Low-Severity-CVEs (NULL Pointer Dereference, Buffer Overflow,
+# DoS) in soundfile sind von libsndfile (System-C-Bibliothek) geerbt und
+# nicht per pip behebbar. System-Update: sudo apt-get upgrade libsndfile1
+
+# >= statt == erlaubt automatische Security-Patch-Releases
+numpy>=2.2.6
+scipy>=1.15.3
+librosa>=0.11.0
+soundfile>=0.13.1
+requests>=2.33.0
+urllib3>=2.7.0
+idna>=3.15
+# System-Pakete (nicht via pip): ffmpeg, sox

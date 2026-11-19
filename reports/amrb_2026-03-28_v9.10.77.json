@@ -1,0 +1,103 @@
+{
+  "amrb_version": "1.0",
+  "aurik_version": "9.10.57",
+  "baselines": {
+    "Aurik 9.9 (Restoration Mode)": {
+      "goal_natuerlichkeit": 0.91,
+      "mushra_overall": 84.0,
+      "pqs_mos": 4.2
+    },
+    "Aurik 9.9 (Studio 2026 Mode)": {
+      "goal_natuerlichkeit": 0.93,
+      "mushra_overall": 88.0,
+      "pqs_mos": 4.5
+    },
+    "Simple Wiener (1984-Klasse)": {
+      "goal_natuerlichkeit": 0.65,
+      "mushra_overall": 48.0,
+      "pqs_mos": 3.2
+    },
+    "Unbearbeitet (degradiert)": {
+      "goal_natuerlichkeit": 0.52,
+      "mushra_overall": 32.0,
+      "pqs_mos": 2.8
+    },
+    "iZotope RX 10 (commercial)": {
+      "goal_natuerlichkeit": 0.8,
+      "mushra_overall": 71.0,
+      "pqs_mos": 3.9
+    },
+    "iZotope RX 11 (commercial)": {
+      "goal_natuerlichkeit": 0.8,
+      "mushra_overall": 71.0,
+      "pqs_mos": 3.9
+    }
+  },
+  "best_scenario": "AMRB-01-TAPE",
+  "external_validation": {
+    "dataset": "",
+    "leadership_claim_ready": false,
+    "n_external_scenarios": 0,
+    "notes": "Synthetic-only AMRB run; external dataset validation pending.",
+    "ready": false
+  },
+  "n_passed": 2,
+  "n_scenarios": 2,
+  "os_leadership": false,
+  "overall_score": 86.5,
+  "report_sha256": "c58e9226551b0edca3daf74041ddadfdf3a82bf9109355cb5965e885d620e2be",
+  "run_seed": 42,
+  "scenarios": {
+    "AMRB-01-TAPE": {
+      "description": "Tape-Hiss + Dropout",
+      "goal_scores": {
+        "artikulation": 0.9248479526193669,
+        "authentizitaet": 0.8364670609432864,
+        "bass_kraft": 1.0,
+        "brillanz": 0.833802878676508,
+        "emotionalitaet": 0.8912458216248571,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.8104330896886587,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9554520756006241,
+        "tonal_center": 0.9753477749467085,
+        "transparenz": 0.9466768073068432,
+        "waerme": 1.0
+      },
+      "mushra_mean": 90.5,
+      "mushra_std": 0.0,
+      "passed": true,
+      "pqs_mos_mean": 4.49,
+      "scenario_type": "synthetic"
+    },
+    "AMRB-08-HUM": {
+      "description": "50-Hz-Brumm + Obert\u00f6ne",
+      "goal_scores": {
+        "artikulation": 0.8677492204700898,
+        "authentizitaet": 0.8945998798627415,
+        "bass_kraft": 1.0,
+        "brillanz": 0.9982758730531794,
+        "emotionalitaet": 0.8830663164919337,
+        "groove": 0.9400000000000001,
+        "micro_dynamics": 1.0,
+        "natuerlichkeit": 0.8476408643525037,
+        "separation_fidelity": 0.8248681866394055,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.8710828304290772,
+        "tonal_center": 0.9463275851862243,
+        "transparenz": 0.8999488006028565,
+        "waerme": 1.0
+      },
+      "mushra_mean": 82.6,
+      "mushra_std": 0.0,
+      "passed": true,
+      "pqs_mos_mean": 3.01,
+      "scenario_type": "synthetic"
+    }
+  },
+  "system_name": "Aurik 9.10.77",
+  "timestamp": "2026-03-28T10:25:30.540203+00:00",
+  "worst_scenario": "AMRB-08-HUM"
+}

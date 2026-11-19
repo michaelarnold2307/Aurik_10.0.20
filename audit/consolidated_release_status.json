@@ -1,0 +1,25 @@
+{
+  "contradiction": true,
+  "coverage_baseline_ok": true,
+  "coverage_baseline_path": null,
+  "coverage_drift_findings": [],
+  "coverage_drift_ok": false,
+  "coverage_manifest_ok": false,
+  "coverage_manifest_path": "/tmp/pytest-of-michael/pytest-116/test_consolidate_handles_missi0/consolidated.json",
+  "final_ready": false,
+  "latest_source": "release",
+  "reasons": [
+    "runtime_report_missing_or_invalid",
+    "coverage_manifest_missing_or_invalid",
+    "release_runtime_contradiction"
+  ],
+  "release_ready": true,
+  "release_report_path": "/tmp/pytest-of-michael/pytest-116/test_consolidate_handles_missi0/release_report.json",
+  "release_timestamp": "2026-04-14T18:00:00",
+  "required_passed": 0,
+  "required_total": 0,
+  "runtime_compliance_ok": false,
+  "runtime_report_path": "/tmp/pytest-of-michael/pytest-116/test_consolidate_handles_missi0/runtime_spec_report.json",
+  "runtime_timestamp": null,
+  "timestamp": "2026-05-21T04:17:25.778710"
+}

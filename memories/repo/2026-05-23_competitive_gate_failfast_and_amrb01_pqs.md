@@ -1,0 +1,9 @@
+- Competitive-Gate Diagnose stabilisiert durch Subprozess-Hard-Timeout in tests/normative/test_competitive_ci_gate.py (_get_competitive_report_cached).
+- Externe Shell-Timeouts (EXIT_CODE 124/143) waren nicht belastbar; pytest-interne Assertion mit klarer Ursache ist verlässlicher.
+- Szenario-Subset-Diagnose über AURIK_COMPETITIVE_SCENARIOS eingeführt; erster reproduzierbarer Hotspot: AMRB-01-TAPE bei 45s Budget.
+- Isolierter Lauf (AMRB-01-TAPE, benchmark timeout 120s, restore timeout 5s) beendet deterministisch mit fachlicher Ursache statt Hang: PQS-MOS 1.00 < 3.9.
+- CI/Task-Defaults für Competitive-Gate auf AURIK_COMPETITIVE_BENCHMARK_TIMEOUT_S=180 gesetzt (Makefile + .vscode/tasks.json).
+- Root-Cause-Hinweis: PQS=1.0 in AMRB-01 war nicht primär ein ML-Modell-Defekt, sondern stark durch die Quick-PQS-Formel (MFCC-RMSE-Sättigung) getrieben.
+- Quick-PQS in benchmarks/musical_restoration_benchmark.py auf robuste MFCC-Cosine-Ähnlichkeit umgestellt; Basischeck: ref/ref=5.0, ref/degraded≈3.13 (statt 1.0).
+- Restore-Timeout via SIGALRM kann in tiefen Aufrufpfaden intern abgefangen werden (z. B. pYIN-Fallback-Meldung), dadurch ist Timeout-Interpretation als harte Qualitätsaussage unsicher.
+- Competitive-Gate stellt per-restore SIGALRM jetzt automatisch auf 0.0 (safe default) und verlässt sich auf den bestehenden Worker-Hard-Timeout; SIGALRM nur via Opt-in (`AURIK_COMPETITIVE_FORCE_SIGNAL_TIMEOUT=1`).

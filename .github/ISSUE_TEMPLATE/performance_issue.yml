@@ -1,0 +1,128 @@
+name: ⚡ Performance Issue
+description: Report performance problems or slow processing times
+title: "[Performance]: "
+labels: ["performance", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a performance issue! This helps us optimize Aurik.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Performance Issue Description
+      description: Describe the performance problem you're experiencing
+      placeholder: What is running slowly?
+    validations:
+      required: true
+
+  - type: textarea
+    id: benchmark
+    attributes:
+      label: Performance Metrics
+      description: Any specific metrics you observed (RT factor, processing time, memory usage)
+      placeholder: |
+        - Processing time: 5 minutes for 1-minute audio
+        - RT Factor: 5.0×
+        - Memory usage: 8 GB
+    validations:
+      required: false
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Processing Mode
+      description: Which mode were you using?
+      options:
+        - RESTORATION (FAST)
+        - RESTORATION (BALANCED)
+        - RESTORATION (MAXIMUM)
+        - STUDIO 2026 (FAST)
+        - STUDIO 2026 (BALANCED)
+        - STUDIO 2026 (MAXIMUM)
+        - CLI (Custom config)
+        - Batch Processing
+    validations:
+      required: true
+
+  - type: input
+    id: audio-specs
+    attributes:
+      label: Audio File Specifications
+      description: Format, sample rate, bit depth, duration
+      placeholder: "WAV, 44.1kHz, 16-bit, 3 minutes"
+    validations:
+      required: true
+
+  - type: textarea
+    id: system-specs
+    attributes:
+      label: System Specifications
+      description: CPU, RAM, GPU (if using ML models)
+      placeholder: |
+        - CPU: Intel Core i7-10700K
+        - RAM: 16GB
+        - GPU: NVIDIA RTX 3060 (if applicable)
+        - OS: Windows 11
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ml-usage
+    attributes:
+      label: ML Model Usage
+      description: Were ML models being used?
+      options:
+        - "Yes - GPU acceleration enabled"
+        - "Yes - CPU-only mode"
+        - "No - DSP fallback mode"
+        - "Unknown"
+    validations:
+      required: false
+
+  - type: textarea
+    id: comparison
+    attributes:
+      label: Expected vs Actual Performance
+      description: What performance did you expect? How does it compare to reality?
+      placeholder: |
+        Expected: RT factor < 1.5×
+        Actual: RT factor 5.0×
+    validations:
+      required: false
+
+  - type: textarea
+    id: resource-monitor
+    attributes:
+      label: Resource Monitoring
+      description: Any observations from Task Manager / Activity Monitor / htop?
+      placeholder: |
+        - CPU usage: 100% on all cores
+        - Memory usage: 8GB / 16GB
+        - Disk I/O: High
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log Output
+      description: Any relevant performance-related log messages
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues for similar performance problems
+          required: true
+        - label: I have provided system specifications and audio file details
+          required: true
+        - label: I am using the latest version of Aurik
+          required: false

@@ -1,0 +1,397 @@
+{
+  "aurik_version": "9.10.77",
+  "generated_at": "2026-03-28T07:59:22.802200",
+  "release_gates": [
+    {
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_no_docker_in_production_paths PASSED [ 83%]",
+      "gate_id": "G1",
+      "ko": true,
+      "name": "Kein Docker in Production-Pfaden",
+      "notes": "",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.999024"
+    },
+    {
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_kmv_batch_audio_correct PASSED [ 86%]",
+      "gate_id": "G2",
+      "ko": true,
+      "name": "KMV batch audio aus Originaludio",
+      "notes": "",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.999031"
+    },
+    {
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_no_silent_refinement_cancellation PASSED [ 89%]",
+      "gate_id": "G3",
+      "ko": true,
+      "name": "Keine silent refinement cancellations",
+      "notes": "",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.999035"
+    },
+    {
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_progress_counter_consistency PASSED [ 91%]",
+      "gate_id": "G4",
+      "ko": false,
+      "name": "Progress Counter funktioniert",
+      "notes": "",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.999039"
+    },
+    {
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_pmgg_no_rollback_skipping PASSED [ 94%]",
+      "gate_id": "G5",
+      "ko": true,
+      "name": "Musical Goals Gate nicht \u00fcbersprungen",
+      "notes": "",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.999043"
+    },
+    {
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_amrb_minimum_oqs_80 SKIPPED  [ 97%]",
+      "gate_id": "G6",
+      "ko": false,
+      "name": "OQS \u2265 80 auf \u22651 AMRB-Szenario",
+      "notes": "",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.999047"
+    },
+    {
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_hybrid_release_mode_determinism PASSED [100%]",
+      "gate_id": "G7",
+      "ko": true,
+      "name": "Hybrid Release Mode deterministisch",
+      "notes": "",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.999052"
+    }
+  ],
+  "restoration_criteria": [
+    {
+      "category": "UI/UX",
+      "criterion_id": "R1",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R1] PASSED [  2%]",
+      "name": "Einstiegs-Nachricht klar und hilfreich",
+      "notes": "",
+      "severity": "MUST",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.998796"
+    },
+    {
+      "category": "UI/UX",
+      "criterion_id": "R2",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R2] PASSED [  5%]",
+      "name": "Defekt-Scanning transparent gemacht",
+      "notes": "",
+      "severity": "MUST",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.998812"
+    },
+    {
+      "category": "UI/UX",
+      "criterion_id": "R3",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R3] PASSED [  8%]",
+      "name": "Zweistufige Progress Bars funktionieren",
+      "notes": "",
+      "severity": "MUST",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.998817"
+    },
+    {
+      "category": "UI/UX",
+      "criterion_id": "R4",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R4] PASSED [ 10%]",
+      "name": "Waveform-Scan-Cursor sichtbar",
+      "notes": "",
+      "severity": "SHOULD",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.998821"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "R5",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R5] SKIPPED [ 13%]",
+      "name": "Vocals in Stereo pr\u00e4serviert",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998826"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "R6",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R6] SKIPPED [ 16%]",
+      "name": "Tonart nicht verschoben",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998830"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "R7",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R7] SKIPPED [ 18%]",
+      "name": "Mikro-Dynamik erhalten",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998834"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "R8",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R8] SKIPPED [ 21%]",
+      "name": "Keine stillen Defekte eingef\u00fchrt",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998839"
+    },
+    {
+      "category": "UI/UX",
+      "criterion_id": "R9",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R9] PASSED [ 24%]",
+      "name": "Reversing funktioniert",
+      "notes": "",
+      "severity": "SHOULD",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.998843"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "R10",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R10] SKIPPED [ 27%]",
+      "name": "Export mit korrekten LUFS",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998847"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "R11",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R11] SKIPPED [ 29%]",
+      "name": "Musikalische Ziele nicht verschlechtert",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998851"
+    },
+    {
+      "category": "Code Quality",
+      "criterion_id": "R12",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R12] SKIPPED [ 32%]",
+      "name": "Keine NaN/Inf-Werte im Audio",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998856"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "R13",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R13] PASSED [ 35%]",
+      "name": "Mono/Stereo korrekt detektiert",
+      "notes": "",
+      "severity": "MUST",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.998860"
+    },
+    {
+      "category": "Audio Analysis",
+      "criterion_id": "R14",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R14] SKIPPED [ 37%]",
+      "name": "Material-Klassifikation funktioniert",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998864"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "R15",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_restoration_criteria[R15] SKIPPED [ 40%]",
+      "name": "Pass-Through SNR > 40 dB",
+      "notes": "",
+      "severity": "SHOULD",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998868"
+    }
+  ],
+  "studio_2026_criteria": [
+    {
+      "category": "UI/UX",
+      "criterion_id": "S1",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S1] PASSED [ 43%]",
+      "name": "Studio 2026 Modusmeldung",
+      "notes": "",
+      "severity": "MUST",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.998943"
+    },
+    {
+      "category": "Audio Processing",
+      "criterion_id": "S2",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S2] SKIPPED [ 45%]",
+      "name": "Stem-Separation aktiv",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998949"
+    },
+    {
+      "category": "Audio Processing",
+      "criterion_id": "S3",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S3] SKIPPED [ 48%]",
+      "name": "Vocal-Enhancement aktiv",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998953"
+    },
+    {
+      "category": "Audio Processing",
+      "criterion_id": "S4",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S4] SKIPPED [ 51%]",
+      "name": "Reference Mastering angewendet",
+      "notes": "",
+      "severity": "SHOULD",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998957"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "S5",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S5] SKIPPED [ 54%]",
+      "name": "LUFS -14 EBU R128 erreicht",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998961"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "S6",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S6] SKIPPED [ 56%]",
+      "name": "Brillanz/W\u00e4rme-Balance",
+      "notes": "",
+      "severity": "SHOULD",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998965"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "S7",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S7] SKIPPED [ 59%]",
+      "name": "R\u00e4umliche Tiefe erhalten",
+      "notes": "",
+      "severity": "SHOULD",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998970"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "S8",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S8] SKIPPED [ 62%]",
+      "name": "TruePeak respektiert",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998974"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "S9",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S9] SKIPPED [ 64%]",
+      "name": "Resampling korrekt",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998978"
+    },
+    {
+      "category": "Audio Processing",
+      "criterion_id": "S10",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S10] SKIPPED [ 67%]",
+      "name": "Multi-band Compressor angewendet",
+      "notes": "",
+      "severity": "SHOULD",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998982"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "S11",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S11] SKIPPED [ 70%]",
+      "name": "Emotional Arc erhalten",
+      "notes": "",
+      "severity": "SHOULD",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998990"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "S12",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S12] SKIPPED [ 72%]",
+      "name": "Artefakte minimal",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.998995"
+    },
+    {
+      "category": "Audio Quality",
+      "criterion_id": "S13",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S13] SKIPPED [ 75%]",
+      "name": "Rauschboden -72 dBFS",
+      "notes": "",
+      "severity": "MUST",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.999009"
+    },
+    {
+      "category": "Audio Processing",
+      "criterion_id": "S14",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S14] SKIPPED [ 78%]",
+      "name": "Sidechain funktioniert (Vocals)",
+      "notes": "",
+      "severity": "SHOULD",
+      "status": "SKIPPED",
+      "timestamp": "2026-03-28T07:59:38.999016"
+    },
+    {
+      "category": "Code Quality",
+      "criterion_id": "S15",
+      "evidence": "tests/test_uat_acceptance_criteria.py::test_studio_2026_criteria[S15] PASSED [ 81%]",
+      "name": "Export-Gate erfolgreich",
+      "notes": "",
+      "severity": "MUST",
+      "status": "PASSED",
+      "timestamp": "2026-03-28T07:59:38.999020"
+    }
+  ],
+  "summary": {
+    "aurik_version": "9.10.77",
+    "criteria_executed": 8,
+    "criteria_failed": 0,
+    "criteria_passed": 8,
+    "criteria_skipped": 22,
+    "gates_failed": 0,
+    "gates_passed": 6,
+    "gates_skipped": 1,
+    "gates_total": 7,
+    "generated_at": "2026-03-28T07:59:22.802200",
+    "ko_violations": 0,
+    "rationale": "No executed criterion failed (8/8 passed), 22 criteria pending functional/heavy validation",
+    "recommendation": "CONDITIONAL",
+    "regression_status": "0 regressions",
+    "restoration_failed": 0,
+    "restoration_passed": 6,
+    "restoration_skipped": 9,
+    "restoration_total": 15,
+    "studio_2026_failed": 0,
+    "studio_2026_passed": 2,
+    "studio_2026_skipped": 13,
+    "studio_2026_total": 15
+  }
+}

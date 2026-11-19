@@ -1,0 +1,136 @@
+name: Aurik CI Cross-Platform
+
+# §15.4: Cross-Platform-Tests (Ubuntu, Windows 10/11 x64 via windows-2022)
+# macOS entfernt (2026-09-23): arm64-Runner bieten kein Python 3.10.12.
+# Windows: Das Toolcache-Manifest (actions/python-versions) enthält 3.10.12
+# nur für darwin/linux — kein Windows-x64-Build (CI-Befund 2026-09-23).
+# Letzte verfügbare Windows-3.10.x ist 3.10.11 → exakter Pin auf dem Runner.
+# Die Windows-Installer (install_aurik.bat / install_windows.ps1) pinnten
+# weiterhin exakt 3.10.12 x64 für die Zielmaschinen (Win10/Win11).
+# Nur bei push auf main oder manuellem Trigger (Kostenkontrolle)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  platform-compat:
+    name: Platform Compatibility Check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+      - name: Run platform compat check
+        run: python scripts/platform_compat_check.py
+
+  test-cross-platform:
+    name: Test ${{ matrix.os }} (Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    needs: platform-compat
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            python: "3.10.12"  # exakter Baseline-Pin (Toolcache vorhanden)
+          - os: windows-2022
+            python: "3.10.11"  # letzte Windows-x64-3.10 im Manifest (3.10.12 ohne Windows-Build)
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true  # ML-Modelle (*.onnx/*.ckpt) liegen via Git-LFS im Repo
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Verify Python version
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-2022" ]]; then
+            # 3.10.12 hat keinen Windows-x64-Build im Manifest → exakter Pin
+            # 3.10.11 auf dem Runner; die Win10/Win11-Zielmaschinen sind via
+            # Installer exakt auf 3.10.12 x64 gepinnt.
+            python -c "import platform, sys; print(platform.python_version()); assert sys.version_info[:3] == (3, 10, 11) and sys.maxsize > 2**32, f'Expected Python 3.10.11 x64, got {platform.python_version()}'"
+          else
+            python -c "import platform, sys; print(platform.python_version()); assert sys.version_info[:3] == (3, 10, 12), f'Expected Python 3.10.12, got {platform.python_version()}'"
+          fi
+
+      - name: Install dependencies (Produktions-Pins)
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy==1.26.4 scipy==1.15.3 soundfile==0.13.1 pytest==9.0.2 \
+            pytest-timeout==2.4.0 pyyaml==6.0.3 librosa==0.11.0 numba==0.64.0
+          # Leichte Zusatz-Deps für den normativen Unit-Scope (GUI-Logik,
+          # Reports, ONNX-CPU-Fallback, Metadaten, LUFS-Normalisierung).
+          pip install psutil mutagen PyQt5==5.15.11 matplotlib onnxruntime==1.23.2 pyloudnorm==0.2.0
+          # Editable-Install ist best-effort (PYTHONPATH=. ist der Primärpfad);
+          # ein Fehlschlag wird laut protokolliert statt verschluckt.
+          pip install -e . || echo "WARN: editable install fehlgeschlagen — Tests laufen über PYTHONPATH=."
+
+      - name: GPU capability detection
+        shell: bash
+        run: python scripts/detect_gpu_capabilities.py --json
+
+      - name: ErrorGuard coverage audit
+        shell: bash
+        run: python scripts/audit_error_guard_coverage.py --json-only
+
+      - name: Run cross-platform tests
+        shell: bash
+        env:
+          PYTHONFAULTHANDLER: "1"
+        run: |
+          set -euo pipefail
+          # §Fix 2026-09-22: NUMBA_DISABLE_JIT=1 entfernt — es testete eine
+          # Nicht-Produktionskonfiguration und brach librosa (numba 0.67).
+          # Stattdessen exakte Produktions-Pins (numba==0.64.0, s. Install-Step).
+          # Voller Log statt tail -80: Faulthandler-Stacks bleiben sichtbar;
+          # bei Fehlschlag wird der Log als Artefakt hochgeladen.
+          PYTHONPATH=. pytest tests/unit tests/normative/test_no_production_stubs.py \
+            -m "not slow and not gpu and not onnx" \
+            --timeout=120 \
+            --tb=short \
+            --no-header \
+            --override-ini="addopts=" \
+            -p no:cacheprovider \
+            --ignore=tests/normative/test_competitive_ci_gate.py \
+            --ignore=tests/normative/test_competitive_stratified_gate.py \
+            > /tmp/aurik_cross_platform_tests.log 2>&1 || {
+              echo "=== Letzte 120 Zeilen des Testlogs ==="
+              tail -120 /tmp/aurik_cross_platform_tests.log
+              echo "=== Fehlgeschlagene Tests (Annotations, API-lesbar) ==="
+              grep -E "^(FAILED|ERROR)" /tmp/aurik_cross_platform_tests.log | head -40 | sed 's/^/::error file=ci-cross-platform::/'
+              echo "=== Zusammenfassung ==="
+              grep -E "[0-9]+ (passed|failed|error)" /tmp/aurik_cross_platform_tests.log | tail -3 | sed 's/^/::warning file=ci-cross-platform::/'
+              exit 1
+            }
+          tail -15 /tmp/aurik_cross_platform_tests.log
+
+      - name: Upload test log bei Fehlschlag (Diagnose)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-platform-test-log-${{ matrix.os }}
+          path: /tmp/aurik_cross_platform_tests.log
+
+      - name: Quick smoke test
+        shell: bash
+        run: |
+          python -c "
+          import numpy as np
+          print('numpy:', np.__version__)
+          from benchmarks.regression.regression_gate import _make_music, compute_pqs
+          music = _make_music(0.5)
+          print('PQS self-test:', compute_pqs(music, music))
+          print('Smoke test OK')
+          "

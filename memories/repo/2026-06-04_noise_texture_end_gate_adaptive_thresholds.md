@@ -1,0 +1,8 @@
+- Problem: `NOISE_TEXTURE_INCOHERENT` war 8/8 im real execution gate durch starre End-Schwelle `coherence >= 0.80` unabhängig von Clip-Länge/Material/Mode.
+- Fix: In `backend/core/noise_texture_coherence.py` adaptive End-Schwelle eingeführt (`_resolve_end_of_pipeline_min_coherence`):
+  - `studio_2026` -> 0.0 (kein End-Gate-Enforcement),
+  - digitale Carrier -> 0.0,
+  - analoge Carrier: 0.35 bei <=3s, linear auf 0.80 bis 8s, danach 0.80.
+- Result-Contract erweitert: `NoiseTextureResult.min_required_coherence` und UV3-Fail-Reason-Logging auf dynamische Schwelle umgestellt.
+- Regression-Tests ergänzt in `tests/unit/test_noise_texture_coherence.py` für short-clip relax, long-clip strict, studio bypass, digital 0.0.
+- Validation: Unit-Test `tests/unit/test_noise_texture_coherence.py` grün; Full report `audit/real_audio_execution_golden_report_full_2026_06_04_after_noise_texture_adaptive_v2.json` zeigt `NOISE_TEXTURE_INCOHERENT: 0` (vorher 8).

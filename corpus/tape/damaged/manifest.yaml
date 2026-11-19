@@ -1,0 +1,14 @@
+- channels: 1
+  checksum_sha256: 8bb90134bdc1443defcd330a48a79bf2732d55f440a7eabfe59561488981c8bf
+  defects:
+  - hiss
+  - subtle_wow
+  duration_s: 3.0
+  era: 1968
+  file: tape_test_damaged.wav
+  genre: Orchestral
+  license: CC0
+  material: tape
+  notes: Synthetische Test-Aufnahme
+  sample_rate: 48000
+  source: Synthetic Test Corpus

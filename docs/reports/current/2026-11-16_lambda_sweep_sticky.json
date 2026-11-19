@@ -1,0 +1,36 @@
+{
+  "schema": "aurik.befund/1",
+  "datum": "2026-11-16",
+  "titel": "lambda-spektral-Sweep (sticky_shed_residue) — Auswahl-Gewichtung allein reicht nicht",
+  "befund": "Sweep 0,3/0,6/1,0: 0,3 und 0,6 konvergieren auf -0,028/+0,050 (mos-Verlust 0,057, knapp ueber JND), 1,0 verschlechtert BEIDE Metriken (-0,004/+0,011). Kein lambda erreicht die Zwei-Metrik-Pflicht. SCHLUSS (ehrlich): Die Wohlklang-Gewichtung in der MODELLAUSWAHL reicht nicht — der Wohlklang-Term gehoert in den TRAININGS-LOSS selbst (der Gradient muss Wohlklang optimieren, nicht nur die Auswahl). Naechster Schritt: lam_spec * _spektral_abstand(out, clean) im Trainings-Loss.",
+  "werte": {
+    "lambda_0_3": {
+      "defektlast": -0.0279,
+      "mos": 0.05
+    },
+    "lambda_0_6": {
+      "defektlast": -0.0279,
+      "mos": 0.05
+    },
+    "lambda_1_0": {
+      "defektlast": -0.004,
+      "mos": 0.011
+    },
+    "bestand": {
+      "defektlast": -0.0158,
+      "mos": 0.107
+    }
+  },
+  "lossterm": {
+    "gate_q_median": 0.9762,
+    "gate_bestanden": true,
+    "never_worsen": 1.0,
+    "ganztitel": {
+      "defektlast": -0.0279,
+      "mos": 0.05
+    },
+    "befund": "Loss-Term-Lauf (Wohlklang im Trainings-Gradienten, λ=0,3): Ganz-Titel -0,028/+0,050 — IDENTISCH zur Auswahl-Gewichtung. Der Punkt ist robust über alle Kanal-Varianten (groove_echo, sticky alt/neu, Kombi, λ-Sweep, Loss-Term) ⇒ Verdacht: die Kanaele wirkten in den Solo-Laeufen gar nicht und der Unterschied zum v5-Bestand (-0,016/+0,107) ist der Lauf-KONTEXT (3-Titel vs. Solo), nicht der Kanal. KONTROLL-LAUF GESTARTET: Bestand SOLO (frischer Prozess, alle Flags AUS) auf Boogie-vinyl."
+  },
+  "status": "korrigiert_durch_bestand_solo_kontrolle",
+  "korrektur": "KORRIGIERT: der Ganz-Titel-Punkt -0,028/+0,050 ist der Bestand-Solo-Wert — Sweep/Loss-Term haben keinen messbaren Kanal-Effekt; die Kontext-Frage der Bestands-Pipeline ist der echte naechste Schritt."
+}

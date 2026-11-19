@@ -1,0 +1,67 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "matrix_d3-20261105T092339Z-c3ac3c",
+  "name": "d3_bigvgan_f3",
+  "phase": "matrix_d3",
+  "seed": 42,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_bigvgan_f3.py --epochs 30",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_bigvgan_f3.py --epochs 30 --resume output/f3_bigvgan/checkpoint_latest.pt",
+  "timeout_s": 21600.0,
+  "retries": 3,
+  "versuche": [
+    {
+      "exit_code": -15,
+      "sekunden": 21600.3,
+      "timed_out": true,
+      "output_tail": "286 STFT=0.8941\n2026-11-05 13:30:24,894 INFO Epoche 2 Schritt 1000/2000: A1=0.1279 STFT=0.8926\n2026-11-05 13:37:49,131 INFO Epoche 2 Schritt 1200/2000: A1=0.1284 STFT=0.8927\n2026-11-05 13:45:13,500 INFO Epoche 2 Schritt 1400/2000: A1=0.1291 STFT=0.8924\n2026-11-05 13:52:39,684 INFO Epoche 2 Schritt 1600/2000: A1=0.1287 STFT=0.8918\n2026-11-05 14:00:06,206 INFO Epoche 2 Schritt 1800/2000: A1=0.1283 STFT=0.8916\n2026-11-05 14:07:34,394 INFO Epoche 2 fertig (4477.8 s): A1=0.1280 STFT=0.8911 Val=0.6100\n2026-11-05 14:15:25,994 INFO Epoche 3 Schritt 200/2000: A1=0.1271 STFT=0.8881\n2026-11-05 14:22:51,400 INFO Epoche 3 Schritt 400/2000: A1=0.1297 STFT=0.8899\n2026-11-05 14:30:16,919 INFO Epoche 3 Schritt 600/2000: A1=0.1292 STFT=0.8875\n2026-11-05 14:37:42,354 INFO Epoche 3 Schritt 800/2000: A1=0.1296 STFT=0.8890\n2026-11-05 14:45:07,854 INFO Epoche 3 Schritt 1000/2000: A1=0.1296 STFT=0.8892\n2026-11-05 14:52:33,340 INFO Epoche 3 Schritt 1200/2000: A1=0.1297 STFT=0.8877\n2026-11-05 14:59:58,870 INFO Epoche 3 Schritt 1400/2000: A1=0.1293 STFT=0.8878\n2026-11-05 15:07:24,321 INFO Epoche 3 Schritt 1600/2000: A1=0.1291 STFT=0.8869\n2026-11-05 15:14:49,923 INFO Epoche 3 Schritt 1800/2000: A1=0.1292 STFT=0.8861\n2026-11-05 15:22:16,675 INFO Epoche 3 fertig (4460.4 s): A1=0.1292 STFT=0.8858 Val=0.5810\n2026-11-05 15:22:52,629 INFO Neues bestes Modell (Val=0.5810) gespeichert\n2026-11-05 15:30:19,752 INFO Epoche 4 Schritt 200/2000: A1=0.1293 STFT=0.8790\n2026-11-05 15:37:45,352 INFO Epoche 4 Schritt 400/2000: A1=0.1277 STFT=0.8818\n2026-11-05 15:45:10,902 INFO Epoche 4 Schritt 600/2000: A1=0.1263 STFT=0.8823\n2026-11-05 15:52:36,552 INFO Epoche 4 Schritt 800/2000: A1=0.1267 STFT=0.8818\n2026-11-05 16:00:11,847 INFO Epoche 4 Schritt 1000/2000: A1=0.1273 STFT=0.8819\n2026-11-05 16:07:40,307 INFO Epoche 4 Schritt 1200/2000: A1=0.1273 STFT=0.8817\n2026-11-05 16:15:18,072 INFO Epoche 4 Schritt 1400/2000: A1=0.1266 STFT=0.8805\n2026-11-05 16:22:58,469 INFO Epoche 4 Schritt 1600/2000: A1=0.1268 STFT=0.8805\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_bigvgan_f3.py --epochs 30"
+    },
+    {
+      "exit_code": -15,
+      "sekunden": 21600.4,
+      "timed_out": true,
+      "output_tail": "1256 STFT=0.8708\n2026-11-05 19:27:34,736 INFO Epoche 6 Schritt 800/2000: A1=0.1255 STFT=0.8695\n2026-11-05 19:35:01,346 INFO Epoche 6 Schritt 1000/2000: A1=0.1248 STFT=0.8690\n2026-11-05 19:42:28,071 INFO Epoche 6 Schritt 1200/2000: A1=0.1252 STFT=0.8692\n2026-11-05 19:49:54,750 INFO Epoche 6 Schritt 1400/2000: A1=0.1257 STFT=0.8692\n2026-11-05 19:57:22,528 INFO Epoche 6 Schritt 1600/2000: A1=0.1254 STFT=0.8691\n2026-11-05 20:04:48,225 INFO Epoche 6 Schritt 1800/2000: A1=0.1250 STFT=0.8689\n2026-11-05 20:12:15,602 INFO Epoche 6 fertig (4469.3 s): A1=0.1247 STFT=0.8686 Val=0.6005\n2026-11-05 20:19:57,839 INFO Epoche 7 Schritt 200/2000: A1=0.1236 STFT=0.8668\n2026-11-05 20:27:21,063 INFO Epoche 7 Schritt 400/2000: A1=0.1264 STFT=0.8690\n2026-11-05 20:34:48,434 INFO Epoche 7 Schritt 600/2000: A1=0.1259 STFT=0.8667\n2026-11-05 20:42:32,728 INFO Epoche 7 Schritt 800/2000: A1=0.1265 STFT=0.8675\n2026-11-05 20:49:53,898 INFO Epoche 7 Schritt 1000/2000: A1=0.1264 STFT=0.8671\n2026-11-05 20:57:15,650 INFO Epoche 7 Schritt 1200/2000: A1=0.1264 STFT=0.8665\n2026-11-05 21:04:43,170 INFO Epoche 7 Schritt 1400/2000: A1=0.1261 STFT=0.8668\n2026-11-05 21:12:10,945 INFO Epoche 7 Schritt 1600/2000: A1=0.1259 STFT=0.8663\n2026-11-05 21:19:38,448 INFO Epoche 7 Schritt 1800/2000: A1=0.1260 STFT=0.8654\n2026-11-05 21:27:07,626 INFO Epoche 7 fertig (4477.6 s): A1=0.1259 STFT=0.8651 Val=0.5665\n2026-11-05 21:27:32,473 INFO Neues bestes Modell (Val=0.5665) gespeichert\n2026-11-05 21:35:01,901 INFO Epoche 8 Schritt 200/2000: A1=0.1261 STFT=0.8658\n2026-11-05 21:42:32,642 INFO Epoche 8 Schritt 400/2000: A1=0.1245 STFT=0.8667\n2026-11-05 21:49:58,688 INFO Epoche 8 Schritt 600/2000: A1=0.1236 STFT=0.8665\n2026-11-05 21:57:26,104 INFO Epoche 8 Schritt 800/2000: A1=0.1242 STFT=0.8677\n2026-11-05 22:04:53,798 INFO Epoche 8 Schritt 1000/2000: A1=0.1249 STFT=0.8692\n2026-11-05 22:12:21,495 INFO Epoche 8 Schritt 1200/2000: A1=0.1250 STFT=0.8688\n2026-11-05 22:19:49,263 INFO Epoche 8 Schritt 1400/2000: A1=0.1244 STFT=0.8677\n",
+      "versuch": 2,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_bigvgan_f3.py --epochs 30 --resume output/f3_bigvgan/checkpoint_latest.pt"
+    },
+    {
+      "exit_code": -15,
+      "sekunden": 21600.4,
+      "timed_out": true,
+      "output_tail": ":25:28,393 INFO Epoche 10 Schritt 800/2000: A1=0.1226 STFT=0.8584\n2026-11-06 01:32:50,918 INFO Epoche 10 Schritt 1000/2000: A1=0.1220 STFT=0.8582\n2026-11-06 01:40:13,645 INFO Epoche 10 Schritt 1200/2000: A1=0.1225 STFT=0.8587\n2026-11-06 01:47:36,379 INFO Epoche 10 Schritt 1400/2000: A1=0.1229 STFT=0.8585\n2026-11-06 01:54:59,084 INFO Epoche 10 Schritt 1600/2000: A1=0.1224 STFT=0.8578\n2026-11-06 02:02:21,726 INFO Epoche 10 Schritt 1800/2000: A1=0.1221 STFT=0.8575\n2026-11-06 02:09:45,770 INFO Epoche 10 fertig (4430.2 s): A1=0.1217 STFT=0.8570 Val=0.5905\n2026-11-06 02:17:23,685 INFO Epoche 11 Schritt 200/2000: A1=0.1205 STFT=0.8586\n2026-11-06 02:24:46,289 INFO Epoche 11 Schritt 400/2000: A1=0.1231 STFT=0.8593\n2026-11-06 02:32:09,052 INFO Epoche 11 Schritt 600/2000: A1=0.1231 STFT=0.8582\n2026-11-06 02:39:31,583 INFO Epoche 11 Schritt 800/2000: A1=0.1236 STFT=0.8582\n2026-11-06 02:46:54,074 INFO Epoche 11 Schritt 1000/2000: A1=0.1234 STFT=0.8580\n2026-11-06 02:54:16,603 INFO Epoche 11 Schritt 1200/2000: A1=0.1233 STFT=0.8572\n2026-11-06 03:01:39,184 INFO Epoche 11 Schritt 1400/2000: A1=0.1230 STFT=0.8576\n2026-11-06 03:09:01,948 INFO Epoche 11 Schritt 1600/2000: A1=0.1228 STFT=0.8573\n2026-11-06 03:16:24,634 INFO Epoche 11 Schritt 1800/2000: A1=0.1228 STFT=0.8564\n2026-11-06 03:23:48,564 INFO Epoche 11 fertig (4429.4 s): A1=0.1228 STFT=0.8562 Val=0.5701\n2026-11-06 03:31:26,369 INFO Epoche 12 Schritt 200/2000: A1=0.1241 STFT=0.8593\n2026-11-06 03:38:49,105 INFO Epoche 12 Schritt 400/2000: A1=0.1221 STFT=0.8581\n2026-11-06 03:46:11,728 INFO Epoche 12 Schritt 600/2000: A1=0.1216 STFT=0.8597\n2026-11-06 03:53:34,460 INFO Epoche 12 Schritt 800/2000: A1=0.1224 STFT=0.8604\n2026-11-06 04:00:57,106 INFO Epoche 12 Schritt 1000/2000: A1=0.1230 STFT=0.8611\n2026-11-06 04:08:19,598 INFO Epoche 12 Schritt 1200/2000: A1=0.1233 STFT=0.8612\n2026-11-06 04:15:42,209 INFO Epoche 12 Schritt 1400/2000: A1=0.1226 STFT=0.8603\n2026-11-06 04:23:04,794 INFO Epoche 12 Schritt 1600/2000: A1=0.1227 STFT=0.8600\n",
+      "versuch": 3,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_bigvgan_f3.py --epochs 30 --resume output/f3_bigvgan/checkpoint_latest.pt"
+    },
+    {
+      "exit_code": -15,
+      "sekunden": 21600.4,
+      "timed_out": true,
+      "output_tail": ":11,260 INFO Epoche 13 fertig (5029.2 s): A1=0.1186 STFT=0.8513 Val=0.5768\n2026-11-06 07:14:10,191 INFO Epoche 14 Schritt 200/2000: A1=0.1223 STFT=0.8474\n2026-11-06 07:22:46,174 INFO Epoche 14 Schritt 400/2000: A1=0.1209 STFT=0.8485\n2026-11-06 07:31:24,629 INFO Epoche 14 Schritt 600/2000: A1=0.1205 STFT=0.8494\n2026-11-06 07:39:57,672 INFO Epoche 14 Schritt 800/2000: A1=0.1203 STFT=0.8482\n2026-11-06 07:48:29,721 INFO Epoche 14 Schritt 1000/2000: A1=0.1194 STFT=0.8481\n2026-11-06 07:56:49,651 INFO Epoche 14 Schritt 1200/2000: A1=0.1197 STFT=0.8489\n2026-11-06 08:05:08,375 INFO Epoche 14 Schritt 1400/2000: A1=0.1202 STFT=0.8494\n2026-11-06 08:13:26,576 INFO Epoche 14 Schritt 1600/2000: A1=0.1199 STFT=0.8492\n2026-11-06 08:21:45,628 INFO Epoche 14 Schritt 1800/2000: A1=0.1195 STFT=0.8489\n2026-11-06 08:30:05,446 INFO Epoche 14 fertig (5074.6 s): A1=0.1192 STFT=0.8486 Val=0.5954\n2026-11-06 08:38:43,315 INFO Epoche 15 Schritt 200/2000: A1=0.1183 STFT=0.8495\n2026-11-06 08:47:01,715 INFO Epoche 15 Schritt 400/2000: A1=0.1207 STFT=0.8509\n2026-11-06 08:55:18,795 INFO Epoche 15 Schritt 600/2000: A1=0.1207 STFT=0.8498\n2026-11-06 09:03:36,149 INFO Epoche 15 Schritt 800/2000: A1=0.1211 STFT=0.8496\n2026-11-06 09:11:53,720 INFO Epoche 15 Schritt 1000/2000: A1=0.1210 STFT=0.8495\n2026-11-06 09:20:11,842 INFO Epoche 15 Schritt 1200/2000: A1=0.1210 STFT=0.8487\n2026-11-06 09:28:30,199 INFO Epoche 15 Schritt 1400/2000: A1=0.1205 STFT=0.8493\n2026-11-06 09:36:51,247 INFO Epoche 15 Schritt 1600/2000: A1=0.1203 STFT=0.8490\n2026-11-06 09:45:12,489 INFO Epoche 15 Schritt 1800/2000: A1=0.1203 STFT=0.8480\n2026-11-06 09:53:35,356 INFO Epoche 15 fertig (4993.2 s): A1=0.1203 STFT=0.8474 Val=0.5682\n2026-11-06 09:54:04,082 INFO Neues bestes Modell (Val=0.5682) gespeichert\n2026-11-06 10:02:26,265 INFO Epoche 16 Schritt 200/2000: A1=0.1231 STFT=0.8522\n2026-11-06 10:10:47,133 INFO Epoche 16 Schritt 400/2000: A1=0.1210 STFT=0.8525\n2026-11-06 10:19:08,218 INFO Epoche 16 Schritt 600/2000: A1=0.1202 STFT=0.8531\n",
+      "versuch": 4,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_bigvgan_f3.py --epochs 30 --resume output/f3_bigvgan/checkpoint_latest.pt"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "best.pt": "1d85913113f2478500b913ef3ad2cfebebd1484051bc0f03af0d6a4b45e79de4",
+    "checkpoint_epoch0.pt": "2d2cfa1dc13ee382ff930818fdf995bcb44272cb20947d20bf6a683a5cf9a497",
+    "checkpoint_epoch1.pt": "adabe784714f973c8031ade5bd19b8ecf1b25e3957cfd84d187ebb13832e709a",
+    "checkpoint_epoch10.pt": "ad89bb54deda45836c96851be4c53c4c296b0158f84f452b13b2aac26704575c",
+    "checkpoint_epoch11.pt": "e66ead64f7e04d8c241317d89f7eebe0886bb75eb5bc743fb8bc28c67f46790e",
+    "checkpoint_epoch12.pt": "03fbe4ed485c477f051d77362d5885d1a297a527db130c58d800c5e18a0e8986",
+    "checkpoint_epoch13.pt": "f3a01d76d82ec4eba4ea73cc3dbdcba3f692b212497485676e8b46af1924fad3",
+    "checkpoint_epoch14.pt": "b0dc77c58b305f872eeb579c8f79dad8d732a84d6d573db69bd05f13d64e7418",
+    "checkpoint_epoch15.pt": "db1ded74f7abbd4a50ea03e6ceb036cc392b6f274dd80ff810e3a9b9a833b80f",
+    "checkpoint_epoch2.pt": "4d55b93b53312567690d63db30bd93a658c6a3fc2cbd91747c6256ec206d62a1",
+    "checkpoint_epoch3.pt": "6e13ae4563dba80a5c28c3f14f467669611893e642a742f09b19e963d8b0bdb4",
+    "checkpoint_epoch4.pt": "b6c990448b76c92e4006b624078444078295e3ec0d360282653cb1cf6dde20a3",
+    "checkpoint_epoch5.pt": "82d2ac0f4a635200b5ba2b21b74befe01b6cb7e4b108be0c269bfe92e8b98c25",
+    "checkpoint_epoch6.pt": "be1f94c273bced71263be169547329e67cea9536686a8b187ff813923b70b2f3",
+    "checkpoint_epoch7.pt": "00c83486bc6c28f8c69f224980bf3b40fdc51211ba55003193055d62fe6fba2c",
+    "checkpoint_epoch8.pt": "a474c1618869b193dc61db4ecbfe4a1c86fde5b4185326ae818903d561c8fa5f",
+    "checkpoint_epoch9.pt": "0deb8daa07b5fc0028e98cb5d86a9f0c41dbdbffbf9a95de8b6ae45a247f4d8b",
+    "checkpoint_latest.pt": "1ebb05a1695206b5a0ac38757e4f8c375228680bbdc684159ff5964b595a88e8"
+  },
+  "ergebnis": "fehlgeschlagen"
+}

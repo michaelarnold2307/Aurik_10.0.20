@@ -1,0 +1,1486 @@
+{
+  "all_results": [
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_001_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_002_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_003_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_004_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_005_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "instrumental",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.2575777619183956,
+          "measured": 0.2575777619183956
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.7007879483889724,
+          "measured": 0.24921205161102758
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.7371826495881075,
+          "measured": 0.7371826495881075
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.4457080633434779,
+          "measured": 0.46429193665652213
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.4918294109847643,
+          "measured": 0.46817058901523567
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.0641380511675127,
+          "measured": 0.9841380511675127
+        }
+      },
+      "filename": "instrumental_001_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.2575777619183956,
+        "bass_kraft": 1.0,
+        "brillanz": 0.24921205161102758,
+        "emotionalitaet": 0.7371826495881075,
+        "natuerlichkeit": 0.46429193665652213,
+        "transparenz": 0.46817058901523567,
+        "waerme": 0.9841380511675127
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "instrumental",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.25754163150335063,
+          "measured": 0.25754163150335063
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.70042829859182,
+          "measured": 0.24957170140817994
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.7371874801376028,
+          "measured": 0.7371874801376028
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.4534730348149828,
+          "measured": 0.45652696518501723
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.491319862809733,
+          "measured": 0.46868013719026697
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.0637551868850057,
+          "measured": 0.9837551868850057
+        }
+      },
+      "filename": "instrumental_002_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.25754163150335063,
+        "bass_kraft": 1.0,
+        "brillanz": 0.24957170140817994,
+        "emotionalitaet": 0.7371874801376028,
+        "natuerlichkeit": 0.45652696518501723,
+        "transparenz": 0.46868013719026697,
+        "waerme": 0.9837551868850057
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "instrumental",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.25754189801505,
+          "measured": 0.25754189801505
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.700454137826366,
+          "measured": 0.24954586217363398
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.7371861616000963,
+          "measured": 0.7371861616000963
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.4529699048774503,
+          "measured": 0.4570300951225497
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.4909713049987044,
+          "measured": 0.46902869500129557
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.0638978684442798,
+          "measured": 0.9838978684442798
+        }
+      },
+      "filename": "instrumental_003_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.25754189801505,
+        "bass_kraft": 1.0,
+        "brillanz": 0.24954586217363398,
+        "emotionalitaet": 0.7371861616000963,
+        "natuerlichkeit": 0.4570300951225497,
+        "transparenz": 0.46902869500129557,
+        "waerme": 0.9838978684442798
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "classical",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6515366924107742,
+          "measured": 0.6515366924107742
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8383555242648153,
+          "measured": 0.11164447573518471
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6246916079864537,
+          "measured": 0.6246916079864537
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.018278380027456298,
+          "measured": 0.8917216199725437
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.590780232666223,
+          "measured": 0.3692197673337769
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "classical_001_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.6515366924107742,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11164447573518471,
+        "emotionalitaet": 0.6246916079864537,
+        "natuerlichkeit": 0.8917216199725437,
+        "transparenz": 0.3692197673337769,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "classical",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6515366924107742,
+          "measured": 0.6515366924107742
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8383555242648153,
+          "measured": 0.11164447573518471
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6246916079864537,
+          "measured": 0.6246916079864537
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.018278380027456298,
+          "measured": 0.8917216199725437
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.590780232666223,
+          "measured": 0.3692197673337769
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "classical_002_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.6515366924107742,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11164447573518471,
+        "emotionalitaet": 0.6246916079864537,
+        "natuerlichkeit": 0.8917216199725437,
+        "transparenz": 0.3692197673337769,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "jazz",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23590078831427885,
+          "measured": 0.23590078831427885
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8109441395933205,
+          "measured": 0.13905586040667947
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.3391457419826597,
+          "measured": 0.3391457419826597
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.1317583280453809,
+          "measured": 0.7782416719546191
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.5669964012263495,
+          "measured": 0.3930035987736505
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "jazz_001_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23590078831427885,
+        "bass_kraft": 1.0,
+        "brillanz": 0.13905586040667947,
+        "emotionalitaet": 0.3391457419826597,
+        "natuerlichkeit": 0.7782416719546191,
+        "transparenz": 0.3930035987736505,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "jazz",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23590078831427885,
+          "measured": 0.23590078831427885
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8109441395933205,
+          "measured": 0.13905586040667947
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.3391457419826597,
+          "measured": 0.3391457419826597
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.1317583280453809,
+          "measured": 0.7782416719546191
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.5669964012263495,
+          "measured": 0.3930035987736505
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "jazz_002_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23590078831427885,
+        "bass_kraft": 1.0,
+        "brillanz": 0.13905586040667947,
+        "emotionalitaet": 0.3391457419826597,
+        "natuerlichkeit": 0.7782416719546191,
+        "transparenz": 0.3930035987736505,
+        "waerme": 1.0
+      }
+    }
+  ],
+  "anomalies": [
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_001_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_002_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_003_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_004_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23071512738623606,
+          "measured": 0.23071512738623606
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8389232934354796,
+          "measured": 0.11107670656452039
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6084733255349395,
+          "measured": 0.6084733255349395
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.02702732266058072,
+          "measured": 0.8829726773394193
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.6139691957280347,
+          "measured": 0.3460308042719653
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "vocal_005_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "instrumental",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.2575777619183956,
+          "measured": 0.2575777619183956
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.7007879483889724,
+          "measured": 0.24921205161102758
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.7371826495881075,
+          "measured": 0.7371826495881075
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.4457080633434779,
+          "measured": 0.46429193665652213
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.4918294109847643,
+          "measured": 0.46817058901523567
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.0641380511675127,
+          "measured": 0.9841380511675127
+        }
+      },
+      "filename": "instrumental_001_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.2575777619183956,
+        "bass_kraft": 1.0,
+        "brillanz": 0.24921205161102758,
+        "emotionalitaet": 0.7371826495881075,
+        "natuerlichkeit": 0.46429193665652213,
+        "transparenz": 0.46817058901523567,
+        "waerme": 0.9841380511675127
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "instrumental",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.25754163150335063,
+          "measured": 0.25754163150335063
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.70042829859182,
+          "measured": 0.24957170140817994
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.7371874801376028,
+          "measured": 0.7371874801376028
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.4534730348149828,
+          "measured": 0.45652696518501723
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.491319862809733,
+          "measured": 0.46868013719026697
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.0637551868850057,
+          "measured": 0.9837551868850057
+        }
+      },
+      "filename": "instrumental_002_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.25754163150335063,
+        "bass_kraft": 1.0,
+        "brillanz": 0.24957170140817994,
+        "emotionalitaet": 0.7371874801376028,
+        "natuerlichkeit": 0.45652696518501723,
+        "transparenz": 0.46868013719026697,
+        "waerme": 0.9837551868850057
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "instrumental",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.25754189801505,
+          "measured": 0.25754189801505
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.700454137826366,
+          "measured": 0.24954586217363398
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.7371861616000963,
+          "measured": 0.7371861616000963
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.4529699048774503,
+          "measured": 0.4570300951225497
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.4909713049987044,
+          "measured": 0.46902869500129557
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.0638978684442798,
+          "measured": 0.9838978684442798
+        }
+      },
+      "filename": "instrumental_003_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.25754189801505,
+        "bass_kraft": 1.0,
+        "brillanz": 0.24954586217363398,
+        "emotionalitaet": 0.7371861616000963,
+        "natuerlichkeit": 0.4570300951225497,
+        "transparenz": 0.46902869500129557,
+        "waerme": 0.9838978684442798
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "classical",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6515366924107742,
+          "measured": 0.6515366924107742
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8383555242648153,
+          "measured": 0.11164447573518471
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6246916079864537,
+          "measured": 0.6246916079864537
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.018278380027456298,
+          "measured": 0.8917216199725437
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.590780232666223,
+          "measured": 0.3692197673337769
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "classical_001_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.6515366924107742,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11164447573518471,
+        "emotionalitaet": 0.6246916079864537,
+        "natuerlichkeit": 0.8917216199725437,
+        "transparenz": 0.3692197673337769,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "classical",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6515366924107742,
+          "measured": 0.6515366924107742
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8383555242648153,
+          "measured": 0.11164447573518471
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.6246916079864537,
+          "measured": 0.6246916079864537
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.018278380027456298,
+          "measured": 0.8917216199725437
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.590780232666223,
+          "measured": 0.3692197673337769
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "classical_002_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.6515366924107742,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11164447573518471,
+        "emotionalitaet": 0.6246916079864537,
+        "natuerlichkeit": 0.8917216199725437,
+        "transparenz": 0.3692197673337769,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "jazz",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23590078831427885,
+          "measured": 0.23590078831427885
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8109441395933205,
+          "measured": 0.13905586040667947
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.3391457419826597,
+          "measured": 0.3391457419826597
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.1317583280453809,
+          "measured": 0.7782416719546191
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.5669964012263495,
+          "measured": 0.3930035987736505
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "jazz_001_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23590078831427885,
+        "bass_kraft": 1.0,
+        "brillanz": 0.13905586040667947,
+        "emotionalitaet": 0.3391457419826597,
+        "natuerlichkeit": 0.7782416719546191,
+        "transparenz": 0.3930035987736505,
+        "waerme": 1.0
+      }
+    },
+    {
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "jazz",
+      "deviations": {
+        "authentizitaet": {
+          "baseline": 0.0,
+          "deviation": 0.23590078831427885,
+          "measured": 0.23590078831427885
+        },
+        "bass_kraft": {
+          "baseline": 0.0,
+          "deviation": 1.0,
+          "measured": 1.0
+        },
+        "brillanz": {
+          "baseline": 0.95,
+          "deviation": 0.8109441395933205,
+          "measured": 0.13905586040667947
+        },
+        "emotionalitaet": {
+          "baseline": 0.0,
+          "deviation": 0.3391457419826597,
+          "measured": 0.3391457419826597
+        },
+        "natuerlichkeit": {
+          "baseline": 0.91,
+          "deviation": 0.1317583280453809,
+          "measured": 0.7782416719546191
+        },
+        "transparenz": {
+          "baseline": 0.96,
+          "deviation": 0.5669964012263495,
+          "measured": 0.3930035987736505
+        },
+        "waerme": {
+          "baseline": 0.92,
+          "deviation": 0.07999999999999996,
+          "measured": 1.0
+        }
+      },
+      "filename": "jazz_002_synthetic.wav",
+      "is_anomaly": true,
+      "max_deviation": 1.0,
+      "measured_scores": {
+        "authentizitaet": 0.23590078831427885,
+        "bass_kraft": 1.0,
+        "brillanz": 0.13905586040667947,
+        "emotionalitaet": 0.3391457419826597,
+        "natuerlichkeit": 0.7782416719546191,
+        "transparenz": 0.3930035987736505,
+        "waerme": 1.0
+      }
+    }
+  ],
+  "summary": {
+    "anomalies_detected": 12,
+    "anomaly_rate": 1.0,
+    "avg_max_deviation": 1.0,
+    "goal_avg_deviations": {
+      "authentizitaet": 0.3084259908181735,
+      "bass_kraft": 1.0,
+      "brillanz": 0.7995738483084024,
+      "emotionalitaet": 0.5984664682448942,
+      "natuerlichkeit": 0.14894675270704075,
+      "transparenz": 0.5716266521015433,
+      "waerme": 0.07598259220806648
+    },
+    "timestamp": "2026-02-11T05:54:03.783067",
+    "total_samples": 12
+  }
+}

@@ -1,0 +1,561 @@
+# Aurik 10 — Copilot Instructions & Eiserne Regeln
+
+> Normativer Ist-Stand. Jede Code-Änderung MUSS diese Regeln einhalten.
+> Bei Widerspruch zwischen Specs und Code gilt: Spec > Code > Kommentar.
+
+---
+
+## §I  GEBOTE (Muss-Vorschriften)
+
+Jedes GEBOT ist eine nicht verhandelbare Vorschrift. Verstöße sind Build-Fehler.
+
+### §G1 — Kategorie I: Individuelle Song-Maximierung
+**Jeder importierte Song wird individuell maximal für das menschliche Ohr verbessert.**
+- Kein Song beeinflusst die Verarbeitung eines anderen Songs.
+- Alle Stateful-Module (Circuit-Breaker, Caches, Learned Parameters) werden pro Song zurückgesetzt.
+- Die Verarbeitungsintensität wird aus den spezifischen Defekten DIESES Songs abgeleitet, nicht aus globalen Statistiken.
+
+### §G2 — Kategorie I: Vollständige Defektbehebung
+**Defekte werden über den gesamten Song präzise und vollständig behoben.**
+- Keine "Checkpoint"-Strategie – jeder Frame, jedes Sample wird geprüft.
+- Defekterkennung läuft auf dem gesamten Signal, nicht nur an Stichproben.
+- Per-Chunk-Verarbeitung mit Overlap für nahtlose Übergänge.
+
+### §G3 — Kategorie I: Natürlicher Wohlklang
+**Die bearbeitete Aufnahme klingt für das menschliche Ohr natürlich und unverfälscht.**
+- Keine Verzerrungen des Gesangs (Formanten, Vibrato, Phrasierung bleiben erhalten).
+- Keine "Ghost-Echos" durch Phasenverschiebungen oder harte Schnittkanten.
+- Crossfades: 200 ms Hanning (Minimum), Cosine-Interpolation für Parameter.
+
+### §G4 — CD-Rauschprofil-Pflicht
+**Jeder Export (Restoration + Studio 2026) MUSS ein CD-charakteristisches Rauschprofil enthalten, unabhängig vom Quellmaterial.**
+- Das Rauschprofil wird psychoakustisch maskiert: Nur dort appliziert, wo das menschliche Ohr es wahrnimmt.
+- In lauten Passagen (Signal > Maskierungsschwelle) wird KEIN Rauschprofil hinzugefügt.
+- In stillen Passagen, Pausen und Ausklängen wird das CD-Rauschprofil mit dem natürlichen CD-Rauschspektrum eingebracht.
+- Das Rauschprofil simuliert das thermische Rauschen eines CD-Wandlers (~−96 dBFS, spektral flach bis 20 kHz).
+
+### §G5 — Kategorie II: Deterministische Reproduzierbarkeit
+**Derselbe Input + dieselbe Aurik-Version = derselbe Output (Bit-identisch).**
+- Alle Zufallsgeneratoren mit fixem Seed (pro Session, nicht global).
+- Keine zeitabhängigen Entscheidungen (kein `time.time()` in Entscheidungslogik).
+- Export-Dither verwendet deterministischen Seed pro Export.
+
+### §G6 — Kategorie II: Psychoakustische Präzision
+**Alle Signaländerungen werden gegen das menschliche Gehör validiert.**
+- Frequenzgang-Änderungen >0.5 dB nur mit ERB-bandbewerteter Metrik.
+- Dynamik-Änderungen >1 dB nur mit Zwicker-Lautheitsmodell (ISO 532B).
+- Rauschprofil-Injektion folgt dem ISO 389-7 Hörschwellenmodell.
+
+### §G7 — Kategorie III: Chirurgische Defektbehandlung
+**Jeder Defekt wird mit dem exakt richtigen Werkzeug in der exakt richtigen Intensität behandelt.**
+- 65 DefectTypes mit individuellem Phase-Mapping.
+- Material-Sensitivity pro Defekttyp.
+- Kein "One-Size-Fits-All" — die Stärke wird pro Defektinstanz kalibriert.
+
+### §G8 — Kategorie III: Transparenz
+**Jede Entscheidung ist nachvollziehbar.**
+- Alle ML→DSP-Fallbacks werden mit `logger.warning()` protokolliert.
+- Jede Parameteränderung wird im Audit-Log vermerkt.
+- Export-Metadaten enthalten Aurik-Version + Verarbeitungskette.
+
+### §G9 — Projektweite Konsistenz
+**Alle Maßnahmen müssen im gesamten Projekt konsistent sein.**
+- Änderungen an Shared Contracts (Bridge-API, Enums) → alle Consumer aktualisieren.
+- Spec-Referenzen (§G1, §V1 etc.) sind in Code-Kommentaren zu verwenden.
+- Keine Ad-hoc-Parameter — alle Konstanten über Config oder Enum.
+- **Canonical Contract Drift Gate**: GUI, CLI, REST und Batch MÜSSEN denselben
+  Pfad durchlaufen (Import → Pre-Analysis → `AurikDenker.denke()` → Bridge-/
+  Exporter-Export) und dieselben Bridge-Resolver (z. B. `normalize_user_mode()`)
+  verwenden. Kein Parallelpfad darf eigene Mode-/Alias-Mappings definieren, die
+  vom kanonischen Bridge-Vertrag abweichen (vgl. `tests/normative/test_canonical_contract_drift_gate.py`).
+
+### §G10 — Kategorie I: Defekt-Freiheit unter der Hörbarkeitsschwelle (universell)
+**Jeder Import-Song wird so restauriert, dass sämtliche Restdefekte unter der
+individuellen Hörbarkeitsschwelle des menschlichen Gehörs liegen.**
+- Das Abnahmekriterium ist die **Audibility**, NICHT der Mess-Null: Ein Defekt gilt als
+  behoben, wenn seine Restenergie in JEDER Zeit-Frequenz-Zelle unter der ERB-/Bark-
+  Maskierungsschwelle liegt (ISO 389-7 Hörschwelle + simultane/zeitliche Maskierung
+  nach Moore & Glasberg; Hörordnung Ebene 2).
+- Das gilt für **ALLE 65 DefectTypes über den GESAMTEN Song**: kein Typ darf ohne
+  Messung als „unhörbar“ gelten — fehlende Messgrößen sind „unbewiesen“, nicht „bestanden“.
+- Export-Metadaten MÜSSEN den per-Defekttyp-Audibility-Report tragen
+  (`defect_residual_audibility`, Zielwert ≤ 0 dB je Typ = kein Defekt über Schwelle).
+- Physikalisch unwiderrufliche Reste (z. B. zerstörtes Air-Band analoger Träger) werden
+  als „physikalisch irreduzibel“ klassifiziert und begründet (§G8) — nie still.
+- Kanonische Instanz: `backend/core/dsp/audibility_targets.py` (§G9 — eine Messung,
+  eine Quelle).
+- **VERBOTEN:** Eine Reparatur als abgeschlossen zu melden, deren Restdefekt über der
+  Schwelle liegt, während der Messwert „Null“ suggeriert wird. **VERBOTEN:** Reports/
+  Scorings, die Defekte UNTERHALB der Schwelle als offene Punkte zählen (§V7 — erzeugt
+  Workaround-Reparaturen gegen Unhörbares).
+
+### §G11 — Kategorie I: Weltklasse-Wohlklang-Abnahme (Hörerlebnis-Pflicht)
+**Jeder Export belegt für das menschliche Gehör Weltklasse — und hält die
+lexikografische Wohlklang-Ordnung (Hörordnung Ebene 3) kompromisslos ein.**
+- Pflicht-Nachweise je Export: Hörerlebnis ≥ 90/100 (Panel-Simulation des
+  Export-Narrativs), timbral-Treue ≥ 0,98 (HPI-Komponente), Einladungs-Gate bestanden
+  (Hörordnung Ebene 4), KEINE Violation höherrangiger Ziele (authentizitaet,
+  emotionalitaet, natuerlichkeit).
+- Der Abstand zur Weltspitze ist ein Zielpool-Nachweis (kalibrierte Referenzkette,
+  MUSHRA-Proxy — Metriken sind Zeugen, Hörordnung §7), keine Selbsteinschätzung.
+- Verfehlte Weltklasse ⇒ bestmöglicher sicherer Export mit Status + Hör-Instanz-
+  Begründung (§0c); Erfolgsmeldungen ohne diese Nachweise sind unzulässig.
+
+### §G12 — Kategorie I: Universeller Import-Vertrag
+**§G10 und §G11 gelten für beliebige Importsongs ohne Vorbedingungen.**
+- Jedes Material (Vinyl/Shellac/Band/Kassette/MP3/Digital/…), jede Kette, jedes Genre,
+  jede Sprache, jede Ära, Mono+Stereo, beliebige Abtastrate und Länge — kein manueller
+  Eingriff und kein Sonderpfad ist Voraussetzung.
+- Verfahren sind generisch: material-spezifische Kalibrierungen werden aus dem Song
+  selbst abgeleitet (§G1) und dokumentiert (§G8).
+- Chunked- und Voll-Pfad liefern das identische Ergebnis (§G5; §G9 Canonical Contract
+  Drift Gate). Chunk-Grenzen dürfen keine hörbaren Spuren hinterlassen (Hörordnung
+  Ebene 1).
+
+### §G13 — Kategorie I: Hörbarkeits-Dominanz (Verbesserungs-Pflicht über alle Defektklassen)
+**Restaurierung heißt: jeder hörbare Defekt wird unter die Maskierungsschwelle gedrückt — „nur nicht schlechter" verfehlt den Auftrag.**
+- Never-worsen ist der **Boden**, nicht das Ziel: Eine Restaurierung, die hörbare
+  Defekte lediglich unverändert lässt, ist unvollständig. Für JEDE der 65
+  DefectTypes gilt die Verbesserungs-Pflicht (§G10-Ziel + §G191-Methode).
+- Ziel je Defektklasse (messbar, deterministisch):
+  (a) Rest ≤ Maskierungsschwelle − **6 dB Marge** (`objective_met`, Hörordnung Ebene 2);
+  (b) Reparaturquote **Q ≥ 0,5** (defekt_delta: mindestens die Hälfte des
+  Schaden→Clean-Deltas zurückgewonnen, `REPARATURQUOTE_ZIEL`);
+  (c) Kontrollregionen Δ ≈ 0 (kein Eingriff in unversehrte Musik);
+  (d) Musik-Schutz: Frage B „kein hörbares Musikmaterial entfernt" (NIE OK) +
+  Hör-Invarianten (Ebene 1) dominieren jede Verbesserung.
+- **Konsistente Erreichbarkeit (kanonisches Messprotokoll je DefectType):**
+  Seed 42 (§G5), ≥ 6 degradierte Paare, pegel-gematcht (Body-Perzentil p25,
+  §G191), JND 0,05 (eine Wahrheit `wohlklang_zeuge.JND_TOLERANZ`), Aggregat je
+  DefectType, richtungszertifizierte Metriken (musik_mos/defektlast).
+- **Coverage-Pflicht:** Jede DefectType MUSS Harness-Fall + Phase-Mapping +
+  Audibility-Nachprüfung tragen (Gate `scripts/defect_coverage_check.py`,
+  fail-closed). Ohne Messung ist eine Klasse „offen/unbewiesen" — nie
+  „bestanden" (§V6). Physikalisch irreduzible Reste werden als „physikalisch
+  irreduzibel" klassifiziert und begründet (§G10/§G8), nie still.
+
+### [RELEASE_MUST] Hoerbarkeits-Dominanz ueber alle 65 Defektklassen (§G13)
+**Hoerbarkeits-Dominanz: Jede der 65 Defektklassen ist auf das Ziel „Rest unter
+Maskierungsschwelle − 6 dB Marge" verpflichtet, mit Reparaturquote Q ≥ 0,5
+(defekt_delta), Kontrollregionen Δ ≈ 0 und Musik-Schutz (Frage B + Ebene 1).**
+- Der Nachweis ist je Defektklasse über das kanonische Messprotokoll zu führen
+  (Seed 42, ≥ 6 Paare, p25-Pegelmatching, JND 0,05); fehlender Beleg = offen.
+- Stärke-/Schwellen-Änderungen aus Q-Befunden laufen ausschließlich über das
+  §4-Verfahren (`flag_freigabe.py`) — never-worsen bleibt die harte Leitplanke.
+
+---
+
+## §II VERBOTE (Muss-Nicht-Vorschriften)
+
+Jedes VERBOT definiert eine unzulässige Handlung. Verstöße sind Build-Fehler.
+
+### §V1 — Vocal-Distortion-Verbot
+**VERBOTEN: Jegliche Verzerrung des Gesangs.**
+- Keine Formanten-Verschiebung >5%.
+- Keine Vibrato-Unterdrückung oder -Modifikation.
+- Keine hörbare Änderung der Stimmcharakteristik.
+- Phase 42 (Vocal Enhancement) arbeitet ausschließlich additiv (keine subtraktiven Eingriffe in existierende Frequenzanteile).
+
+### §V2 — Ghost-Echo-Verbot
+**VERBOTEN: Künstliche Echos oder Nachhall-Fahnen.**
+- Keine harten Schnittkanten ohne Crossfade (Minimum: 200 ms Hanning).
+- STCG (Stereo Temporal Coherence Guard) verhindert L/R-Phasenverschiebungen.
+- Feedback-Chain Phasen laufen mit identischem Crossfade wie Haupt-Pipeline.
+
+### §V3 — Rauschprofil-Full-Song-Verbot
+**VERBOTEN: Das CD-Rauschprofil über den kompletten Song zu legen.**
+- Das Rauschprofil wird psychoakustisch maskiert appliziert (§G4).
+- In hörbaren Passagen (Musik, Gesang) wird das Rauschprofil NICHT hinzugefügt.
+- Nur in Lücken, Pausen, Ausklängen und unterhalb der Maskierungsschwelle.
+- Verstoß führt zu hörbarem "Rauschteppich" über dem gesamten Signal — das ist unzulässig.
+
+### §V4 — Bridge-Bypass-Verbot
+**VERBOTEN: Direkter Import von `backend/core/` aus UI-/Frontend-Code.**
+- Aurik10, CLI, GUI: nur über `backend/api/bridge.py`.
+- Denker-Schicht (`denker/`) ist von diesem Verbot ausgenommen.
+
+### §V5 — Truncation-ohne-Dither-Verbot
+**VERBOTEN: Integer-Quantisierung ohne Dithering.**
+- Bei bit_depth < 32 MUSS POW-r Type 3 Dither (primär) oder TPDF (Fallback) angewandt werden.
+- Kein einfaches `astype(np.int16)` ohne vorheriges Dither.
+
+### §V6 — Silent-Failure-Verbot
+**VERBOTEN: ML→DSP-Fallbacks ohne `logger.warning()`.**
+- Jeder Fallback MUSS mit Begründung protokolliert werden.
+- Kein stilles Degradieren der Qualität.
+
+### §V7 — Workaround-Verbot
+**VERBOTEN: Symptombehandlung statt Ursachenbehebung.**
+- Keine phasen-individuellen Schwellwerte als Workaround.
+- Alle Stärke-Entscheidungen fließen zentral über `global_scalar`.
+
+### §V8 — Song-Cross-Contamination-Verbot
+**VERBOTEN: Zustand eines Songs beeinflusst die Verarbeitung eines anderen.**
+- Alle global/module-level Zustände MÜSSEN pro Song zurückgesetzt werden.
+- Circuit-Breaker, Caches, Lernparameter: Reset bei neuem Song (§G1).
+
+### §V9 — Rauschprofil-Quellmaterial-Kopie-Verbot
+**VERBOTEN: Das Rauschprofil aus dem Quellmaterial zu extrahieren und wieder einzufügen.**
+- Das CD-Rauschprofil MUSS generiert werden, nicht kopiert.
+- Das Quellrauschen (z.B. Bandrauschen, Vinyl-Knistern) ist ein DEFEKT und wird entfernt.
+- Nach der Defektentfernung wird das saubere CD-Rauschprofil frisch generiert und psychoakustisch maskiert appliziert.
+
+---
+
+## §III DSP-Spezialregeln
+
+1. **Soft-Knee-Gate**: `apply_musical_gain_envelope()` mit Sigmoid-Soft-Knee (6 dB), 200 ms Hanning-Crossfade. KEIN Hard-Clamp.
+2. **PIM-first**: Vor jedem Phasen-Loop PIM-Intensitäts-Map berechnen und in `restoration_context` speichern.
+3. **RLP-last**: Nach jedem Phasen-Loop RLP ausführen. Korrekturen nur bei objektiver Verbesserung übernehmen.
+4. **Glue Stage**: Läuft in ALLEN Modi als vorletzte Phase.
+5. **65 DefectTypes**: Keine willkürlichen neuen DefectTypes ohne Phase-Mapping und Material-Sensitivity.
+6. **NaN/Inf-Schutz**: Jede Phase MUSS `np.nan_to_num()` oder `np.isfinite()` auf Ausgabe-Audio anwenden (§0a).
+7. **Logger-Pflicht**: Jede Python-Datei mit `logger` MUSS `import logging` und `logger = logging.getLogger(__name__)` definieren.
+8. **POW-r Type 3 Dither**: Primäres Dithering-Verfahren. Psychoakustisch optimiert für 48 kHz / 16-bit. 24-bit: reduziert wahrgenommenen Noise Floor ≥ 14 dB unter TPDF.
+9. **ML-GPU-Numerik-Parität (2026-09-18)**: Ein ONNX-EP außer CPU (ROCm/MIGraphX/CUDA)
+   darf nur aktiv sein, wenn die Parität gegen die ONNX-CPU-Referenz mit
+   strukturierten Feeds nachgewiesen ist (rel ≤ 1e-3; scripts/onnx_gpu_compat_scan.py
+   mit normal/sane/const05, sonst täuscht weißes Rauschen OK vor — Befund basicpitch).
+   Bekannte numerisch defekte ORT-ROCm-Kernels (bs_roformer-Softmax, BANQUET-LSTM,
+   FCPE/Whisper/MuQ-MuLan-Attention, basicpitch-Conv; rel 0,19–0,98) sind durch
+   paritätsverifizierte, GPU-deterministische Torch-ROCm-Kerne ersetzt
+   (backend/core/dsp/*_torch_rocm.py, §SOTA-ML-V5–V9); deren ONNX-Sessions bleiben
+   reiner Qualitäts-Fallback auf CPU (§V6).
+10. **Gesangs-Gate (2026-09-18)**: Gesangsgeführte Bearbeitung (Phonem-DSP) nur
+   auf bestätigtem Gesang — `vocal_presence` (p(no_speech), Token-Konfidenz,
+   physiologische Wortdichte ≤ 12 W/s) < 0.15 → Signal bleibt bit-identisch;
+   Wörter mit confidence < 0.30 werden übersprungen; unsichere Präsenz
+   skaliert die Stärke linear. Schutz gegen Sprachmodell-Halluzinationen
+   auf Instrumental-Passagen (Never-worsen, Hörordnung §1).
+   **§v10.303.52:** Die Phonem-Detektions-Schwellen sind sprachadaptiv
+   (Sibilanten-/Plosiv-Inventar; de permissiver, es/it/pt konservativer,
+   unbekannte Sprachen = Defaults).
+11. **Domänen-Konsistenz Musik/Gesang (Rev. v10.3.11)**: Auf **Sprache**
+   trainierte Modelle (SGMSE+ aus WSJ0/CHiME3, Whisper, UTMOSv2/BVCC,
+   resemblyzer/LibriSpeech) dürfen auf Musik/Gesang nur dann als **Signalpfad**
+   laufen, wenn derselbe Core ein Musik-Fine-Tune besitzt und die Verbesserung
+   per A/B belegt ist. Ohne Musik-Fine-Tune ist der Sprach-Core als Signalpfad
+   VERBOTEN (§V7) — es greifen musik-trainierte Kerne oder DSP.
+   - SGMSE+: `use_sgmse_musik` (`backend/core/music_model_flags.py`) schaltet
+     ALLE Signalpfade — `phase_03_denoise._sgmse_eligible`, `HybridDereverb`
+     (`_init_dccrn`), `phase_49_advanced_dereverb`, `sota_vocal_model_router`,
+     RepairPlanner (`coordinated_repair.py`). Pfadwahl über
+     `resolve_model_path("sgmse")` → `sgmse_musik_core.onnx`; der
+     sprachtrainierte `sgmse_plus_core.onnx` bleibt ausschließlich in
+     `LEGACY_MODEL_PATHS` (nie Default).
+   - Jeder gesperrte/umgeleitete Pfad MUSS mit `logger.warning()` oder
+     `logger.info()` samt Begründung protokolliert werden (§V6).
+   - Metrische oder transkriptive Nebenrollen (UTMOS als Zeuge, Whisper für
+     Wortgrenzen, resemblyzer für Sprecher-Ähnlichkeit) sind zulässig, solange
+     sie das Ausgangssignal selbst nicht verändern.
+12. **Stem-Rekombinations-Vertrag (Rev. v10.3.11)**: Musik und Gesang werden
+   getrennt restauriert und an **genau einem** Punkt wieder vereint
+   (`StemLevelRestorer` → `recombine_stems_with_gates()`,
+   `backend/core/dsp/stem_recombination_gates.py`, §SLR-1f). Ein zweiter
+   Zusammenführungspunkt ist VERBOTEN (§V2 Geister-Echos).
+   - Pflicht-Gates vor der Summe, in der Reihenfolge **C2 → C1 → C3**:
+     **C2** sample-exaktes Zeit-Alignment (W2, Kammfilter-Präkursor),
+     **C1** perzeptuelles Residuum unter der Bark-Maskierungsschwelle (W1),
+     **C3** Stereo-Kohärenz am Nahtpunkt gegen die Hör-JNDs (W3; ITD/ILD/IACC).
+   - Gate-Ergebnisse MÜSSEN als Zeugen in
+     `StemContext.witness_reports["recombination"]` erscheinen (Berichtspflicht,
+     §G8).
+   - Offene Pflicht-Witnesses (nicht implementiert = nachzuweisen, nicht
+     anzunehmen): — seit Rev. v10.3.11 **implementiert** (report-only in
+     `RecombinationGateResult.build_witness()`): **C4**
+     `double_processed_bands` (Bark-Bänder mit Veränderung in BEIDEN Stems),
+     **C5** `level_step_db` (max. Pegel-Sprung Mix→Remix über 20-ms-Frames),
+     **W4** `ripple_depth_db` (Kammfilter-Ripple-Tiefe), **W5** `leakage_corr`
+     (Stem-Leakage/Geister-Anteile), **W6** `lag_step_us` (max. Laufzeit-Sprung
+     zwischen Nachbarfenstern).
+   - **W6 und C5** sind ehrlich als *Zeit-Kontinuität* gemessen: Die
+     Rekombination ist eine sample-genaue Summe ohne Segment-Naht (kein
+     Concat/Crossfade) — eine „Naht"-Größe im engeren Sinn existiert nicht und
+     wird nicht vorgetäuscht (`continuity_note` im Zeugenbericht).
+   - Die Witnesses sind **report-only**: Sie belegen Eigenschaften, sie
+     verändern kein Signal. Harte Konsequenzen aus ihnen erfordern eine eigene
+     Kalibrierung (Muster F14) — bis dahin ohne automatische Wirkung.
+13. **ML-Domänen-Registry (2026-10-06)**: Die Trainings-Domäne jedes Modells in
+   `models/` ist in **`.github/ML_MODEL_DOMAIN_REGISTRY.md`** kanonisch belegt
+   (aus Trainings-Skripten, Modell-Karten, Export-Skripten, SHA-Vergleichen).
+   **Der häufigste KI-Fehlschluss ist VERBOTEN:** „ein Großteil der lokal
+   verfügbaren ML-Modelle sind Sprachmodelle" — belegt sind **37 von 61**
+   Verzeichnissen **musik-trainiert** gegen **11 sprach-trainiert**. Aurik ist
+   ein Musik-Restaurierungssystem; der Signalpfad-Kern (Separation, Pitch,
+   Gesang, Inpainting, Deklipper) ist Musik.
+   - **Kein Domänen-Urteil aus Namen** (Upstream-Namen sind irreführend:
+     `miipher_dit` = auf MUSDB18-HQ-Vocals trainiert, `ear_vae` = offizielles
+     Musik-Rekonstruktionsmodell, `deepfilternet_v3_ii/finetuned/` und
+     `sgmse_plus/finetuned/` = Musik-Finetunes, `bigvgan` = Musik-Finetune F3).
+   - **Evidenzpflicht:** Domäne nur mit Trainings-Skript-Korpus, Modell-Karte,
+     SHA-Identität oder widerspruchsfreiem Plugin-Header; sonst gilt sie als
+     **unbekannt**, nie als „Sprache".
+   - **Zeugen ≠ Signalpfad:** Whisper/UTMOS/Silero/Resemblyzer sind Metriken,
+     VAD und Embeddings und dürfen das Ausgangssignal nicht verändern.
+   - **Sprach-Vocoder/SR als Musik-Pfad** (HiFi-GAN, Vocos, NVSR, AERO) ist ein
+     Risiko und nur nach §V6 (Warnung + Grund) als Fallback zulässig.
+   - **Aurik-Kriterium: Sprache muss Gesang sein.** Maßstab für Stimme ist die
+     **Singstimme (Gesang)**, nicht Sprache — Sprach-Korpora ohne Gesang
+     (Podcasts, VCTK, Expresso, LibriTTS …) belegen keine Gesangs-Tauglichkeit;
+     ein sprach-trainierter Stimm-Pfad braucht einen belegten
+     Gesangs-/Musik-Finetune + A/B (§III.11).
+   - `nara_wpe` ist **unüberwacht** (kein Trainingskorpus) → domain-neutral.
+   - Pflege: `python scripts/model_inventory.py --domains`;
+     Registry im selben Commit aktualisieren (§G9).
+14. **Process-Spawning / Fork-Safety (2026-11-17)**: Im Produktionspfad
+    (`backend/`, `core/`, `plugins/`, `denker/`, `Aurik10/`) MUSS
+    Prozess-Spawning über einen expliziten
+    `multiprocessing.get_context("spawn")` erfolgen
+    (Context-`.Process`/`.Pool`, `ProcessPoolExecutor(mp_context=…)`).
+    Der Linux-Default **`fork`** — `mp.Process(…)`, `multiprocessing.Pool`,
+    `Pool(processes=…)`, `ProcessPoolExecutor` ohne `mp_context`,
+    `os.fork()`, `get_context("fork")` — ist im Produktionspfad **VERBOTEN**,
+    sobald der Prozess multithreaded sein kann oder ML-Runtimes
+    (torch/ORT/OpenBLAS) geladen hat: `fork()` eines multithreaded Prozesses
+    vererbt verklemmte Locks an das Kind (v7-Deadlock-Befund 2026-11-17:
+    Vater `do_wait`, Kind `futex_do_wait` mit 8+ Threads, CPU 0 %).
+    E2E-Klärung 2026-11-17: `Aurik10/ipc/pipeline_process.py` (`mp.Process`)
+    ist eine **tote GUI-Scaffolding-Klasse** (die reale GUI fährt `denke()` im
+    QThread, in-process) — die live wirksamen Fork-Quellen waren sklearn/loky
+    (`n_jobs=-1` ⇒ `n_jobs=1`, siehe unten) und Batch-`ProcessPoolExecutor`
+    (⇒ `spawn`); die Klasse wurde dennoch auf `spawn` gehärtet und dabei
+    repariert (D-K3-108: zwei getrennte Pipes, Bridge-Import über
+    `backend/api/bridge.py`, Worker-E2E `completed`).
+    - Ausnahme: `fork()` nachweislich **vor** jedem Thread-/ML-Import
+      (single-threaded am Fork-Zeitpunkt), mit Begründung im Code-Kommentar.
+    - sklearn/joblib: `n_jobs=-1` startet den loky-**Prozess**-Pool (fork);
+      im Produktionspfad ist `n_jobs=-1` nur mit explizitem
+      Threading-Backend (`joblib.parallel_backend("threading")`) zulässig,
+      sonst `n_jobs=1` (so in `ml_era_detector.py`/`ml_medium_detector.py`).
+    - Enforcement: `scripts/compliance_check.py` R19 (fail-closed,
+      Pre-Commit `aurik-compliance`).
+15. **Inter-Kanal-Imbalance-Reparatur / Stereo-Balance (2026-11-18)**: Eine
+    Inter-Kanal-Pegel-Imbalance |20·log10(RMS_L/RMS_R)| ≥ JND **0,5 dB** ist ein
+    reparierbarer Defekt (DefectType `stereo_imbalance` → `phase_15_stereo_balance`,
+    GENTLE). Die Korrektur MUSS **richtungskorrekt** sein — Befund 2026-11-18
+    (Stereo-Sinn-Beweis): vertauschte Gains im else-Zweig von
+    `_apply_smooth_correction` verstärkten die Imbalance (−4,09 → −7,67 dB) statt
+    sie zu beheben; Fix + dauerhafter Richtungs-Pin
+    `tests/unit/test_phase_15_stereo_balance_direction.py` (links- UND
+    rechts-lauter). Vorgaben: Soft-Knee/zeitgeglättet (§III.1), unterhalb der
+    materialabhängigen Band-Schwelle keine Korrektur, kein Überschießen über die
+    Balance-Mitte, Kanäle nie auf einen Kanal kollabieren (Stereo-Layout-Invariante
+    channels-first (C, N)). **Nachweis:** Stereo-Sinn-Beweis (`stereo_imbalance`-Rezept,
+    `balance_besser`-Kriterium, JND 0,5 dB) + Never-worsen — die
+    Paritäts-Register-Zeile „Stereo-Imaging/Azimuth“ wird nur mit diesem Beleg bewegt.
+
+---
+
+## §IV Export-Pipeline-Reihenfolge
+
+```
+1. _export_guard()          — NaN/Inf-Bereinigung + True-Peak-Schutz
+2. _export_nuance_guard()   — Subtile perzeptuelle Politur (non-destructive)
+3. cd_noise_profile_inject() — CD-Rauschprofil psychoakustisch maskiert (§G4, §V3, §V9)
+4. apply_dither()           — POW-r Type 3 / TPDF (§V5)
+5. Atomic write             — .tmp → os.replace
+6. Metadata transfer        — Aurik Provenance + Carrier-Chain
+```
+
+---
+
+## §V Modellierung des CD-Rauschprofils
+
+Das CD-Rauschprofil simuliert das thermische Rauschen eines 16-bit CD-Wandlers:
+
+- **Spektrum:** Flach von 20 Hz bis 20 kHz (weißes Rauschen)
+- **Pegel:** −96 dBFS (16-bit theoretischer Noise Floor) mit Dither-Shaping Anhebung auf ~−90 dBFS oberhalb 10 kHz
+- **Charakteristik:** Additives, unkorreliertes Rauschen pro Kanal
+- **Psychoakustische Maske:** ERB-bandweise Berechnung der Maskierungsschwelle nach ISO 389-7. Nur Zeit-Frequenz-Zellen unterhalb der Schwelle erhalten Rauschen.
+- **Einblendung:** 500 ms Cosine-Fade-In/Out an Übergängen zwischen maskierten und unmaskierten Regionen.
+
+---
+
+## §VI Referenzen
+
+- Spezifikationen: `.github/specs/`
+- Instruktionen: `.github/instructions/`
+- GEBOTE/VERBOTE: dieses Dokument (§I, §II)
+- DSP-Spezialregeln: §III
+- Export-Pipeline: §IV
+- CD-Rauschprofil: §V
+- **Startup & Kommunikation: §VI — §v10.305 Startup-Integrations-Vertrag**
+
+### §VI — Startup-Integrations-Vertrag (§v10.305)
+
+1. **GPU-Detection im Hauptthread**: `get_ml_device_manager()` VOR `ModernMainWindow` aufrufen. Kein `torch.zeros("cuda")`.
+2. **Warmup ohne GPU**: `warmup_models_background()` darf `get_ml_device_manager()` NICHT aufrufen.
+3. **Unified Progress**: `_sync_unified_progress()` ist die EINZIGE Quelle für beide Fortschrittsbalken.
+4. **Kontextbewusste Kommunikation**: Jeder Song bekommt individuelle Statusmeldungen via `_build_context_status()`.
+5. **i18n-Pflicht**: Jeder benutzersichtbare String MUSS `t()` verwenden.
+6. **Cache-Safety**: `python3 -B` in allen Launch-Skripten.
+7. **Lock-Disziplin**: Kein `import` während `with lock:`.
+8. **Event-Garantie**: `threading.Event.set()` in `finally`.
+9. **Plugin-Namen-Validierung**: `_failed > 0` nach Warmup → Warning.
+10. **Startup-Smoke-Test**: `tests/test_startup_smoke.py` muss bestehen.
+
+---
+
+*Letzte Änderung: 2026-07-30 — v10.0.14: §v10.305 Startup-Integration, Unified Progress, Context-Aware Communication*
+
+---
+
+## Linter-Codes Referenz (normativ, aus VERBOTEN.md)
+
+Jede Session MUSS diese Codes kennen (vollständige Liste der Linter-Referenz-Tabelle):
+
+| V01 | V02 | V03 | V04 | V05 | V08 | V09 | V11 | V12 | V13 | V27 | V29 | V31 | V32 | V33 | V39 | V40 | V41 | V42 | V43 | V44 | V45 | V46 | V47 | V48 | V49 | V50 | V51 | V52 | V53 | V54 | V55 | V56 | V57 | V58 | V70 | V71 | V72 | V73 | V74 | V75 | V76 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+## [RELEASE_MUST] Autonomer Magic-Button-Betrieb
+
+Der Magic-Button (One-Button-Restauration) MUSS im autonomen Betrieb folgende
+Kette ohne Benutzer-Interaktion durchlaufen: Preflight → DefectScan → Phasen-Plan →
+Restauration → MQA-Gate → Export-Gate → GUI-Narrativ. Jede Gate-Entscheidung MUSS
+im Narrativ begründet werden (§G155).
+
+## [RELEASE_MUST] Strength-Envelope-Nichtdegeneration (v10.0.x)
+
+Der Strength-Envelope (§2.71) MUSS bei vorhandenen Defect-Locations eine reale
+Ortsvarianz aufweisen (σ > 0 und μ deutlich über dem Floor). Ein degenerierter
+Envelope (μ=0.060 σ=0.000 — Produktionsbefund 2026-09-07: B3-Phase-2 Early-Merge
+überschrieb ENUM-Scores durch 0.06-Stubs und löschte alle Locations) erzeugt eine
+No-Op-Kaskade über alle Phasen und ist ein RELEASE-BLOCKER. Die komplette Kette
+Merge → Locations-Extraktion → compute_strength_envelope MUSS als Regressionstest
+abgesichert sein; Phasen-Stärken unterhalb des Floors bei vorhandenem
+Reparatur-Kontext sind ebenso zu behandeln.
+
+## §0a Normativ verbotene Phasen (Restoration-Guard)
+
+Folgende Phasen sind im Restoration-Modus normativ VERBOTEN (§0a/UV3-Forbidden-Set):
+
+- `phase_21_exciter`
+- `phase_35_multiband_compression`
+- `phase_42_vocal_enhancement`
+
+## Performance-Budget (pro Minute Audio, synchron zu Spec 07 §9)
+
+| Operation | Limit / Minute Audio |
+| --- | --- |
+| DefectScanner | <= **16 s** (Quality-ERB-Standard, gemessen 2026-11-07: 14,9 s/min warm; 4 s = Fast-Ziel nach Hör-Freigabe des Batch-Pfads §2.46h) |
+| Phase-Pipeline gesamt | <= **240 s** |
+| FeedbackChain (alle Iterationen) | <= **120 s** |
+| ExcellenceOptimizer | <= **60 s** |
+| RestorabilityEstimator | <= **5 s** |
+| Export (FLAC 24-bit) | <= 10 s |
+
+Die Budget-Tabelle wird maschinell je Zelle von
+`scripts/benchmark_effizienz_matrix.py --ci --enforce-budget` geprüft;
+Verletzungen werden im Ergebnis-JSON unter dem Schlüssel `budget_violations`
+gemeldet und führen im CI-Modus zu Exit 1. Die Pipeline reicht dazu seit
+v10.1.0 reale Per-Operation-Timings als `metadata["pipeline_budget_timings"]`
+nach außen; fehlende Timings werden als `null` dokumentiert (nicht geschätzt).
+Mit `--repeats N` (deterministische Seed-Folge `AURIK_MASTER_SEED = 42+i`,
+§G5) liefert der Harness echte Stichproben für `--bootstrap-ci`.
+
+**Budget-Wahrheit (P0-3, 2026-09-08; Ist-Kalibrierung 2026-10-07):** Drei
+Budget-Größen koexistieren und müssen in EINE Norm konvergieren: (1) diese Tabelle
+(Per-Operation-Budgets, maschinell enforced), (2) der End-to-End-Guard
+`performance_guard.py` (32× RT für BALANCED/QUALITY/MAXIMUM, **8× für FAST**;
+§2.38 KMV normativ), (3) der **gemessene Ist-Stand** der Kalibrierungen vom
+2026-10-07 (13:33 vorher, 15:11 nach der Teilbehebung D-K3-39), jeweils
+30-s-Ausschnitt der realen Quelle, Zelle balanced,
+`scripts/benchmark_effizienz_matrix.py`; Beleg-Dokument versioniert unter
+`docs/reports/current/2026-10-07_leistungskalibrierung.md`, Ergebnis-JSON als
+Arbeitskopie unter `output_audio/benchmark_effizienz/`):
+**60,1× RT Wand-Zeit** / **52,5× RT Engine-Zeit** (vor der
+Teilbehebung: 73,3× / 65,9×; Δ 399 s = 18,1 % schneller) —
+und **4 Verletzungen** der Per-Operation-Tabelle: `phase_pipeline_total` 1334,9 s/min (Limit 240 s/min, 5,6× über); `defect_scanner` 140,4 s/min (Limit 4 s/min, 35,1× über); `feedback_chain` 165,0 s/min (Limit 120 s/min, 1,4× über); `restorability_estimator` 13,1 s/min (Limit 5 s/min, 2,6× über).
+Schwerste Einzelphase: `phase_12_wow_flutter_fix` 250 s (14 % der Wand-Zeit). Der
+Harness hat **keinen Warmup**; Wand- und Engine-Zahl werden deshalb getrennt geführt
+(die frühere Angabe „53× RT (Matrix-Endlauf 2026-09-07/08)" hatte im Workspace
+keinen Beleg und ist durch diese Messung ersetzt).
+**Der 32×-Guard ist in den Standardpfaden nicht wirksam:**
+`RestorationConfig.enforce_3x_rt` steht per Default auf `False` („opt-in only"), die
+Kalibrierung lief mit `Enforce=False, Adaptive=False` und wurde nicht abgebrochen —
+die 32×-Norm ist damit eine Anzeige, kein Ausstieg (offen, Register D-K3-37).
+Die frühere Zuordnung „die Diskrepanz stammt aus per-Chunk statt per-Song laufender
+Analytik/End-Gate" ist **überholt**: TODO-P0-1 ist umgesetzt — die song-globalen
+Blöcke (GOAL_SCORECARD, End-Gate-Recovery-Kaskade, Einladungs-Gate, Reporting-
+Analytik, B2-Post-Scan) laufen nach der Chunk-Assembly genau einmal. Dass der
+Chunked-Pfad die Deferral-Flags wirklich setzt und den Tail im
+`_restore_chunked`-Rumpf aufruft, pinnen ab 2026-10-07
+`tests/unit/test_p0_1_end_gate_chunking.py::test_restore_chunked_wires_the_deferral_flags`
+und `::test_song_level_tail_runs_in_the_chunked_assembly_path` — die Kalibrierung
+zeigt, dass die Analytik nicht der Treiber war: die Zeit liegt in Defekt-Scanner,
+Phase-Pipeline und Einzelphasen.
+Bis zur Entscheidung über die Durchsetzung gilt: 32×-Guard bleibt die verbindliche
+Zielnorm; diese Tabelle regelt die Per-Operation-Budgets, ihre Verletzung wird
+gemeldet (Abschnitt oben) und ist als Performance-Schuld offen.
+**Plan-Budget-Realismus (2026-10-07):** Das Budget des `StrategieDenker` ist auf die
+harte Guard-Grenze **gedeckelt** — es konnte zuvor bis **73,6×** RT zusagen
+(32 × Kettentiefe 2,0 × Restaurierbarkeit 1,5) und meldete damit Zeit, die der
+Ausstieg nie gewährt; zusätzlich liest es die Modus-Grenzen jetzt **aus** dem Guard,
+statt sie zu kopieren (§G9 (copilot-instructions.md)). Die Ist-Lage (73,3× RT Wand, 2026-10-07 gemessen)
+bleibt als Performance-Schuld benannt und ist OFFEN — die Treiber sind gemessen
+(Defekt-Scanner 157 s/min bei Limit 4, Phase-Pipeline 1753 s/min bei Limit 240,
+`phase_12_wow_flutter_fix` 440 s); adressiert wird über das Phasen-Profil,
+nicht durch eine höhere Zusage (Register D-K3-38).
+
+**GPU-Pfade (Stand 2026-09-18, §SOTA-ML-V5–V9):** GPU-Inferenz läuft über
+paritätsverifizierte Torch-ROCm-Kerne (alle deterministisch, §G5, fail-closed
+auf ONNX-CPU, §V6): BANQUET-Vinyl (~160 ms je 1-s-Fenster, 11,8×/19,5×),
+Whisper-Tiny-Encoder+Decoder (~6,9 ms je 30-s-Fenster), FCPE (~1,6 ms je
+10-s-Mel), MuQ-MuLan (~29 ms je 10-s-Embedding), BS-RoFormer-317 (~46×).
+Jeder Wechsel des GPU-Backends erfordert den Paritäts-Nachweis nach §III.9.
+**ONNX-EP-Probe (normativ, Stand 2026-10-05):** Die ROCm-/MIGraphX-Probe läuft
+**crash-isoliert in einem eigenen Interpreter** — native MIOpen-/HIP-Aborts
+(z. B. `Hip error: 'out of memory'`, SIGSEGV) killen sonst den Host-Prozess
+(Produktionsbefund: Unit-Smoke Exit 139 in `InferenceSession.__init__`).
+Ein Nicht-CPU-EP wird nur mit bestandenem Paritätsnachweis gegen ONNX-CPU
+(rel ≤ 1e-3 auf strukturiertem Feed) akzeptiert; MIGraphX zusätzlich nur mit
+eigener Parität. Jeder Ersatzpfad wird mit `logger.warning` + Begründung
+protokolliert (§V6), und das Probe-Ergebnis wird per Datei-IPC übergeben
+(kein `print`/stdout — R01; ORT-eigener stdout-Lärm darf das Ergebnis nicht
+verfälschen).
+**Whisper-Turbo (Opt-in, §SOTA-ML-V10):** AURIK_WHISPER_TURBO=1 aktiviert
+whisper-large-v3-turbo (fp16, 128 Mel-Bins) für bessere Wortgrenzen der
+gesangsgeführten Bearbeitung. Gemessener fp16-Präzisionsboden des Modells
+selbst: rel ≈ 0,14 (CPU-fp16 vs. CPU-fp32) — GPU-fp16 liegt darin
+(rel ≈ 0,13 vs. fp32, deterministisch). Kein Paritäts-Defekt, sondern die
+offizielle Turbo-fp16-Präzision; der fp32-Tiny-Kern bleibt der
+paritätsbewiesene Default.
+
+## Bug-Klassen (normativ, synchron zu Spec 10)
+
+| Klasse | Bedeutung | Priorität |
+| --- | --- | --- |
+| R-BLOCKER | Korrektheit-kritisch: Export-Fehler, Crash, Daten-Verlust, Clipping-Artefakt | Sofort (P0) |
+| AUDIO-QUALITY | Hörbar schlechteres Ergebnis als möglich | Nächster Commit (P1) |
+| SPEC-GAP | Spec-Anforderung implementiert aber nicht getestet oder nur partiell | P2 |
+| TYPE-SAFETY | mypy-Fehler (no-any-return, override, etc.) | P3 |
+| TEST-DESIGN | Test-Assertion bricht durch nichtlineare Guards (deterministisch) | P2 |
+
+## §v10.802 Versionierungs-Vertrag (Version-Sync)
+
+`backend/core/version.py` ist die Single Source of Truth. Bump-Regeln:
+
+- **Patch-Bump (x.y.z+1):** fix-/perf-Commits (qualitätsneutral, bit-identisch
+  belegt) oder ein kumulierter Batch solcher Commits — im selben Merge wie die
+  Änderungen, nie als Dauer-„Unreleased“-Zustand.
+- **Minor-Bump (x.y+1.0):** feat-Commits (neue Fähigkeiten ohne Hörordnungs-
+  Brüche). Release-Kriterien: alle A/B-Gates, Paritäts-Gates (rel ≤ 1e-3) und
+  Witness-Belege der enthaltenen Features bestanden.
+- **Major-Bump (x+1.0.0):** Hörordnungs-Brüche oder inkompatible Änderungen —
+  nur mit Maintainer-Sign-off (PR-Vertrag §4).
+- **Changelog-Pflicht:** Pro Bump ein `## x.y.z (Datum)`-Block in CHANGELOG.md;
+  der „Unreleased“-Block darf höchstens einen Entwicklungszyklus überdauern.
+- **GUI-Sync-Pflicht:** Die GUI-Versionsanzeige (`Aurik10/__init__.py`, Titel,
+  `version_checker`) bezieht die Version ausschließlich über die Bridge
+  (`backend.api.bridge.get_aurik_version`, §V4 (copilot-instructions.md)) —
+  keine zweite hartkodierte Nummer im Frontend. Bei jedem Bump werden GUI-,
+  CLI- und Doku-Referenzen im selben Merge synchronisiert.
+- **Version-Sync-Sweep:** Vor jedem Release einmalig alle Dokument-Referenzen
+  (`docs/`, `.github/`) auf die neue Version ziehen (Muster: v10.1.0-Sweep).
+- **Determinismus-Kopplung:** §G5 (copilot-instructions.md) verlangt
+  „gleiche Version ⇒ gleicher Output“ — Mess-Baselines (perf_session,
+  A/B-Läufe) referenzieren die version.py-Nummer; ohne Bump wird die
+  Reproduzierbarkeits-Kette gebrochen.
+
+Prüfung: `scripts/version_guard.py` — warnt bei feat-Commits ohne Minor-Bump
+bzw. fix/perf-Batches ohne Patch-Bump seit der letzten `version.py`-Änderung.

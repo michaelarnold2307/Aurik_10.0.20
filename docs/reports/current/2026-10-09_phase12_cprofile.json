@@ -1,0 +1,165 @@
+{
+  "datum": "2026-10-09",
+  "zweck": "P0-Performance (D-K3-38): cProfile phase_12_wow_flutter_fix (15-s-Vinyl-Corpus)",
+  "audio": "corpus/vinyl/damaged/vinyl_blues_1950s_crackle.wav",
+  "wall_s": 35.9,
+  "s_per_min": 143.6,
+  "top_cumulative": [
+    {
+      "fn": "process:433",
+      "ncalls": 1,
+      "tottime_s": 0.083,
+      "cumtime_s": 35.899
+    },
+    {
+      "fn": "_estimate_wow_track_subband:3414",
+      "ncalls": 2,
+      "tottime_s": 0.845,
+      "cumtime_s": 16.241
+    },
+    {
+      "fn": "_speed_warp_resample:4496",
+      "ncalls": 2,
+      "tottime_s": 0.025,
+      "cumtime_s": 14.252
+    },
+    {
+      "fn": "kalman_smooth_warp:22",
+      "ncalls": 2,
+      "tottime_s": 11.778,
+      "cumtime_s": 11.793
+    },
+    {
+      "fn": "_flutter_correction_pass:3344",
+      "ncalls": 1,
+      "tottime_s": 0.057,
+      "cumtime_s": 9.816
+    },
+    {
+      "fn": "_flutter_track_from_stacks:3221",
+      "ncalls": 1,
+      "tottime_s": 0.003,
+      "cumtime_s": 4.671
+    },
+    {
+      "fn": "_score_fast:3249",
+      "ncalls": 538,
+      "tottime_s": 1.315,
+      "cumtime_s": 4.666
+    },
+    {
+      "fn": "<listcomp>:3306",
+      "ncalls": 1,
+      "tottime_s": 0.002,
+      "cumtime_s": 4.317
+    },
+    {
+      "fn": "_estimate_pitch_pyin:2145",
+      "ncalls": 2,
+      "tottime_s": 1.609,
+      "cumtime_s": 3.6
+    },
+    {
+      "fn": "hilbert:2318",
+      "ncalls": 242,
+      "tottime_s": 0.887,
+      "cumtime_s": 3.448
+    },
+    {
+      "fn": "__ua_function__:18",
+      "ncalls": 5001,
+      "tottime_s": 0.007,
+      "cumtime_s": 3.011
+    },
+    {
+      "fn": "lstsq:2191",
+      "ncalls": 37677,
+      "tottime_s": 2.368,
+      "cumtime_s": 2.724
+    },
+    {
+      "fn": "_execute_1D:27",
+      "ncalls": 486,
+      "tottime_s": 0.006,
+      "cumtime_s": 2.62
+    },
+    {
+      "fn": "c2c:11",
+      "ncalls": 484,
+      "tottime_s": 0.004,
+      "cumtime_s": 2.54
+    },
+    {
+      "fn": "<built-in method scipy.fft._pocketfft.pypocketfft.c2c>:0",
+      "ncalls": 484,
+      "tottime_s": 2.526,
+      "cumtime_s": 2.526
+    },
+    {
+      "fn": "estimate:146",
+      "ncalls": 1,
+      "tottime_s": 0.001,
+      "cumtime_s": 2.183
+    },
+    {
+      "fn": "_estimate_polyphonic:170",
+      "ncalls": 1,
+      "tottime_s": 0.01,
+      "cumtime_s": 2.182
+    },
+    {
+      "fn": "_pyin_fallback:399",
+      "ncalls": 1,
+      "tottime_s": 0.0,
+      "cumtime_s": 1.847
+    },
+    {
+      "fn": "ifft:83",
+      "ncalls": 242,
+      "tottime_s": 0.001,
+      "cumtime_s": 1.825
+    },
+    {
+      "fn": "_estimate_pitch_yin:2137",
+      "ncalls": 1,
+      "tottime_s": 0.0,
+      "cumtime_s": 1.753
+    },
+    {
+      "fn": "pyin_fast:217",
+      "ncalls": 1,
+      "tottime_s": 0.019,
+      "cumtime_s": 1.746
+    },
+    {
+      "fn": "convolve:738",
+      "ncalls": 3519,
+      "tottime_s": 0.008,
+      "cumtime_s": 1.622
+    },
+    {
+      "fn": "<built-in method numpy.core._multiarray_umath.correlate>:0",
+      "ncalls": 3519,
+      "tottime_s": 1.612,
+      "cumtime_s": 1.612
+    },
+    {
+      "fn": "_scan_subband_modulation_frequency:3044",
+      "ncalls": 1,
+      "tottime_s": 0.0,
+      "cumtime_s": 1.489
+    },
+    {
+      "fn": "<listcomp>:3111",
+      "ncalls": 1,
+      "tottime_s": 0.0,
+      "cumtime_s": 1.465
+    },
+    {
+      "fn": "_score_at:3079",
+      "ncalls": 129,
+      "tottime_s": 0.428,
+      "cumtime_s": 1.464
+    }
+  ]
+}

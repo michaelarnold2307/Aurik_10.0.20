@@ -1,0 +1,530 @@
+openapi: "3.0.3"
+info:
+  title: Aurik REST API
+  description: >
+    §15.7: OpenAPI 3.0 Spezifikation der Aurik REST-API.
+
+    Aurik ist ein intelligentes Musik-Restaurierungssystem mit
+    68-Phasen-Pipeline, DSP/ML-Verarbeitung und Plugin-System.
+  version: "10.0.0"
+  contact:
+    name: Aurik Development
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Lokale Entwicklung
+
+tags:
+  - name: Health
+    description: System-Gesundheit und Diagnose
+  - name: Restoration
+    description: Audio-Restaurierung
+  - name: Analysis
+    description: Audio-Analyse und Metriken
+  - name: MUSHRA
+    description: Perzeptuelle Tests (ITU-R BS.1534)
+  - name: ABX
+    description: ABX-Blindhörvergleiche
+
+paths:
+  # ── Health ─────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: System-Gesundheitscheck
+      operationId: healthCheck
+      responses:
+        "200":
+          description: System ist gesund
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /health/dependencies:
+    get:
+      tags: [Health]
+      summary: Abhängigkeiten prüfen (numpy, scipy, onnxruntime, etc.)
+      operationId: checkDependencies
+      responses:
+        "200":
+          description: Abhängigkeiten-Status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dependencies:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        available:
+                          type: boolean
+                        version:
+                          type: string
+
+  # ── Restoration ────────────────────────────────────────────────────
+  /restore:
+    post:
+      tags: [Restoration]
+      summary: Audio-Datei restaurieren
+      operationId: restoreAudio
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Audio-Datei (WAV, FLAC, MP3)
+                mode:
+                  type: string
+                  enum: [quick, full, deep]
+                  default: full
+                material:
+                  type: string
+                  description: Manuelles Material (auto-detect wenn leer)
+                  enum: [shellac, vinyl, tape, cassette, digital, auto]
+                  default: auto
+                quality:
+                  type: string
+                  enum: [draft, standard, high, archival]
+                  default: standard
+      responses:
+        "200":
+          description: Restaurierte Audio-Datei
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /restore/status/{job_id}:
+    get:
+      tags: [Restoration]
+      summary: Status einer Restaurierungs-Job abrufen
+      operationId: getRestoreStatus
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job-Status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobStatus"
+
+  # ── Analysis ───────────────────────────────────────────────────────
+  /analyze:
+    post:
+      tags: [Analysis]
+      summary: Audio-Datei analysieren (Material, Defekte, Metriken)
+      operationId: analyzeAudio
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Analyse-Ergebnis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+
+  /metrics/oqs:
+    post:
+      tags: [Analysis]
+      summary: Objective Quality Score berechnen
+      operationId: computeOQS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reference, restored, sample_rate]
+              properties:
+                reference:
+                  type: string
+                  description: Base64-kodierte Referenz-Audio
+                restored:
+                  type: string
+                  description: Base64-kodierte restaurierte Audio
+                sample_rate:
+                  type: integer
+                  default: 48000
+      responses:
+        "200":
+          description: OQS-Ergebnis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OQSResult"
+
+  # ── MUSHRA ─────────────────────────────────────────────────────────
+  /mushra/session/create:
+    post:
+      tags: [MUSHRA]
+      summary: Neue MUSHRA-Hörsession erstellen
+      operationId: createMUSHRASession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                listener_id:
+                  type: string
+                scenarios:
+                  type: array
+                  items:
+                    type: string
+                conditions:
+                  type: array
+                  items:
+                    type: string
+                  default: ["reference", "aurik", "anchor"]
+                repetitions:
+                  type: integer
+                  default: 3
+      responses:
+        "200":
+          description: Session erstellt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MUSHRASession"
+
+  /mushra/session/{session_id}/trial:
+    get:
+      tags: [MUSHRA]
+      summary: Nächsten MUSHRA-Trial abrufen
+      operationId: getMUSHRATrial
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Aktueller Trial
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MUSHRATrial"
+
+  /mushra/session/{session_id}/rate:
+    post:
+      tags: [MUSHRA]
+      summary: Rating für aktuellen MUSHRA-Trial abgeben
+      operationId: rateMUSHRATrial
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trial_id, ratings]
+              properties:
+                trial_id:
+                  type: string
+                ratings:
+                  type: object
+                  additionalProperties:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+      responses:
+        "200":
+          description: Rating gespeichert
+
+  /mushra/session/{session_id}/results:
+    get:
+      tags: [MUSHRA]
+      summary: MUSHRA-Ergebnisse abrufen
+      operationId: getMUSHRAReults
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session-Ergebnisse mit Statistiken
+
+  /mushra/health:
+    get:
+      tags: [MUSHRA]
+      summary: MUSHRA-Listener Health-Check
+      operationId: mushraHealth
+      responses:
+        "200":
+          description: MUSHRA-Listener ist bereit
+
+  # ── ABX ────────────────────────────────────────────────────────────
+  /abx/session/create:
+    post:
+      tags: [ABX]
+      summary: Neue ABX-Hörsession erstellen
+      operationId: createABXSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                listener_id:
+                  type: string
+                scenarios:
+                  type: array
+                  items:
+                    type: string
+                repetitions:
+                  type: integer
+                  default: 10
+      responses:
+        "200":
+          description: Session erstellt
+
+  /abx/session/{session_id}/trial:
+    get:
+      tags: [ABX]
+      summary: Nächsten ABX-Trial abrufen
+      operationId: getABXTrial
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Aktueller ABX-Trial
+
+  /abx/session/{session_id}/answer:
+    post:
+      tags: [ABX]
+      summary: ABX-Antwort abgeben (X = A oder X = B)
+      operationId: answerABXTrial
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trial_id, answer]
+              properties:
+                trial_id:
+                  type: string
+                answer:
+                  type: string
+                  enum: ["A", "B"]
+      responses:
+        "200":
+          description: Antwort gespeichert
+
+  /abx/session/{session_id}/results:
+    get:
+      tags: [ABX]
+      summary: ABX-Ergebnisse abrufen
+      operationId: getABXResults
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ABX-Ergebnisse mit Binomialtest
+
+  /abx/health:
+    get:
+      tags: [ABX]
+      summary: ABX-Listener Health-Check
+      operationId: abxHealth
+      responses:
+        "200":
+          description: ABX-Listener ist bereit
+
+# ── Components ─────────────────────────────────────────────────────────────
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        gpu_backend:
+          type: string
+          enum: [cpu, cuda, rocm, mps, directml]
+        onnx_runtime:
+          type: boolean
+        models_available:
+          type: array
+          items:
+            type: string
+        memory_mb:
+          type: number
+
+    JobStatus:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        progress_pct:
+          type: number
+        current_phase:
+          type: integer
+        total_phases:
+          type: integer
+        result_url:
+          type: string
+        error:
+          type: string
+
+    AnalysisResult:
+      type: object
+      properties:
+        material:
+          type: string
+        era:
+          type: integer
+        genre:
+          type: string
+        defects:
+          type: array
+          items:
+            type: string
+        duration_s:
+          type: number
+        sample_rate:
+          type: integer
+        channels:
+          type: integer
+        peak_db:
+          type: number
+        rms_db:
+          type: number
+        musical_goals:
+          type: object
+          additionalProperties:
+            type: number
+
+    OQSResult:
+      type: object
+      properties:
+        oqs:
+          type: number
+          description: "Objective Quality Score 0-100 (approximiert — nicht subjektiv)"
+        _is_approximation:
+          type: boolean
+          description: "Immer true — dies ist eine algorithmische Schätzung"
+        grade:
+          type: string
+        itu_grade:
+          type: string
+        nsim:
+          type: number
+        anchor_score:
+          type: number
+
+    MUSHRASession:
+      type: object
+      properties:
+        session_id:
+          type: string
+        listener_id:
+          type: string
+        total_trials:
+          type: integer
+        conditions:
+          type: array
+          items:
+            type: string
+
+    MUSHRATrial:
+      type: object
+      properties:
+        session_id:
+          type: string
+        trial_id:
+          type: string
+        scenario:
+          type: string
+        display_order:
+          type: array
+          items:
+            type: string
+        trial_index:
+          type: integer
+        total_trials:
+          type: integer
+        completed:
+          type: boolean
+
+  responses:
+    BadRequest:
+      description: Ungültige Anfrage
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    InternalError:
+      description: Interner Fehler
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              traceback:
+                type: string

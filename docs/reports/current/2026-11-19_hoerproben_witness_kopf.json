@@ -1,0 +1,15 @@
+{
+  "schema": "aurik.hoerproben_witness_kopf/1",
+  "datum": "2026-11-19",
+  "seed": 42,
+  "klassen": {
+    "dynamic_compression_excess": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/dynamic_compression_excess"
+    },
+    "dropout_head_contact": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/dropout_head_contact"
+    }
+  }
+}

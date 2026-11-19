@@ -1,0 +1,3 @@
+- `backend/core/model_downloader.py` nutzt zwei Singleton-Zustände: `ModelDownloader._instance` und `_DOWNLOADER_INSTANCE_HOLDER[0]`.
+- Tests muessen beim Reset beide Werte auf `None` setzen, sonst liefern `verify_and_load()`/`get_model_downloader()` stale Instanzen.
+- Altes Symbol `_downloader_instance` existiert nicht mehr; Zugriff darauf verursacht Attr-Fehler in Static Checks.

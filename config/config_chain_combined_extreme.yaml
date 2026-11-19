@@ -1,0 +1,16 @@
+# Kombinierter Härtefall: Extremes Clipping, starker Brumm, massives Crackle, extreme Sibilanz
+medium: vinyl
+defects:
+  - extreme_clipping
+  - severe_hum
+  - severe_crackle
+  - severe_sibilance
+  - noise
+policy:
+  prefer_ml: true
+  max_chain_length: 12
+  audit: true
+  quality:
+    min_hf_ratio: 0.7
+    max_loudness: -12.0
+    min_transparency: 0.8

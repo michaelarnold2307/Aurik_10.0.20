@@ -1,0 +1,89 @@
+{
+  "date": "2026-09-14T17:07:51",
+  "script": "scripts/validate_muq_plugin_direction.py",
+  "ref_model": "MuQ-Eval-A1 (best_model.pt, MusicQualityModel, erste 10 s + librosa 24 kHz)",
+  "plugin": "plugins.muq_plugin.estimate_muq_mos (_mos_eval_window, erste 10 s + librosa 24 kHz)",
+  "tracks": [
+    "AM Contra - Heart Peripheral",
+    "Al James - Schoolboy Facination",
+    "Angels In Amplifiers - I'm Alright"
+  ],
+  "per_track": [
+    {
+      "track": "AM Contra - Heart Peripheral",
+      "ref": {
+        "ref": 3.8509650230407715,
+        "band12": 3.8524365425109863,
+        "band8": 3.9467666149139404,
+        "noise10": 1.4462027549743652,
+        "noise0": 0.5818989872932434
+      },
+      "plugin": {
+        "ref": 3.83,
+        "band12": 3.84,
+        "band8": 3.87,
+        "noise10": 1.08,
+        "noise0": 1.0
+      }
+    },
+    {
+      "track": "Al James - Schoolboy Facination",
+      "ref": {
+        "ref": 4.042914867401123,
+        "band12": 4.0767035484313965,
+        "band8": 4.452577590942383,
+        "noise10": 3.0169272422790527,
+        "noise0": 0.6076279878616333
+      },
+      "plugin": {
+        "ref": 3.94,
+        "band12": 4.02,
+        "band8": 4.42,
+        "noise10": 1.61,
+        "noise0": 1.0
+      }
+    },
+    {
+      "track": "Angels In Amplifiers - I'm Alright",
+      "ref": {
+        "ref": 4.827869892120361,
+        "band12": 4.843714714050293,
+        "band8": 5.166359901428223,
+        "noise10": 1.5998399257659912,
+        "noise0": 0.5461890697479248
+      },
+      "plugin": {
+        "ref": 4.84,
+        "band12": 4.88,
+        "band8": 5.0,
+        "noise10": 1.0,
+        "noise0": 1.0
+      }
+    }
+  ],
+  "deltas": {
+    "ref": {
+      "delta_ref": 0.0,
+      "delta_plugin": 0.0
+    },
+    "band12": {
+      "delta_ref": -0.01703500747680664,
+      "delta_plugin": -0.04333333333333315
+    },
+    "band8": {
+      "delta_ref": -0.28131810824076336,
+      "delta_plugin": -0.2266666666666667
+    },
+    "noise10": {
+      "delta_ref": 2.2195932865142822,
+      "delta_plugin": 2.973333333333333
+    },
+    "noise0": {
+      "delta_ref": 3.6620112458864846,
+      "delta_plugin": 3.203333333333333
+    }
+  },
+  "direction_ok": 3,
+  "direction_total": 3,
+  "direction_neutral": 2
+}

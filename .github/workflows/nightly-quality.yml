@@ -1,0 +1,116 @@
+name: Aurik Nightly Quality
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  nightly-quality:
+    name: AMRB + Drift + Normative Gates
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Nightly Spec Evidence Gate (last 24h)
+        run: |
+          set -euo pipefail
+
+          spec_touched="$(git log --since='24 hours ago' --name-only --pretty='' | grep '^.github/specs/' || true)"
+          if [[ -z "${spec_touched}" ]]; then
+            echo "No spec changes in last 24h; evidence gate skipped."
+            exit 0
+          fi
+
+          echo "Spec files changed in last 24h:"
+          echo "${spec_touched}"
+
+          evidence_touched="$(git log --since='24 hours ago' --name-only --pretty='' | grep '^docs/reports/spec_evidence/.*\.md$' || true)"
+          if [[ -z "${evidence_touched}" ]]; then
+            echo "Spec changes detected but no evidence report updated in docs/reports/spec_evidence/"
+            exit 1
+          fi
+
+          echo "Evidence files changed in last 24h:"
+          echo "${evidence_touched}"
+
+          missing=0
+          for f in ${evidence_touched}; do
+            for token in "## Evidenzblock" "Seed" "95 %-CI" "Maintainer Sign-off"; do
+              if ! grep -Fq "${token}" "${f}"; then
+                echo "${f}: missing token '${token}'"
+                missing=1
+              fi
+            done
+          done
+
+          if [[ "${missing}" -ne 0 ]]; then
+            echo "Nightly evidence gate failed due to incomplete evidence file(s)."
+            exit 1
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+          pip install numpy==1.26.4 scipy==1.15.3 soundfile==0.13.1 librosa==0.11.0 resampy==0.4.3 numba==0.63.1
+
+      - name: RELEASE_MUST coverage report
+        run: |
+          python scripts/release_must_coverage_check.py
+
+      - name: Spec drift check
+        run: |
+          python scripts/spec_drift_check.py
+
+      - name: VERBOTEN-Regeln Compliance-Check
+        run: |
+          python scripts/compliance_check.py --errors-only
+
+      - name: Normative export/fallback/sample-rate gates
+        run: |
+          python -m pytest \
+            tests/normative/test_export_quality_gate.py \
+            tests/normative/test_fault_injection_fallbacks.py \
+            tests/normative/test_sample_rate_48k_gate.py \
+            tests/unit/test_autonomous_quality_arbiter.py \
+            -p no:xdist \
+            --override-ini="addopts=--strict-markers --import-mode=importlib" \
+            --timeout=30 \
+            --tb=short \
+            -q \
+            --disable-warnings \
+            --no-header
+
+      - name: AMRB CI gate
+        run: |
+          python -m pytest tests/normative/test_amrb_ci_gate.py \
+            -m amrb \
+            -p no:xdist \
+            --override-ini="addopts=--strict-markers --import-mode=importlib" \
+            --timeout=600 \
+            --tb=short \
+            -q \
+            --disable-warnings \
+            --no-header
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightly-quality-reports
+          path: |
+            reports/release_must_coverage.json
+            reports/spec_drift_report.json
+            reports/spec_drift_baseline.json

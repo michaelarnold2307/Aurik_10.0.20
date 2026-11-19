@@ -1,0 +1,60 @@
+{
+  "datum": "2026-10-09",
+  "zweck": "P0-Performance (D-K3-38): Phase-12-Nachher-Messung nach Kalman-JIT + Flutter-Fit-Buendelung (10.12.37)",
+  "audio": "corpus/vinyl/damaged/vinyl_blues_1950s_crackle.wav",
+  "methode": "cProfile, identisch zur Baseline docs/reports/current/2026-10-09_phase12_cprofile.json (15-s-Vinyl-Corpus, material_type=vinyl)",
+  "wall_s": {
+    "baseline": 35.9,
+    "nachher_10_12_37": 21.08,
+    "nachher_10_12_38": 19.34,
+    "delta_prozent_total": -46.1,
+    "nachher_ohne_cprofile_10_12_38": 18.63
+  },
+  "kalman_smooth_warp_s": {
+    "baseline": 11.79,
+    "nachher": 0.89,
+    "nachher_kernel_anteil": 0.043,
+    "speedup_kernel": "348x (10,46 s -> 0,030 s je 1,44-Mio-Sample-Trajektorie)",
+    "aequivalenz": "bit-identisch zur Python-Skalarfassung (max|Δ| = 0.0, konstantes UND variables dt)",
+    "fixpunkt": "Kovarianz-Rekursion konvergiert nach 91 Schritten (Produktionsparameter q=1e-8, r=1e-5, dt=1)"
+  },
+  "flutter_scan": {
+    "lstsq_calls_flutter_pfad": {
+      "baseline": 37677,
+      "nachher": 0,
+      "nachher_gesamt_im_lauf": 15619,
+      "verbleibender_hotspot": "_score_at im Subband-Scan (_scan_subband_modulation_frequency), 129 Aufrufe x ~121 Baender"
+    },
+    "score_fast_cum_s": {
+      "baseline": 4.67,
+      "hinweis": "nachher im selben cProfile-Lauf als Teil von _flutter_track_from_stacks (Gesamt 7,11 s statt 9,82 s)"
+    },
+    "_flutter_correction_pass_s": {
+      "baseline": 9.82,
+      "nachher": 7.11
+    },
+    "aequivalenz": "synthetischer 6-Hz-Flutter (22,9 cents): virtual_pitch/conf max|Δ| = 0.0 gegen Vorversion (git HEAD); E2E-Audio bit-identisch; Rauschfall identisch verworfen"
+  },
+  "subband_scan": {
+    "datum": "2026-10-09 (10.12.38)",
+    "lstsq_calls": { "vorher": 15619, "nachher": 0 },
+    "_scan_subband_modulation_frequency_s": {
+      "vorher": 1.49,
+      "nachher": 0.116
+    },
+    "_score_at_s": { "vorher": 1.46, "nachher": 0.094 },
+    "aequivalenz": "synthetische kohaerente 1,1-Hz-Modulation: Frequenz-Delta = 3,9e-14 Hz bei 7,4x Speedup; E2E-Audio bit-identisch (max = 0.0)"
+  },
+  "verbleibende_phase12_kandidaten": [
+    "hilbert-Serie: 242 Aufrufe / 3,4 s (scipy.signal.hilbert in der Teilband-Spur)",
+    "pYIN/Hybrid-Pitch: ~3,6 s (FCPE-Torch-ROCm-Kern als SOTA-Ersatz — braucht A/B, hoer-relevant)",
+    "butter-Designs: 242 Aufrufe / 0,2 s (Parameter wiederholen sich — Cache-Kandidat)",
+    "convolve/sosfiltfilt: 484x/1,66 s + 242x/1,21 s (Box-/Bandpass-Filterung der Teilband-Spur)",
+    "bandlimited_warp-Resampling in _speed_warp_resample"
+  ],
+  "tests": [
+    "tests/unit/test_phase12_flutter_batched_fit.py (4 neu)",
+    "tests/unit/test_warp_toolkit.py::test_kalman_jit_matches_python_fallback (neu)",
+    "34 bestehende Phase-12-Tests grün"
+  ]
+}

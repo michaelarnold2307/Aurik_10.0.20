@@ -1,0 +1,22 @@
+{
+  "quelle": "scripts/ab_harness.py prepare",
+  "schema": "aurik.ab_sources/1",
+  "sha256": {
+    "docs/reports/current/w1_blind/stimuli_src/0_a.wav": "7616a5c3377139bb6684a085308b3eff788c93f2c6d0739bddd7af3087e81a90",
+    "docs/reports/current/w1_blind/stimuli_src/0_b.wav": "544072e378bbb9e3acccfbe3a57416dd1b675386e5171b8dea58f59fdbfac236",
+    "docs/reports/current/w1_blind/stimuli_src/1_a.wav": "d90add0dd1312b495612233a1f70b2786ae2a463f7f077c5b2d3fb50621221c1",
+    "docs/reports/current/w1_blind/stimuli_src/1_b.wav": "7a4775a667db84c1177c6ad79984b92bd171e4aa2cf526f6ee52997949fcc7a2",
+    "docs/reports/current/w1_blind/stimuli_src/2_a.wav": "7c620a36b46cc5a676ccd6f0110508e31a2f3af6a91683b3461d4b8a81d5a8cc",
+    "docs/reports/current/w1_blind/stimuli_src/2_b.wav": "458963ec99ab1d312bbd9f8ac201946b1668d3935b6d5253be28baf49cd006bc",
+    "docs/reports/current/w1_blind/stimuli_src/3_a.wav": "6418c3eb4cb57e5f2754c2371ac2ac63651b2fc851addf451f935f5e235060ea",
+    "docs/reports/current/w1_blind/stimuli_src/3_b.wav": "0d5d4af89bb2625189e141a9fdf85340b6c35db24f19f4882ef6045ce3cf1004",
+    "docs/reports/current/w1_blind/stimuli_src/4_a.wav": "9e6710ebb86101f69e8eb291698c1b3fe618d5918dfd837fbddc8154a951e347",
+    "docs/reports/current/w1_blind/stimuli_src/4_b.wav": "80067ef054237e5e62655d531d0de41a82b25ecfa26bcf4d008f89bc57688773",
+    "docs/reports/current/w1_blind/stimuli_src/5_a.wav": "fcdaa37482bd284f4b135ea6f315231341deff877d8ba4a41fd0a621757e2665",
+    "docs/reports/current/w1_blind/stimuli_src/5_b.wav": "a604138e6ba8c9be667a6a6a6662052c240f8f29cc7bb49c756fd18904d0f548",
+    "docs/reports/current/w1_blind/stimuli_src/6_a.wav": "b242c1fb9773bc70af08ebd97cafd990f1005f4813b0af0e932e7a975d373023",
+    "docs/reports/current/w1_blind/stimuli_src/6_b.wav": "5477b53e9a3f2c888cf7034beaded0ae0f355c7708c7879cdf17433c94d4d115",
+    "docs/reports/current/w1_blind/stimuli_src/7_a.wav": "68ed7009149660083f6dba0e3725fa2208b8aac9e2311ca2612888ae7a97afa8",
+    "docs/reports/current/w1_blind/stimuli_src/7_b.wav": "9f2d6b62ef5963fdc174281a7c6d8327c07ed86c54ca2d387ff51547573a64c2"
+  }
+}

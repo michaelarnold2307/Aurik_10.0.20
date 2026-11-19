@@ -1,0 +1,6 @@
+- Problem: VS Code kann bei langen pytest-Laeufen mit hoher Terminal-Event-Rate (viele Dot-Zeilen + line-traceback) instabil werden.
+- Beobachtung: Besonders `pytest: Chunk C` erzeugte sehr lange Ausgabestroeme und lange Laufzeiten.
+- Fix: `.vscode/tasks.json` Task `pytest: Chunk C` auf `run_tests_chunked_safe.sh` umgestellt.
+- Neue Parameter: `AURIK_MEM_GB=16`, `AURIK_SWAP_MB=4096`, `AURIK_BATCH_FILES=12`, `AURIK_CHUNK_LIMIT=0`, `--tb=short`, `-qq`, `-o console_output_style=count`.
+- Verifikation: Mini-Lauf mit `AURIK_CHUNK_LIMIT=1` lief stabil durch (`Chunk 1/53 erfolgreich`).
+- Nutzen: weniger UI/Terminal-Flood, cgroup-memory guard aktiv, deutlich geringeres Absturzrisiko im VS-Code-Prozess.

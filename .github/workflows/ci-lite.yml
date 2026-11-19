@@ -1,0 +1,395 @@
+name: Aurik CI Lite
+
+on:
+  push:
+    branches:
+      - main
+      - clean/**
+      - dev/**
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  pr-evidence-gate:
+    name: PR Evidence Gate (Spec & Code Changes)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Require evidence block for spec changes
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed_specs="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep '^.github/specs/' || true)"
+          if [[ -z "$changed_specs" ]]; then
+            echo "No spec changes detected; evidence gate skipped."
+            exit 0
+          fi
+
+          echo "Spec changes detected:"
+          echo "$changed_specs"
+
+          missing=0
+          for token in "## Evidenzblock" "Seed" "95 %-CI" "Maintainer Sign-off"; do
+            if ! grep -Fq "$token" <<< "$PR_BODY"; then
+              echo "Missing PR body token: $token"
+              missing=1
+            fi
+          done
+
+          if [[ "$missing" -ne 0 ]]; then
+            echo "Spec changes require a complete evidence block in PR description."
+            echo "Template: docs/guides/SPEC_EVIDENZBLOCK_TEMPLATE.md"
+            exit 1
+          fi
+
+      - name: Require TASK_CHANGES.md coverage for code changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python scripts/change_ledger.py check --base "$BASE_SHA" --head "$HEAD_SHA"
+
+
+  snyk-guard:
+    name: Snyk Guard (Security Scan)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+      - name: Run Snyk Guard
+        run: |
+          python scripts/snyk_guard.py
+
+  determinism-gate:
+    name: Determinism Gate (Normative)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+
+      - name: Run deterministic normative tests
+        run: |
+          python -m pytest \
+            tests/normative/test_full_pipeline_determinism.py \
+            tests/normative/test_p2_audit_and_deployment_mode.py \
+            -p no:xdist \
+            --override-ini="addopts=--strict-markers --import-mode=importlib" \
+            --timeout=30 \
+            --tb=short \
+            -q \
+            --disable-warnings \
+            --no-header
+
+  export-guard:
+    name: Export Guard (Audio & Metadata)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+          # tests/conftest.py imports numpy, so install it explicitly for the guard run.
+      - name: Run Export Guard
+        run: |
+          python scripts/export_guard.py
+
+  normative-guard:
+    name: Normative Guard (No Production Stubs)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+          # tests/conftest.py imports numpy, so install it explicitly for the guard run.
+          pip install numpy==1.26.4
+          # tests/test_utils.py imports scipy.signal for fixture utilities.
+          pip install scipy==1.15.3
+
+      - name: Run normative CI guard tests
+        run: |
+          python -m pytest tests/normative/test_no_production_stubs.py \
+            -p no:xdist \
+            --override-ini="addopts=--strict-markers --import-mode=importlib" \
+            --timeout=30 \
+            --tb=short \
+            -q \
+            --disable-warnings \
+            --no-header
+
+      - name: VERBOTEN-Regeln Compliance-Check
+        run: |
+          python scripts/compliance_check.py --errors-only
+
+  gui-smoke-gate:
+    name: GUI Smoke Gate (Offscreen)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+          pip install numpy==1.26.4 scipy==1.15.3 PyQt5==5.15.11
+
+      - name: Run offscreen GUI smoke suite (§v10.993 — Live-Fehler sichtbar statt stumm)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pytest \
+            tests/normative/test_e2e_gui_smoke.py \
+            tests/test_gui_integration.py \
+            tests/ui/test_ui_quality.py \
+            tests/unit/test_frontend_backend_harmony.py \
+            --run-gui-tests --run-heavy-tests \
+            -p no:xdist \
+            --override-ini="addopts=--strict-markers --import-mode=importlib" \
+            --timeout=120 \
+            --tb=short \
+            -q \
+            --disable-warnings \
+            --no-header
+
+  evaluation-gate:
+    name: Evaluation Gate (§v10.995 — Das EINE Evaluations-System)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+          pip install numpy==1.26.4 scipy==1.15.3
+
+      - name: Evaluation-System-Selbsttest
+        run: |
+          python -m pytest tests/unit/test_evaluation_system.py \
+            -p no:xdist \
+            --override-ini="addopts=--strict-markers --import-mode=importlib" \
+            --timeout=120 \
+            --tb=short \
+            -q \
+            --disable-warnings \
+            --no-header
+
+      - name: Objektives Gate (synthetisch, deterministisch)
+        run: |
+          python scripts/evaluate.py --mode objective --synthetic --cases 4 --gate \
+            --out reports/ci_evaluation.json
+
+  scope-lint-gate:
+    name: Scope Lint Gate (§v10 A2)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+
+      - name: Install pylint
+        run: pip install pylint
+
+      - name: Run undefined-variable check (backend/core/phases)
+        run: |
+          pylint backend/core/phases/ \
+            --enable=undefined-variable,used-before-assignment \
+            --disable=all \
+            --output-format=text \
+            --exit-zero \
+          | tee /tmp/pylint_scope.txt
+
+      - name: Fail on new scope bugs
+        run: |
+          if grep -q "undefined-variable\|used-before-assignment" /tmp/pylint_scope.txt; then
+            echo "Scope-Bugs gefunden:"
+            grep "undefined-variable\|used-before-assignment" /tmp/pylint_scope.txt
+            exit 1
+          fi
+          echo "Keine Scope-Bugs — Gate passed"
+
+  type-gate:
+    name: Type Gate (mypy)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+
+      - name: Install mypy
+        run: pip install -r requirements/requirements_dev.txt mypy==2.1.0 types-pyyaml
+
+      - name: Run mypy
+        run: |
+          # Spec 10_bug_gap_strategy.md:324 — kanonischer Type-Safety-Scope:
+          # backend/core backend/api plugins Aurik10 cli (keine tests/scripts).
+          mypy --config-file pyproject.toml backend/core backend/api plugins Aurik10 cli --show-error-codes 2>&1 | tee /tmp/mypy_ci.txt
+
+      - name: Fail on type errors
+        run: |
+          if grep -q ': error:' /tmp/mypy_ci.txt; then
+            echo "Type-Errors gefunden:"
+            grep ': error:' /tmp/mypy_ci.txt | head -20
+            exit 1
+          fi
+          echo "0 Type-Errors — Gate passed"
+
+  lint-gate:
+    name: Lint Gate (ruff)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+
+      - name: Install ruff
+        run: |
+          pip install ruff==0.16.7
+
+      - name: "Run ruff (identisch zum Pre-Commit-Gate: F821/F601/B009/I001)"
+        run: |
+          ruff check --select F821,F601,B009,I001 backend/ plugins/ denker/ Aurik10/ cli/ scripts/ --output-format=full 2>&1 | tee /tmp/ruff_ci.txt
+
+      - name: Fail on lint errors
+        run: |
+          if grep -qE '[A-Z][0-9]+' /tmp/ruff_ci.txt; then
+            echo "Lint-Fehler gefunden:"
+            head -20 /tmp/ruff_ci.txt
+            exit 1
+          fi
+          echo "0 Lint-Fehler — Gate passed"
+
+  coverage-gate:
+    name: Coverage Gate (RELEASE_MUST, normativ)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+
+      - name: Run Coverage Gate (RELEASE_MUST-Coverage, normativ)
+        # §Fix 2026-09-08: Der frühere pytest-cov-90-%-Lauf über
+        # backend/core+dsp+plugins+denker+Aurik10 war strukturell unerreichbar
+        # (gemessen 16,83 % — hunderte ungetestete ML-Plugins), brauchte
+        # > 15 min (Job-Timeout) und stoppte per -x beim ersten Testfehler.
+        # Normative Quelle (Spec 10_bug_gap_strategy.md, nightly-quality.yml,
+        # solo-release-gate.yml): Jeder [RELEASE_MUST]-Header braucht einen
+        # Test — deterministisch, schnell, fail-closed.
+        run: |
+          python scripts/release_must_coverage_check.py

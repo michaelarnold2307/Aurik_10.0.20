@@ -1,0 +1,793 @@
+# Non-SOTA / Unvollkommenheits-Audit (Code, ohne Tests)
+
+Datum: 2026-04-15
+
+Hinweis: Tests und ausgeschlossene Drittanbieter-/Artefaktpfade wurden nicht gescannt.
+
+## Summary
+
+- Gesamttreffer: 514
+- Dateien mit Treffern: 213
+- Hohe Relevanz (Subset): 245
+
+## Marker-Counts
+
+- bypass: 59
+- deprecated: 35
+- fixme: 0
+- hack: 0
+- mock: 5
+- not_implemented: 7
+- pass: 224
+- placeholder: 45
+- stub: 97
+- temp: 40
+- todo: 0
+- wip: 0
+- workaround: 2
+- xxx: 0
+
+## Hohe Relevanz
+
+- Aurik10/i18n/**init**.py:807 | placeholder | "legacy.audio.preview_ready": "Preview ready (placeholder - no processing)",
+- Aurik10/i18n/**init**.py:843 | not_implemented | "legacy.preset.not_implemented_title": "Not Implemented",
+- Aurik10/ui/ml_refinement_thread.py:73 | bypass | # Bridge unavailable — MLRefinementThread remains non-functional (no direct core bypass).
+- Aurik10/ui/modern_window.py:463 | placeholder | Always visible; shows placeholder text when not yet measured.
+- Aurik10/ui/modern_window.py:7104 | placeholder | # Draw premium placeholder
+- Aurik10/ui/modern_window.py:8753 | placeholder | """Store fmt as pinned label when it is a custom string (not a Qt placeholder)."""
+- Aurik10/ui/modern_window.py:10872 | placeholder | # Quality Meter VU bar — always visible, above radar/placeholder
+- Aurik10/ui/modern_window.py:11530 | placeholder | # Show placeholder until pre-analysis synchronization is finalized.
+- Aurik10/ui/modern_window.py:11650 | workaround | # setFixedSize ersetzt den_AspectContainer-Workaround (heightForWidth-Propagation
+- Aurik10/ui/modern_window.py:13380 | placeholder | # Carrier placeholder —_pre_analysis_bg will fill detected_medium_label
+- Aurik10/ui/modern_window.py:13950 | bypass | """Absolute fallback (180 s): never bypass defect-scan gate."""
+- Aurik10/ui/modern_window.py:15347 | deprecated | #_repair_hint: nur zeigen wenn nicht veraltet (d.h. aktuell
+- Aurik10/ui/song_prognose_widget.py:420 | placeholder | for key, placeholder in [
+- Aurik10/ui/song_prognose_widget.py:431 | placeholder | row_val = QLabel(placeholder)
+- _aurik_run_excellence.py:8 | bypass | Nutzt kanonischen Einstieg AurikDenker.denke() — kein UV3-Bypass.
+- backend/adaptive_pipeline.py:25 | stub | # Fallback-Stub auf Modulebene
+- backend/adaptive_pipeline.py:27 | stub | """Basis-Fallback-Stub für nicht ladbare Plugins."""
+- backend/adaptive_pipeline.py:45 | stub | # ConvTasNetPlugin entfernt — Sprach-Separation (Luo 2019), HPSS-DSP-Stub, nicht in §11.3
+- backend/adaptive_pipeline.py:46 | stub | # WaveUNetPlugin entfernt — Sprach-Separation (Stoller 2018), HPSS-DSP-Stub, nicht in §11.3
+- backend/adaptive_pipeline.py:54 | stub | # Stub entfernt; flow_matching_plugin ist der Nachfolger für generatives Inpainting.
+- backend/adaptive_pipeline.py:598 | bypass | # Direct separation (bypass safety checks)
+- backend/adaptive_pipeline.py:671 | bypass | # Direct correction (bypass safety checks)
+- backend/adaptive_pipeline.py:1892 | placeholder | bit_depth=16,  # Placeholder
+- backend/adaptive_pipeline.py:2107 | placeholder | model_version="1.0.0",  # Placeholder
+- backend/adaptive_pipeline.py:2145 | deprecated | # === VERALTET: Alte Stub-Methoden entfernt ===
+- backend/adaptive_pipeline.py:2145 | stub | # === VERALTET: Alte Stub-Methoden entfernt ===
+- backend/api/bridge.py:626 | stub | logger.debug("bridge: MediumDetector nicht importierbar — stub aktiv")
+- backend/api/rest/batch_api.py:25 | stub | """Stub for DSPDecisionLogic when module is not available."""
+- backend/carrier_forensics.py:23 | deprecated | "backend.carrier_forensics ist veraltet (Aurik 6.0). "
+- backend/carrier_ml_classifier.py:23 | deprecated | "backend.carrier_ml_classifier ist veraltet (Aurik 6.0). "
+- backend/core/ab_test_manager.py:2 | deprecated | Deprecated: ABTestManager → ``core.ab_compare_manager.ABCompareManager``.
+- backend/core/ab_test_manager.py:4 | deprecated | Dieses Modul ist veraltet seit v10.0.0.
+- backend/core/ab_test_manager.py:11 | deprecated | # Alt (veraltet):
+- backend/core/ab_test_manager.py:32 | deprecated | """Deprecated Stub — Nachfolger: :class:`~core.ab_compare_manager.ABCompareManager`.
+- backend/core/ab_test_manager.py:32 | stub | """Deprecated Stub — Nachfolger: :class:`~core.ab_compare_manager.ABCompareManager`.
+- backend/core/ab_test_manager.py:34 | deprecated | .. deprecated:: 9.10.45
+- backend/core/ab_test_manager.py:42 | deprecated | "ABTestManager ist veraltet (seit v10.0.0). "
+- backend/core/ab_test_manager.py:52 | stub | """Stub — ohne Funktion. Nutze ``ABCompareManager.compare_audio()``."""
+- backend/core/ab_test_manager.py:55 | stub | """Stub — ohne Funktion. Nutze ``ABCompareManager.store()``."""
+- backend/core/ab_test_manager.py:58 | stub | """Stub — ohne Funktion."""
+- backend/core/ab_test_manager.py:61 | stub | """Stub — ohne Funktion."""
+- backend/core/aesthetic_judgment.py:311 | placeholder | - Foundation Model Deviation Score (placeholder)
+- backend/core/aesthetic_judgment.py:610 | placeholder | # Placeholder: use inverse of crest factor as proxy
+- backend/core/ai_framework.py:1376 | deprecated | # Deprecated: Backward compatibility
+- backend/core/ai_framework.py:1378 | deprecated | """Deprecated: Use studio2026_magic_button() instead."""
+- backend/core/ai_framework.py:1379 | deprecated | warnings.warn("magic_button() is deprecated, use studio2026_magic_button()", DeprecationWarning)
+- backend/core/comprehensive_metrics.py:32 | stub | # that Pylance cannot resolve via overload matching (scipy stub limitation).
+- backend/core/content_aware_processor.py:45 | stub | # Typ-Konflikt zwischen Plugin-Klasse und Stub-Klasse für den gesamten Block.
+- backend/core/content_aware_processor.py:58 | stub | # Minimale Stub-Typen damit das Modul auch ohne Plugin ladbar ist
+- backend/core/defect_phase_mapper.py:1781 | bypass | # The phase was selected for a reason — never fully bypass.
+- backend/core/dolby_nr_detector.py:322 | placeholder | b, a = sps.iirpeak(fc / (sr / 2.0), q) if btype == "peaking" else (None, None)  # placeholder
+- backend/core/evaluation/continuous_learning.py:547 | placeholder | current_weights = dict.fromkeys(strategies.keys(), 0.5)  # Placeholder
+- backend/core/evaluation/quality_control.py:18 | deprecated | "backend.core.evaluation.quality_control ist veraltet. Importiere direkt aus backend.quality_control.",
+- backend/core/forensics/analysis_and_modules.py:17 | bypass | self.escalation_levels = escalation_levels or {"warn": 3, "bypass": 5, "hard_bypass": 7}
+- backend/core/forensics/analysis_and_modules.py:45 | bypass | `elif self.policy[gate]["fail_count"] >= self.escalation_levels.get("bypass", 5):`
+- backend/core/forensics/analysis_and_modules.py:46 | bypass | level = "bypass"
+- backend/core/forensics/analysis_and_modules.py:295 | stub | # Loudness (LUFS, Stub)
+- backend/core/forensics/analysis_and_modules.py:759 | placeholder | logging.warning(f"PANNS tagging failed: {e}. Using placeholder values.")
+- backend/core/forensics/analysis_and_modules.py:888 | placeholder | # 6. Defect Detection (Spec 3.1.3) - Placeholder
+- backend/core/forensics/gender_detection.py:30 | placeholder | # Placeholder: Nutze die mittlere Fundamental-Frequenz als grobe Gender-Schätzung
+- backend/core/forensics/training/train_models.py:394 | placeholder | # For now, create placeholder (real implementation would use dataset_generator)
+- backend/core/gp_parameter_optimizer.py:119 | bypass | "noise_reduction_strength": (0.0, 1.0, "float"),  # full range: 0=bypass, 1=max NR
+- backend/core/holistic_perceptual_gate.py:630 | bypass | 0.5 = keine Veränderung (Bypass)
+- backend/core/hybrid/hybrid_speed_pitch_ml.py:61 | deprecated | # Backward-Alias (deprecated, wird auf PYIN_ONLY gemappt)
+- backend/core/hybrid/hybrid_wow_flutter.py:54 | deprecated | # Backward-Alias (deprecated)
+- backend/core/merge_stems_sota.py:7 | stub | """Stub replacing aurik6.analysis FeatureExtractor (results are unused in merge logic)."""
+- backend/core/merge_stems_sota.py:14 | stub | """Stub replacing aurik6.analysis PolicyManager (policy dict is queried directly)."""
+- backend/core/merge_stems_sota.py:85 | bypass | if any(v.get("action") == "bypass" for v in policy.values() if isinstance(v, dict)):
+- backend/core/merge_stems_sota.py:95 | bypass | if any(v.get("action") == "bypass" for v in policy.values() if isinstance(v, dict)):
+- backend/core/merge_stems_sota.py:100 | bypass | if any(v.get("action") == "bypass" for v in policy.values() if isinstance(v, dict)):
+- backend/core/ml_device_manager.py:124 | not_implemented | "not implemented",
+- backend/core/module_coordinator.py:949 | placeholder | # Placeholder for ML-based quality prediction
+- backend/core/multi_pass_strategy.py:549 | placeholder | # === 6. Confidence (placeholder - wird später von ConfidenceCalculator gesetzt) ===
+- backend/core/multimodal_decision_engine.py:157 | placeholder | image_path: Path to cover image (or placeholder).
+- backend/core/musical_goals/musical_goals_metrics.py:41 | bypass | import librosa.util.utils  # util.expand_to lebt hier — direkter Import bypass lazy_loader
+- backend/core/musical_goals/musical_goals_metrics.py:559 | deprecated | Nicht 200-2000 Hz Einband-Messung (veraltet, reverb-sensitiv).
+- backend/core/musical_goals/perceptual_validator.py:451 | placeholder | NOTE: Dies ist eine Placeholder-Implementierung.
+- backend/core/musical_goals/quality_gate.py:894 | stub | Gibt immer None zurück; Compat-Stub damit alte Aufrufer nicht brechen.
+- backend/core/musical_goals/quality_gate.py:900 | stub | Gibt immer None zurück; Compat-Stub damit alte Aufrufer nicht brechen.
+- backend/core/musical_phrase_context_extractor.py:2 | deprecated | core.musical_phrase_context_extractor — VERALTET (Kompatibilitäts-Shim)
+- backend/core/musical_phrase_context_extractor.py:22 | deprecated | "core.musical_phrase_context_extractor ist veraltet. Verwende stattdessen core.musical_phrase_context.",
+- backend/core/onnx/quantizer.py:125 | not_implemented | logger.error("Quantization type %s not implemented", self.config.quantization_type)
+- backend/core/optimization/perceptual_loss.py:195 | placeholder | # This is a placeholder - actual implementation depends on PANNs integration
+- backend/core/optimization/perceptual_loss.py:200 | placeholder | features["high_level"] = audio.mean(dim=-1)  # Placeholder
+- backend/core/optimization/perceptual_loss.py:417 | placeholder | # Placeholder implementation
+- backend/core/optimization/train_e2e_optimization.py:100 | placeholder | # Load audio (placeholder - actual implementation would use librosa/soundfile)
+- backend/core/optimization/train_e2e_optimization.py:236 | placeholder | # Placeholder - would load actual audio files
+- backend/core/optimization/train_e2e_optimization.py:269 | placeholder | # Placeholder - would load actual audio files
+- backend/core/per_phase_musical_goals_gate.py:1353 | bypass | It does not disable final export gates and does not bypass safety guards.
+- backend/core/phase_conductor.py:133 | bypass | # Mindeststärken je Phase-Typ (verhindert Bypass durch Over-Confidence)
+- backend/core/phases/phase_03_denoise.py:551 | bypass | # §2.47 [RELEASE_MUST] SNR > 35 dB Dry-Signal Bypass
+- backend/core/phases/phase_03_denoise.py:582 | bypass | "Dry-Signal bypass (clean signal, no denoising needed)",
+- backend/core/phases/phase_03_denoise.py:586 | bypass | logger.debug("SNR bypass estimation failed (non-blocking): %s", _snr_exc)
+- backend/core/phases/phase_03_denoise.py:807 | bypass | # At SNR=35 dB: bypass fires, SGMSE+ never reached
+- backend/core/phases/phase_04_eq_correction.py:792 | bypass | return audio  # No profile → bypass
+- backend/core/phases/phase_05_rumble_filter.py:16 | bypass | - Transient bypass (during attack transients, filter disengaged)
+- backend/core/phases/phase_05_rumble_filter.py:686 | bypass | Apply IIR high-pass with transient bypass.
+- backend/core/phases/phase_07_harmonic_restoration.py:35 | bypass | - Transients preserved (attack bypass)
+- backend/core/phases/phase_07_harmonic_restoration.py:440 | bypass | # threshold for most materials, triggering a clean bypass.
+- backend/core/phases/phase_12_wow_flutter_fix.py:201 | bypass | """Bypass correction entirely when the estimator already proved unstable.
+- backend/core/phases/phase_20_reverb_reduction.py:39 | bypass | - Transients bypass processing (preserve direct sound)
+- backend/core/phases/phase_29_tape_hiss_reduction.py:348 | bypass | # §2.47 [RELEASE_MUST] SNR > 35 dB Dry-Signal Bypass
+- backend/core/phases/phase_29_tape_hiss_reduction.py:382 | bypass | "Dry-Signal bypass (hiss band negligible, OMLSA skipped)",
+- backend/core/phases/phase_29_tape_hiss_reduction.py:386 | bypass | logger.debug("Phase 29 SNR bypass estimation failed (non-blocking): %s", _p29_snr_exc)
+- backend/core/phases/phase_45_brass_enhancement.py:6 | stub | Ersetzt den kaputten ML-Stub.
+- backend/core/phases/phase_46_spatial_enhancement.py:6 | stub | Ersetzt den kaputten ML-Stub.
+- backend/core/phases/phase_47_truepeak_limiter.py:6 | stub | Ersetzt den kaputten aurik_ml.mastering-Stub.
+- backend/core/phases/phase_49_advanced_dereverb.py:6 | stub | Ersetzt den kaputten ML-Stub aus v1.0 und die np.fft.rfft-Schleife aus v2.0.
+- backend/core/phases/phase_50_spectral_repair.py:6 | stub | Ersetzt den kaputten ML-Stub.
+- backend/core/phases/phase_54_transparent_dynamics.py:20 | bypass | - Preserve transient clarity (bypass compression for 5-20ms)
+- backend/core/phases/phase_54_transparent_dynamics.py:32 | bypass | - TransientPreserver: Intelligent transient bypass
+- backend/core/phases/phase_54_transparent_dynamics.py:507 | bypass | # Preserve transients (bypass compression at transient locations)
+- backend/core/pipeline_health_state.py:30 | bypass | What the system did in response (e.g. "rollback", "safe_mode", "bypass").
+- backend/core/quality_feedback_loop.py:412 | not_implemented | raise NotImplementedError("MockPhase wird nur für Gating-Tests verwendet — process wird nicht aufgerufen")
+- backend/core/quality_recovery.py:173 | bypass | description="Bypass aggressive noise reduction module",
+- backend/core/quality_recovery.py:196 | bypass | description="Bypass de-esser and enhancer modules",
+- backend/core/quality_recovery.py:212 | bypass | description="Bypass aggressive processing modules",
+- backend/core/quality_recovery.py:251 | bypass | description="Bypass compression and limiting",
+- backend/core/quality_recovery.py:407 | not_implemented | logger.warning("  Strategy %s not implemented yet", action.strategy.value)
+- backend/core/self_learning_optimizer.py:22 | deprecated | Legacy-API (rückwärtskompatibel, deprecated):
+- backend/core/self_learning_optimizer.py:283 | deprecated | # Legacy-API (rückwärtskompatibel, deprecated)
+- backend/core/self_learning_optimizer.py:287 | deprecated | """[Deprecated] Nutze record_result() stattdessen."""
+- backend/core/self_learning_optimizer.py:296 | deprecated | """[Deprecated] Lineare Vorhersage basierend auf gelernten Gewichten."""
+- backend/core/self_learning_optimizer.py:300 | deprecated | """[Deprecated] Gibt gewichtete Features zurück."""
+- backend/core/self_learning_optimizer.py:304 | deprecated | """[Deprecated] Legacy-History."""
+- backend/core/stem_processing_decision.py:90 | bypass | return "bypass"
+- backend/core/stereo_authenticity.py:2 | deprecated | core.stereo_authenticity — VERALTET (Kompatibilitäts-Shim)
+- backend/core/stereo_authenticity.py:23 | deprecated | "core.stereo_authenticity ist veraltet. Verwende stattdessen core.stereo_authenticity_invariant.",
+- backend/core/stereo_authenticity_invariant.py:443 | deprecated | Migriert aus ``core.stereo_authenticity`` (veraltet, wird als Shim
+- backend/core/unified_restorer_v3.py:3451 | bypass | # sofern vorhanden — spart doppelte ML-Klassifikation (§9.7.2 Cache-Bypass)
+- backend/core/unified_restorer_v3.py:5076 | bypass | # nur ein manueller Studio-2026-Modus darf diesen Override aufheben (kein automatischer Bypass).
+- backend/core/unified_restorer_v3.py:9224 | bypass | "action": str(_spd_decision.get("action", "bypass")),
+- backend/core/unified_restorer_v3.py:9684 | stub | logger.debug("✅ DummyModels: %d Stub-Modelle", _dm_result["n_models"])
+- backend/core/unified_restorer_v3.py:11474 | deprecated | # Deprecated v10.0.0: ABTestManager war immer leer (frische Instanz je Aufruf,
+- backend/defect_detection/treatment_recommender.py:294 | placeholder | """Create a placeholder for defects with no treatment."""
+- backend/error_notifier.py:1 | stub | """error_notifier.py — Minimaler Fehler-Benachrichtigungs-Stub für Aurik 10.0.0.
+- backend/error_notifier.py:19 | stub | Aktuell: stille Stub-Implementierung — alle Fehler gehen über
+- backend/ethics_engine.py:5 | deprecated | .. deprecated::
+- backend/ethics_engine.py:25 | deprecated | "backend.ethics_engine ist veraltet. Bitte 'from backend.core.epistemic_gate.ethics_engine import ...' verwenden.",
+- backend/ml/inference_only/vocal_separation/demucs_v5_wrapper.py:282 | placeholder | # Placeholder: return low-pass filtered audio for bass
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:57 | placeholder | # Model loading (placeholder - requires actual MDX-Net model)
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:84 | placeholder | Note: This is a placeholder. Actual implementation requires:
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:94 | placeholder | # Placeholder for actual model loading
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:98 | placeholder | return None  # Placeholder
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:139 | placeholder | # Actual separation (placeholder)
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:207 | placeholder | This is a placeholder for the real implementation which requires:
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:214 | placeholder | # Placeholder: Use fallback for now
+- backend/semantic/semantic_audio_analyzer.py:294 | placeholder | time_percentage=0.6,  # Placeholder
+- conftest.py:78 | deprecated | message="pkg_resources is deprecated as an API",
+- conftest.py:83 | deprecated | message="pkg_resources is deprecated as an API",
+- dsp/adaptive_deconvolution.py:157 | not_implemented | # Unbekannte Methode: NotImplementedError werfen.
+- dsp/adaptive_deconvolution.py:160 | not_implemented | raise NotImplementedError(
+- dsp/ai_automatic_tuning.py:45 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/analysis_and_quality.py:175 | stub | """Stub für Loudness-Berechnung nach EBU R128 (LUFS)."""
+- dsp/analysis_and_quality.py:223 | stub | """§10.2 STUB: SI-SDR (Scale-Invariant Signal-to-Distortion Ratio) VERBOTEN (§4.4+§10.2).
+- dsp/analysis_and_quality.py:234 | stub | `logger.info("[AuditLog][SISDR] §10.2-Stub — Ergebnis: %s", result)`
+- dsp/analysis_and_quality.py:238 | stub | """Stub für Perceptual Evaluation of Speech Quality (PESQ)."""
+- dsp/analysis_and_quality.py:250 | stub | """Stub für Mean Opinion Score (MOS, subjektive Bewertung)."""
+- dsp/auto_bypass_order.py:4 | bypass | auto_bypass_order.py - SOTA-konformes Auto-Bypass/Order Modul für Aurik 6.0
+- dsp/auto_bypass_order.py:67 | bypass | Klassisches Auto-Bypass/Order (SOTA-Maximum):
+- dsp/automatic_declipper.py:52 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/automatic_declipper_bass.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch aus Bassspuren (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_bass.py:67 | stub | KI-Automatic Declipper Bass (Stub, SOTA-konform):
+- dsp/automatic_declipper_chain.py:5 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch in einer DSP-Kette (Stub).
+- dsp/automatic_declipper_chain.py:34 | stub | KI-Automatic Declipper Chain (Stub):
+- dsp/automatic_declipper_instrument.py:67 | stub | Automatic Declipper Instrument (Stub):
+- dsp/automatic_declipper_legacy.py:157 | stub | Automatic Declipper Legacy (Stub):
+- dsp/automatic_declipper_low_latency.py:67 | stub | Automatic Declipper Low Latency (Stub):
+- dsp/automatic_declipper_music.py:44 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/automatic_declipper_percussive.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch aus perkussiven Signalen (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_percussive.py:67 | stub | Automatic Declipper Percussive (Stub, SOTA-konform):
+- dsp/automatic_declipper_realtime.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch in Echtzeit (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_realtime.py:67 | stub | Automatic Declipper Realtime (Stub, SOTA-konform):
+- dsp/automatic_declipper_reference.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch nach Referenz (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_reference.py:67 | stub | Automatic Declipper Reference (Stub, SOTA-konform):
+- dsp/automatic_declipper_stereo.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch aus Stereo-Audiosignalen (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_stereo.py:67 | stub | Automatic Declipper Stereo (Stub, SOTA-konform):
+- dsp/automatic_declipper_streaming.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch im Streaming-Kontext (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_streaming.py:67 | stub | Automatic Declipper Streaming (Stub, SOTA-konform):
+- dsp/automatic_declipper_ultra_low_latency.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch mit extrem niedriger Latenz (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_ultra_low_latency.py:67 | stub | Automatic Declipper Ultra Low Latency (Stub, SOTA-konform):
+- dsp/automatic_declipper_voice.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch aus Sprachsignalen (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_voice.py:67 | stub | Automatic Declipper Voice (Stub, SOTA-konform):
+- dsp/automatic_harmonics.py:44 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/automatic_tuning.py:44 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/cd_deemphasis.py:4 | stub | Dieses Modul entfernt Pre-Emphasis von frühen Audio-CDs (Stub) und ist jetzt mit DSPContract für Auditierbarkeit und SOTA-Konformität ausgestattet.
+- dsp/cd_deemphasis.py:66 | stub | CD-Deemphasis (Stub):
+- dsp/chain_recommendation.py:6 | stub | Dieses Modul schlägt automatisch die optimale DSP-Kette für ein Audiosignal vor (Stub).
+- dsp/context_aware_deesser.py:97 | placeholder | """Fallback phoneme segment placeholder."""
+- dsp/context_aware_deesser.py:106 | placeholder | """Fallback detector placeholder."""
+- dsp/context_aware_deesser.py:112 | placeholder | """Fallback classifier placeholder."""
+- dsp/decrackler.py:49 | stub | Dieses Modul stellt SOTA-Stub-Architekturen für die Entfernung von Crackle, Hum und Buzz bereit.
+- dsp/dehiss_multiband.py:4 | stub | Dieses Modul entfernt Bandrauschen/Hiss multiband aus Audiosignalen (Stub).
+- dsp/feedback.py:21 | workaround | # SOTA-Workaround: Nur dicts mit numerischem 'score' berücksichtigen
+- dsp/gpu_pipeline.py:2 | stub | dsp/gpu_pipeline.py — Compatibility-Stub → leitet auf CPUPipeline weiter
+- dsp/gpu_pipeline.py:17 | deprecated | "dsp.gpu_pipeline ist deprecated — nutze dsp.cpu_pipeline.CPUPipeline",
+- dsp/perceptual_eq.py:4 | stub | Dieses Modul stellt ein Perceptual-EQ-Modul auf Basis von Hörmodellen als Stub bereit.
+- dsp/reel_to_reel_equalizer.py:6 | stub | Dieses Modul entzerrt oder simuliert typische Tonband-Kennlinien (Stub).
+- dsp/reel_to_reel_equalizer.py:30 | stub | Tonband-Entzerrer (Stub):
+- dsp/reel_to_reel_noise_reduction.py:4 | stub | Dieses Modul entfernt Bandrauschen und simuliert/kompensiert Dolby/DBX (Stub).
+- dsp/reel_to_reel_noise_reduction.py:12 | stub | Tonband-Rauschunterdrückung (Stub):
+- dsp/riaa_declicker.py:4 | stub | Dieses Modul entfernt Klicks/Knackser speziell nach RIAA-Kennlinie (Stub).
+- dsp/rumble_filter.py:51 | stub | Dieses Modul entfernt tieffrequente Rumpelstörungen (Rumble) aus Audiosignalen (Stub).
+- dsp/sample_rate_conversion.py:47 | stub | f"SampleRateConverter: orig_sr={orig_sr}, target_sr={self.target_sr}, quality={self.quality}, audit=stub"
+- dsp/shellac_declicker.py:4 | stub | Dieses Modul entfernt grobe Klicks/Knackser von Schellackplatten (Stub).
+- dsp/shellac_equalizer.py:4 | stub | Dieses Modul entzerrt oder simuliert typische Schellack-Kennlinien (Stub).
+- dsp/shellac_equalizer.py:17 | stub | Schellack-Entzerrer (Stub):
+- dsp/shellac_equalizer.py:26 | stub | Wendet SOTA-Entzerrungskurve für Schellack an (Stub, normkonform).
+- dsp/sota_denoiser.py:78 | bypass | rollback={"strategy": "bypass|spectral_masking", "supports_partial": True},
+- dsp/stereo_image_correction.py:54 | stub | Dieses Modul korrigiert Phasen- und Stereofehler (Stub).
+- dsp/stereo_image_correction.py:61 | stub | Stereo-Image-Korrektur (Stub):
+- dsp/streaming_optimized.py:115 | stub | Streaming-optimierter Limiter (Stub):
+- dsp/streaming_optimized.py:234 | stub | Streaming-optimiertes Gate (Stub):
+- dsp/tape_equalizer.py:55 | stub | Dieses Modul entzerrt oder simuliert IEC/NAB-Kennlinien für Kassette (Stub).
+- dsp/tape_equalizer.py:64 | stub | Kassettenspezifische Entzerrung (Stub):
+- dsp/tonal_balance_restorer.py:63 | bypass | "strength": 0.7,  # 0=bypass, 1=full correction
+- dsp/tonal_balance_restorer.py:126 | bypass | strength: Korrekturstärke (0=bypass, 1=full correction)
+- dsp/tonal_balance_restorer.py:654 | bypass | demasking_strength: Correction strength (0=bypass, 1=aggressive)
+- dsp/transparent_dynamics.py:65 | bypass | "target_ratio": 2.0,  # Compression ratio (1.0=bypass, 4.0=moderate)
+- dsp/transparent_dynamics.py:147 | bypass | target_ratio: Compression ratio (1.0=bypass, 2.0=gentle, 4.0=moderate)
+- dsp/transparent_dynamics.py:480 | bypass | "enhancement_amount": 0.5,  # 0=bypass, 1=full enhancement
+- dsp/transparent_dynamics.py:536 | bypass | enhancement_amount: Enhancement strength (0=bypass, 1=full)
+- dsp/ultra_low_latency.py:112 | stub | Ultra-Low-Latency-Limiter (Stub):
+- dsp/ultra_low_latency.py:133 | stub | Ultra-Low-Latency-Denoiser (Stub):
+- dsp/ultra_low_latency.py:163 | stub | Ultra-Low-Latency-Gate (Stub):
+- dsp/vad.py:63 | stub | Adaptive Voice Activity Detection (Stub):
+- dsp/vinyl_emulation.py:58 | stub | Dieses Modul simuliert typische Vinyl-Charakteristika (Stub).
+- dsp/vinyl_emulation.py:67 | stub | Vinyl-Emulation (Stub):
+- dsp/voice_conversion.py:24 | stub | # Bordmittel-Stub für Codec Enhancement und Foundation-Modelle
+- dsp/voice_conversion.py:98 | stub | # Voice Conversion (Stub):
+- dsp/voice_conversion.py:159 | stub | # SOTA-Logik: Container-basierte Inferenz (Stub)
+- plugins/bigvgan_v2_plugin.py:355 | stub | # Magnitude-only PGHI-Stub: Phasen aus Original behalten
+- plugins/dac_plugin.py:346 | placeholder | # Return minimal placeholder codes
+- plugins/dac_plugin.py:405 | placeholder | # Return silence placeholder
+- plugins/era_classifier_plugin.py:2 | stub | EraClassifier Plugin — Spec §2.1 / §2.14 Delegation-Stub
+- plugins/hifigan_plugin.py:102 | stub | """Audio → Mel → Waveform (round-trip, nützlich als Enhancement-Stub)."""
+- plugins/laion_clap_plugin.py:361 | stub | # No-Op-Stub an, der die Decorator-/Direkt-Aufruf-Signatur
+- plugins/laion_clap_plugin.py:368 | stub | """No-Op-Stub für torch.library.register_fake (< 2.3)."""
+- plugins/parameter_optimizer.py:23 | placeholder | # Placeholder für KI-Modell (z.B. Regression, Reinforcement Learning)
+- plugins/silero_plugin.py:188 | stub | # synthesize() Stub — TTS-Interface für Kompatibilität
+- plugins/silero_plugin.py:190 | stub | """TTS-Stub: gibt leeres bytes-Objekt zurück (kein echtes TTS ohne Modell)."""
+- plugins/versa_plugin.py:191 | bypass | # Load pseudo_mos.py directly to bypass versa/**init**.py which imports
+- plugins/waveunet_plugin.py:1 | stub | """WaveUNetPlugin — Quellentrennung via DSP-Stub (kein Docker/HF).
+- plugins/waveunet_plugin.py:19 | stub | logger.info("WaveUNetPlugin: HPSS-DSP-Stub (kein ONNX vorhanden).")
+- plugins/wpe_plugin.py:310 | deprecated | # Rueckwaertskompatibilitaet (deprecated names)
+
+## Alle Fundstellen
+
+- Aurik10/core/preset_manager.py:107 | pass | pass
+- Aurik10/hooks/runtime_hook_threading.py:34 | pass | pass  # torch optional at hook time (not yet imported)
+- Aurik10/i18n/**init**.py:807 | placeholder | "legacy.audio.preview_ready": "Preview ready (placeholder - no processing)",
+- Aurik10/i18n/**init**.py:843 | not_implemented | "legacy.preset.not_implemented_title": "Not Implemented",
+- Aurik10/main.py:34 | pass | pass
+- Aurik10/main.py:142 | pass | pass
+- Aurik10/ui/audio_player.py:250 | pass | pass
+- Aurik10/ui/audio_player.py:333 | pass | pass
+- Aurik10/ui/audio_player.py:394 | pass | pass
+- Aurik10/ui/ml_refinement_thread.py:49 | pass | pass
+- Aurik10/ui/ml_refinement_thread.py:57 | pass | pass
+- Aurik10/ui/ml_refinement_thread.py:60 | pass | pass
+- Aurik10/ui/ml_refinement_thread.py:73 | bypass | # Bridge unavailable — MLRefinementThread remains non-functional (no direct core bypass).
+- Aurik10/ui/ml_refinement_thread.py:121 | pass | pass  # psutil not available → proceed without check
+- Aurik10/ui/ml_refinement_thread.py:137 | pass | pass
+- Aurik10/ui/ml_refinement_thread.py:141 | pass | pass
+- Aurik10/ui/ml_refinement_thread.py:256 | pass | pass
+- Aurik10/ui/ml_refinement_thread.py:265 | pass | pass
+- Aurik10/ui/ml_refinement_thread.py:296 | pass | pass
+- Aurik10/ui/ml_refinement_thread.py:346 | pass | pass
+- Aurik10/ui/modern_window.py:463 | placeholder | Always visible; shows placeholder text when not yet measured.
+- Aurik10/ui/modern_window.py:1154 | pass | pass  # best-effort in signal handler — no logging
+- Aurik10/ui/modern_window.py:2078 | pass | pass
+- Aurik10/ui/modern_window.py:2795 | pass | pass
+- Aurik10/ui/modern_window.py:2802 | pass | pass
+- Aurik10/ui/modern_window.py:2809 | pass | pass
+- Aurik10/ui/modern_window.py:3694 | pass | pass
+- Aurik10/ui/modern_window.py:4735 | pass | pass
+- Aurik10/ui/modern_window.py:4939 | pass | pass
+- Aurik10/ui/modern_window.py:7104 | placeholder | # Draw premium placeholder
+- Aurik10/ui/modern_window.py:8753 | placeholder | """Store fmt as pinned label when it is a custom string (not a Qt placeholder)."""
+- Aurik10/ui/modern_window.py:9254 | pass | pass
+- Aurik10/ui/modern_window.py:9266 | pass | pass
+- Aurik10/ui/modern_window.py:9292 | pass | pass
+- Aurik10/ui/modern_window.py:9955 | pass | pass
+- Aurik10/ui/modern_window.py:10002 | pass | pass
+- Aurik10/ui/modern_window.py:10098 | pass | pass
+- Aurik10/ui/modern_window.py:10217 | pass | pass
+- Aurik10/ui/modern_window.py:10487 | pass | pass
+- Aurik10/ui/modern_window.py:10872 | placeholder | # Quality Meter VU bar — always visible, above radar/placeholder
+- Aurik10/ui/modern_window.py:11530 | placeholder | # Show placeholder until pre-analysis synchronization is finalized.
+- Aurik10/ui/modern_window.py:11650 | workaround | # setFixedSize ersetzt den_AspectContainer-Workaround (heightForWidth-Propagation
+- Aurik10/ui/modern_window.py:12795 | pass | pass
+- Aurik10/ui/modern_window.py:12905 | temp | # Temp-store native audio for_pre_analysis_bg (started in _continue_file_loaded).
+- Aurik10/ui/modern_window.py:13215 | pass | pass
+- Aurik10/ui/modern_window.py:13368 | pass | pass
+- Aurik10/ui/modern_window.py:13380 | placeholder | # Carrier placeholder —_pre_analysis_bg will fill detected_medium_label
+- Aurik10/ui/modern_window.py:13442 | temp | # Clear temporary native audio reference immediately to avoid keeping
+- Aurik10/ui/modern_window.py:13888 | pass | pass
+- Aurik10/ui/modern_window.py:13950 | bypass | """Absolute fallback (180 s): never bypass defect-scan gate."""
+- Aurik10/ui/modern_window.py:14054 | pass | pass
+- Aurik10/ui/modern_window.py:14060 | pass | pass
+- Aurik10/ui/modern_window.py:14246 | pass | pass
+- Aurik10/ui/modern_window.py:14249 | pass | pass
+- Aurik10/ui/modern_window.py:14502 | pass | pass
+- Aurik10/ui/modern_window.py:14532 | pass | pass
+- Aurik10/ui/modern_window.py:14580 | pass | pass
+- Aurik10/ui/modern_window.py:14908 | pass | pass
+- Aurik10/ui/modern_window.py:15141 | pass | pass  # psutil nicht verfügbar → kein Check, weiterfahren
+- Aurik10/ui/modern_window.py:15261 | pass | pass
+- Aurik10/ui/modern_window.py:15347 | deprecated | #_repair_hint: nur zeigen wenn nicht veraltet (d.h. aktuell
+- Aurik10/ui/modern_window.py:15614 | pass | pass
+- Aurik10/ui/modern_window.py:16261 | pass | pass
+- Aurik10/ui/modern_window.py:17002 | pass | pass
+- Aurik10/ui/modern_window.py:17517 | pass | pass  # preview is optional — never block the pipeline
+- Aurik10/ui/modern_window.py:18126 | pass | pass
+- Aurik10/ui/modern_window.py:18405 | pass | pass
+- Aurik10/ui/modern_window.py:18413 | pass | pass
+- Aurik10/ui/modern_window.py:18421 | pass | pass
+- Aurik10/ui/modern_window.py:18459 | pass | pass
+- Aurik10/ui/modern_window.py:18467 | pass | pass
+- Aurik10/ui/song_prognose_widget.py:420 | placeholder | for key, placeholder in [
+- Aurik10/ui/song_prognose_widget.py:431 | placeholder | row_val = QLabel(placeholder)
+- _aurik_run_excellence.py:8 | bypass | Nutzt kanonischen Einstieg AurikDenker.denke() — kein UV3-Bypass.
+- _aurik_run_excellence.py:91 | pass | pass
+- backend/adaptive_pipeline.py:25 | stub | # Fallback-Stub auf Modulebene
+- backend/adaptive_pipeline.py:27 | stub | """Basis-Fallback-Stub für nicht ladbare Plugins."""
+- backend/adaptive_pipeline.py:45 | stub | # ConvTasNetPlugin entfernt — Sprach-Separation (Luo 2019), HPSS-DSP-Stub, nicht in §11.3
+- backend/adaptive_pipeline.py:46 | stub | # WaveUNetPlugin entfernt — Sprach-Separation (Stoller 2018), HPSS-DSP-Stub, nicht in §11.3
+- backend/adaptive_pipeline.py:54 | stub | # Stub entfernt; flow_matching_plugin ist der Nachfolger für generatives Inpainting.
+- backend/adaptive_pipeline.py:598 | bypass | # Direct separation (bypass safety checks)
+- backend/adaptive_pipeline.py:671 | bypass | # Direct correction (bypass safety checks)
+- backend/adaptive_pipeline.py:1262 | temp | # CRITICAL FIX: Use workspace temp directory instead of /tmp
+- backend/adaptive_pipeline.py:1267 | temp | # Create temp files in workspace temp directory
+- backend/adaptive_pipeline.py:1298 | temp | # Clean up temp files
+- backend/adaptive_pipeline.py:1523 | temp | # Create temporary files for ML plugin
+- backend/adaptive_pipeline.py:1553 | temp | # Clean up temp files
+- backend/adaptive_pipeline.py:1631 | temp | # Audio in Temp-Datei schreiben
+- backend/adaptive_pipeline.py:1892 | placeholder | bit_depth=16,  # Placeholder
+- backend/adaptive_pipeline.py:2107 | placeholder | model_version="1.0.0",  # Placeholder
+- backend/adaptive_pipeline.py:2145 | deprecated | # === VERALTET: Alte Stub-Methoden entfernt ===
+- backend/adaptive_pipeline.py:2145 | stub | # === VERALTET: Alte Stub-Methoden entfernt ===
+- backend/api/bridge.py:76 | pass | pass
+- backend/api/bridge.py:626 | stub | logger.debug("bridge: MediumDetector nicht importierbar — stub aktiv")
+- backend/api/bridge.py:1248 | pass | pass
+- backend/api/rest/batch_api.py:25 | stub | """Stub for DSPDecisionLogic when module is not available."""
+- backend/api/rest/health_api.py:70 | pass | pass
+- backend/aurik_restore.py:59 | pass | pass  # already mono
+- backend/carrier_forensics.py:23 | deprecated | "backend.carrier_forensics ist veraltet (Aurik 6.0). "
+- backend/carrier_ml_classifier.py:23 | deprecated | "backend.carrier_ml_classifier ist veraltet (Aurik 6.0). "
+- backend/core/ab_test_manager.py:2 | deprecated | Deprecated: ABTestManager → ``core.ab_compare_manager.ABCompareManager``.
+- backend/core/ab_test_manager.py:4 | deprecated | Dieses Modul ist veraltet seit v10.0.0.
+- backend/core/ab_test_manager.py:11 | deprecated | # Alt (veraltet):
+- backend/core/ab_test_manager.py:32 | deprecated | """Deprecated Stub — Nachfolger: :class:`~core.ab_compare_manager.ABCompareManager`.
+- backend/core/ab_test_manager.py:32 | stub | """Deprecated Stub — Nachfolger: :class:`~core.ab_compare_manager.ABCompareManager`.
+- backend/core/ab_test_manager.py:34 | deprecated | .. deprecated:: 9.10.45
+- backend/core/ab_test_manager.py:42 | deprecated | "ABTestManager ist veraltet (seit v10.0.0). "
+- backend/core/ab_test_manager.py:52 | stub | """Stub — ohne Funktion. Nutze ``ABCompareManager.compare_audio()``."""
+- backend/core/ab_test_manager.py:55 | stub | """Stub — ohne Funktion. Nutze ``ABCompareManager.store()``."""
+- backend/core/ab_test_manager.py:58 | stub | """Stub — ohne Funktion."""
+- backend/core/ab_test_manager.py:61 | stub | """Stub — ohne Funktion."""
+- backend/core/adaptive_core_scheduler.py:157 | temp | "temp_arrays": [np.zeros((10 * 44100), dtype=np.float32) for_ in range(self.num_cores)],  # 10s Temp
+- backend/core/aesthetic_judgment.py:311 | placeholder | - Foundation Model Deviation Score (placeholder)
+- backend/core/aesthetic_judgment.py:610 | placeholder | # Placeholder: use inverse of crest factor as proxy
+- backend/core/ai_framework.py:1376 | deprecated | # Deprecated: Backward compatibility
+- backend/core/ai_framework.py:1378 | deprecated | """Deprecated: Use studio2026_magic_button() instead."""
+- backend/core/ai_framework.py:1379 | deprecated | warnings.warn("magic_button() is deprecated, use studio2026_magic_button()", DeprecationWarning)
+- backend/core/artifact_freedom_gate.py:855 | pass | pass  # audible — keep in hole_mask
+- backend/core/artifact_freedom_gate.py:1034 | pass | pass  # too short — use absolute check
+- backend/core/audio_file_validator.py:118 | temp | - Temp-Dateien: tempfile.mkstemp() statt /tmp/<user_input>
+- backend/core/autonomous_restoration_engine.py:612 | pass | pass  # mono OK
+- backend/core/comprehensive_metrics.py:32 | stub | # that Pylance cannot resolve via overload matching (scipy stub limitation).
+- backend/core/content_aware_processor.py:45 | stub | # Typ-Konflikt zwischen Plugin-Klasse und Stub-Klasse für den gesamten Block.
+- backend/core/content_aware_processor.py:58 | stub | # Minimale Stub-Typen damit das Modul auch ohne Plugin ladbar ist
+- backend/core/cumulative_interaction_guard.py:77 | temp | # Early carrier-cleanup phases can show temporary authenticity-proxy drops even when
+- backend/core/defect_phase_mapper.py:1781 | bypass | # The phase was selected for a reason — never fully bypass.
+- backend/core/defect_scanner.py:1525 | pass | pass
+- backend/core/defect_scanner.py:4617 | pass | pass
+- backend/core/dolby_nr_detector.py:322 | placeholder | b, a = sps.iirpeak(fc / (sr / 2.0), q) if btype == "peaking" else (None, None)  # placeholder
+- backend/core/dolby_nr_detector.py:412 | pass | pass  # wet/dry applied after
+- backend/core/evaluation/continuous_learning.py:547 | placeholder | current_weights = dict.fromkeys(strategies.keys(), 0.5)  # Placeholder
+- backend/core/evaluation/quality_control.py:18 | deprecated | "backend.core.evaluation.quality_control ist veraltet. Importiere direkt aus backend.quality_control.",
+- backend/core/excellence_optimizer.py:509 | pass | pass  # fallback: use original-phase reconstruction
+- backend/core/forensics/analysis_and_modules.py:17 | bypass | self.escalation_levels = escalation_levels or {"warn": 3, "bypass": 5, "hard_bypass": 7}
+- backend/core/forensics/analysis_and_modules.py:45 | bypass | `elif self.policy[gate]["fail_count"] >= self.escalation_levels.get("bypass", 5):`
+- backend/core/forensics/analysis_and_modules.py:46 | bypass | level = "bypass"
+- backend/core/forensics/analysis_and_modules.py:295 | stub | # Loudness (LUFS, Stub)
+- backend/core/forensics/analysis_and_modules.py:701 | temp | # Write audio to temp file
+- backend/core/forensics/analysis_and_modules.py:716 | temp | # Cleanup temp files
+- backend/core/forensics/analysis_and_modules.py:759 | placeholder | logging.warning(f"PANNS tagging failed: {e}. Using placeholder values.")
+- backend/core/forensics/analysis_and_modules.py:888 | placeholder | # 6. Defect Detection (Spec 3.1.3) - Placeholder
+- backend/core/forensics/gender_detection.py:30 | placeholder | # Placeholder: Nutze die mittlere Fundamental-Frequenz als grobe Gender-Schätzung
+- backend/core/forensics/training/train_models.py:394 | placeholder | # For now, create placeholder (real implementation would use dataset_generator)
+- backend/core/gap_reconstructor.py:402 | pass | pass  #_repair_gap schreibt direkt in audio_out[:, ch]
+- backend/core/genre_classifier.py:355 | mock | #   - Module imported BUT no is_lyrics_guided_loaded (e.g. test mock) → proceed
+- backend/core/genre_classifier.py:666 | pass | pass
+- backend/core/gp_memory_migration.py:110 | temp | """Speichert GP-Memory-Dict atomar (temp-Datei + os.replace).
+- backend/core/gp_parameter_optimizer.py:119 | bypass | "noise_reduction_strength": (0.0, 1.0, "float"),  # full range: 0=bypass, 1=max NR
+- backend/core/holistic_perceptual_gate.py:630 | bypass | 0.5 = keine Veränderung (Bypass)
+- backend/core/holistic_perceptual_gate.py:714 | pass | pass
+- backend/core/hybrid/hybrid_ml_denoiser.py:314 | temp | # Write to temp file (Resemble needs file I/O)
+- backend/core/hybrid/hybrid_ml_denoiser.py:355 | temp | # Cleanup temp files
+- backend/core/hybrid/hybrid_ml_denoiser.py:365 | temp | still allowed plugin loading plus temp-file IO to push the VS Code cgroup
+- backend/core/hybrid/hybrid_ml_denoiser.py:520 | pass | pass
+- backend/core/hybrid/hybrid_speed_pitch_ml.py:61 | deprecated | # Backward-Alias (deprecated, wird auf PYIN_ONLY gemappt)
+- backend/core/hybrid/hybrid_wow_flutter.py:54 | deprecated | # Backward-Alias (deprecated)
+- backend/core/lyrics_guided_enhancement.py:483 | pass | pass  # No Qt or rendering error — silent fallback
+- backend/core/lyrics_guided_enhancement.py:594 | pass | pass  # budget module absent → attempt load anyway
+- backend/core/lyrics_guided_enhancement.py:660 | pass | pass  # budget module absent → attempt load anyway
+- backend/core/material_restoration_nets.py:174 | pass | pass
+- backend/core/material_restoration_nets.py:253 | pass | pass
+- backend/core/material_restoration_nets.py:393 | pass | pass
+- backend/core/material_restoration_nets.py:466 | pass | pass
+- backend/core/merge_stems_sota.py:7 | stub | """Stub replacing aurik6.analysis FeatureExtractor (results are unused in merge logic)."""
+- backend/core/merge_stems_sota.py:14 | stub | """Stub replacing aurik6.analysis PolicyManager (policy dict is queried directly)."""
+- backend/core/merge_stems_sota.py:85 | bypass | if any(v.get("action") == "bypass" for v in policy.values() if isinstance(v, dict)):
+- backend/core/merge_stems_sota.py:95 | bypass | if any(v.get("action") == "bypass" for v in policy.values() if isinstance(v, dict)):
+- backend/core/merge_stems_sota.py:100 | bypass | if any(v.get("action") == "bypass" for v in policy.values() if isinstance(v, dict)):
+- backend/core/ml_device_manager.py:124 | not_implemented | "not implemented",
+- backend/core/ml_device_manager.py:370 | pass | pass
+- backend/core/ml_memory_budget.py:445 | pass | pass
+- backend/core/ml_memory_budget.py:447 | pass | pass
+- backend/core/module_coordinator.py:949 | placeholder | # Placeholder for ML-based quality prediction
+- backend/core/multi_pass_strategy.py:549 | placeholder | # === 6. Confidence (placeholder - wird später von ConfidenceCalculator gesetzt) ===
+- backend/core/multimodal_decision_engine.py:157 | placeholder | image_path: Path to cover image (or placeholder).
+- backend/core/music_quality_scorer.py:317 | pass | pass
+- backend/core/musical_goals/musical_goals_metrics.py:41 | bypass | import librosa.util.utils  # util.expand_to lebt hier — direkter Import bypass lazy_loader
+- backend/core/musical_goals/musical_goals_metrics.py:559 | deprecated | Nicht 200-2000 Hz Einband-Messung (veraltet, reverb-sensitiv).
+- backend/core/musical_goals/musical_goals_metrics.py:592 | mock | # that unittest.mock.patch("plugins.mert_plugin.get_mert_plugin") is effective.
+- backend/core/musical_goals/musical_goals_metrics.py:597 | mock |_mert_is_mock = type(mert).**module**.startswith("unittest.mock") if mert is not None else False
+- backend/core/musical_goals/musical_goals_metrics.py:1132 | mock |_mert_is_mock = type(mert).**module**.startswith("unittest.mock") if mert is not None else False
+- backend/core/musical_goals/musical_goals_metrics.py:1785 | pass | pass
+- backend/core/musical_goals/musical_goals_metrics.py:3059 | pass | pass
+- backend/core/musical_goals/perceptual_validator.py:451 | placeholder | NOTE: Dies ist eine Placeholder-Implementierung.
+- backend/core/musical_goals/quality_gate.py:894 | stub | Gibt immer None zurück; Compat-Stub damit alte Aufrufer nicht brechen.
+- backend/core/musical_goals/quality_gate.py:900 | stub | Gibt immer None zurück; Compat-Stub damit alte Aufrufer nicht brechen.
+- backend/core/musical_goals/quality_gate.py:960 | temp | # Save audio to temp files for plugins
+- backend/core/musical_phrase_context_extractor.py:2 | deprecated | core.musical_phrase_context_extractor — VERALTET (Kompatibilitäts-Shim)
+- backend/core/musical_phrase_context_extractor.py:22 | deprecated | "core.musical_phrase_context_extractor ist veraltet. Verwende stattdessen core.musical_phrase_context.",
+- backend/core/musical_quality_assurance.py:1286 | pass | pass
+- backend/core/onnx/plugin_manager.py:275 | pass | pass  # Stats are self-contained in model
+- backend/core/onnx/quantizer.py:125 | not_implemented | logger.error("Quantization type %s not implemented", self.config.quantization_type)
+- backend/core/optimization/multi_objective.py:403 | pass | pass
+- backend/core/optimization/perceptual_loss.py:195 | placeholder | # This is a placeholder - actual implementation depends on PANNs integration
+- backend/core/optimization/perceptual_loss.py:200 | placeholder | features["high_level"] = audio.mean(dim=-1)  # Placeholder
+- backend/core/optimization/perceptual_loss.py:417 | placeholder | # Placeholder implementation
+- backend/core/optimization/train_e2e_optimization.py:100 | placeholder | # Load audio (placeholder - actual implementation would use librosa/soundfile)
+- backend/core/optimization/train_e2e_optimization.py:236 | placeholder | # Placeholder - would load actual audio files
+- backend/core/optimization/train_e2e_optimization.py:269 | placeholder | # Placeholder - would load actual audio files
+- backend/core/per_phase_musical_goals_gate.py:1353 | bypass | It does not disable final export gates and does not bypass safety guards.
+- backend/core/per_phase_musical_goals_gate.py:1430 | pass | pass
+- backend/core/phase_conductor.py:133 | bypass | # Mindeststärken je Phase-Typ (verhindert Bypass durch Over-Confidence)
+- backend/core/phase_conductor.py:275 | pass | pass  # Non-blocking: goal_weights integration failure → neutral
+- backend/core/phase_defect_verifier.py:106 | pass | pass
+- backend/core/phase_defect_verifier.py:142 | pass | pass
+- backend/core/phase_defect_verifier.py:445 | pass | pass
+- backend/core/phase_defect_verifier.py:465 | pass | pass
+- backend/core/phases/phase_01_click_removal.py:556 | temp | # Create temporary files
+- backend/core/phases/phase_01_click_removal.py:563 | temp | # Write audio to temp file
+- backend/core/phases/phase_01_click_removal.py:597 | temp | # Cleanup temp files
+- backend/core/phases/phase_02_hum_removal.py:274 | pass | pass
+- backend/core/phases/phase_02_hum_removal.py:562 | temp | # Create temporary files
+- backend/core/phases/phase_02_hum_removal.py:569 | temp | # Write audio to temp file
+- backend/core/phases/phase_02_hum_removal.py:603 | temp | # Cleanup temp files
+- backend/core/phases/phase_03_denoise.py:421 | pass | pass
+- backend/core/phases/phase_03_denoise.py:428 | pass | pass
+- backend/core/phases/phase_03_denoise.py:551 | bypass | # §2.47 [RELEASE_MUST] SNR > 35 dB Dry-Signal Bypass
+- backend/core/phases/phase_03_denoise.py:582 | bypass | "Dry-Signal bypass (clean signal, no denoising needed)",
+- backend/core/phases/phase_03_denoise.py:586 | bypass | logger.debug("SNR bypass estimation failed (non-blocking): %s", _snr_exc)
+- backend/core/phases/phase_03_denoise.py:772 | pass | pass
+- backend/core/phases/phase_03_denoise.py:807 | bypass | # At SNR=35 dB: bypass fires, SGMSE+ never reached
+- backend/core/phases/phase_03_denoise.py:822 | pass | pass
+- backend/core/phases/phase_03_denoise.py:843 | pass | pass
+- backend/core/phases/phase_04_eq_correction.py:792 | bypass | return audio  # No profile → bypass
+- backend/core/phases/phase_05_rumble_filter.py:16 | bypass | - Transient bypass (during attack transients, filter disengaged)
+- backend/core/phases/phase_05_rumble_filter.py:686 | bypass | Apply IIR high-pass with transient bypass.
+- backend/core/phases/phase_06_frequency_restoration.py:355 | pass | pass
+- backend/core/phases/phase_07_harmonic_restoration.py:35 | bypass | - Transients preserved (attack bypass)
+- backend/core/phases/phase_07_harmonic_restoration.py:440 | bypass | # threshold for most materials, triggering a clean bypass.
+- backend/core/phases/phase_09_crackle_removal.py:496 | temp | # Create temp files
+- backend/core/phases/phase_09_crackle_removal.py:567 | pass | pass
+- backend/core/phases/phase_12_wow_flutter_fix.py:201 | bypass | """Bypass correction entirely when the estimator already proved unstable.
+- backend/core/phases/phase_12_wow_flutter_fix.py:338 | pass | pass
+- backend/core/phases/phase_20_reverb_reduction.py:39 | bypass | - Transients bypass processing (preserve direct sound)
+- backend/core/phases/phase_23_spectral_repair.py:466 | pass | pass
+- backend/core/phases/phase_23_spectral_repair.py:476 | pass | pass
+- backend/core/phases/phase_23_spectral_repair.py:611 | pass | pass
+- backend/core/phases/phase_23_spectral_repair.py:624 | pass | pass
+- backend/core/phases/phase_23_spectral_repair.py:648 | pass | pass
+- backend/core/phases/phase_23_spectral_repair.py:984 | pass | pass
+- backend/core/phases/phase_23_spectral_repair.py:1090 | pass | pass  # psutil nicht verfügbar — MRSA versuchen
+- backend/core/phases/phase_23_spectral_repair.py:1186 | pass | pass
+- backend/core/phases/phase_23_spectral_repair.py:1214 | pass | pass
+- backend/core/phases/phase_29_tape_hiss_reduction.py:325 | pass | pass
+- backend/core/phases/phase_29_tape_hiss_reduction.py:348 | bypass | # §2.47 [RELEASE_MUST] SNR > 35 dB Dry-Signal Bypass
+- backend/core/phases/phase_29_tape_hiss_reduction.py:382 | bypass | "Dry-Signal bypass (hiss band negligible, OMLSA skipped)",
+- backend/core/phases/phase_29_tape_hiss_reduction.py:386 | bypass | logger.debug("Phase 29 SNR bypass estimation failed (non-blocking): %s", _p29_snr_exc)
+- backend/core/phases/phase_29_tape_hiss_reduction.py:1081 | pass | pass  # budget tracking unavailable — allow inference
+- backend/core/phases/phase_29_tape_hiss_reduction.py:1084 | temp | # Create temporary files
+- backend/core/phases/phase_29_tape_hiss_reduction.py:1091 | temp | # Write audio to temp file
+- backend/core/phases/phase_29_tape_hiss_reduction.py:1144 | temp | # Cleanup temp files
+- backend/core/phases/phase_31_speed_pitch_correction.py:90 | pass | pass
+- backend/core/phases/phase_42_vocal_enhancement.py:275 | pass | pass
+- backend/core/phases/phase_42_vocal_enhancement.py:340 | pass | pass
+- backend/core/phases/phase_42_vocal_enhancement.py:860 | pass | pass
+- backend/core/phases/phase_42_vocal_enhancement.py:887 | pass | pass
+- backend/core/phases/phase_42_vocal_enhancement.py:907 | pass | pass
+- backend/core/phases/phase_42_vocal_enhancement.py:913 | pass | pass
+- backend/core/phases/phase_42_vocal_enhancement.py:930 | pass | pass
+- backend/core/phases/phase_43_ml_deesser.py:243 | pass | pass  # budget tracking unavailable — allow inference
+- backend/core/phases/phase_43_ml_deesser.py:314 | pass | pass
+- backend/core/phases/phase_45_brass_enhancement.py:6 | stub | Ersetzt den kaputten ML-Stub.
+- backend/core/phases/phase_46_spatial_enhancement.py:6 | stub | Ersetzt den kaputten ML-Stub.
+- backend/core/phases/phase_47_truepeak_limiter.py:6 | stub | Ersetzt den kaputten aurik_ml.mastering-Stub.
+- backend/core/phases/phase_49_advanced_dereverb.py:6 | stub | Ersetzt den kaputten ML-Stub aus v1.0 und die np.fft.rfft-Schleife aus v2.0.
+- backend/core/phases/phase_49_advanced_dereverb.py:249 | pass | pass
+- backend/core/phases/phase_49_advanced_dereverb.py:351 | pass | pass
+- backend/core/phases/phase_49_advanced_dereverb.py:379 | pass | pass
+- backend/core/phases/phase_50_spectral_repair.py:6 | stub | Ersetzt den kaputten ML-Stub.
+- backend/core/phases/phase_54_transparent_dynamics.py:20 | bypass | - Preserve transient clarity (bypass compression for 5-20ms)
+- backend/core/phases/phase_54_transparent_dynamics.py:32 | bypass | - TransientPreserver: Intelligent transient bypass
+- backend/core/phases/phase_54_transparent_dynamics.py:507 | bypass | # Preserve transients (bypass compression at transient locations)
+- backend/core/phases/phase_55_diffusion_inpainting.py:1045 | pass | pass
+- backend/core/phases/phase_56_spectral_band_gap_repair.py:566 | pass | pass
+- backend/core/pipeline_health_state.py:30 | bypass | What the system did in response (e.g. "rollback", "safe_mode", "bypass").
+- backend/core/plugin_lifecycle_manager.py:307 | pass | pass
+- backend/core/plugin_lifecycle_manager.py:367 | pass | pass
+- backend/core/quality_feedback_loop.py:391 | mock | # Mock phase
+- backend/core/quality_feedback_loop.py:412 | not_implemented | raise NotImplementedError("MockPhase wird nur für Gating-Tests verwendet — process wird nicht aufgerufen")
+- backend/core/quality_recovery.py:173 | bypass | description="Bypass aggressive noise reduction module",
+- backend/core/quality_recovery.py:196 | bypass | description="Bypass de-esser and enhancer modules",
+- backend/core/quality_recovery.py:212 | bypass | description="Bypass aggressive processing modules",
+- backend/core/quality_recovery.py:251 | bypass | description="Bypass compression and limiting",
+- backend/core/quality_recovery.py:407 | not_implemented | logger.warning("  Strategy %s not implemented yet", action.strategy.value)
+- backend/core/recovery_checkpoint.py:10 | temp | 4. Successful completion → delete_checkpoint() removes temporary files
+- backend/core/recovery_checkpoint.py:102 | temp | audio_wav_path: str  # Path to the temporary WAV with current_audio
+- backend/core/recovery_checkpoint.py:176 | pass | pass  # mono, fine
+- backend/core/runtime_env_selector.py:36 | pass | pass
+- backend/core/runtime_env_selector.py:44 | pass | pass
+- backend/core/self_learning_optimizer.py:22 | deprecated | Legacy-API (rückwärtskompatibel, deprecated):
+- backend/core/self_learning_optimizer.py:283 | deprecated | # Legacy-API (rückwärtskompatibel, deprecated)
+- backend/core/self_learning_optimizer.py:287 | deprecated | """[Deprecated] Nutze record_result() stattdessen."""
+- backend/core/self_learning_optimizer.py:296 | deprecated | """[Deprecated] Lineare Vorhersage basierend auf gelernten Gewichten."""
+- backend/core/self_learning_optimizer.py:300 | deprecated | """[Deprecated] Gibt gewichtete Features zurück."""
+- backend/core/self_learning_optimizer.py:304 | deprecated | """[Deprecated] Legacy-History."""
+- backend/core/session/session_manager.py:629 | pass | pass
+- backend/core/song_goal_importance.py:503 | pass | pass
+- backend/core/spectral_band_gap_repair.py:28 | pass | pass
+- backend/core/spectral_band_gap_repair.py:35 | pass | pass
+- backend/core/stem_processing_decision.py:90 | bypass | return "bypass"
+- backend/core/stereo_authenticity.py:2 | deprecated | core.stereo_authenticity — VERALTET (Kompatibilitäts-Shim)
+- backend/core/stereo_authenticity.py:23 | deprecated | "core.stereo_authenticity ist veraltet. Verwende stattdessen core.stereo_authenticity_invariant.",
+- backend/core/stereo_authenticity_invariant.py:443 | deprecated | Migriert aus ``core.stereo_authenticity`` (veraltet, wird als Shim
+- backend/core/unified_restorer_v3.py:388 | pass | pass
+- backend/core/unified_restorer_v3.py:414 | pass | pass
+- backend/core/unified_restorer_v3.py:1724 | pass | pass
+- backend/core/unified_restorer_v3.py:3451 | bypass | # sofern vorhanden — spart doppelte ML-Klassifikation (§9.7.2 Cache-Bypass)
+- backend/core/unified_restorer_v3.py:4584 | pass | pass
+- backend/core/unified_restorer_v3.py:5076 | bypass | # nur ein manueller Studio-2026-Modus darf diesen Override aufheben (kein automatischer Bypass).
+- backend/core/unified_restorer_v3.py:7466 | pass | pass
+- backend/core/unified_restorer_v3.py:9224 | bypass | "action": str(_spd_decision.get("action", "bypass")),
+- backend/core/unified_restorer_v3.py:9684 | stub | logger.debug("✅ DummyModels: %d Stub-Modelle", _dm_result["n_models"])
+- backend/core/unified_restorer_v3.py:9832 | pass | pass
+- backend/core/unified_restorer_v3.py:11474 | deprecated | # Deprecated v10.0.0: ABTestManager war immer leer (frische Instanz je Aufruf,
+- backend/core/unified_restorer_v3.py:14259 | pass | pass
+- backend/core/unified_restorer_v3.py:14292 | pass | pass
+- backend/core/unified_restorer_v3.py:14333 | pass | pass
+- backend/core/unified_restorer_v3.py:15957 | pass | pass
+- backend/core/unified_restorer_v3.py:15969 | pass | pass
+- backend/core/unified_restorer_v3.py:16103 | pass | pass
+- backend/core/unified_restorer_v3.py:16482 | pass | pass  # non-critical telemetry, never blocks pipeline
+- backend/core/unified_restorer_v3.py:16754 | pass | pass
+- backend/defect_detection/treatment_recommender.py:294 | placeholder | """Create a placeholder for defects with no treatment."""
+- backend/error_notifier.py:1 | stub | """error_notifier.py — Minimaler Fehler-Benachrichtigungs-Stub für Aurik 10.0.0.
+- backend/error_notifier.py:19 | stub | Aktuell: stille Stub-Implementierung — alle Fehler gehen über
+- backend/ethics_engine.py:5 | deprecated | .. deprecated::
+- backend/ethics_engine.py:25 | deprecated | "backend.ethics_engine ist veraltet. Bitte 'from backend.core.epistemic_gate.ethics_engine import ...' verwenden.",
+- backend/exporter.py:441 | temp | # Export Guard already applied above; write guarded audio to temp WAV
+- backend/exporter.py:464 | temp | # Always clean up the intermediate WAV temp file
+- backend/file_import.py:262 | pass | pass
+- backend/lyrics_guided/lyrics_aligner.py:423 | temp | # Create temporary directory for MFA
+- backend/ml/inference_only/pitch_correction/conservative_corrector.py:32 | pass | pass
+- backend/ml/inference_only/vocal_separation/demucs_v5_wrapper.py:282 | placeholder | # Placeholder: return low-pass filtered audio for bass
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:57 | placeholder | # Model loading (placeholder - requires actual MDX-Net model)
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:84 | placeholder | Note: This is a placeholder. Actual implementation requires:
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:94 | placeholder | # Placeholder for actual model loading
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:98 | placeholder | return None  # Placeholder
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:139 | placeholder | # Actual separation (placeholder)
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:207 | placeholder | This is a placeholder for the real implementation which requires:
+- backend/ml/inference_only/vocal_separation/mdx_net_wrapper.py:214 | placeholder | # Placeholder: Use fallback for now
+- backend/ml/safety_wrappers/context_aware_deesser_safety.py:336 | pass | pass
+- backend/quality_control.py:157 | temp | # Save audio_after to temp file for plugin processing
+- backend/quality_control.py:198 | temp | # Cleanup temp files
+- backend/quality_control.py:455 | temp | # Save audio to temp file for plugin processing
+- backend/quality_control.py:493 | temp | # Cleanup temp file
+- backend/semantic/semantic_audio_analyzer.py:294 | placeholder | time_percentage=0.6,  # Placeholder
+- conftest.py:78 | deprecated | message="pkg_resources is deprecated as an API",
+- conftest.py:83 | deprecated | message="pkg_resources is deprecated as an API",
+- conftest.py:118 | pass | pass  # Kein Absturz — ist nur ein Warm-up
+- conftest.py:155 | pass | pass
+- conftest.py:290 | pass | pass
+- denker/exzellenz_denker.py:619 | pass | pass
+- denker/exzellenz_denker.py:638 | pass | pass
+- denker/exzellenz_denker.py:658 | pass | pass
+- denker/exzellenz_denker.py:673 | pass | pass
+- dsp/adaptive_deconvolution.py:16 | pass | pass
+- dsp/adaptive_deconvolution.py:157 | not_implemented | # Unbekannte Methode: NotImplementedError werfen.
+- dsp/adaptive_deconvolution.py:160 | not_implemented | raise NotImplementedError(
+- dsp/adaptive_derecording.py:13 | pass | pass
+- dsp/adaptive_formant_shifter.py:14 | pass | pass
+- dsp/adaptive_fundamental_detection.py:13 | pass | pass
+- dsp/adaptive_gain_rider.py:13 | pass | pass
+- dsp/adaptive_harmonic_tracking.py:13 | pass | pass
+- dsp/adaptive_spectral_inpainting.py:13 | pass | pass
+- dsp/adaptive_spectral_peak_removal.py:13 | pass | pass
+- dsp/adaptive_spectral_rolloff.py:15 | pass | pass
+- dsp/adaptive_spectral_subtraction.py:14 | pass | pass
+- dsp/adaptive_spline_interpolation.py:15 | pass | pass
+- dsp/adaptive_stft.py:15 | pass | pass
+- dsp/adaptive_time_scale_modification.py:15 | pass | pass
+- dsp/adaptive_transient_detection.py:14 | pass | pass
+- dsp/adaptive_transient_preservation.py:14 | pass | pass
+- dsp/adaptive_vad.py:14 | pass | pass
+- dsp/ai_automatic_tuning.py:45 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/analysis_and_quality.py:175 | stub | """Stub für Loudness-Berechnung nach EBU R128 (LUFS)."""
+- dsp/analysis_and_quality.py:223 | stub | """§10.2 STUB: SI-SDR (Scale-Invariant Signal-to-Distortion Ratio) VERBOTEN (§4.4+§10.2).
+- dsp/analysis_and_quality.py:234 | stub | `logger.info("[AuditLog][SISDR] §10.2-Stub — Ergebnis: %s", result)`
+- dsp/analysis_and_quality.py:238 | stub | """Stub für Perceptual Evaluation of Speech Quality (PESQ)."""
+- dsp/analysis_and_quality.py:250 | stub | """Stub für Mean Opinion Score (MOS, subjektive Bewertung)."""
+- dsp/auto_bypass_order.py:4 | bypass | auto_bypass_order.py - SOTA-konformes Auto-Bypass/Order Modul für Aurik 6.0
+- dsp/auto_bypass_order.py:67 | bypass | Klassisches Auto-Bypass/Order (SOTA-Maximum):
+- dsp/automatic_declicker.py:16 | pass | pass
+- dsp/automatic_declipper.py:15 | pass | pass
+- dsp/automatic_declipper.py:52 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/automatic_declipper_bass.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch aus Bassspuren (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_bass.py:67 | stub | KI-Automatic Declipper Bass (Stub, SOTA-konform):
+- dsp/automatic_declipper_chain.py:5 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch in einer DSP-Kette (Stub).
+- dsp/automatic_declipper_chain.py:34 | stub | KI-Automatic Declipper Chain (Stub):
+- dsp/automatic_declipper_instrument.py:67 | stub | Automatic Declipper Instrument (Stub):
+- dsp/automatic_declipper_legacy.py:157 | stub | Automatic Declipper Legacy (Stub):
+- dsp/automatic_declipper_low_latency.py:67 | stub | Automatic Declipper Low Latency (Stub):
+- dsp/automatic_declipper_music.py:44 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/automatic_declipper_percussive.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch aus perkussiven Signalen (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_percussive.py:67 | stub | Automatic Declipper Percussive (Stub, SOTA-konform):
+- dsp/automatic_declipper_realtime.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch in Echtzeit (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_realtime.py:67 | stub | Automatic Declipper Realtime (Stub, SOTA-konform):
+- dsp/automatic_declipper_reference.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch nach Referenz (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_reference.py:67 | stub | Automatic Declipper Reference (Stub, SOTA-konform):
+- dsp/automatic_declipper_stereo.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch aus Stereo-Audiosignalen (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_stereo.py:67 | stub | Automatic Declipper Stereo (Stub, SOTA-konform):
+- dsp/automatic_declipper_streaming.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch im Streaming-Kontext (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_streaming.py:67 | stub | Automatic Declipper Streaming (Stub, SOTA-konform):
+- dsp/automatic_declipper_ultra_low_latency.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch mit extrem niedriger Latenz (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_ultra_low_latency.py:67 | stub | Automatic Declipper Ultra Low Latency (Stub, SOTA-konform):
+- dsp/automatic_declipper_voice.py:7 | stub | Dieses Modul entfernt Clipping-Artefakte automatisch aus Sprachsignalen (KI-Stub, jetzt SOTA-konform mit DSPContract und Auditierbarkeit).
+- dsp/automatic_declipper_voice.py:67 | stub | Automatic Declipper Voice (Stub, SOTA-konform):
+- dsp/automatic_harmonics.py:44 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/automatic_tuning.py:44 | bypass | rollback={"strategy": "bypass", "supports_partial": True},
+- dsp/bandwidth_artifact_remover.py:88 | pass | pass
+- dsp/cd_deemphasis.py:4 | stub | Dieses Modul entfernt Pre-Emphasis von frühen Audio-CDs (Stub) und ist jetzt mit DSPContract für Auditierbarkeit und SOTA-Konformität ausgestattet.
+- dsp/cd_deemphasis.py:66 | stub | CD-Deemphasis (Stub):
+- dsp/chain_recommendation.py:6 | stub | Dieses Modul schlägt automatisch die optimale DSP-Kette für ein Audiosignal vor (Stub).
+- dsp/context_aware_deesser.py:97 | placeholder | """Fallback phoneme segment placeholder."""
+- dsp/context_aware_deesser.py:106 | placeholder | """Fallback detector placeholder."""
+- dsp/context_aware_deesser.py:112 | placeholder | """Fallback classifier placeholder."""
+- dsp/decrackler.py:49 | stub | Dieses Modul stellt SOTA-Stub-Architekturen für die Entfernung von Crackle, Hum und Buzz bereit.
+- dsp/dehiss_multiband.py:4 | stub | Dieses Modul entfernt Bandrauschen/Hiss multiband aus Audiosignalen (Stub).
+- dsp/feedback.py:21 | workaround | # SOTA-Workaround: Nur dicts mit numerischem 'score' berücksichtigen
+- dsp/gpu_pipeline.py:2 | stub | dsp/gpu_pipeline.py — Compatibility-Stub → leitet auf CPUPipeline weiter
+- dsp/gpu_pipeline.py:17 | deprecated | "dsp.gpu_pipeline ist deprecated — nutze dsp.cpu_pipeline.CPUPipeline",
+- dsp/hf_extender.py:112 | temp | # Process via FlashSR (direkt ndarray — kein Temp-File)
+- dsp/masking_aware_dynamic_eq.py:8 | pass | pass
+- dsp/perceptual_eq.py:4 | stub | Dieses Modul stellt ein Perceptual-EQ-Modul auf Basis von Hörmodellen als Stub bereit.
+- dsp/perceptual_quality_evaluator.py:70 | pass | pass
+- dsp/psychoacoustic_enhancement.py:23 | pass | pass
+- dsp/reel_to_reel_equalizer.py:6 | stub | Dieses Modul entzerrt oder simuliert typische Tonband-Kennlinien (Stub).
+- dsp/reel_to_reel_equalizer.py:30 | stub | Tonband-Entzerrer (Stub):
+- dsp/reel_to_reel_noise_reduction.py:4 | stub | Dieses Modul entfernt Bandrauschen und simuliert/kompensiert Dolby/DBX (Stub).
+- dsp/reel_to_reel_noise_reduction.py:12 | stub | Tonband-Rauschunterdrückung (Stub):
+- dsp/rf_interference_remover.py:320 | pass | pass
+- dsp/riaa_declicker.py:4 | stub | Dieses Modul entfernt Klicks/Knackser speziell nach RIAA-Kennlinie (Stub).
+- dsp/rumble_filter.py:51 | stub | Dieses Modul entfernt tieffrequente Rumpelstörungen (Rumble) aus Audiosignalen (Stub).
+- dsp/sample_rate_conversion.py:47 | stub | f"SampleRateConverter: orig_sr={orig_sr}, target_sr={self.target_sr}, quality={self.quality}, audit=stub"
+- dsp/shellac_declicker.py:4 | stub | Dieses Modul entfernt grobe Klicks/Knackser von Schellackplatten (Stub).
+- dsp/shellac_equalizer.py:4 | stub | Dieses Modul entzerrt oder simuliert typische Schellack-Kennlinien (Stub).
+- dsp/shellac_equalizer.py:17 | stub | Schellack-Entzerrer (Stub):
+- dsp/shellac_equalizer.py:26 | stub | Wendet SOTA-Entzerrungskurve für Schellack an (Stub, normkonform).
+- dsp/sota_denoiser.py:78 | bypass | rollback={"strategy": "bypass|spectral_masking", "supports_partial": True},
+- dsp/sota_dereverberator.py:39 | pass | pass
+- dsp/sota_dereverberator.py:49 | pass | pass
+- dsp/sota_speech_superres.py:38 | pass | pass
+- dsp/sota_speech_superres.py:48 | pass | pass
+- dsp/speaker_enhancement.py:47 | pass | pass
+- dsp/stem_separator.py:35 | pass | pass
+- dsp/stem_separator.py:42 | pass | pass
+- dsp/stereo_image_correction.py:54 | stub | Dieses Modul korrigiert Phasen- und Stereofehler (Stub).
+- dsp/stereo_image_correction.py:61 | stub | Stereo-Image-Korrektur (Stub):
+- dsp/streaming_optimized.py:115 | stub | Streaming-optimierter Limiter (Stub):
+- dsp/streaming_optimized.py:234 | stub | Streaming-optimiertes Gate (Stub):
+- dsp/tape_equalizer.py:55 | stub | Dieses Modul entzerrt oder simuliert IEC/NAB-Kennlinien für Kassette (Stub).
+- dsp/tape_equalizer.py:64 | stub | Kassettenspezifische Entzerrung (Stub):
+- dsp/tonal_balance_restorer.py:63 | bypass | "strength": 0.7,  # 0=bypass, 1=full correction
+- dsp/tonal_balance_restorer.py:126 | bypass | strength: Korrekturstärke (0=bypass, 1=full correction)
+- dsp/tonal_balance_restorer.py:654 | bypass | demasking_strength: Correction strength (0=bypass, 1=aggressive)
+- dsp/transparent_dynamics.py:65 | bypass | "target_ratio": 2.0,  # Compression ratio (1.0=bypass, 4.0=moderate)
+- dsp/transparent_dynamics.py:147 | bypass | target_ratio: Compression ratio (1.0=bypass, 2.0=gentle, 4.0=moderate)
+- dsp/transparent_dynamics.py:480 | bypass | "enhancement_amount": 0.5,  # 0=bypass, 1=full enhancement
+- dsp/transparent_dynamics.py:536 | bypass | enhancement_amount: Enhancement strength (0=bypass, 1=full)
+- dsp/ultra_low_latency.py:112 | stub | Ultra-Low-Latency-Limiter (Stub):
+- dsp/ultra_low_latency.py:133 | stub | Ultra-Low-Latency-Denoiser (Stub):
+- dsp/ultra_low_latency.py:163 | stub | Ultra-Low-Latency-Gate (Stub):
+- dsp/vad.py:63 | stub | Adaptive Voice Activity Detection (Stub):
+- dsp/vinyl_emulation.py:58 | stub | Dieses Modul simuliert typische Vinyl-Charakteristika (Stub).
+- dsp/vinyl_emulation.py:67 | stub | Vinyl-Emulation (Stub):
+- dsp/voice_conversion.py:24 | stub | # Bordmittel-Stub für Codec Enhancement und Foundation-Modelle
+- dsp/voice_conversion.py:98 | stub | # Voice Conversion (Stub):
+- dsp/voice_conversion.py:159 | stub | # SOTA-Logik: Container-basierte Inferenz (Stub)
+- dsp/waveunet_infer.py:53 | pass | pass
+- plugins/apollo_plugin.py:168 | pass | pass
+- plugins/apollo_plugin.py:368 | pass | pass
+- plugins/flashsr_plugin.py:123 | pass | pass
+- plugins/flashsr_plugin.py:298 | pass | pass
+- plugins/bigvgan_v2_plugin.py:150 | pass | pass  # budget module absent → attempt load anyway
+- plugins/bigvgan_v2_plugin.py:325 | pass | pass
+- plugins/bigvgan_v2_plugin.py:355 | stub | # Magnitude-only PGHI-Stub: Phasen aus Original behalten
+- plugins/cqtdiff_plus_plugin.py:174 | pass | pass
+- plugins/cqtdiff_plus_plugin.py:469 | pass | pass
+- plugins/crepe_plugin.py:146 | pass | pass
+- plugins/dac_plugin.py:346 | placeholder | # Return minimal placeholder codes
+- plugins/dac_plugin.py:405 | placeholder | # Return silence placeholder
+- plugins/deepfilternet_v3_ii_plugin.py:103 | pass | pass
+- plugins/deepfilternet_v3_ii_plugin.py:109 | pass | pass
+- plugins/deepfilternet_v3_ii_plugin.py:148 | pass | pass
+- plugins/demucs_v4_plugin.py:82 | pass | pass
+- plugins/demucs_v4_plugin.py:136 | pass | pass  # already (2, N) channels-first — correct for MDX23C
+- plugins/era_classifier_plugin.py:2 | stub | EraClassifier Plugin — Spec §2.1 / §2.14 Delegation-Stub
+- plugins/formant_tracker.py:436 | pass | pass
+- plugins/gacela_plugin.py:178 | pass | pass
+- plugins/gacela_plugin.py:235 | pass | pass
+- plugins/gacela_plugin.py:432 | pass | pass
+- plugins/hifigan_plugin.py:102 | stub | """Audio → Mel → Waveform (round-trip, nützlich als Enhancement-Stub)."""
+- plugins/laion_clap_plugin.py:361 | stub | # No-Op-Stub an, der die Decorator-/Direkt-Aufruf-Signatur
+- plugins/laion_clap_plugin.py:368 | stub | """No-Op-Stub für torch.library.register_fake (< 2.3)."""
+- plugins/matchering_plugin.py:9 | temp | API: matchering.process() -- works with WAV files (temp I/O, float32).
+- plugins/matchering_plugin.py:89 | temp | # matchering.process expects file paths; use temp WAV files.
+- plugins/mdx23c_plugin.py:105 | pass | pass
+- plugins/mdx23c_plugin.py:435 | pass | pass
+- plugins/mert_plugin.py:541 | pass | pass
+- plugins/mert_plugin.py:581 | pass | pass
+- plugins/mp_senet_plugin.py:126 | pass | pass
+- plugins/parameter_optimizer.py:23 | placeholder | # Placeholder für KI-Modell (z.B. Regression, Reinforcement Learning)
+- plugins/resemble_enhance_plugin.py:98 | pass | pass
+- plugins/sgmse_plugin.py:184 | pass | pass
+- plugins/sgmse_plugin.py:815 | pass | pass
+- plugins/silero_plugin.py:188 | stub | # synthesize() Stub — TTS-Interface für Kompatibilität
+- plugins/silero_plugin.py:190 | stub | """TTS-Stub: gibt leeres bytes-Objekt zurück (kein echtes TTS ohne Modell)."""
+- plugins/versa_plugin.py:191 | bypass | # Load pseudo_mos.py directly to bypass versa/**init**.py which imports
+- plugins/vocos_plugin.py:152 | pass | pass
+- plugins/vocos_plugin.py:214 | pass | pass
+- plugins/vocos_plugin.py:227 | pass | pass
+- plugins/waveunet_plugin.py:1 | stub | """WaveUNetPlugin — Quellentrennung via DSP-Stub (kein Docker/HF).
+- plugins/waveunet_plugin.py:19 | stub | logger.info("WaveUNetPlugin: HPSS-DSP-Stub (kein ONNX vorhanden).")
+- plugins/wpe_plugin.py:99 | pass | pass  # psutil nicht verfügbar — fortfahren
+- plugins/wpe_plugin.py:310 | deprecated | # Rueckwaertskompatibilitaet (deprecated names)

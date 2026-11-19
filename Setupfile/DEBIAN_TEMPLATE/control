@@ -1,0 +1,12 @@
+Package: aurik
+Version: 10.2.0
+Section: sound
+Priority: optional
+Architecture: amd64
+Depends: python3 (>= 3.10), python3-venv, python3-pip, ffmpeg, libsndfile1, libgl1, libegl1
+Maintainer: Michael Arnold <michael.arnold@aurik.local>
+Homepage: https://github.com/michaelarnold2307/Aurik_10.0.20
+Description: Aurik 10 — Weltklasse-Audio-Restaurierung
+ Psychoakustisch präzise Musikwiederherstellung mit deterministischer
+ Reproduzierbarkeit und natürlichem Wohlklang für das menschliche Ohr.
+ Für Zorin OS 18 / Ubuntu 24.04 (amd64).

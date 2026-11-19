@@ -1,0 +1,198 @@
+{
+  "zweck": "EchoThief-Äquivalenz (Pfeiler C) — kategorie-kalibrierte Synthese",
+  "lizenzhinweis": "Synthetisch erzeugt aus literaturgeerdeten Raumakustik-Zielen. Kein EchoThief-Audio verwendet/gelernt (SDSURF-Lizenz bleibt ausschließlich für Pfeiler A / echte Beschaffung einschlägig).",
+  "kategorien": {
+    "Underground": {
+      "echothief_anzahl": 29,
+      "rt60_zielbereich_s": [
+        2.5,
+        7.0
+      ],
+      "drr_zielbereich_db": [
+        -12.0,
+        2.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 2.539,
+      "rt60_gemessen_max_s": 6.611,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "U-Bahn-Schächte, Tunnel, Katakomben"
+    },
+    "Underpasses": {
+      "echothief_anzahl": 23,
+      "rt60_zielbereich_s": [
+        1.2,
+        3.5
+      ],
+      "drr_zielbereich_db": [
+        -8.0,
+        4.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 1.204,
+      "rt60_gemessen_max_s": 3.094,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Kurztunnel, Unterführungen, Brücken"
+    },
+    "Nature": {
+      "echothief_anzahl": 20,
+      "rt60_zielbereich_s": [
+        1.0,
+        4.0
+      ],
+      "drr_zielbereich_db": [
+        -6.0,
+        6.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 1.071,
+      "rt60_gemessen_max_s": 3.847,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Canyons, Schluchten, Felsformationen"
+    },
+    "Brutalism": {
+      "echothief_anzahl": 10,
+      "rt60_zielbereich_s": [
+        1.5,
+        3.5
+      ],
+      "drr_zielbereich_db": [
+        -6.0,
+        5.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 1.54,
+      "rt60_gemessen_max_s": 3.423,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Beton-Hallentruhen, Treppenhäuser großer Bauwerke"
+    },
+    "Recreation": {
+      "echothief_anzahl": 8,
+      "rt60_zielbereich_s": [
+        1.5,
+        3.5
+      ],
+      "drr_zielbereich_db": [
+        -6.0,
+        5.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 1.536,
+      "rt60_gemessen_max_s": 3.149,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Sport-/Schwimmhallen"
+    },
+    "Stairwells": {
+      "echothief_anzahl": 7,
+      "rt60_zielbereich_s": [
+        1.2,
+        3.0
+      ],
+      "drr_zielbereich_db": [
+        -4.0,
+        6.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 1.216,
+      "rt60_gemessen_max_s": 2.886,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Treppenhäuser"
+    },
+    "Venues": {
+      "echothief_anzahl": 7,
+      "rt60_zielbereich_s": [
+        1.2,
+        2.5
+      ],
+      "drr_zielbereich_db": [
+        -2.0,
+        8.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 1.208,
+      "rt60_gemessen_max_s": 2.47,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Säle, Auditorien"
+    },
+    "Domes": {
+      "echothief_anzahl": 7,
+      "rt60_zielbereich_s": [
+        3.0,
+        8.0
+      ],
+      "drr_zielbereich_db": [
+        -10.0,
+        2.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 3.091,
+      "rt60_gemessen_max_s": 7.549,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Kuppeln — langes Ringing"
+    },
+    "Nautical": {
+      "echothief_anzahl": 6,
+      "rt60_zielbereich_s": [
+        1.0,
+        3.0
+      ],
+      "drr_zielbereich_db": [
+        -6.0,
+        5.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 1.009,
+      "rt60_gemessen_max_s": 2.99,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Schiffsrümpfe, Laderäume"
+    },
+    "Sanctuaries": {
+      "echothief_anzahl": 5,
+      "rt60_zielbereich_s": [
+        2.5,
+        6.0
+      ],
+      "drr_zielbereich_db": [
+        -8.0,
+        3.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 2.509,
+      "rt60_gemessen_max_s": 5.65,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Kirchen, Kapellen, Hallenkirchen"
+    },
+    "Miscellaneous": {
+      "echothief_anzahl": 26,
+      "rt60_zielbereich_s": [
+        0.8,
+        5.0
+      ],
+      "drr_zielbereich_db": [
+        -8.0,
+        6.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 0.817,
+      "rt60_gemessen_max_s": 4.801,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Sonstige exotische Räume"
+    },
+    "EchoThief": {
+      "echothief_anzahl": 47,
+      "rt60_zielbereich_s": [
+        0.8,
+        5.0
+      ],
+      "drr_zielbereich_db": [
+        -8.0,
+        6.0
+      ],
+      "erzeugt": 25,
+      "rt60_gemessen_min_s": 0.915,
+      "rt60_gemessen_max_s": 4.74,
+      "abdeckungsweg": "synthetisch (Pfeiler C)",
+      "beschreibung": "Allgemeine/curated Sammlung (Wurzel-Ebene)"
+    }
+  }
+}

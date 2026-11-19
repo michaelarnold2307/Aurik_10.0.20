@@ -1,0 +1,220 @@
+# AURIK v8 Conduct Rules (Normative Specification)
+# Diese Regeln sind NICHT UMGEHBAR und werden durch ConductEnforcer erzwungen
+# Quelle: docs/00_normative/aurik_v_8_übersicht.md TEIL II
+
+version: "8.0"
+last_updated: "2026-02-08"
+
+# =============================================================================
+# PRINZIPIEN (Die 9 Conduct Principles)
+# =============================================================================
+principles:
+  primum_non_nocere:
+    enabled: true
+    description: "Primum non nocere – Füge keinen Schaden zu"
+    rule: "Vermeide Verschlechterung der musikalischen Qualität"
+
+  integritaet_vor_optimierung:
+    enabled: true
+    description: "Integrität vor Optimierung"
+    rule: "Bewahre musikalische Struktur, auch bei schlechter Ausgangslage"
+
+  transparenz:
+    enabled: true
+    description: "Offenlegungspflicht"
+    rule: "Dokumentiere alle Eingriffe (ProcessingLogger)"
+
+  kontext_vor_konfidenz:
+    enabled: true
+    description: "Kontext vor Konfidenz"
+    rule: "Bei Unsicherheit (<80% Confidence): Verzichte auf Eingriff"
+    epistemic_threshold: 0.80
+
+  verantwortung:
+    enabled: true
+    description: "Verantwortung für Folgen"
+    rule: "Prognostiziere Impact jedes Processing-Steps"
+
+  reversibilitaet:
+    enabled: true
+    description: "Reversibilität"
+    rule: "Ermögliche Rollback (RollbackManager)"
+
+  hoerer_konsens:
+    enabled: true
+    description: "Hörer-Konsens als Leitlinie"
+    rule: "Prozessiere so, dass 70%+ der Hörer zustimmen würden"
+    listener_consensus_threshold: 0.70
+
+  respekt_kuenstlerischer_absicht:
+    enabled: true
+    description: "Respekt vor künstlerischer Absicht"
+    rule: "Bewahre Original-Charakter (Voice Identity, Spectral Fingerprint)"
+
+  differenzierung:
+    enabled: true
+    description: "Differenzierung von Defekt und Charakteristik"
+    rule: "Breaths sind Performance, keine Defekte (preserve!)"
+
+# =============================================================================
+# METRIKEN-GRENZEN (CAS/DCS Limits)
+# =============================================================================
+metrics:
+  cas:  # Cumulative Artifact Score
+    max_delta: 0.025
+    description: "Maximal zulässige Artefakt-Zunahme"
+    hard_stop: true
+
+  dcs:  # Degradation Consistency Score
+    max: 0.15
+    description: "Maximal zulässige Inkonsistenz"
+    hard_stop: true
+
+  listener_diff:
+    max: 0.30
+    description: "Maximal zulässige hörbare Abweichung"
+    hard_stop: false  # Warnung, kein Hard Stop
+
+# =============================================================================
+# MUSICAL GOALS (Die 7 musikalischen Ziele)
+# =============================================================================
+musical_goals:
+  brillanz:
+    threshold: 0.85
+    description: "High-Frequency Clarity & Sparkle (8-20 kHz)"
+    weight: 1.0
+    hard_stop_below: 0.70  # Hard Stop wenn < 70%
+
+  waerme:
+    threshold: 0.80
+    description: "Mid-Range Richness (200-2000 Hz)"
+    weight: 1.0
+    hard_stop_below: 0.65
+
+  natuerlichkeit:
+    threshold: 0.90
+    description: "Gesamtklang ohne Artefakte"
+    weight: 1.2  # Höheres Gewicht
+    hard_stop_below: 0.75
+
+  authentizitaet:
+    threshold: 0.88
+    description: "Voice Identity & Spectral Fingerprint"
+    weight: 1.2  # Höheres Gewicht
+    hard_stop_below: 0.75
+
+  emotionalitaet:
+    threshold: 0.87
+    description: "Dynamik & Expression"
+    weight: 1.0
+    hard_stop_below: 0.70
+
+  transparenz:
+    threshold: 0.89
+    description: "Clarity & Separation"
+    weight: 1.0
+    hard_stop_below: 0.70
+
+  bass_kraft:
+    threshold: 0.85
+    description: "Kraftvolle Basswiedergabe (20-250 Hz)"
+    weight: 1.0
+    hard_stop_below: 0.70
+    max_bass_loss: 0.15  # Max 15% bass loss
+
+# =============================================================================
+# ZONE-SPEZIFISCHE ANPASSUNGEN
+# =============================================================================
+zone_adjustments:
+  zone_a:  # Sichere Zone (high confidence)
+    description: "Hohe Confidence, moderate Processing erlaubt"
+    cas_multiplier: 1.0
+    musical_goals_multiplier: 1.0
+
+  zone_b:  # Unsichere Zone (medium confidence)
+    description: "Mittlere Confidence, vorsichtige Processing"
+    cas_multiplier: 0.7  # Strengere CAS-Limits
+    musical_goals_multiplier: 1.1  # Höhere Musical Goals Thresholds
+
+  zone_c:  # Kritische Zone (low confidence)
+    description: "Niedrige Confidence, nur minimale Processing"
+    cas_multiplier: 0.5
+    musical_goals_multiplier: 1.2
+    hard_stop: true  # Blockiere aggressive Operations
+
+# =============================================================================
+# MEDIUM-SPEZIFISCHE ANPASSUNGEN
+# =============================================================================
+medium_adjustments:
+  vinyl:
+    musical_goals:
+      bass_kraft: 0.90  # Vinyl-Charakter wichtig
+      waerme: 0.85
+      brillanz: 0.80  # Etwas relaxed (Vinyl hat natürlichen HF-Roll-off)
+
+  tape:
+    musical_goals:
+      waerme: 0.90  # Tape-Wärme kritisch
+      bass_kraft: 0.80
+      brillanz: 0.82
+
+  shellac:
+    musical_goals:
+      authentizitaet: 0.92  # Historischer Charakter sehr wichtig
+      waerme: 0.75  # Shellac hat weniger Wärme
+      brillanz: 0.75  # Historische Limitierungen akzeptieren
+
+  digital:
+    musical_goals:  # Standard-Thresholds
+      brillanz: 0.85
+      waerme: 0.80
+      natuerlichkeit: 0.90
+
+# =============================================================================
+# HARD STOP CONDITIONS
+# =============================================================================
+hard_stops:
+  - condition: "cas_delta > metrics.cas.max_delta"
+    message: "CAS-Delta überschreitet Limit (0.025)"
+
+  - condition: "dcs > metrics.dcs.max"
+    message: "DCS überschreitet Limit (0.15)"
+
+  - condition: "any(musical_goal < hard_stop_below)"
+    message: "Musical Goal unterschreitet kritischen Threshold"
+
+  - condition: "irreversible_operation and confidence < 0.90"
+    message: "Irreversible Operation bei Unsicherheit nicht erlaubt"
+
+  - condition: "zone == 'C' and aggressive_processing"
+    message: "Zone C: Nur minimale Processing erlaubt"
+
+# =============================================================================
+# EPISTEMIC UNCERTAINTY HANDLING
+# =============================================================================
+epistemic:
+  min_confidence: 0.80
+  description: "Mindest-Confidence für Processing"
+
+  uncertainty_actions:
+    confidence_below_80:
+      action: "skip_processing"
+      message: "Epistemische Unsicherheit zu hoch - Primum non nocere"
+
+    confidence_80_to_90:
+      action: "conservative_processing"
+      message: "Mittlere Confidence - Nur konservative Parameter"
+      parameter_multiplier: 0.7
+
+    confidence_above_90:
+      action: "normal_processing"
+      message: "Hohe Confidence - Normale Parameter erlaubt"
+
+# =============================================================================
+# LOGGING & AUDIT
+# =============================================================================
+audit:
+  log_all_decisions: true
+  log_path: "audit/conduct_enforcer_decisions.json"
+  log_rejected_operations: true
+  log_musical_goals_violations: true

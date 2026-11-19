@@ -1,0 +1,8 @@
+{
+  "bridge_import_status_present": false,
+  "bridge_import_status_passed": null,
+  "bridge_import_status_evidence": "",
+  "reason_flagged": false,
+  "final_ready": true,
+  "severity": "unknown"
+}

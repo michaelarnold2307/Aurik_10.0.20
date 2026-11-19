@@ -1,0 +1,110 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement for Aurik 9.0
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest in improving Aurik! Please describe your feature request below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see
+      placeholder: What would you like to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you've considered
+      placeholder: Are there other ways to solve this?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: Which area of Aurik does this feature relate to?
+      options:
+        - Audio Processing / DSP
+        - Machine Learning / AI Models
+        - GUI / User Interface
+        - CLI / Command Line
+        - Performance / Optimization
+        - Batch Processing
+        - Export / Import
+        - Material Detection
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority (Your Opinion)
+      description: How important is this feature to you?
+      options:
+        - Critical - I cannot use Aurik without this
+        - High - This would significantly improve my workflow
+        - Medium - Nice to have, would make things easier
+        - Low - Small improvement or convenience
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or References
+      description: Any examples from other software, screenshots, or references that illustrate your idea?
+      placeholder: Links, screenshots, or descriptions...
+    validations:
+      required: false
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Ideas
+      description: If you have technical knowledge, any ideas on how this could be implemented?
+      placeholder: Technical approach, libraries, algorithms...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you be willing to help?
+      options:
+        - label: I would be willing to contribute to the implementation of this feature
+          required: false
+        - label: I would be available for testing this feature
+          required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Before submitting, please confirm
+      options:
+        - label: I have searched existing issues to ensure this feature hasn't been requested before
+          required: true
+        - label: This feature aligns with Aurik's goal of professional audio restoration
+          required: true

@@ -1,0 +1,78 @@
+profile:
+  name: minidisc_to_cd_to_mp3_medium_offline_stereo
+  medium: md_cd_mp3_hybrid
+  mode: offline
+  channels: stereo
+
+analysis:
+  segment_length_sec: 2.0
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 10.0
+
+budgets:
+  artifact_budget: 0.08
+  identity_budget: 0.06
+  temporal_change_budget: 0.05
+  spectral_change_budget: 0.12
+  noise_change_budget: 0.02
+  stereo_change_budget: 0.08
+
+processing_order:
+  - declip
+  - codec_taming_strict
+  - transient_guard
+  - sibilance_minimal
+  - stereo_guard
+  - finalize
+
+modules:
+
+  declip:
+    detect:
+      pct_samples_above_minus_0_2dbfs_warn: 0.4
+      pct_samples_above_minus_0_2dbfs_strong: 1.2
+      true_peak_warn_dbTP: -0.3
+    trial:
+      strength_warn: 0.18
+      strength_strong: 0.30
+      strength_max: 0.35
+    commit:
+      min_anchor_gain: 0.015
+      max_true_peak_dbTP: -1.0
+
+  codec_taming_strict:
+    detect:
+      pre_echo_warn_db: -20
+      pre_echo_strong_db: -15
+      warble_energy_warn: 0.012
+      warble_energy_strong: 0.025
+    trial:
+      smoothing_strength: 0.12
+      hf_tilt_db_at_10k: -1.0
+    commit:
+      min_anchor_gain: 0.020
+      forbid_musical_noise_increase: true
+      forbid_transient_loss_percent_over: 3.0
+
+  transient_guard:
+    max_attack_loss_percent: 3.0
+    max_hf_transient_loss_db: 1.2
+
+  sibilance_minimal:
+    detect:
+      spikiness_strong_db: 13.0
+    trial:
+      resonance_strength: 0.10
+      deesser_wet: 0.10
+      deesser_wet_max: 0.16
+    commit:
+      min_anchor_gain: 0.010
+
+  stereo_guard:
+    mono_fold_max_regression_db: 0.0
+    hf_coherence_min_delta: -0.02
+
+finalize:
+  true_peak_guard:
+    enabled: true
+    target_dbTP: -1.0

@@ -1,0 +1,27 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "sota_m9_v2-20261114T214916Z-b60f28",
+  "name": "c2_m9_v2",
+  "phase": "sota_m9_v2",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs_erweitert/clean --noisy-dir data/tfgrid_pairs_erweitert/noisy --batch-size 1 --grad-accum 4 --exclude-pairs data/tfgrid_pairs_erweitert/exclude_pairs.txt --checkpoint-dir models/tf_gridnet_v2 --skip-onnx",
+  "resume_befehl": "bash -c if [ -f models/tf_gridnet_v2/checkpoint_latest.pt ]; then exec env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs_erweitert/clean --noisy-dir data/tfgrid_pairs_erweitert/noisy --batch-size 1 --grad-accum 4 --exclude-pairs data/tfgrid_pairs_erweitert/exclude_pairs.txt --checkpoint-dir models/tf_gridnet_v2 --skip-onnx --resume models/tf_gridnet_v2/checkpoint_latest.pt; else exec env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs_erweitert/clean --noisy-dir data/tfgrid_pairs_erweitert/noisy --batch-size 1 --grad-accum 4 --exclude-pairs data/tfgrid_pairs_erweitert/exclude_pairs.txt --checkpoint-dir models/tf_gridnet_v2 --skip-onnx; fi",
+  "timeout_s": 43200.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 22999.9,
+      "timed_out": false,
+      "output_tail": "/pytorch/c10/hip/HIPAllocatorConfig.h:40.)\n  return t.to(\nINFO Effektive Batch-Größe 4 (batch_size=1 × grad_accum=4)\nINFO Ep 1/30 | Tr 0.1480 | Val 0.1376 | 888s\nINFO >> Best: 0.1376\nINFO Ep 2/30 | Tr 0.1134 | Val 0.1227 | 742s\nINFO >> Best: 0.1227\nINFO Ep 3/30 | Tr 0.1035 | Val 0.1205 | 757s\nINFO >> Best: 0.1205\nINFO Ep 4/30 | Tr 0.0990 | Val 0.1028 | 726s\nINFO >> Best: 0.1028\nINFO Ep 5/30 | Tr 0.0910 | Val 0.0825 | 743s\nINFO >> Best: 0.0825\nINFO Ep 6/30 | Tr 0.0819 | Val 0.0645 | 759s\nINFO >> Best: 0.0645\nINFO Ep 7/30 | Tr 0.0744 | Val 0.0549 | 730s\nINFO >> Best: 0.0549\nINFO Ep 8/30 | Tr 0.0731 | Val 0.0574 | 748s\nINFO Ep 9/30 | Tr 0.0687 | Val 0.0524 | 727s\nINFO >> Best: 0.0524\nINFO Ep 10/30 | Tr 0.0642 | Val 0.0490 | 733s\nINFO >> Best: 0.0490\nINFO Ep 11/30 | Tr 0.0591 | Val 0.0458 | 744s\nINFO >> Best: 0.0458\nINFO Ep 12/30 | Tr 0.0569 | Val 0.0434 | 745s\nINFO >> Best: 0.0434\nINFO Ep 13/30 | Tr 0.0553 | Val 0.0434 | 778s\nINFO Ep 14/30 | Tr 0.0541 | Val 0.0408 | 819s\nINFO >> Best: 0.0408\nINFO Ep 15/30 | Tr 0.0533 | Val 0.0393 | 831s\nINFO >> Best: 0.0393\nINFO Ep 16/30 | Tr 0.0532 | Val 0.0394 | 815s\nINFO Ep 17/30 | Tr 0.0510 | Val 0.0402 | 818s\nINFO Ep 18/30 | Tr 0.0513 | Val 0.0385 | 806s\nINFO >> Best: 0.0385\nINFO Ep 19/30 | Tr 0.0501 | Val 0.0414 | 796s\nINFO Ep 20/30 | Tr 0.0485 | Val 0.0379 | 798s\nINFO >> Best: 0.0379\nINFO Ep 21/30 | Tr 0.0466 | Val 0.0373 | 743s\nINFO >> Best: 0.0373\nINFO Ep 22/30 | Tr 0.0458 | Val 0.0369 | 731s\nINFO >> Best: 0.0369\nINFO Ep 23/30 | Tr 0.0450 | Val 0.0370 | 740s\nINFO Ep 24/30 | Tr 0.0445 | Val 0.0365 | 771s\nINFO >> Best: 0.0365\nINFO Ep 25/30 | Tr 0.0445 | Val 0.0336 | 756s\nINFO >> Best: 0.0336\nINFO Ep 26/30 | Tr 0.0438 | Val 0.0353 | 722s\nINFO Ep 27/30 | Tr 0.0434 | Val 0.0341 | 768s\nINFO Ep 28/30 | Tr 0.0436 | Val 0.0332 | 730s\nINFO >> Best: 0.0332\nINFO Ep 29/30 | Tr 0.0428 | Val 0.0324 | 769s\nINFO >> Best: 0.0324\nINFO Ep 30/30 | Tr 0.0424 | Val 0.0329 | 728s\nINFO Fertig. best_val=0.0324 | models/tf_gridnet_v2/tf_gridnet_best.pt\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_tf_gridnet_denoiser.py --epochs 30 --device cuda --clean-dir data/tfgrid_pairs_erweitert/clean --noisy-dir data/tfgrid_pairs_erweitert/noisy --batch-size 1 --grad-accum 4 --exclude-pairs data/tfgrid_pairs_erweitert/exclude_pairs.txt --checkpoint-dir models/tf_gridnet_v2 --skip-onnx"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "checkpoint_latest.pt": "ff83f3d996c5697a06a101b07f195d046cacf49bd3c341545190605b76312ca4",
+    "tf_gridnet_best.pt": "d9583c592f2f0d7b1a421b38214bd40d1348bb86d38d272770e48c538f49fb50"
+  },
+  "ergebnis": "erfolgreich"
+}

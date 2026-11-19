@@ -1,0 +1,64 @@
+# SOTA-Metriken und Qualitätsziele für Aurik-DSP-Plugins
+
+sota_metrics:
+  objektiv:
+    SNR:
+      ziel: "> 40 dB"
+      tontraeger:
+        Vinyl: "> 40 dB"
+        Kassette: "> 35 dB"
+        CD: "> 50 dB"
+    SINAD:
+      ziel: "> 60 dB"
+    THD:
+      ziel: "< 0.1%"
+  spektral:
+    spectral_centroid:
+      ziel: "Drift ≤ 0.3 dB"
+    spectral_tilt:
+      ziel: "Drift ≤ 0.4 dB/Oktave"
+    spectral_balance:
+      ziel: "Bass/Mid/Treble ≈ 30%/50%/20%"
+  dynamisch:
+    crest_factor:
+      ziel: "±10% Abweichung"
+    loudness_range:
+      ziel: "ΔLRA ≤ 0.5 LU"
+    hfti:
+      ziel: ">= 0.97"
+  psychoakustisch:
+    equal_loudness:
+      ziel: "≤ 0.5 phon"
+    bark_band:
+      ziel: "24 kritische Bänder"
+    smr:
+      ziel: "> 3 dB"
+    temporal_masking:
+      pre: "10ms"
+      post: "200ms"
+  perzeptuell:
+    naturalness:
+      ziel: "> 0.85"
+    roughness:
+      ziel: "minimieren"
+    sharpness:
+      ziel: "erhalten"
+  musikalisch:
+    groove_preservation:
+      ziel: "Timing-Abweichung < 5ms"
+    tempo_stability:
+      ziel: "BPM-Drift ≤ ±1 BPM"
+    harmonic_coherence:
+      ziel: "F0 ±1% Toleranz, Partials ±2%"
+  raeumlich:
+    stereo_width:
+      ziel: "±10% Abweichung"
+    phase_coherence:
+      ziel: "≤10°"
+    itd:
+      ziel: "≤0.1 ms je Band"
+    ild:
+      ziel: "≤0.5 dB je Band"
+
+# Diese Datei dient als Referenz für automatisierte SOTA-Validierung aller DSP- und ML-Plugins.
+# Jede Implementierung und jeder Test muss diese Ziele berücksichtigen und dokumentieren.

@@ -1,0 +1,10 @@
+- Kontext: phase50 Wall-Budget-Guard in backend/core/unified_restorer_v3.py in der Methode execute_pipeline verdrahtet.
+- Fehlerbild: NameError durch Nutzung von Variablen aus restore-Scope (cal_transfer_chain, spec_upgrade_baseline_scores, applicable_goals).
+- Fix-Muster: In _execute_pipeline lokale Guard-Inputs robust ableiten:
+  - transfer_chain aus strict_autosetup_policy.transfer_chain oder restoration_context.transfer_chain
+  - applicable_goals aus Parameter applicable_goals, sonst restoration_context.applicable_goals
+  - effective_targets aus pmgg_ceiling_capped_targets, sonst song_goal_targets
+  - baseline_scores aus restoration_context.goal_baseline_scores, sonst fast_goal_snapshot(current_audio, sr, material)
+- Test-Learnings:
+  - test_wall_budget_gain_prioritization darf in Restoration keine phase42 erwarten (§0a Guard entfernt sie).
+  - test_phase12_polyphonic_guard erwartet aktuell skipped_reason low_confidence_fallback.

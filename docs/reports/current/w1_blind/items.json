@@ -1,0 +1,42 @@
+[
+  {
+    "id": "w1_0",
+    "a": "docs/reports/current/w1_blind/stimuli_src/0_a.wav",
+    "b": "docs/reports/current/w1_blind/stimuli_src/0_b.wav"
+  },
+  {
+    "id": "w1_1",
+    "a": "docs/reports/current/w1_blind/stimuli_src/1_a.wav",
+    "b": "docs/reports/current/w1_blind/stimuli_src/1_b.wav"
+  },
+  {
+    "id": "w1_2",
+    "a": "docs/reports/current/w1_blind/stimuli_src/2_a.wav",
+    "b": "docs/reports/current/w1_blind/stimuli_src/2_b.wav"
+  },
+  {
+    "id": "w1_3",
+    "a": "docs/reports/current/w1_blind/stimuli_src/3_a.wav",
+    "b": "docs/reports/current/w1_blind/stimuli_src/3_b.wav"
+  },
+  {
+    "id": "w1_4",
+    "a": "docs/reports/current/w1_blind/stimuli_src/4_a.wav",
+    "b": "docs/reports/current/w1_blind/stimuli_src/4_b.wav"
+  },
+  {
+    "id": "w1_5",
+    "a": "docs/reports/current/w1_blind/stimuli_src/5_a.wav",
+    "b": "docs/reports/current/w1_blind/stimuli_src/5_b.wav"
+  },
+  {
+    "id": "w1_6",
+    "a": "docs/reports/current/w1_blind/stimuli_src/6_a.wav",
+    "b": "docs/reports/current/w1_blind/stimuli_src/6_b.wav"
+  },
+  {
+    "id": "w1_7",
+    "a": "docs/reports/current/w1_blind/stimuli_src/7_a.wav",
+    "b": "docs/reports/current/w1_blind/stimuli_src/7_b.wav"
+  }
+]

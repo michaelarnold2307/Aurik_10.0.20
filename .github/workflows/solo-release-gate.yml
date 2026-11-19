@@ -1,0 +1,122 @@
+name: Aurik Solo Release Gate
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  solo-spec-evidence-gate:
+    name: Solo Spec Evidence Gate
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Enforce evidence artifact for spec changes on main
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${BEFORE_SHA}" || "${BEFORE_SHA}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "Initial push or unknown before SHA; skipping spec delta gate."
+            exit 0
+          fi
+
+          changed_specs="$(git diff --name-only "${BEFORE_SHA}" "${AFTER_SHA}" | grep '^.github/specs/' || true)"
+          if [[ -z "${changed_specs}" ]]; then
+            echo "No spec changes detected."
+            exit 0
+          fi
+
+          echo "Spec changes detected on main:"
+          echo "${changed_specs}"
+
+          evidence_files="$(git diff --name-only "${BEFORE_SHA}" "${AFTER_SHA}" | grep '^docs/reports/spec_evidence/.*\.md$' || true)"
+          if [[ -z "${evidence_files}" ]]; then
+            echo "Missing evidence artifact under docs/reports/spec_evidence/*.md"
+            echo "Spec changes on main require an evidence report with maintainer sign-off."
+            exit 1
+          fi
+
+          echo "Evidence candidates:"
+          echo "${evidence_files}"
+
+          missing=0
+          for f in ${evidence_files}; do
+            for token in "## Evidenzblock" "Seed" "95 %-CI" "Maintainer Sign-off"; do
+              if ! grep -Fq "${token}" "${f}"; then
+                echo "${f}: missing token '${token}'"
+                missing=1
+              fi
+            done
+          done
+
+          if [[ "${missing}" -ne 0 ]]; then
+            echo "Evidence files are incomplete."
+            exit 1
+          fi
+
+  normative-guard:
+    name: Normative Guard
+    runs-on: ubuntu-22.04
+    # Befund 2026-09-14: der CLI/GUI-Paritätstest führt die ECHTE Vollpipeline
+    # zweimal aus (CLI-Form + GUI-Form) — 12 min reichen dafür nicht mehr.
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+          cache: pip
+          cache-dependency-path: requirements/requirements_dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+          pip install numpy==1.26.4 scipy==1.15.3
+          # backend/file_import.py importiert soundfile bereits beim UV3-Import.
+          pip install soundfile==0.13.1
+
+      - name: Run compliance and drift checks
+        run: |
+          python scripts/release_must_coverage_check.py
+          python scripts/spec_drift_check.py
+          python scripts/compliance_check.py --errors-only
+
+      - name: Run normative tests
+        run: |
+          python -m pytest \
+            tests/normative/test_no_production_stubs.py \
+            tests/normative/test_full_pipeline_determinism.py \
+            tests/normative/test_p2_audit_and_deployment_mode.py \
+            tests/normative/test_cli_gui_output_parity.py \
+            --run-heavy-tests \
+            -p no:xdist \
+            --override-ini="addopts=--strict-markers --import-mode=importlib" \
+            --timeout=30 \
+            --tb=short \
+            -q \
+            --disable-warnings \
+            --no-header
+
+      - name: Upload release gate reports
+        uses: actions/upload-artifact@v6
+        with:
+          name: solo-release-gate-reports
+          path: |
+            reports/release_must_coverage.json
+            reports/spec_drift_report.json
+            reports/spec_drift_baseline.json

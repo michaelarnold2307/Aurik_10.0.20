@@ -1,0 +1,14 @@
+# Vinyl-Konfiguration: typische Defekte und Policy
+medium: vinyl
+defects:
+  - crackle
+  - noise
+  - sibilance
+policy:
+  prefer_ml: true
+  max_chain_length: 7
+  audit: true
+  quality:
+    min_hf_ratio: 0.75
+    max_loudness: -14.0
+    min_transparency: 0.8

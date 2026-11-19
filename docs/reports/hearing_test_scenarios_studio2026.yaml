@@ -1,0 +1,198 @@
+# Hearing Test Scenarios — Studio 2026 Mode (v9.10.130)
+# Purpose: Mandatory external hearing validation for studio2026 enhancement pipeline
+# These scenarios assess modern studio-quality enhancement: PQS MOS ≥ 4.5, OQS ≥ 88, full production sheen
+# All scenarios include ≥1 vocal track to assess lyrical saliency + vocal presence enhancement (§2.36)
+
+scenarios:
+  - id: "STUDIO2026_SCENARIO_1"
+    name: "Compressed Pop Mix with Poor Dynamics + Thin Vocal (Pop/Dance Vocal)"
+    category: "Modern Enhancement: Dynamic & Spectral Presence"
+
+    source_material:
+      carrier: "mp3_medium"  # Typical streaming origin: AAC/MP3 medium bitrate
+      era: "2018–2020"
+      genre: "pop"
+      vocal_track: true
+      production_issue: "Overly limited/compressed dynamics, narrow vocal presence (2–4 kHz scooped), muddy low-mid"
+      description: "Contemporary pop track with compressed dynamics, vocal thin and recessed. Goal: restore presence and punch without sounding artificial"
+
+    source_defects_present:
+      - "Dynamic range collapse (RMS variation < 6 dB)"
+      - "Vocal presence scooped (2–4 kHz dip)"
+      - "Low-mid mud (250–500 Hz elevated, uncontrolled)"
+      - "Hi-hat brittleness (8–12 kHz harshness from compression artifacts)"
+
+    studio2026_enhancement_objectives:
+      - "Restore dynamic feel: micro-dynamics (transients) + macro-dynamics (verse/chorus contrast)"
+      - "Enhance vocal presence: 2–4 kHz sparkle without harshness"
+      - "Tighten low-mid: controlled kick/bass focus, mud reduction"
+      - "Modern 'air': 10–16 kHz presence without sibilance"
+      - "Maintain vocal intimacy: no auto-tuning, no synthetic artifacts"
+
+    listening_focus_areas:
+      - "Vocal transient snap and clarity (T-attack)"
+      - "Kick/drum punch: defined, punchy, not boomy"
+      - "Bass clarity: tight, articulate, not flabby"
+      - "Vocal presence: prominent, clear, warm (not sibilant)"
+      - "Stereo width: confident, not diffuse or collapsed"
+      - "Overall 'mix coherence': sounds like professional A&R mastering"
+
+    mandatory_validation_points:
+      - "PQS MOS ≥ 4.5 (SOTA-competitive quality)" # Studio2026 hard gate
+      - "OQS ≥ 88" # §8.1.1a Spec gate
+      - "Frische/Presence (Studio Goal) ≥ 4.0 / 5.0" # Vocal sparkle enhanced
+      - "Punch/Bass-Kraft (Studio Goal) ≥ 4.2 / 5.0" # Dynamics restored, kick punchy"
+      - "Klarheit (Studio Goal) ≥ 4.1 / 5.0" # No spectral holes, transparent
+      - "Artefaktfreiheit > 0.95" # No artifacts despite enhancement chain
+      - "Vocal naturalness ≥ 0.85" # No robotic/synthetic quality
+      - "Lyric intelligibility maintained or improved"
+
+    expected_oqs_range: [88, 94] # Studio mode: high production polish
+    pqs_mos_target: [4.5, 5.0]  # SOTA-competitive
+
+    mushra_reference_setup:
+      num_listeners: 8
+      reference_audio_track: "studio2026_enhanced"  # SOTA comparison (commercial mastering)
+      anchor_low: "original_compressed_flat"  # Unenhanced source
+      anchor_mid: "over_processed_robotic"  # AI-aggressive enhancement (bad example)
+      anchor_high: "professional_reference_track"  # Industry-standard comparable
+      evaluation_scale: "Absolute Category Rating (ACR) 1–5 (Excellent–Poor) or MOS"
+
+    go_no_go_criteria:
+      - "OQS ≥ 88 (compliance gate)"
+      - "PQS MOS ≥ 4.5: ≥ 6/8 listeners rate studio2026 ≥ 4/5 (Good or Excellent)"
+      - "Frische/Presence ≥ 4.0: listeners perceive vocal as 'present and clear'"
+      - "Punch ≥ 4.2: listeners perceive drums/bass as 'punchy and defined'"
+      - "≥ 6/8 listeners prefer studio2026 over original (confidence level)"
+      - "Zero listener reports artifacts (pumping, distortion, phase issues)"
+
+  - id: "STUDIO2026_SCENARIO_2"
+    name: "Lo-Fi Hip-Hop with Muddy Mix + Weak Vocal Presence (Hip-Hop Vocal)"
+    category: "Modern Enhancement: Clarity & Stereo Imaging"
+
+    source_material:
+      carrier: "wav_16bit_44k1"  # Lo-fi indie source
+      era: "2020–2022"
+      genre: "hip_hop"
+      vocal_track: true
+      production_issue: "Muddy low-mid, weak vocal imaging (center-panned, no room), narrow stereo"
+      description: "Lo-fi hip-hop beat with muddy mix, weak vocal presence, narrow stereo field. Goal: add clarity, presence, and modern stereo width without losing lo-fi aesthetic"
+
+    source_defects_present:
+      - "Muddy low-mid (150–400 Hz bloom)"
+      - "Vocal buried: center-panned, no imaging depth"
+      - "Narrow stereo (< 40% width perception)"
+      - "Reduced air/brilliance (dull, lacks presence above 8 kHz)"
+
+    studio2026_enhancement_objectives:
+      - "Tighten mud: remove low-mid bloom, enhance kick definition"
+      - "Vocal imaging: add subtle width and room (not robotic)"
+      - "Extend stereo: wider hip-hop-style imaging on instruments"
+      - "Add air: presence and clarity above 8 kHz (tasteful, not sibilant)"
+      - "Preserve lo-fi aesthetic: organic feel, not Gen-AI polished"
+
+    listening_focus_areas:
+      - "Rap vocal clarity: articulation, flow rhythm, Sibilant balance"
+      - "Beat clarity: kick, hi-hat, snare individual definition (not mud)"
+      - "Stereo spreads: left/right balance, imaging depth (not collapsed/exaggerated)"
+      - "Vocal room: natural-sounding spatial context (not digital reverb)"
+      - "Bass articulation: deep sub presence without boomy bloom"
+
+    mandatory_validation_points:
+      - "PQS MOS ≥ 4.3" # Studio2026 gate (lo-fi allows slight grace)
+      - "OQS ≥ 86" # §8.1.1a Spec gate (lo-fi base allows ±2)"
+      - "Klarheit (Studio Goal) ≥ 3.9 / 5.0" # No spectral holes, clean mids
+      - "Frische/Presence ≥ 3.8 / 5.0" # Vocal and beat presence enhanced"
+      - "Stereo Width/Separation ≥ 3.7 / 5.0" # Imaging improved, balanced"
+      - "Artefaktfreiheit > 0.95" # No artifacts despite multi-phase enhancement
+      - "Lo-fi character preserved: still sounds intentional, organic"
+      - "Lyric intelligibility improved or maintained"
+
+    expected_oqs_range: [86, 91]
+    pqs_mos_target: [4.3, 4.8]
+
+    mushra_reference_setup:
+      num_listeners: 8
+      reference_audio_track: "studio2026_enhanced"
+      anchor_low: "original_lofi_muddy"
+      anchor_mid: "over_brightened_thin"  # Brutally EQ'd, artificial
+      anchor_high: "professional_hiphop_reference"
+      evaluation_scale: "ACR 1–5 or MOS 1–5"
+
+    go_no_go_criteria:
+      - "OQS ≥ 86 (compliance gate)"
+      - "PQS MOS ≥ 4.3: ≥ 5/8 listeners rate studio2026 ≥ 4/5"
+      - "Klarheit ≥ 3.9: listeners perceive 'clear and defined' beat/vocal"
+      - "Vocal intelligibility (syllable clarity) improved by ≥ 1 point (1–5 scale)"
+      - "Stereo imaging rated 'balanced and natural' by ≥ 6/8 listeners"
+      - "No listener perceives enhancement as 'artificial' or 'over-EQ'd'"
+
+  - id: "STUDIO2026_SCENARIO_3"
+    name: "Acoustic Folk Recording with Thin Presence + Narrow Stereo (Folk Vocal)"
+    category: "Modern Enhancement: Spatial & Warmth Enhancement"
+
+    source_material:
+      carrier: "wav_24bit_48k"  # Quality source, but thin production
+      era: "2019–2021"
+      genre: "folk"
+      vocal_track: true
+      production_issue: "Thin acoustic guitar and vocal, close-miked with minimal room, narrow stereo"
+      description: "Folk recording: vocal-centric, minimal arrangement, thin spatial impression. Goal: add subtle room, warmth, and width without sacrificing intimacy"
+
+    source_defects_present:
+      - "Thin vocal presence (lacks warmth below 2 kHz)"
+      - "Dry/close-miked acoustic guitar (no room, brittle)"
+      - "Mono or narrow stereo (< 60° imaging width)"
+      - "Lack of 'air' (minimal reverb tail, no spatial context)"
+
+    studio2026_enhancement_objectives:
+      - "Add warmth to vocal: subtle low-mid presence (not boomy)"
+      - "Enhance acoustic guitar: tonality and natural reverb tail"
+      - "Expand stereo: natural listener width without artificial width"
+      - "Add room simulation: intimate but spacious (not dry or claustrophobic)"
+      - "Maintain acoustic transparency: no mud, no over-compression"
+
+    listening_focus_areas:
+      - "Vocalist tone: warm, intimate, clear diction"
+      - "Acoustic guitar: articulate, tonal balance (not brittle)"
+      - "Room presence: natural and inviting (not fake/digital)"
+      - "Stereo field: comfortable listening width; instrument positioning clear"
+      - "Overall 'musicality': emotional intimacy + production polish"
+
+    mandatory_validation_points:
+      - "PQS MOS ≥ 4.4" # Studio2026 gate
+      - "OQS ≥ 87" # §8.1.1a Spec gate
+      - "Wärme (Studio Goal) ≥ 4.1 / 5.0" # Vocal warmth enhanced without mud"
+      - "Raumtiefe (Studio Goal) ≥ 3.8 / 5.0" # Spatial impression improved
+      - "Klarheit ≥ 3.9 / 5.0" # No spectral holes, transparent acoustic
+      - "Artefaktfreiheit > 0.95" # No artifacts (reverb artifacts, phase issues)
+      - "Vocal intimacy maintained: no detachment or 'plasticity'"
+      - "Lyric connection preserved: emotional delivery intact"
+
+    expected_oqs_range: [87, 92]
+    pqs_mos_target: [4.4, 4.9]
+
+    mushra_reference_setup:
+      num_listeners: 8
+      reference_audio_track: "studio2026_enhanced"
+      anchor_low: "original_thin_dry"
+      anchor_mid: "over_reverbed_distant"  # Excessive room, disconnected (bad example)
+      anchor_high: "professional_folk_reference"
+      evaluation_scale: "ACR 1–5 or MOS 1–5"
+
+    go_no_go_criteria:
+      - "OQS ≥ 87 (compliance gate)"
+      - "PQS MOS ≥ 4.4: ≥ 6/8 listeners rate studio2026 ≥ 4/5"
+      - "Wärme ≥ 4.1: listeners perceive vocal as 'warm and inviting'"
+      - "Raumtiefe ≥ 3.8: listeners perceive spatial context 'natural and comfortable'"
+      - "Vocal intimacy rated ≥ 4.0/5.0: 'emotionally connected'"
+      - "≥ 6/8 listeners prefer studio2026 over original (confidence)"
+
+metadata:
+  version: "v9.10.130"
+  spec_reference: ".github/specs/07_quality_and_tests.md §5.7a, §8.1.1a"
+  created_date: "2026-04-07"
+  mandatory_for_release: true
+  oqs_gate: "≥ 86 (minimum across three scenarios)"
+  pqs_mos_gate: "≥ 4.3 (minimum across three scenarios)"
+  ml_fallback_scenarios: ["STUDIO2026_SCENARIO_1 @ MDX23C_OOM (NMF fallback)", "STUDIO2026_SCENARIO_2 @ DeepFilterNet_OOM (OMLSA fallback)", "STUDIO2026_SCENARIO_3 @ AudioSR_OOM (harmonics fallback)"]

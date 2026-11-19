@@ -1,0 +1,15 @@
+{
+  "allowedTools": [],
+  "assets": [],
+  "description": "- **BW Harmonic Exciter**: DSP-basierte harmonische Obertongenerierung oberhalb der Cutoff-Frequenz - Waveshaping (Soft-Clip + Rectification) f\u00fcr gerade/ungerade Harmonische - Spektrale H\u00fcllkurven-Extrapolation via Polynom-Fit f\u00fcr nat\u00fcrliche Klangbalance - STFT-basierte Rekonstruktion mit Original-Phasen (keine Phasenartefakte) - Garantiert: blend=0 = Passthrough, verschlechtert nie das Originalsignal - <10ms Latenz pro 3s-Segment auf CPU, 0 MB Modellgr\u00f6\u00dfe - Pipeline-Stage: `BWExciterStage` f\u00fcr `UnifiedRestorerV3` - Plugin: `plugins/bw_harmonic_exciter.py`",
+  "entry": "SKILL.md",
+  "id": "changelog",
+  "name": "CHANGELOG",
+  "priority": 0,
+  "triggers": {
+    "commands": [],
+    "fileTypes": [],
+    "promptPatterns": []
+  },
+  "version": "0.0.0"
+}

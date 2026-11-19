@@ -1,0 +1,32 @@
+{
+  "schema": "aurik.b3_messung_invalidierung/1",
+  "datum": "2026-11-09",
+  "register": "D-K3-85",
+  "report": "docs/reports/current/2026-11-09_m12_pfad_erreichbarkeit.md",
+  "grund": "Der Modellpfad fuehrte das trainierte Artefakt nicht aus; die AN/AUS-Messung ist damit kein Qualitaetsurteil ueber das Modell (Klasse W-3-Lehre).",
+  "ungueltig": [
+    {
+      "stufe": "M12-WF4",
+      "flag": "use_wf4_warp_head",
+      "beschluss": "docs/reports/current/b3_objektivbeschluss_M12-WF4.json",
+      "messung": "docs/reports/current/b3_stufenmessung_M12-WF4.json",
+      "klasse": "modell_nie_ausgefuehrt",
+      "beleg": "DEFAULT_MODEL_SUBPATH models/wf4_warp_head/wf4_warp_head.onnx existierte nie; WF4WarpHead().is_available() == False; apply_wf4_warp_stage(Flag AN) == (None, False)",
+      "fussabdruck_max_rms": 0.0007859073333625735
+    },
+    {
+      "stufe": "M12-TPV2",
+      "flag": "use_tp_v2_phase",
+      "beschluss": "docs/reports/current/b3_objektivbeschluss_M12-TPV2.json",
+      "messung": "docs/reports/current/b3_stufenmessung_M12-TPV2.json",
+      "klasse": "seed_gewichte_untrainiert",
+      "beleg": "tp_v2_phase._PROJECT_ROOT zeigte auf backend/; DEFAULT_CHECKPOINT backend/models/tp_v2/tp_v2_phase_v1.pt fehlte; TPv2PhaseEstimator().source == 'seed'",
+      "fussabdruck_max_rms": 0.0006504640738223078
+    }
+  ],
+  "flags_bleiben_aus": {
+    "use_wf4_warp_head": false,
+    "use_tp_v2_phase": false
+  },
+  "hinweis": "Kein Flag-Flip. Eine Aktivierung ist erst nach gueltiger Neumessung ueber das §4-Verfahren (scripts/flag_freigabe.py) im trainingsfreien GPU-Fenster zulaessig."
+}

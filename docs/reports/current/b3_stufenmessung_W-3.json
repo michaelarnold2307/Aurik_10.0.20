@@ -1,0 +1,58 @@
+{
+  "stufe": "W-3",
+  "zeilen": [
+    {
+      "trial_id": "cassette_1980s_wow__w0",
+      "mos_an": 4.796,
+      "mos_aus": 4.796,
+      "last_an": 0.3979,
+      "last_aus": 0.3979
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w1",
+      "mos_an": 4.7955,
+      "mos_aus": 4.7951,
+      "last_an": 0.4846,
+      "last_aus": 0.4852
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w2",
+      "mos_an": 4.7925,
+      "mos_aus": 4.7925,
+      "last_an": 0.4577,
+      "last_aus": 0.4577
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w3",
+      "mos_an": 4.8333,
+      "mos_aus": 4.8337,
+      "last_an": 0.4943,
+      "last_aus": 0.4943
+    },
+    {
+      "trial_id": "reel_1940s_dropout__w4",
+      "mos_an": 4.9194,
+      "mos_aus": 4.9223,
+      "last_an": 0.2682,
+      "last_aus": 0.2611
+    },
+    {
+      "trial_id": "jazz_1950s_scratched__w5",
+      "mos_an": 4.9387,
+      "mos_aus": 4.9329,
+      "last_an": 0.1443,
+      "last_aus": 0.1882
+    }
+  ],
+  "never_worsen": true,
+  "vorteile": "2/6",
+  "p_wert": 0.6875,
+  "signifikant": false,
+  "defekt_fallbacks": 9,
+  "b1_sauber": false,
+  "pfad_wirksam": true,
+  "fussabdruck_max_rms": 0.03448667067963271,
+  "wirksam_probleme": [],
+  "messung_ungueltig": false,
+  "erfuellt": false
+}

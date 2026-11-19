@@ -1,0 +1,15 @@
+{
+  "allowedTools": [],
+  "assets": [],
+  "description": "\u201eAurik\" und das Aurik-Logo sind nicht-eingetragene Markenzeichen von Michael Arnold.",
+  "entry": "SKILL.md",
+  "id": "trademark",
+  "name": "TRADEMARK",
+  "priority": 0,
+  "triggers": {
+    "commands": [],
+    "fileTypes": [],
+    "promptPatterns": []
+  },
+  "version": "0.0.0"
+}

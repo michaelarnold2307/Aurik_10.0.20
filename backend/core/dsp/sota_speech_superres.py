@@ -1,0 +1,92 @@
+"""
+---
+modul_name: SotaSpeechSuperRes
+aufgabe: SOTA-Speech/Music-Super-Resolution (DiffWave, HiFi-GAN)
+ein_ausgabe_typen:
+    input: np.ndarray (Audio)
+    output: np.ndarray (Audio)
+staerken: Deep-Learning, SOTA, flexibel
+schwaechen: Modellabhängig, benötigt Modelle/Weights
+abhaengigkeiten: [numpy, onnxruntime]
+---
+"""
+
+import logging
+import os
+
+import numpy as np
+
+from backend.core.dsp._memory_budget_guard import check_budget
+
+logger = logging.getLogger(__name__)
+
+MODEL_PATH = "../../models/hifi_gan/hifi_gan.onnx"
+
+# §WP-1 (2026-10-25): Domänen-Deklaration — das Artefakt hat eine UNBELEGTE
+# Trainings-Domäne (§III.13 (copilot-instructions.md), D-K2-1): kein offizieller
+# Checkpoint (80 Mel-Bänder, 256×, 0,93 M Parameter — V1-Zeitplan widerlegt).
+# Musik-/Gesangs-Einsatz nur als §V6-Fallback mit Warnung + Begründung zulässig;
+# dieses Modul hat derzeit KEINE Produktions-Aufrufer (Register-Verifikation
+# 2026-10-07: `sota_speech_superres` und `vocoder_chain` ohne Aufrufer).
+
+
+class SotaSpeechSuperRes:
+    def __init__(self, use_diffwave=True, use_hifigan=True):
+        self.diffwave_session = None
+        self.hifigan_session = None
+        # DiffWave-ONNX laden (§III.9: Provider aus der Paritäts-Registry
+        # gpu_model_registry §v10.40c — DiffWave ist „rocm"-verifiziert (rel ≤ 1e-3,
+        # 313→134 ms). Pfad korrigiert auf Repo-Root models/ (alter Pfad
+        # backend/core/models/ existierte nie ⇒ DiffWave war still nie aktiv).
+        try:
+            import onnxruntime as ort
+
+            from backend.core.gpu_model_registry import get_onnx_providers
+
+            diffwave_path = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "../../../models/diffwave/diffwave_model.onnx")
+            )
+            if use_diffwave and os.path.exists(diffwave_path):
+                if check_budget("speech_superres_diffwave", 0.2):
+                    self.diffwave_session = ort.InferenceSession(
+                        diffwave_path, providers=get_onnx_providers(diffwave_path)
+                    )
+        except ImportError:
+            logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
+        # HiFi-GAN-ONNX laden (Registry-Verdict „cpu" — CPU schneller/gleich)
+        try:
+            import onnxruntime as ort
+
+            from backend.core.gpu_model_registry import get_onnx_providers
+
+            hifigan_path = MODEL_PATH
+            if use_hifigan and os.path.exists(hifigan_path):
+                if check_budget("speech_superres_hifigan", 0.15):
+                    logger.warning(
+                        "§V6 (copilot-instructions.md) HiFi-GAN hat eine unbelegte Trainings-Domäne "
+                        "(§III.13 (copilot-instructions.md), D-K2-1) — Einsatz nur als Fallback"
+                    )
+                    self.hifigan_session = ort.InferenceSession(
+                        hifigan_path, providers=get_onnx_providers(hifigan_path)
+                    )
+        except ImportError:
+            logger.debug("Stiller optionaler Ausnahmefall ignoriert", exc_info=True)
+
+    def super_resolve(self, audio: np.ndarray, sr: int) -> np.ndarray:
+        # Priorität: DiffWave > HiFi-GAN > Fallback
+        if self.diffwave_session is not None:
+            x = audio.astype(np.float32)
+            if x.ndim == 1:
+                x = x[None, :]
+            ort_inputs = {self.diffwave_session.get_inputs()[0].name: x}
+            out = self.diffwave_session.run(None, ort_inputs)[0]
+            return np.asarray(out.squeeze().astype(audio.dtype))  # type: ignore[no-any-return]
+        if self.hifigan_session is not None:
+            x = audio.astype(np.float32)
+            if x.ndim == 1:
+                x = x[None, :]
+            ort_inputs = {self.hifigan_session.get_inputs()[0].name: x}
+            out = self.hifigan_session.run(None, ort_inputs)[0]
+            return np.asarray(out.squeeze().astype(audio.dtype))  # type: ignore[no-any-return]
+        # Fallback: Identität
+        return audio

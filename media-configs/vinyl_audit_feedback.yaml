@@ -1,0 +1,24 @@
+medium: vinyl
+defects:
+  - crackle
+  - noise
+chain: default
+policy:
+  name: Vinyl Restoration
+  audit: true
+  quality:
+    hf_ratio: 0.78
+    min_transparency: 0.82
+    artefact_energy: 0.18
+    max_loudness: -14.0
+result:
+  passed: true
+  details: "Vinyl: Alle Qualitätsziele und Compliance-Anforderungen erfüllt."
+  timestamp: "2026-02-02T13:20:00Z"
+user_feedback:
+  rating: 5
+  comment: "Klangbild sehr natürlich, keine störenden Artefakte."
+benchmarks:
+  visqol: 4.7
+  dnsmos: 4.5
+  custom: "SNR=32dB"

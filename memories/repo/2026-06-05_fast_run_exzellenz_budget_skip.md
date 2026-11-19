@@ -1,0 +1,5 @@
+- Fast-Run-Ergebnisse ohne `no_rt_limit=True` können Stage 9 (ExzellenzDenker) überspringen.
+- Indikator im Log: "AurikDenker [9/10] Exzellenz übersprungen" + "Goals gemessen trotz Budget-Limit".
+- Konsequenz: Änderungen in `denker/exzellenz_denker.py` sind dann im Mess-JSON wirkungslos; Deltas bleiben identisch trotz Codeänderung.
+- Für wirksame A/B-Messung der Exzellenz-Guards: `get_aurik_denker().denke(..., no_rt_limit=True)` im Messscript nutzen.
+- Compare-Tool-Fallback aktiv halten: `vqi`/`final_hpi` aus `holistic_perceptual_gate` lesen, falls `final_vocal_metrics`/`summary` leer sind.

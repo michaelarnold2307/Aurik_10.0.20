@@ -1,0 +1,207 @@
+"""§P1-7 — m1b: Gezielte Stufe-2-Nachbehandlung hörbarer Restdefekte.
+
+Befund 2026-09-08: §v10.703 Defekt-Countdown 46 gefunden → 42 hörbar →
+3 behoben → 42 über Schwelle. Die m1b-Queue wurde nur in die GUI-KMV
+gestellt; im Headless-Flow konsumierte niemand sie. _run_m1b_targeted_retry()
+führt die sicher zugeordneten Retry-Phasen intern einmalig aus.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from backend.core.defect_audibility_gate import DEFECT_RETRY_PHASE_MAP
+from backend.core.unified_restorer_v3 import UnifiedRestorerV3
+
+# §0a (copilot-instructions.md): im Restoration-Modus verbotene Phasen.
+_FORBIDDEN_PHASES = {"phase_21_exciter", "phase_35_multiband_compression", "phase_42_vocal_enhancement"}
+
+
+class _FakeRestorer(UnifiedRestorerV3):
+    def __init__(self) -> None:
+        self._restoration_context: dict = {}
+        self._m1b_pass_active = False
+        self._graceful_stop_event = None
+        self._pipeline_calls: list[dict] = []
+        self._progress_events: list[tuple] = []
+
+    def _execute_pipeline(self, *args, **kwargs) -> tuple:
+        self._pipeline_calls.append(kwargs)
+        sel = kwargs.get("selected_phases") or []
+        # §P1-9: Pipeline ruft den Progress-Callback mit 3 Argumenten auf
+        _pc = kwargs.get("progress_callback")
+        if _pc is not None:
+            try:
+                _pc(50.0, "phase_test", 1.5)
+            except TypeError as _te:
+                self._progress_events.append(("TypeError", str(_te)))
+                return np.ones(10, dtype=np.float32), list(sel), [], []
+        if not sel:
+            return np.zeros(10, dtype=np.float32), [], [], []
+        return np.ones(10, dtype=np.float32), list(sel), [], []
+
+
+def _call(r: _FakeRestorer, types: list[str] | None) -> np.ndarray | None:
+    return r._run_m1b_targeted_retry(
+        np.zeros(10, dtype=np.float32),
+        48000,
+        "vinyl",
+        None,
+        types,
+        None,
+        [],
+        {},
+        None,
+        {},
+        None,
+        None,
+        None,
+        0.7,
+    )
+
+
+def test_retry_runs_mapped_phases_only() -> None:
+    r = _FakeRestorer()
+    out = _call(r, ["hum", "clicks", "hiss"])
+    assert out is not None
+    assert list(r._pipeline_calls[0]["selected_phases"]) == [
+        "phase_02_hum_removal",
+        "phase_01_click_removal",
+        "phase_29_tape_hiss_reduction",
+    ]
+    # Chunk-Verschiebung wurde für den song-globalen Pass entfernt
+    assert "chunk_start_sample" not in r._restoration_context
+    assert r._m1b_pass_active is False  # finally hat zurückgesetzt
+
+
+def test_progress_adapter_matches_gui_signature() -> None:
+    """§P1-9: m1b reicht den GUI-Callback über den 4-arg-Adapter durch —
+    eine strikte 4-arg-GUI-Signatur darf keine TypeError erzeugen."""
+    r = _FakeRestorer()
+    seen: list[tuple] = []
+
+    def _strict_gui_cb(pct: float, msg: str, elapsed_s: float, metrics) -> None:
+        seen.append((pct, msg, elapsed_s, metrics))
+
+    out = r._run_m1b_targeted_retry(
+        np.zeros(10, dtype=np.float32),
+        48000,
+        "vinyl",
+        None,
+        ["hum"],
+        None,
+        [],
+        {},
+        None,
+        {},
+        None,
+        None,
+        None,
+        0.7,
+        progress_callback=_strict_gui_cb,
+    )
+    assert out is not None
+    assert r._progress_events == []  # kein TypeError in der Pipeline
+    assert seen == [(50.0, "phase_test", 1.5, None)]
+
+
+def test_forbidden_phases_excluded() -> None:
+    """§0a: Verbotene Phasen dürfen nie über die Retry-Map laufen."""
+    r = _FakeRestorer()
+    out = _call(r, ["hum", "reverb_excess"])
+    assert out is not None
+    assert "phase_21_exciter" not in r._pipeline_calls[0]["selected_phases"]
+    assert list(r._pipeline_calls[0]["selected_phases"]) == [
+        "phase_02_hum_removal",
+        "phase_49_advanced_dereverb",
+    ]
+
+
+def test_unmapped_types_do_not_run() -> None:
+    r = _FakeRestorer()
+    out = _call(r, ["bandwidth_loss"])  # Physical-Cap, keine Phase
+    assert out is None
+    assert r._pipeline_calls == []
+
+
+def test_reentry_guard() -> None:
+    r = _FakeRestorer()
+    r._m1b_pass_active = True
+    out = _call(r, ["hum"])
+    assert out is None
+    assert r._pipeline_calls == []
+
+
+def test_no_execution_returns_none() -> None:
+    r = _FakeRestorer()
+
+    def _noop(*args, **kwargs):  # Pipeline führt nichts aus
+        return np.zeros(10, dtype=np.float32), [], [], []
+
+    r._execute_pipeline = _noop  # type: ignore[method-assign]
+    out = _call(r, ["hum"])
+    assert out is None
+
+
+def test_chunk_shift_restored_after_pass() -> None:
+    r = _FakeRestorer()
+    r._restoration_context["chunk_start_sample"] = 48000
+    _call(r, ["hum"])
+    assert r._restoration_context["chunk_start_sample"] == 48000
+
+
+def test_pipeline_exception_keeps_original_and_resets_guard() -> None:
+    """§V6 (copilot-instructions.md): Ausnahme in der Retry-Pipeline → None
+    (kein Audio-Ersatz), Warnung mit Begründung; der Re-Entry-Guard wird im
+    finally zurückgesetzt — ein späterer Pass bleibt möglich."""
+    r = _FakeRestorer()
+
+    def _boom(*args: object, **kwargs: object) -> tuple:
+        raise RuntimeError("kaputt")
+
+    r._execute_pipeline = _boom  # type: ignore[method-assign]
+    out = _call(r, ["hum"])
+    assert out is None
+    assert r._m1b_pass_active is False
+
+
+def test_retry_selection_is_deterministic_and_deduplicated() -> None:
+    """§G5 (copilot-instructions.md): gleiche Typ-Eingabe → identische
+    Phasen-Liste (stabile Reihenfolge, keine Set-Zufälligkeit); Mehrfach-
+    Zuordnungen auf dieselbe Phase werden dedupliziert (§V7 (copilot-instructions.md))."""
+    r1, r2 = _FakeRestorer(), _FakeRestorer()
+    _call(r1, ["hum", "clicks", "hum_buzz", "hiss", "clicks"])
+    _call(r2, ["hum", "clicks", "hum_buzz", "hiss", "clicks"])
+    p1 = list(r1._pipeline_calls[0]["selected_phases"])
+    p2 = list(r2._pipeline_calls[0]["selected_phases"])
+    assert p1 == p2
+    assert p1 == ["phase_02_hum_removal", "phase_01_click_removal", "phase_29_tape_hiss_reduction"]
+
+
+def test_retry_map_excludes_forbidden_phases() -> None:
+    """§0a (copilot-instructions.md): DEFECT_RETRY_PHASE_MAP ordnet nie eine
+    Restoration-verbotene Phase (21/35/42) zu — Map-Ebene."""
+    assert set(DEFECT_RETRY_PHASE_MAP.values()).isdisjoint(_FORBIDDEN_PHASES)
+
+
+def test_runtime_filter_drops_forbidden_phase_from_broken_map(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """§0a (copilot-instructions.md): selbst bei fehlerhafter Map-Zuordnung wird
+    die verbotene Phase vor der Ausführung gefiltert (verteidigender Filter in
+    _run_m1b_targeted_retry) — nur die erlaubte Phase läuft."""
+    monkeypatch.setitem(DEFECT_RETRY_PHASE_MAP, "gift", "phase_21_exciter")
+    r = _FakeRestorer()
+    out = _call(r, ["gift", "hum"])
+    assert out is not None
+    assert list(r._pipeline_calls[0]["selected_phases"]) == ["phase_02_hum_removal"]
+
+
+def test_empty_or_unmappable_types_are_noop() -> None:
+    """Leere/None/unbekannte Typ-Listen erzeugen keine Pipeline-Aktion → None."""
+    for types in ([], None, ["", "unbekannter_typ"]):
+        r = _FakeRestorer()
+        out = _call(r, types)
+        assert out is None
+        assert r._pipeline_calls == []

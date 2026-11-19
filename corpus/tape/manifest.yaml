@@ -1,0 +1,748 @@
+corpus_version: 1.0.0
+material: tape
+description: 'Tape-Untercorpus: Bestands-Einträge + 29 deterministische Synthetik-Proben
+  (D-K0-8, SOTA-M18, Seed 42). era_year ist die SIMULIERTE Ära (keine echte Provenienz,
+  Lizenz-unbedenklich).'
+entries:
+- checksum_sha256: a7d79ff68b176bf8c21fc4e31a52f338be82662a4170b4ec05f4454ce4684954
+  defect_types: []
+  duration_s: 10.0
+  era_year: 1975
+  file: clean/tape_blues_1970s_clean.wav
+  genre: blues
+  license: CC0 (generated)
+  material: tape
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+- checksum_sha256: f0b0030397ff53bfa22d4c42ffe6bb89089bddd19c532d8a70320b1c8ca04ed0
+  defect_description: Hiss -30dB + Dropouts
+  defect_types:
+  - hiss
+  - dropout
+  duration_s: 10.0
+  era_year: 1975
+  file: damaged/tape_blues_1970s_hiss_dropout.wav
+  genre: blues
+  license: CC0 (generated)
+  material: tape
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  chain:
+  - tape
+- checksum_sha256: 9968f59aabd84525fe8f091f3de1d6859c77cce29e768a8b6a68f9525300d7b5
+  defect_description: Wow/Flutter 0.3%
+  defect_types: []
+  duration_s: 10.0
+  era_year: 1975
+  file: damaged/tape_blues_1970s_wow.wav
+  genre: blues
+  license: CC0 (generated)
+  material: tape
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  chain:
+  - tape
+- file: clean/tape_country_1960s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1965
+  genre: country
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: e744d7b642400bde3bc424117cc265b47779743122aad23ef0b873dc2e81fb2a
+  defect_types: []
+- file: damaged/tape_country_1960s_hiss.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1965
+  genre: country
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 40e39792062670ccca0f41a2186f7c8ea9fabaae4644aa9e675e86d2b6baea50
+  defect_types:
+  - hiss
+  chain:
+  - tape
+- file: damaged/tape_country_1960s_dropouts.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1965
+  genre: country
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 5c7455fd599bffd16c993f2172ac605fc53d819d3b57d5fed2cd0399c9143ebc
+  defect_types:
+  - dropouts
+  chain:
+  - tape
+- file: clean/tape_folk_1970s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1973
+  genre: folk
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: bbdf6c6682fce7b55de0d82532c8dc39fc3e6675189c440e99ac27e98d62058b
+  defect_types: []
+- file: damaged/tape_folk_1970s_hiss_hum.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1973
+  genre: folk
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 0e2ffba58396846a10b0d7ad6093d0be2e350988d7af6806d6d7df2b0fbb4374
+  defect_types:
+  - hiss
+  - hum
+  chain:
+  - tape
+- file: damaged/tape_folk_1970s_wow_flutter.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1973
+  genre: folk
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 4e156b5933956a877bf5483e05112fa7e5806278a902580252b637e5d6e36573
+  defect_types:
+  - wow
+  - flutter
+  chain:
+  - tape
+- file: clean/tape_rock_1980s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1982
+  genre: rock
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: f170e4be898fd50b9d3cb6834c090fce33905d99317d9ace52db93ecb2347d08
+  defect_types: []
+- file: damaged/tape_rock_1980s_hiss.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1982
+  genre: rock
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: f04d9079d51fca21337665f6364a09b6cc06f67fc127b23d2dd3481d070b9a8b
+  defect_types:
+  - hiss
+  chain:
+  - tape
+- file: damaged/tape_rock_1980s_dropouts_hiss.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1982
+  genre: rock
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: f47cc6c0883e4c162cad88e2ddb5e8204eaa8a0f13884dcdc232e6006b6c59b6
+  defect_types:
+  - dropouts
+  - hiss
+  chain:
+  - tape
+- file: clean/tape_jazz_1950s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1958
+  genre: jazz
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 77737ced04c52b2a05f6e38b871fadfa2228d1083d926204f5871c990e251426
+  defect_types: []
+- file: damaged/tape_jazz_1950s_hiss_hum.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1958
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 92e9b896fa0e7e6a2eea9649a01e6b84cd6bdd446f7a59766079c9ce2f9230a5
+  defect_types:
+  - hiss
+  - hum
+  chain:
+  - tape
+- file: damaged/tape_jazz_1950s_wow_flutter.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1958
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: e3e08fb1e4caa6b460469bad4862a3c6a6f354a1d46d8664cb085a78b882a566
+  defect_types:
+  - wow
+  - flutter
+  chain:
+  - tape
+- file: clean/tape_classical_1970s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1976
+  genre: classical
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 930cae1f19ae6b995c8e68af14befddd971639593b15075d5d0194007e22da64
+  defect_types: []
+- file: damaged/tape_classical_1970s_hiss.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1976
+  genre: classical
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: a8fea5f46c244dd66d10342d40242c15b65a6599e467d8a8cfa33be8d6bc6bf2
+  defect_types:
+  - hiss
+  chain:
+  - tape
+- file: damaged/tape_classical_1970s_dropouts_hum.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1976
+  genre: classical
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: b118cb0acad02f7564f6be4f0b587e09e7b16cf5ab717713a2a0a2ff30a4f194
+  defect_types:
+  - dropouts
+  - hum
+  chain:
+  - tape
+- file: damaged/tape_blues_1970s_hiss_dropout_chain_tape_reel_tape.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - chain_artifacts
+  license: CC0 (generated)
+  source: Synthetic (Aurik Corpus Generator) — chain synthesis (deterministic)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  checksum_sha256: 3af4a10732aeeb37c01d4f1088b41b17a12b33182e6f5444e7097dbfb35cb28b
+  chain:
+  - tape
+  - reel_tape
+- file: damaged/tape_blues_1970s_hiss_dropout_chain_tape_cassette_mp3_low.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - chain_artifacts
+  license: CC0 (generated)
+  source: Synthetic (Aurik Corpus Generator) — chain synthesis (deterministic)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  checksum_sha256: c598c6fbafb7b415fd93453d103bdd0e5143a16eb0ec659e387a5ec7ffa84ef6
+  chain:
+  - tape
+  - cassette
+  - mp3_low
+- file: damaged/tape_2011_cartepostal1diewurstbruckeinistanbul.mp3
+  duration_s: 65.567
+  sample_rate: 44100
+  material: tape
+  era_year: 2011
+  genre: carte postal
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  defect_types:
+  - wow
+  - flutter
+  - hiss
+  source_attribution: Blenno Die Wurstbrucke — carte postal1 Die wurstbrucke in istanbul
+    (Internet Archive, CartePostal1DieWurstbruckeInIstanbul)
+  license: CC0
+  source_url: https://archive.org/download/CartePostal1DieWurstbruckeInIstanbul/ZOOM0015.MP3
+  checksum_sha256: db890c243995a8b4656b28d8ccecbe3cf9eb7ea0c339217a701d0e09beaa2e3c
+- file: damaged/tape_synth_000_A Classic Education - Nigh.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 02a1e1e4c4a6233ed0ca41f6e949b3bc4a70e4b7889b39cab9f28c71e47f5611
+  synthetic: true
+- file: damaged/tape_synth_001_ANiMAL - Clinic A.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 0a8434c08bb164f910ff2260f81ab94d6ca3fee820ad4da2efe9f8e9fdb06094
+  synthetic: true
+- file: damaged/tape_synth_002_ANiMAL - Easy Tiger.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: d95056c61adc70d23a33d46d439df1d5ebeda036643047bf1e92bf8e70b218a9
+  synthetic: true
+- file: damaged/tape_synth_003_ANiMAL - Rockshow.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f22eba640db98c2174d0aede1c311c719dc4240908fd9e99c0be5dd70115b162
+  synthetic: true
+- file: damaged/tape_synth_004_Actions - Devil's Words.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: e92e6be3db3b802323d37aa0e63da223ef1159db0a17d17478cef565cf3bf252
+  synthetic: true
+- file: damaged/tape_synth_005_Actions - One Minute Smile.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 2d6bdb0770a56cf6eccae5704605718e352256af384fcb91f3a71c53841272cf
+  synthetic: true
+- file: damaged/tape_synth_006_Actions - South Of The Wat.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 1268ec877fe7cc987584248f87d48852a2abf2ca61ead1f4c204d5a820b9b341
+  synthetic: true
+- file: damaged/tape_synth_007_Aimee Norwich - Child.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f9b22c92084355e7bc89236929efa4d8c44b9e69d639210cde312217491e11fe
+  synthetic: true
+- file: damaged/tape_synth_008_Alexander Ross - Goodbye B.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5a87f1e151faba542dd49a1e1640b62d2972d19850ff49fefbdb837cd92e9a08
+  synthetic: true
+- file: damaged/tape_synth_009_Alexander Ross - Velvet Cu.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 6d3834333be399c7fa69d8415f0488a06fdd6d4c96542acbc95aaee8fa142de6
+  synthetic: true
+- file: damaged/tape_synth_010_Angela Thomas Wade - Milk .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: ae5e03f8a981af4d39c18cecc78e6a050e72ba7863afd6eff95b4bf4b8e776e1
+  synthetic: true
+- file: damaged/tape_synth_011_Atlantis Bound - It Was My.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: e2c6678a57cfa7d277a3f8c04037e986261008140dd009895a78ba4299e8ea11
+  synthetic: true
+- file: damaged/tape_synth_012_Auctioneer - Our Future Fa.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: d65dec43fea6545cb3bc37a71594d4354804b20fea0468c4dfc113f6a562213f
+  synthetic: true
+- file: damaged/tape_synth_013_AvaLuna - Waterduct.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 79f0dc2c24032109802435eef7c604d37078711521c1b77bcf8f1d73ecb5c8af
+  synthetic: true
+- file: damaged/tape_synth_014_BigTroubles - Phantom.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 12aeb90e36ebdcf5d1342d206f5eb3c3deccd7336a02696d7b165bd6375a443f
+  synthetic: true
+- file: damaged/tape_synth_015_Bill Chudziak - Children O.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f5d041e58de21acbdaa4354694e29094250a2cb0bbd55070e3d1b3d9fbfb68a0
+  synthetic: true
+- file: damaged/tape_synth_016_Black Bloc - If You Want S.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 1fe20d52afe4e539ef700b253989e1cedb74ff22f750ab8f5979a913bee29b73
+  synthetic: true
+- file: damaged/tape_synth_017_Celestial Shore - Die For .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f913c3809c70cc87b6b92c3ede1938b3e1a5aa7ee98d2bb539d83babbae3f943
+  synthetic: true
+- file: damaged/tape_synth_018_Chris Durban - Celebrate.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: fcd10c5b1b150e9b148b861e6d7862a44250f7d2d14b54e5dc60864fab8a0de8
+  synthetic: true
+- file: damaged/tape_synth_019_Clara Berry And Wooldog - .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f1ed25e797696319bc5a59c9298b543c229db6356ef4a7a2efd6071ffe44d1cc
+  synthetic: true
+- file: damaged/tape_synth_020_Clara Berry And Wooldog - .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 1c0680b52226aed4d682b3001ee8646ca15575f770deddb1de98ef3349c4e1b0
+  synthetic: true
+- file: damaged/tape_synth_021_Clara Berry And Wooldog - .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 0e4aa2ccc3f5fe95ac4b5ab4280178ba83d336a1ffe0187d7ab7c6ef2a2ffada
+  synthetic: true
+- file: damaged/tape_synth_022_Cnoc An Tursa - Bannockbur.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: b058ce86628977b7e70695bf8479f6e5398fb4cd503d9be707517e1bb5d3986b
+  synthetic: true
+- file: damaged/tape_synth_023_Creepoid - OldTree.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 75e3f569f4188fb099b5411def97923f58438bbac54af642cc18c05cc623ca62
+  synthetic: true
+- file: damaged/tape_synth_024_Dark Ride - Burning Bridge.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a1dd9ae4e8e7a9fdd2ccd3e25d4591b4b8b13bb1a40ec01448930c05c6499d41
+  synthetic: true
+- file: damaged/tape_synth_025_Dreamers Of The Ghetto - H.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 23fc2d7d578da988bc81512919e464c170df236d98fc15ab139f4bdbdaaa58b7
+  synthetic: true
+- file: damaged/tape_synth_026_Drumtracks - Ghost Bitch.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 930f9cf5e6fee796427d8936a508d3930604bf42cf681882edd4de197e1450b9
+  synthetic: true
+- file: damaged/tape_synth_027_Faces On Film - Waiting Fo.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a18426c1b71b7188cf67d960a751be2c27fc3affd4586c1c22390d676edfd9dd
+  synthetic: true
+- file: damaged/tape_synth_028_Fergessen - Back From The .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: tape
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - hiss
+  - bandlimit
+  source: Synthetic (Aurik Corpus Generator, tape recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: c10480ff2e78b14cd8f4a217158bd882155714552ba4130f3fb540ed30767908
+  synthetic: true

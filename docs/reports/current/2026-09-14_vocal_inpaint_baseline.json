@@ -1,0 +1,213 @@
+{
+  "seed": 42,
+  "gap_ms": 300.0,
+  "tracks": [
+    {
+      "track": "BKS - Bulldozer",
+      "gaps": [
+        {
+          "pos_s": 1.65,
+          "sdr_dsp_db": -0.95,
+          "sdr_diffwave_db": -1.11,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": 0.04,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -0.95,
+          "delta_diffwave_db": -1.11,
+          "dsp_s": 1.45,
+          "diffwave_s": 1.13
+        },
+        {
+          "pos_s": 14.35,
+          "sdr_dsp_db": -2.5,
+          "sdr_diffwave_db": -0.74,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": -0.02,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -2.5,
+          "delta_diffwave_db": -0.74,
+          "dsp_s": 1.24,
+          "diffwave_s": 0.29
+        },
+        {
+          "pos_s": 18.95,
+          "sdr_dsp_db": -7.2,
+          "sdr_diffwave_db": -2.99,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": -0.09,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -7.2,
+          "delta_diffwave_db": -2.99,
+          "dsp_s": 0.83,
+          "diffwave_s": 0.29
+        },
+        {
+          "pos_s": 23.55,
+          "sdr_dsp_db": -3.82,
+          "sdr_diffwave_db": -0.94,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": 0.03,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -3.82,
+          "delta_diffwave_db": -0.94,
+          "dsp_s": 2.03,
+          "diffwave_s": 0.24
+        }
+      ]
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "gaps": [
+        {
+          "pos_s": 2.55,
+          "sdr_dsp_db": -5.0,
+          "sdr_diffwave_db": -3.35,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": 0.06,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -5.0,
+          "delta_diffwave_db": -3.35,
+          "dsp_s": 1.53,
+          "diffwave_s": 0.34
+        },
+        {
+          "pos_s": 13.15,
+          "sdr_dsp_db": -5.66,
+          "sdr_diffwave_db": -3.69,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": -0.12,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -5.66,
+          "delta_diffwave_db": -3.69,
+          "dsp_s": 1.27,
+          "diffwave_s": 0.3
+        },
+        {
+          "pos_s": 20.15,
+          "sdr_dsp_db": -3.91,
+          "sdr_diffwave_db": -3.16,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": 0.07,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -3.91,
+          "delta_diffwave_db": -3.16,
+          "dsp_s": 2.03,
+          "diffwave_s": 0.31
+        },
+        {
+          "pos_s": 23.05,
+          "sdr_dsp_db": -2.59,
+          "sdr_diffwave_db": -0.88,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": 0.0,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -2.59,
+          "delta_diffwave_db": -0.88,
+          "dsp_s": 0.84,
+          "diffwave_s": 0.29
+        }
+      ]
+    },
+    {
+      "track": "Speak Softly - Broken Man",
+      "gaps": [
+        {
+          "pos_s": 1.95,
+          "sdr_dsp_db": -2.68,
+          "sdr_diffwave_db": -1.6,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": -0.11,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -2.68,
+          "delta_diffwave_db": -1.6,
+          "dsp_s": 0.86,
+          "diffwave_s": 0.27
+        },
+        {
+          "pos_s": 13.15,
+          "sdr_dsp_db": -2.22,
+          "sdr_diffwave_db": -1.14,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": 0.04,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -2.22,
+          "delta_diffwave_db": -1.14,
+          "dsp_s": 0.93,
+          "diffwave_s": 0.24
+        },
+        {
+          "pos_s": 13.25,
+          "sdr_dsp_db": -4.03,
+          "sdr_diffwave_db": -1.08,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": -0.01,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -4.03,
+          "delta_diffwave_db": -1.08,
+          "dsp_s": 1.24,
+          "diffwave_s": 0.29
+        },
+        {
+          "pos_s": 19.95,
+          "sdr_dsp_db": -3.38,
+          "sdr_diffwave_db": -0.59,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": 0.13,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -3.38,
+          "delta_diffwave_db": -0.59,
+          "dsp_s": 0.76,
+          "diffwave_s": 0.29
+        },
+        {
+          "pos_s": 22.35,
+          "sdr_dsp_db": -0.99,
+          "sdr_diffwave_db": -0.62,
+          "sdr_silence_db": 0.0,
+          "sdr_cqtdiff_db": 0.02,
+          "sdr_consistency_db": -Infinity,
+          "sdr_dac_db": -Infinity,
+          "sdr_gacela_db": -Infinity,
+          "delta_dsp_db": -0.99,
+          "delta_diffwave_db": -0.62,
+          "dsp_s": 1.47,
+          "diffwave_s": 0.3
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "audio_ldm2_zero_shot": "entfällt — plugins/audiolm2_plugin.py ist ein Dateisystem-Artefakt (listdir ohne stat)",
+    "dsp_mean_delta_vs_silence_db": -3.458214645066474,
+    "dsp_min_delta_vs_silence_db": -7.20474988179093,
+    "dsp_better_than_silence_always": false,
+    "diffwave_mean_delta_vs_silence_db": -1.684123133696256,
+    "diffwave_min_delta_vs_silence_db": -3.6887337449682303,
+    "diffwave_better_than_silence_always": false,
+    "diffwave_minus_dsp_mean_db": 1.774091511370217
+  }
+}

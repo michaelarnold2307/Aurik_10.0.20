@@ -1,0 +1,179 @@
+# Medium-Band (Tape) Pipeline Konfiguration (Stereo, Offline)
+
+# Analyse-Settings (empfohlene Defaults)
+analysis:
+  samplerate_hz: 48000  # oder 44100
+  segment_length_sec: 2.0
+  overlap_sec: 0.5
+  decision_smoothing_sec: 10.0
+  stft:
+    window: 2048
+    hop: 256
+    window_fn: hann
+  stft_hf:
+    window: 4096
+    hop: 512
+    window_fn: hann
+  cqt:
+    bins_per_octave: 36
+    fmin_hz: 55
+
+
+segment:
+  length_sec: 2.0
+  overlap_sec: 0.5
+  smoothing_horizon_sec: 10.0
+  max_trials_per_issue: 3
+  max_total_trials_per_segment: 14
+
+budgets:
+  global:
+    artifact: 0.15
+    identity: 0.10
+    temporal_change: 0.25
+    spectral_change: 0.25
+    noise_change: 0.20
+    stereo_change: 0.10
+  segment:
+    artifact: 0.15
+    identity: 0.10
+    temporal_change: 0.25
+    spectral_change: 0.25
+    noise_change: 0.20
+    stereo_change: 0.10
+
+pipeline:
+  - wow_flutter
+  - azimuth_phase
+  - dropout_repair
+  - declip_deharsh_sibilance
+  - hum
+  - denoise
+  - tonal_finish
+  - stereo_guard
+
+gates:
+  G0_Safety:
+    true_peak_limit_db: -1.0
+    allow_dc_drift: false
+  G1_ProcessingSignature:
+    allow_musical_noise: false
+    allow_pumping: false
+    allow_transient_smear: false
+    allow_chorus_modulation: false
+  G2_Identity:
+    allow_pitch_shift: false
+    allow_vibrato_loss: false
+    allow_formant_shift: false
+  G3_HF_Coherence:
+    allow_hf_phasiness: false
+    allow_hf_sparkle: false
+  G4_StereoPhase:
+    allow_mono_fold_down_loss: false
+    allow_coherence_loss: false
+
+trial_profiles:
+  wow_flutter:
+    wow_band_hz: [0.1, 2.0]
+    flutter_band_hz: [4.0, 20.0]
+    vibrato_band_hz: [4.5, 7.5]
+    wow_strength: 0.35
+    flutter_strength: 0.25
+    wow_strength_high: 0.55
+    flutter_strength_high: 0.40
+    e_wow_norm_low: 0.010
+    e_wow_norm_high: 0.025
+    e_flutter_norm_low: 0.006
+    e_flutter_norm_high: 0.015
+    corr_lr_mod_commit: 0.65
+    vibrato_protect_ratio: 0.45
+    vibrato_peak_prominence_db: 6.0
+    min_anchor_gain: 0.020
+    chorus_risk_delta_max: 0.0
+  dropout_repair:
+    hf_band_hz: [4000, 12000]
+    mid_band_hz: [300, 3000]
+    hf_drop_db_trigger: -6.0
+    hf_drop_db_strong: -10.0
+    hf_drop_min_dur_ms: 25
+    hf_drop_strong_min_dur_ms: 20
+    rms_drop_db_fullband: -6.0
+    rms_drop_db_hfonly: -3.0
+    channel_asym_db: 4.0
+    wet: 1.0
+    mode: spectral
+    min_anchor_gain: 0.010
+    tonal_islands_delta_max: 0.0
+  azimuth_phase:
+    hf_coherence_band_hz: [2000, 12000]
+    msc_hf_suspect: 0.55
+    msc_hf_strong: 0.40
+    phase_slope_suspect: 0.15
+    phase_slope_strong: 0.30
+    min_msc_hf_gain: 0.08
+    mono_fold_error_max: 0.0
+    hf_phasiness_score_delta_max: 0.0
+    trial_strength: 0.35
+    trial_strength_strong: 0.55
+    smoothing_sec: 10.0
+  declip_deharsh_sibilance:
+    sibilance_band_hz: [5000, 10000]
+    sibilance_peak_median_suspect: 9.0
+    sibilance_peak_median_strong: 12.0
+    resonance_band_hz: [2000, 8000]
+    resonance_peak_db: 8.0
+    resonance_suppressor_strength: 0.20
+    deesser_wet: 0.18
+    deesser_wet_max: 0.28
+    declip_wet: 0.25
+    declip_wet_max: 0.45
+    sibilant_clip_prob: 0.70
+    sibilant_clip_repair_wet: 0.30
+    min_anchor_gain: 0.010
+    hf_energy_drop_max_db: -2.5
+    attack_sharpness_drop_max_pct: 5
+  hum:
+    hum_freq_hz: 50
+    harmonics: [100, 150, 200]
+    hum_line_snr_suspect: 12.0
+    hum_line_snr_strong: 18.0
+    notch_depth_db: -12.0
+    harmonics_depth_db: -8.0
+    min_hum_snr_reduction: 10.0
+    midband_energy_delta_min_db: -1.5
+    tracking: true
+  denoise:
+    noise_floor_db_a: -52.0
+    noise_masking_index: 0.60
+    noise_to_midband_ratio_db: -22.0
+    wet: 0.18
+    wet_nonstationary: 0.12
+    wet_max: 0.30
+    musical_noise_score_max: 0.20
+    hf_transient_energy_drop_max_db: -1.5
+    attack_sharpness_drop_max_pct: 5
+    min_anchor_gain: 0.015
+  tonal_finish:
+    tilt_eq_gain_db: 1.0
+    dyn_eq_active: true
+  stereo_guard:
+    active: true
+    mono_fold_error_delta_max: 0.0
+    hf_phase_variance_delta_max: 0.0
+    msc_hf_delta_min: -0.03
+
+# Globale Commit-Policy
+commit_policy:
+  min_anchor_gain_general: 0.010
+  min_anchor_gain_wowflutter: 0.020
+  min_anchor_gain_denoise: 0.015
+  risk_penalty_weight: 2.0
+  change_penalty_weight: 0.8
+  max_trials_per_issue: 3
+  max_trials_per_segment: 14
+  max_trials_per_track: 8000
+
+utility:
+  lambda_risk: 2.0
+  mu_change: 1.0
+  threshold: 0.05

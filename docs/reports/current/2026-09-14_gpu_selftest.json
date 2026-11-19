@@ -1,0 +1,23 @@
+{
+  "date": "2026-09-14",
+  "checks": {
+    "backend": "rocm",
+    "torch_gpu_ready": true,
+    "ort_provider_chain": ["CPUExecutionProvider"],
+    "ort_chain_has_gpu": false,
+    "muq_mos": {
+      "available": true,
+      "mos": 1.0
+    },
+    "diffwave_torch": {
+      "finetuned_ckpt": false,
+      "base_ckpt": true,
+      "device": "cuda"
+    },
+    "cqtdiff_steps": {
+      "cpu_steps": 3,
+      "gpu_steps": 35,
+      "note": "35 Schritte aktiv, sobald TorchScript-Modell auf GPU lädt (_device != cpu)"
+    }
+  }
+}

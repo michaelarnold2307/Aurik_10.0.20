@@ -1,0 +1,250 @@
+"""Unit-Tests für plugins/muq_plugin.py (§MuQ-SOTA Voranalyse, 2025).
+
+Ohne Checkpoint laufen die Fallback-Tests (kein Crash, None-Rückgaben, §V6 (copilot-instructions.md)).
+Mit lokalem MuQ-Checkpoint (OpenMuQ/MuQ-large-msd-iter im HF-Cache) werden
+Determinismus (§G5 (GEBOTE.md)), Shape und Wertebereiche gegen das echte Modell geprüft.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+import plugins.muq_plugin as mq
+
+# ─── Fallback-Pfad (läuft immer, auch in CI ohne Modell) ─────────────────────
+
+
+def test_fallback_without_checkpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ohne Checkpoint liefern alle Schätzer None — kein stiller Crash (§V6 (copilot-instructions.md))."""
+    monkeypatch.setattr(mq, "_find_checkpoint_dir", lambda: None)
+    monkeypatch.setattr(mq, "get_muq_model", lambda: None)
+
+    assert mq.is_available() is False
+    silence = np.zeros(48000, dtype=np.float32)
+    assert mq.extract_embedding(silence, 48000) is None
+    assert mq.estimate_quality_witness(silence, 48000) is None
+    assert mq.estimate_muq_mos(silence, 48000) is None
+
+
+@pytest.mark.parametrize(
+    ("sim", "expected"),
+    [
+        (0.0, 0.0),
+        (0.25, 25.0),
+        (0.5, 50.0),
+        (0.75, 75.0),
+        (1.0, 100.0),
+    ],
+)
+def test_sim_to_witness_mapping(sim: float, expected: float) -> None:
+    """Witness-Mapping ist linear über [0,1] und an den Rändern gesättigt."""
+    assert mq._sim_to_witness(sim) == pytest.approx(expected, abs=1e-6)
+
+
+def test_center_window_deterministic() -> None:
+    """Zentrumsfenster ist deterministisch und korrekt positioniert."""
+    x = np.arange(100, dtype=np.float32)
+    w1 = mq._center_window(x, 2)  # n_max = 20 s × 2 Hz = 40 Samples
+    w2 = mq._center_window(x, 2)
+    assert len(w1) == 40
+    assert np.array_equal(w1, w2)
+    assert w1[0] == 30  # Mitte (50) − 20
+
+
+def test_estimator_blends_muq_mos(monkeypatch: pytest.MonkeyPatch) -> None:
+    """RestorabilityEstimator blendet den gelernten MOS 50/50 (§MuQ-SOTA)."""
+    from backend.core.restorability_estimator import RestorabilityEstimator
+
+    est = RestorabilityEstimator()
+    audio = np.random.RandomState(1).randn(48000).astype(np.float32) * 0.1
+
+    monkeypatch.setattr(mq, "estimate_quality_witness", lambda a, sr: 80.0)
+    monkeypatch.setattr(mq, "estimate_muq_mos", lambda a, sr: 4.2)
+
+    res = est.estimate(audio, 48000, material="vinyl")
+
+    dsp_mos = est._score_to_mos(res.restorability_score)
+    assert res.muq_mos == pytest.approx(4.2)
+    assert res.muq_quality_witness == pytest.approx(80.0)
+    assert res.predicted_mos == pytest.approx(round(np.clip(0.5 * dsp_mos + 2.1, 1.0, 5.0), 2))
+    assert res.as_dict()["muq_mos"] == pytest.approx(4.2)
+
+
+def test_estimator_without_muq_keeps_dsp_mos(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ohne MuQ bleibt predicted_mos die reine DSP-Schätzung (Rückwärtskompatibilität)."""
+    from backend.core.restorability_estimator import RestorabilityEstimator
+
+    est = RestorabilityEstimator()
+    audio = np.random.RandomState(2).randn(48000).astype(np.float32) * 0.1
+
+    monkeypatch.setattr(mq, "estimate_quality_witness", lambda a, sr: None)
+    monkeypatch.setattr(mq, "estimate_muq_mos", lambda a, sr: None)
+
+    res = est.estimate(audio, 48000, material="vinyl")
+
+    assert res.muq_mos is None
+    assert res.muq_quality_witness is None
+    assert res.predicted_mos == pytest.approx(est._score_to_mos(res.restorability_score))
+
+
+# ─── Echter Modellpfad (nur wenn Checkpoint vorhanden) ─────────────────
+
+
+@pytest.mark.skipif(
+    not mq.is_available(),
+    reason="MuQ-Checkpoint fehlt (models/muq_mulan/ oder HF-Cache)",
+)
+def test_embedding_deterministic_and_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Echtes Modell: deterministisch (§G5 (GEBOTE.md)) und 1024-dim Embedding."""
+    pytest.importorskip("torch")
+    # Ambient-Hermetik (Muster: All-Phases-Smoke): nach vielen Modell-Ladungen
+    # der Vollsuite kann das ML-Speicherbudget den MuQ-Load ablehnen und den
+    # Singleton dauerhaft auf None setzen — Budget hier neutralisieren und
+    # einen abgelehnten Ladeversuch zurücksetzen.
+    import backend.core.ml_memory_budget as _budget_mq
+
+    monkeypatch.setattr(_budget_mq, "try_allocate", lambda name, size: True)
+    if mq._model is None and mq._model_attempted:
+        mq._model_attempted = False
+    # CPU erzwingen: ROCm-GPU-Inferenz ist nicht bit-deterministisch (§G5 (GEBOTE.md)).
+    monkeypatch.setenv("AURIK_MUQ_CPU", "1")
+    monkeypatch.setenv("AURIK_MUQ_GPU", "0")
+    rng = np.random.RandomState(0)
+    audio = rng.randn(2, 48000).astype(np.float32) * 0.1
+
+    e1 = mq.extract_embedding(audio, 48000)
+    e2 = mq.extract_embedding(audio, 48000)
+
+    assert e1 is not None and e2 is not None
+    assert e1.shape == (1024,)
+    assert np.array_equal(e1, e2)
+    assert np.all(np.isfinite(e1))
+
+
+def test_quality_witness_range(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Witness-Mapping (Kosinus→[0,100]) deterministisch mit Fake-Embeddings.
+
+    Der echte Modellpfad wird in test_embedding_deterministic_and_shape geprüft;
+    hier läuft nur die schnelle Zentroid-/Mapping-Logik.
+    """
+    rng = np.random.RandomState(1)
+    emb = rng.randn(1024).astype(np.float32)
+    refs = rng.randn(4, 1024).astype(np.float32)
+    monkeypatch.setattr(mq, "extract_embedding", lambda a, sr: emb)
+    monkeypatch.setattr(mq, "_get_ref_embeddings", lambda: refs)
+
+    w = mq.estimate_quality_witness(np.zeros(48000, dtype=np.float32), 48000)
+
+    assert w is not None
+    assert 0.0 <= w <= 100.0
+    assert mq.estimate_quality_witness(np.zeros(48000, dtype=np.float32), 48000) == pytest.approx(w)
+
+
+def _fake_checkpoint(tmp_path: Path, name: str) -> Path:
+    """Mini-Checkpoint-Verzeichnis mit config.json + model.safetensors."""
+    d = tmp_path / name
+    d.mkdir()
+    (d / "config.json").write_text("{}", encoding="utf-8")
+    (d / "model.safetensors").write_bytes(b"x")
+    return d
+
+
+def test_find_checkpoint_dir_prefers_msd_iter(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Der A1-Head wurde auf OpenMuQ/MuQ-large-msd-iter trainiert (base.yaml) —
+    dieser Snapshot MUSS vor dem MuQ-MuLan-Backbone priorisiert werden, sonst
+    invertiert die MOS-Richtung (Befund 2026-09-13)."""
+    mulan = _fake_checkpoint(tmp_path, "models--OpenMuQ--MuQ-MuLan-large")
+    msd = _fake_checkpoint(tmp_path, "models--OpenMuQ--MuQ-large-msd-iter")
+    # Kandidatenliste liefert mulan ZUERST — Priorisierung muss msd vorziehen.
+    monkeypatch.setattr(mq, "_candidate_checkpoint_dirs", lambda: [mulan, msd])
+    assert mq._find_checkpoint_dir() == msd
+
+
+def test_find_checkpoint_dir_falls_back_to_mulan(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Ohne msd-iter-Snapshot bleibt das MuQ-MuLan-Backbone gültig."""
+    mulan = _fake_checkpoint(tmp_path, "models--OpenMuQ--MuQ-MuLan-large")
+    monkeypatch.setattr(mq, "_candidate_checkpoint_dirs", lambda: [mulan])
+    assert mq._find_checkpoint_dir() == mulan
+
+
+def test_find_checkpoint_dir_rejects_incomplete(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Verzeichnisse ohne Gewichte/Config werden übersprungen (kein stummer Fehlload)."""
+    broken = tmp_path / "models--OpenMuQ--MuQ-large-msd-iter"
+    broken.mkdir()
+    monkeypatch.setattr(mq, "_candidate_checkpoint_dirs", lambda: [broken])
+    assert mq._find_checkpoint_dir() is None
+
+
+@pytest.mark.skipif(
+    not mq._A1_HEAD_PATH.is_file() or mq.torch is None,
+    reason="MuQ-Eval-A1-Head fehlt (models/muq_mulan/muq_eval_a1_head.pt)",
+)
+def test_a1_head_modules_load_and_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Original-MuQ-Eval-Klassen (AttentionPooling + PredictionHead) laden den
+    extrahierten A1-Head-State strict und liefern einen finiten MI-Score.
+
+    1:1-Bezug: die richtungs-korrekten MUSDB-Ergebnisse (noise10 Δ+3.337)
+    stammen exakt aus diesem Klassen-/Head-Pfad.
+    """
+    monkeypatch.setenv("AURIK_MUQ_CPU", "1")
+    mods = mq._get_a1_head_modules()
+    assert mods is not None
+    pooling, head = mods
+    _dev = next(pooling.parameters()).device  # _get_a1_head_modules bewegt auf das aktive ML-Device
+    rng = np.random.RandomState(3)
+    hidden = rng.randn(1, 50, mq._EMBED_DIM).astype(np.float32)
+    x = mq.torch.from_numpy(hidden).to(_dev)
+    with mq.torch.no_grad():
+        pooled = pooling(x)
+        mi = head(pooled)
+    val = float(mi.item())
+    assert np.isfinite(val)
+    assert 1.0 <= float(np.clip(val, 1.0, 5.0)) <= 5.0
+
+
+def test_mos_eval_window_first_10s_at_target_sr() -> None:
+    """24-kHz-Eingabe > 10 s ⇒ ERSTE 240000 Samples (1:1-Konvention), nicht zentriert."""
+    rng = np.random.RandomState(11)
+    x = rng.randn(mq._MOS_CLIP_SAMPLES + 8000).astype(np.float32)
+    w = mq._mos_eval_window(x, mq._TARGET_SR)
+    assert w.shape == (mq._MOS_CLIP_SAMPLES,)
+    assert np.array_equal(w, x[: mq._MOS_CLIP_SAMPLES])
+
+
+def test_mos_eval_window_pads_short_input() -> None:
+    """Kürzer als 10 s ⇒ Null-Pad auf clip_samples (AudioProcessor-Konvention)."""
+    rng = np.random.RandomState(12)
+    x = rng.randn(8000).astype(np.float32)
+    w = mq._mos_eval_window(x, mq._TARGET_SR)
+    assert w.shape == (mq._MOS_CLIP_SAMPLES,)
+    assert np.array_equal(w[:8000], x)
+    assert np.all(w[8000:] == 0.0)
+
+
+def test_mos_eval_window_resamples_48k_to_24k() -> None:
+    """48-kHz-Eingabe ⇒ librosa-Resample auf 24 kHz, Länge 240000 (1:1-Kette)."""
+    try:
+        import librosa
+    except Exception:
+        pytest.skip("librosa fehlt")
+    rng = np.random.RandomState(13)
+    x = rng.randn(480000 + 100).astype(np.float32)
+    w = mq._mos_eval_window(x, 48000)
+    assert w.shape == (mq._MOS_CLIP_SAMPLES,)
+    assert np.all(np.isfinite(w))
+
+
+def test_mos_eval_window_deterministic() -> None:
+    """Gleicher Input ⇒ bit-identischer Output (§G5 (GEBOTE.md))."""
+    try:
+        import librosa
+    except Exception:
+        pytest.skip("librosa fehlt")
+    rng = np.random.RandomState(14)
+    x = rng.randn(96000).astype(np.float32)
+    w1 = mq._mos_eval_window(x, 48000)
+    w2 = mq._mos_eval_window(x, 48000)
+    assert np.array_equal(w1, w2)

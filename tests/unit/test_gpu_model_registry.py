@@ -1,0 +1,147 @@
+"""§v10.40c (2026-09-09): GPU-Modell-Registry — Policy-Unit-Tests.
+
+Testet verdict_for_model()/apply_gpu_policy() aus backend/core/gpu_model_registry.py
+mit einer temporären JSON-Registry (kein echtes Modell nötig).
+Regeln: GPU nur bei gemessenem Verdict; "cpu" erzwingt CPU auch bei GPU-Request;
+CPU-only-Aufrufer (AURIK_FORCE_CPU) werden nie auf GPU gehoben.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+from backend.core.gpu_model_registry import apply_gpu_policy, load_registry, verdict_for_model
+
+_TEST_REG = Path("/tmp/aurik_test_gpu_registry.json")
+
+
+@pytest.fixture(autouse=True)
+def _neutralize_force_cpu(monkeypatch) -> None:
+    """Macht die Verdikt-Tests unabhängig von der Umgebung.
+
+    `apply_gpu_policy` respektiert bewusst `AURIK_FORCE_CPU` („CPU-only-Aufrufer
+    werden nie auf GPU gehoben", s. Modul-Docstring). Diese Tests prüfen jedoch
+    die reine Abbildung Verdict -> EP-Liste und dürfen deshalb nicht vom
+    Determinismus-Schalter der Suite bzw. der Scans abhängen. Befund 2026-10-05
+    (Vollscan Chunk 26): mit gesetztem `AURIK_FORCE_CPU` lieferten die
+    GPU-Verdikte CPU-only — vier Fehlschläge; ohne die Variable sind alle zehn
+    Tests grün (§G5 (GEBOTE.md): Tests dürfen nicht umgebungsabhängig kippen).
+
+    Befund 2026-11-06: zusätzlich pinnt die Fixture die Geräte-Probe
+    `_gpu_device_present` → True. Ohne Pin liefert die Probe unter
+    CPU-only-Python (System-Python ohne ROCm) False und die beiden
+    Mapping-Tests (migraphx/rocm) kippen auf CPU-only — dieselbe
+    Umgebungsabhängigkeits-Klasse. Der Geräte-abwesende Pfad wird bewusst
+    separat getestet (`test_no_gpu_device_forces_cpu_despite_verdict`).
+    """
+    monkeypatch.delenv("AURIK_FORCE_CPU", raising=False)
+    import backend.core.gpu_model_registry as _mod
+
+    monkeypatch.setattr(_mod, "_gpu_device_present", lambda: True)
+
+
+def _setup_registry(monkeypatch, entries: dict) -> None:
+    _TEST_REG.write_text(json.dumps(entries), encoding="utf-8")
+    import backend.core.gpu_model_registry as _mod
+
+    monkeypatch.setattr(_mod, "_REGISTRY_PATH", _TEST_REG)
+    _mod._cache = None  # Cache invalidierten
+
+
+def test_verdict_unknown_when_not_scanned(monkeypatch) -> None:
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "migraphx"}})
+    assert verdict_for_model("models/y/bar.onnx") == "unknown"
+
+
+def test_verdict_matched_by_filename_suffix(monkeypatch) -> None:
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "cpu"}})
+    # anderer Pfad, gleicher Dateiname → Suffix-Match
+    assert verdict_for_model("/anders/verschoben/foo.onnx") == "cpu"
+
+
+def test_cpu_verdict_forces_cpu_even_on_gpu_request(monkeypatch) -> None:
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "cpu"}})
+    out = apply_gpu_policy(["ROCMExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
+    assert out == ["CPUExecutionProvider"]
+
+
+def test_no_gpu_device_forces_cpu_despite_verdict(monkeypatch) -> None:
+    """§III.9/§V6 (copilot-instructions.md): ohne echtes GPU-Gerät CPU erzwungen.
+
+    Produktionsbefund: ORT baut ROCm-Sessions auch ohne Gerät (HIP failure 100,
+    nativer Abort) — die Policy darf GPU-EPs nur bei nachgewiesenem Gerät
+    zulassen, unabhängig vom Registry-Verdict.
+    """
+    import backend.core.gpu_model_registry as _mod
+
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "migraphx"}})
+    monkeypatch.setattr(_mod, "_gpu_device_present", lambda: False)
+    out = apply_gpu_policy(["ROCMExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
+    assert out == ["CPUExecutionProvider"]
+
+
+def test_migraphx_verdict_sets_migraphx_first(monkeypatch) -> None:
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "migraphx"}})
+    out = apply_gpu_policy(["ROCMExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
+    assert out == ["MIGraphXExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
+
+
+def test_rocm_verdict_downgrades_migraphx_request(monkeypatch) -> None:
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "rocm"}})
+    out = apply_gpu_policy(["MIGraphXExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
+    assert out == ["ROCMExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
+
+
+def test_cpu_only_caller_never_gets_gpu(monkeypatch) -> None:
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "migraphx"}})
+    out = apply_gpu_policy(["CPUExecutionProvider"], "models/x/foo.onnx")
+    assert out == ["CPUExecutionProvider"], "AURIK_FORCE_CPU-Aufrufer dürfen nicht auf GPU gehoben werden"
+
+
+def test_force_cpu_env_forces_cpu_on_gpu_request(monkeypatch) -> None:
+    """AURIK_FORCE_CPU=1 erzwingt CPU auch bei explizitem GPU-Request (Fix 2026-10-05).
+
+    Produktionsbefund: bigvgan/flashsr riefen get_onnx_providers direkt auf und
+    erhielten trotz AURIK_FORCE_CPU=1 eine ROCm-Session — unter GPU-Last führte
+    das zu einem ORT-Hart-Abort ("no ROCm-capable device is detected").
+    """
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "rocm"}})
+    monkeypatch.setenv("AURIK_FORCE_CPU", "1")
+    out = apply_gpu_policy(["ROCMExecutionProvider", "CPUExecutionProvider"], "models/x/foo.onnx")
+    assert out == ["CPUExecutionProvider"]
+
+
+def test_get_onnx_providers_honours_force_cpu(monkeypatch) -> None:
+    """get_onnx_providers ist selbst FORCE_CPU-konform (kein ROCm-Session-Versuch)."""
+    from backend.core.gpu_model_registry import get_onnx_providers
+
+    _setup_registry(monkeypatch, {"models/x/foo.onnx": {"verdict": "rocm"}})
+    monkeypatch.setenv("AURIK_FORCE_CPU", "1")
+    assert get_onnx_providers("models/x/foo.onnx") == ["CPUExecutionProvider"]
+
+
+def test_load_registry_missing_file_returns_empty(monkeypatch) -> None:
+    import backend.core.gpu_model_registry as _mod
+
+    monkeypatch.setattr(_mod, "_REGISTRY_PATH", Path("/tmp/does_not_exist_reg.json"))
+    _mod._cache = None
+    assert load_registry(force=True) == {}
+
+
+def test_production_registry_verdicts_restoration_models() -> None:
+    """Produktions-Vertrag: R3-Ports der Restaurations-Modelle (2026-09-13/16).
+
+    Schützt die gemessenen Verdikte vor stiller Regenerierungs-Regression:
+    BANQUET (Partitioning-Fix, Funktions-Validierung identisch) und CRePE
+    laufen auf ROCm; DeepFilterNet bleibt ehrlich auf CPU (GPU-Overhead
+    dominiert bei Mini-Modellen).
+    """
+    import backend.core.gpu_model_registry as _mod
+
+    _mod._cache = None  # Isolation: vorherige Tests cachen Temp-Registries (direkte Zuweisung)
+    assert verdict_for_model("models/banquet/banquet_vinyl_final.onnx") == "rocm"
+    assert verdict_for_model("models/crepe/crepe.onnx") == "rocm"
+    assert verdict_for_model("models/deepfilternet_v3_ii/dec.onnx") == "cpu"

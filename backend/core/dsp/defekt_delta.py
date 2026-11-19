@@ -1,0 +1,490 @@
+"""Defekt-Delta-Witness — Reparatur-Nachweis je Defektklasse (§G191 (GEBOTE.md)).
+
+Die zertifizierten Ganzclip-Metriken sehen Reparatur in einzelnen
+Defektregionen nicht (defektlast: 0,34-s-Fenster + Sättigungs-Blindheit,
+D-K3-95/97; musik_mos integriert über den Clip). Dieses Modul misst deshalb
+Metriken NUR in den annotierten Defektregionen, vorher (Schaden) und
+nachher (restauriert), pegel-gematcht, und weist die **Reparaturquote**
+Q = Δ(schaden→restauriert) / Δ(schaden→clean) je Region und Defektklasse aus.
+
+Status: **Report-Only-Zeuge** (Hörordnung §7) — kein Gate, kein Rollback,
+keine Export-Blockade, kein Flag. Der Witness trägt **kein**
+Richtungszertifikat, solange seine Regionen-Urteile nicht gegen Hör-Labels
+kalibriert sind (D-K4-9); Stärke-/Schwellen-Nutzung NUR über das
+§4-Verfahren. Determinismus: §G5 (copilot-instructions.md) — kein
+`time.time()`, Seed-frei (reine Funktionen), sha256 der Eingänge im Beleg.
+
+Schema: ``aurik.defektdelta/3`` — fail-closed (Muster ohr_prior/2-Ablehnung);
+/3 ergänzt den gain-invarianten Sättigungskanal (1/Crest, D-K3-95/97).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+from collections.abc import Callable
+from typing import Any
+
+import numpy as np
+
+from backend.core.dsp.wohlklang_zeuge import JND_TOLERANZ  # EINE Wahrheit
+
+logger = logging.getLogger(__name__)
+
+SCHEMA = "aurik.defektdelta/4"
+_SCHEMA_VERALTET = (
+    "aurik.defektdelta/3",
+    "aurik.defektdelta/2",
+    "aurik.defektdelta/1",
+)  # ohne Jitter-Kanal bzw. RMS-Matching-Definition bzw. ohne Sättigungskanal (Belege veraltet, §G191 (GEBOTE.md))
+# defektlast ist "höher = mehr Defekte"; musik_mos "höher = besser".
+RICHTUNG_NIEDRIGER = "niedriger_besser"
+RICHTUNG_HOEHER = "hoeher_besser"
+_METRIK_RICHTUNGEN: dict[str, str] = {
+    "defektlast_lang": RICHTUNG_NIEDRIGER,
+    "musik_mos": RICHTUNG_HOEHER,
+}
+_MIN_SAMPLES = 2048  # Untergrenze der Metrik-Definition (2048er-FFT)
+_JND = float(JND_TOLERANZ)
+# §G13 (copilot-instructions.md): Verbesserungs-Pflicht — mindestens die
+# Hälfte des Schaden→Clean-Deltas muss zurückgewonnen werden (je Defektklasse).
+# EINE Quelle für Norm, Verifier und Tests; Anhebung nur über §4/Hör-Sign-off.
+REPARATURQUOTE_ZIEL = 0.5
+
+
+def _mono(audio: Any) -> np.ndarray:
+    """Stereo-Layout-Invariante (AGENTS.md §3): (C, N) und (N, C) ⇒ mono.
+
+    Gleiche Regel wie ``wohlklang_zeuge._mono`` (Kanäle ≤ 8 und längste Achse
+    hinten ⇒ transponieren, dann Kanal-Mittelung) — bewusst ohne dtype-Zwang,
+    damit der Wert bit-identisch zur Mess-Referenz bleibt.
+    """
+    x: np.ndarray = np.asarray(audio)
+    if x.ndim == 2:
+        if x.shape[0] <= 8 and x.shape[-1] > 8:
+            x = x.T
+        x = np.asarray(x.mean(axis=1), dtype=x.dtype)
+    _mono_out: np.ndarray = np.ascontiguousarray(x.reshape(-1))
+    return _mono_out
+
+
+def defektlast_lang(audio: Any, sample_rate: int) -> float:
+    """Voll-Fenster-Verallgemeinerung der zertifizierten Referenz.
+
+    Identische Konstruktion wie ``wohlklang_zeuge.defektlast`` (Clip-Statistik,
+    Spektral-Flatness, HF-Verlust), aber OHNE die 16384-Samples-Kappung:
+    die Clip-Statistik läuft über die gesamte Region (die Spektral-Komponenten
+    nutzen weiterhin das erste 2048er-Fenster — wie die Referenz).
+
+    Auf Eingängen ≤ 16384 Samples ist der Wert **bit-identisch** zur
+    zertifizierten Referenz (Test-gepinnt). Trägt **nicht** das
+    Richtungszertifikat; Grenzen der Referenz (Sättigungs-Blindheit,
+    D-K3-97) gelten sinngemäß und sind im Zertifikat zu dokumentieren.
+    """
+    seg = _mono(audio)
+    clip = float(np.mean(np.abs(seg) > 0.98))
+    spec = np.abs(np.fft.rfft(seg, n=2048)) ** 2 + 1e-18
+    flatness = float(np.clip(np.exp(np.mean(np.log(spec))) / (np.mean(spec) + 1e-12), 0.0, 1.0))
+    freqs = np.fft.rfftfreq(2048, d=1.0 / max(int(sample_rate), 1))
+    hf = float(np.sum(spec[freqs > 8000]) / (np.sum(spec) + 1e-12))
+    hf_verlust = max(0.0, 1.0 - min(1.0, hf / 0.02))
+    return round(clip * 2.0 + flatness + hf_verlust * 0.5, 4)
+
+
+def pegel_gain(signal: np.ndarray, referenz: np.ndarray) -> float:
+    """Body-Perzentil-Matching (p25 von |x|), um ``signal`` auf den Pegel der
+    ``referenz`` zu heben.
+
+    D-K3-95-Lehre: ungematcht misst man den Loudness-Regelkreis, nicht die
+    Reparatur. RMS ist dafür **ungeeignet**: Sättigung hebt die RMS an, das
+    RMS-Matching zieht den Sättigungs-Beweis wieder unter die Schwelle
+    (Erstbeleg 2026-11-11_b3_defektdelta_erstbelege.md §3). Das p25-Body-
+    Perzentil ist ausreißer-/Flat-Top-robust. Stille-Referenz (p25 unter
+    1e-6) ⇒ Gain 1,0 — §V6 (copilot-instructions.md): kein stiller Ausfall,
+    Warnung wird geloggt.
+    """
+    a = np.abs(np.asarray(signal, dtype=np.float64).reshape(-1))
+    b = np.abs(np.asarray(referenz, dtype=np.float64).reshape(-1))
+    if a.size < 4 or b.size < 4:
+        logger.warning("§V6 (copilot-instructions.md) pegel_gain: Signal zu kurz — Gain 1,0")
+        return 1.0
+    p25_sig = float(np.percentile(a, 25.0))
+    p25_ref = float(np.percentile(b, 25.0))
+    if p25_ref < 1e-6:
+        logger.warning("§V6 (copilot-instructions.md) pegel_gain: Referenz ist Stille — Gain 1,0")
+        return 1.0
+    if p25_sig < 1e-6:
+        logger.warning("§V6 (copilot-instructions.md) pegel_gain: Signal ist Stille — Gain 1,0")
+        return 1.0
+    return min(max(p25_ref / p25_sig, 0.25), 4.0)
+
+
+def flat_top_anteil(audio: Any, band: float = 0.002) -> float:
+    """Sättigungs-Zusatzkomponente: Anteil der Samples an der EIGENEN
+    Hüllen-Decke (|x| ≥ max(|x|) − band).
+
+    Relativ und gain-invariant: Skalierung verschiebt die Decke mit — die
+    absolute 0,98-Schwelle der zertifizierten Referenz kann genau das nicht
+    (Erstbeleg §3, D-K3-97-Klasse). Höher = mehr Sättigung.
+    **Nicht zertifiziert** — Report-Only-Zeuge (§G191 (GEBOTE.md)).
+    """
+    x = _mono(audio)
+    if x.size == 0:
+        return 0.0
+    m = float(np.max(np.abs(x)))
+    if m < 1e-6:
+        return 0.0
+    return float(np.mean(np.abs(x) >= m - band))
+
+
+def saettigung_kanal(audio: Any, _sample_rate: int = 0) -> float:
+    """Gain-invarianter Sättigungs-Kanal — kanonisch in wohlklang_zeuge (eine Wahrheit, §G9 (copilot-instructions.md))."""
+    from backend.core.dsp.wohlklang_zeuge import saettigung_kanal as _kanon
+
+    return float(_kanon(audio))
+
+
+def jitter_kanal(audio: Any, sample_rate: int = 0) -> float:
+    """Gain-invarianter Jitter-Kanal (Seitenband-Ratio) — kanonisch in
+    wohlklang_zeuge (eine Wahrheit, §G9 (copilot-instructions.md)).
+    Q0-Witness-Forschung 2026-11-14: Median(schaden − clean) = +0,180,
+    98,3 % über JND 0,02 auf den k398-jitter_artifacts-Regionen."""
+    from backend.core.dsp.wohlklang_zeuge import jitter_kanal as _kanon_j
+
+    return float(_kanon_j(audio, int(sample_rate)))
+
+
+def _saettigungs_jnd(delta: float) -> str:
+    """JND des Sättigungskanals: 0,02 (gemessen: k398-Rezeptur Δ ≈ 0,2–0,3; Rauschen < 0,01)."""
+    return _jnd_klasse(delta) if abs(delta) >= 0.02 else "unter_jnd"
+
+
+def _jitter_jnd(delta: float) -> str:
+    """JND des Jitter-Kanals: 0,02 (gemessen: k398-jitter_artifacts Δ ≈ 0,18; Rauschen < 0,01)."""
+    return _jnd_klasse(delta) if abs(delta) >= 0.02 else "unter_jnd"
+
+
+def _delta_qualitaet(wert_schaden: float, wert_restauriert: float, richtung: str) -> float:
+    """Delta in Qualitätsrichtung: > 0 bedeutet besser."""
+    if richtung == RICHTUNG_NIEDRIGER:
+        return float(wert_schaden - wert_restauriert)
+    return float(wert_restauriert - wert_schaden)
+
+
+def _jnd_klasse(delta: float) -> str:
+    if delta <= -_JND:
+        return "verschlechtert"
+    if delta >= _JND:
+        return "ueber_jnd"
+    return "unter_jnd"
+
+
+def _slice_region(audio_mono: np.ndarray, region: dict[str, Any]) -> np.ndarray:
+    start = int(region["start"])
+    end = int(region["end"])
+    _region: np.ndarray = np.ascontiguousarray(audio_mono[start:end])
+    return _region
+
+
+def berechne_defekt_delta(
+    regionen: list[dict[str, Any]],
+    schaden: Any,
+    restauriert: Any,
+    clean: Any | None,
+    sample_rate: int,
+    *,
+    metrik: Callable[[Any, int], float] | None = None,
+    metrik_name: str = "defektlast_lang",
+    metrik_richtung: str | None = None,
+) -> dict[str, Any]:
+    """Berechnet Regionen-Deltas, Reparaturquote und Aggregat je DefectType.
+
+    Raises:
+        ValueError: unbekannte Metrik-Richtung oder zu kurzes Signal.
+    """
+    richtung = metrik_richtung or _METRIK_RICHTUNGEN.get(metrik_name)
+    if richtung not in (RICHTUNG_NIEDRIGER, RICHTUNG_HOEHER):
+        raise ValueError(f"Unbekannte Metrik-Richtung für {metrik_name!r}")
+    messe = metrik if metrik is not None else (defektlast_lang if metrik_name == "defektlast_lang" else None)
+    if messe is None:
+        raise ValueError(f"Keine Metrik-Funktion für {metrik_name!r} — metrik= explizit übergeben")
+
+    mono_schaden = _mono(schaden)
+    mono_rest = _mono(restauriert)
+    mono_clean = _mono(clean) if clean is not None else None
+    if mono_schaden.size < _MIN_SAMPLES:
+        raise ValueError("Signal zu kurz für die Metrik-Definition (< 2048 Samples)")
+
+    ergebnisse: list[dict[str, Any]] = []
+    for region in regionen:
+        r_schaden = _slice_region(mono_schaden, region)
+        r_rest = _slice_region(mono_rest, region)
+        if r_schaden.size < _MIN_SAMPLES or r_rest.size < _MIN_SAMPLES:
+            # §V6 (copilot-instructions.md): kein stiller Ausfall.
+            logger.warning(
+                "§V6 (copilot-instructions.md) Region %s zu kurz (%d Samples) — übersprungen",
+                region.get("typ", "?"),
+                min(r_schaden.size, r_rest.size),
+            )
+            continue
+        gain_rest = pegel_gain(r_rest, r_schaden)
+        w_schaden = float(messe(r_schaden, int(sample_rate)))
+        w_rest = float(messe(r_rest * gain_rest, int(sample_rate)))
+        delta = _delta_qualitaet(w_schaden, w_rest, richtung)
+        ft_schaden = flat_top_anteil(r_schaden)
+        ft_rest = flat_top_anteil(r_rest * gain_rest)
+        # §G191-Zweitkanal (GEBOTE.md, D-K3-95/97-Blindheit): gain-invarianter
+        # Sättigungskanal — tanh-Sättigung ist für defektlast/flat_top
+        # unsichtbar (gemessen 2026-11-14).
+        st_schaden = saettigung_kanal(r_schaden)
+        st_rest = saettigung_kanal(r_rest * gain_rest)
+        # §G191-Zweitkanal 2 (GEBOTE.md, Q0-Witness-Forschung 2026-11-14):
+        # Jitter-Kanal (Seitenband-Ratio) — jitter_artifacts ist für
+        # defektlast blind (gemessen: Median(schaden − clean) = +0,180,
+        # 98,3 % über JND 0,02).
+        jt_schaden = jitter_kanal(r_schaden, int(sample_rate))
+        jt_rest = jitter_kanal(r_rest * gain_rest, int(sample_rate))
+        eintrag: dict[str, Any] = {
+            "start": int(region["start"]),
+            "end": int(region["end"]),
+            "typ": str(region.get("typ", "unbekannt")),
+            "staerke": region.get("staerke"),
+            "metrik_schaden": w_schaden,
+            "metrik_restauriert": w_rest,
+            "delta": round(delta, 4),
+            "jnd_klasse": _jnd_klasse(delta),
+            "gain_restauriert": round(gain_rest, 4),
+            "flat_top_schaden": round(ft_schaden, 4),
+            "flat_top_restauriert": round(ft_rest, 4),
+            "delta_flat_top": round(ft_schaden - ft_rest, 4),
+            "jnd_klasse_flat_top": _jnd_klasse(ft_schaden - ft_rest),
+            "saettigung_schaden": st_schaden,
+            "saettigung_restauriert": round(st_rest, 4),
+            "delta_saettigung": round(st_schaden - st_rest, 4),
+            "jnd_klasse_saettigung": _saettigungs_jnd(st_schaden - st_rest),
+            "jitter_schaden": jt_schaden,
+            "jitter_restauriert": round(jt_rest, 4),
+            "delta_jitter": round(jt_schaden - jt_rest, 4),
+            "jnd_klasse_jitter": _jitter_jnd(jt_schaden - jt_rest),
+            "reparaturquote_q": None,
+        }
+        if mono_clean is not None:
+            r_clean = _slice_region(mono_clean, region)
+            if r_clean.size >= _MIN_SAMPLES:
+                gain_clean = pegel_gain(r_clean, r_schaden)
+                w_clean = float(messe(r_clean * gain_clean, int(sample_rate)))
+                delta_clean = _delta_qualitaet(w_schaden, w_clean, richtung)
+                eintrag["metrik_clean"] = w_clean
+                eintrag["gain_clean"] = round(gain_clean, 4)
+                eintrag["flat_top_clean"] = round(flat_top_anteil(r_clean * gain_clean), 4)
+                st_clean = round(saettigung_kanal(r_clean * gain_clean), 4)
+                eintrag["saettigung_clean"] = st_clean
+                jt_clean = round(jitter_kanal(r_clean * gain_clean, int(sample_rate)), 4)
+                eintrag["jitter_clean"] = jt_clean
+                if delta_clean > _JND:
+                    eintrag["reparaturquote_q"] = round(delta / delta_clean, 4)
+                else:
+                    eintrag["reparaturquote_q"] = None
+                # Q über den Sättigungskanal (D-K3-95/97-Blindheit): nur bei
+                # Clean-Kontrast > Kanal-JND 0,02 — sonst nicht bewertbar.
+                delta_clean_saett = float(st_schaden - st_clean)
+                if delta_clean_saett > 0.02:
+                    eintrag["reparaturquote_q_saettigung"] = round((st_schaden - st_rest) / delta_clean_saett, 4)
+                else:
+                    eintrag["reparaturquote_q_saettigung"] = None
+                # Q über den Jitter-Kanal (Q0-Witness-Forschung): nur bei
+                # Clean-Kontrast > Kanal-JND 0,02 — sonst nicht bewertbar.
+                delta_clean_jitter = float(jt_schaden - jt_clean)
+                if delta_clean_jitter > 0.02:
+                    eintrag["reparaturquote_q_jitter"] = round((jt_schaden - jt_rest) / delta_clean_jitter, 4)
+                else:
+                    eintrag["reparaturquote_q_jitter"] = None
+        ergebnisse.append(eintrag)
+
+    return {
+        "schema": SCHEMA,
+        "metrik": metrik_name,
+        "metrik_richtung": richtung,
+        "jnd": _JND,
+        "sample_rate": int(sample_rate),
+        "regionen": ergebnisse,
+        "aggregate": _aggregiere(ergebnisse),
+        "hinweis": (
+            "Report-Only-Zeuge (§G191 (GEBOTE.md), Hörordnung §7): kein Gate, "
+            "kein Rollback, kein Flag. Richtungs-Zertifizierung über Hör-Labels "
+            "(D-K4-9) erforderlich, bevor der Beleg B3-Beschlüsse stützt."
+        ),
+    }
+
+
+def _aggregiere(ergebnisse: list[dict[str, Any]]) -> dict[str, Any]:
+    typen: dict[str, list[float]] = {}
+    quoten: dict[str, list[float]] = {}
+    flattops: dict[str, list[float]] = {}
+    saettigungen: dict[str, list[float]] = {}
+    quoten_saett: dict[str, list[float]] = {}
+    jitters: dict[str, list[float]] = {}
+    quoten_jitter: dict[str, list[float]] = {}
+    for e in ergebnisse:
+        typen.setdefault(str(e["typ"]), []).append(float(e["delta"]))
+        flattops.setdefault(str(e["typ"]), []).append(float(e.get("delta_flat_top", 0.0)))
+        saettigungen.setdefault(str(e["typ"]), []).append(float(e.get("delta_saettigung", 0.0)))
+        jitters.setdefault(str(e["typ"]), []).append(float(e.get("delta_jitter", 0.0)))
+        if e.get("reparaturquote_q") is not None:
+            quoten.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q"]))
+        if e.get("reparaturquote_q_saettigung") is not None:
+            quoten_saett.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q_saettigung"]))
+        if e.get("reparaturquote_q_jitter") is not None:
+            quoten_jitter.setdefault(str(e["typ"]), []).append(float(e["reparaturquote_q_jitter"]))
+    aggregat: dict[str, Any] = {}
+    for typ, deltas in typen.items():
+        q_median = round(float(np.median(quoten[typ])), 4) if quoten.get(typ) else None
+        q_saett_median = round(float(np.median(quoten_saett[typ])), 4) if quoten_saett.get(typ) else None
+        q_jitter_median = round(float(np.median(quoten_jitter[typ])), 4) if quoten_jitter.get(typ) else None
+        aggregat[typ] = {
+            "n": len(deltas),
+            "delta_median": round(float(np.median(deltas)), 4),
+            "anteil_ueber_jnd": round(float(np.mean([d >= _JND for d in deltas])), 4),
+            "anteil_verschlechtert": round(float(np.mean([d <= -_JND for d in deltas])), 4),
+            "flat_top_delta_median": round(float(np.median(flattops[typ])), 4),
+            "anteil_verschlechtert_flat_top": round(float(np.mean([d <= -_JND for d in flattops[typ]])), 4),
+            "saettigung_delta_median": round(float(np.median(saettigungen[typ])), 4),
+            "anteil_ueber_jnd_saettigung": round(float(np.mean([d >= 0.02 for d in saettigungen[typ]])), 4),
+            "anteil_verschlechtert_saettigung": round(float(np.mean([d <= -0.02 for d in saettigungen[typ]])), 4),
+            "reparaturquote_median": q_median,
+            # §G13 (copilot-instructions.md): Q >= 0,5 je Defektklasse;
+            # None = kein Clean-Original vorhanden (Q nicht bewertbar).
+            "q_ziel_erfuellt": (bool(q_median >= REPARATURQUOTE_ZIEL) if q_median is not None else None),
+            # Q über den Sättigungskanal (D-K3-95/97): eigener Zeuge, gleiche Zielschwelle.
+            "reparaturquote_saettigung_median": q_saett_median,
+            "q_saettigung_ziel_erfuellt": (
+                bool(q_saett_median >= REPARATURQUOTE_ZIEL) if q_saett_median is not None else None
+            ),
+            # Q über den Jitter-Kanal (Q0-Witness-Forschung 2026-11-14).
+            "jitter_delta_median": round(float(np.median(jitters[typ])), 4),
+            "anteil_ueber_jnd_jitter": round(float(np.mean([d >= 0.02 for d in jitters[typ]])), 4),
+            "anteil_verschlechtert_jitter": round(float(np.mean([d <= -0.02 for d in jitters[typ]])), 4),
+            "reparaturquote_jitter_median": q_jitter_median,
+            "q_jitter_ziel_erfuellt": (
+                bool(q_jitter_median >= REPARATURQUOTE_ZIEL) if q_jitter_median is not None else None
+            ),
+        }
+    return aggregat
+
+
+def sha256_datei(pfad: str) -> str:
+    """Deterministischer Herkunfts-Hash (byte-genau, §III.13 (copilot-instructions.md))."""
+    h = hashlib.sha256()
+    with open(pfad, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def beleg_schreiben(ergebnis: dict[str, Any], zielpfad: str, quellen: dict[str, str]) -> dict[str, Any]:
+    """Schreibt den Beleg mit sha256 der Eingangsdateien (§G5 (copilot-instructions.md))."""
+    import json
+
+    beleg = dict(ergebnis)
+    beleg["quellen_sha256"] = {name: sha256_datei(pfad) for name, pfad in sorted(quellen.items())}
+    with open(zielpfad, "w", encoding="utf-8") as f:
+        json.dump(beleg, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    return beleg
+
+
+def lade_defekt_delta(beleg: dict[str, Any] | str) -> dict[str, Any]:
+    """Fail-closed-Lader: fremdes Schema ⇒ verfuegbar=false + Grund.
+
+    Akzeptiert einen Beleg-Dict oder einen Pfad (str). ``/1``-Belege tragen
+    die veraltete RMS-Matching-Definition und werden als ``veraltet``
+    markiert statt still interpretiert (Muster ``ohr_prior``/2-Ablehnung,
+    D-K3-89).
+    """
+    import json
+
+    daten = beleg
+    if isinstance(beleg, str):
+        with open(beleg, encoding="utf-8") as f:
+            daten = json.load(f)
+    schema = daten.get("schema") if isinstance(daten, dict) else "unbekannt"
+    if schema == SCHEMA:
+        return {"verfuegbar": True, "beleg": daten}
+    if schema in _SCHEMA_VERALTET:
+        return {
+            "verfuegbar": False,
+            "grund": f"veraltetes schema {schema!r} — neu messen mit {SCHEMA!r}",
+        }
+    return {
+        "verfuegbar": False,
+        "grund": f"fremdes schema {schema!r} — erwartet {SCHEMA!r}",
+    }
+
+
+_REGION_SCHWELLE = 0.1  # Severity-Untergrenze der Regionen-Extraktion (dokumentierter Vertrag)
+_KONTROLL_ANTEILE = (0.1, 0.25, 0.5, 0.75, 0.9)
+_KONTROLL_FENSTER_S = 2.0
+_KONTROLL_MAX = 3
+
+
+def regionen_aus_defekt_scores(scores: dict, sample_rate: int) -> list[dict[str, Any]]:
+    """Extrahiert Defektregionen aus DefectScanner-Scores (§G191 (GEBOTE.md)).
+
+    Vertrag Spec 07 §8.6: Regionen-JSON {start, end, typ, staerke} in
+    Samples. Aufgenommen werden Location-Intervalle von DefektTypen mit
+    severity ≥ `_REGION_SCHWELLE`; staerke = severity (0..1). Determinismus
+    §G5 (copilot-instructions.md): rein funktional, sortierte Ausgabe.
+    """
+    regionen: list[dict[str, Any]] = []
+    for typ, score in sorted(scores.items(), key=lambda kv: str(kv[0])):
+        sev = float(getattr(score, "severity", 0.0))
+        if sev < _REGION_SCHWELLE:
+            continue
+        locs = getattr(score, "locations", None) or []
+        for start_s, end_s in locs:
+            start = int(round(float(start_s) * sample_rate))
+            end = int(round(float(end_s) * sample_rate))
+            if end <= start:
+                continue
+            regionen.append(
+                {
+                    "start": start,
+                    "end": end,
+                    "typ": str(getattr(typ, "value", typ)),
+                    "staerke": round(sev, 4),
+                }
+            )
+    regionen.sort(key=lambda r: (r["start"], r["end"]))
+    return regionen
+
+
+def kontrollregionen_aus_abdeckung(
+    regionen: list[dict[str, Any]], dauer_samples: int, sample_rate: int
+) -> list[dict[str, Any]]:
+    """Deterministische Kontrollregionen (defektfrei, Δ ≈ 0 erwartet).
+
+    Kandidaten-Fenster (`_KONTROLL_FENSTER_S` Sekunden) bei festen Anteilen
+    `_KONTROLL_ANTEILE` der Dauer; Fenster, die eine Defektregion
+    überlappen, werden übersprungen; maximal `_KONTROLL_MAX` Regionen.
+    §G5 (copilot-instructions.md): rein deterministisch, kein Zufall.
+    """
+    fenster = int(_KONTROLL_FENSTER_S * sample_rate)
+    kandidaten: list[tuple[int, int]] = []
+    for anteil in _KONTROLL_ANTEILE:
+        mitte = int(round(dauer_samples * anteil))
+        start = max(0, mitte - fenster // 2)
+        end = min(dauer_samples, start + fenster)
+        if end - start >= _MIN_SAMPLES:
+            kandidaten.append((start, end))
+
+    def _ueberlappt(a: tuple[int, int], b: tuple[int, int]) -> bool:
+        return a[0] < b[1] and b[0] < a[1]
+
+    kontrollen: list[dict[str, Any]] = []
+    for start, end in kandidaten:
+        if any(_ueberlappt((start, end), (int(r["start"]), int(r["end"]))) for r in regionen):
+            continue
+        kontrollen.append({"start": start, "end": end, "typ": "kontrolle", "staerke": 0.0})
+        if len(kontrollen) >= _KONTROLL_MAX:
+            break
+    return kontrollen

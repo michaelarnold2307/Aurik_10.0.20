@@ -1,0 +1,15 @@
+{
+  "allowedTools": [],
+  "assets": [],
+  "description": "**Version:** 10.0.0 | **Status:** \u2705 Produktionsbereit | **Stand:** 6. Juli 2026",
+  "entry": "SKILL.md",
+  "id": "readme",
+  "name": "README",
+  "priority": 0,
+  "triggers": {
+    "commands": [],
+    "fileTypes": [],
+    "promptPatterns": []
+  },
+  "version": "0.0.0"
+}

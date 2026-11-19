@@ -1,0 +1,139 @@
+{
+  "schema": "aurik.vinyl_noise_bank/1",
+  "zweck": "KP-6 BANQUET Real-Vinyl-Finetune + D2 Leerrillen-Noise-Bank",
+  "quelle": "lizenzfreie Online-Quellen, verifiziert",
+  "dateien": [
+    {
+      "datei": "data/vinyl_noise_bank/leerrille_platter-chat_lead_in.wav",
+      "rolle": "leerrille_geraeusch",
+      "quelle_url": "https://archive.org/download/78_platter-chatter-waltz_victor-zembruski-and-his-orchestra-h-v-zembruski_gbia0527599b/PLATTER%20CHATTER%20WALTZ%20-%20VICTOR%20ZEMBRUSKI.flac",
+      "ia_sha1": null,
+      "sha256": "2933436dcd3c58e75a592d81ec2dae7a1c75a5cb8e283db3ac83bd4632a55fcb",
+      "lizenz": "pd_pre1930_great78 (Item ohne masch. licenseurl — §9/7 Freigabe erforderlich)",
+      "probe": {
+        "sr": 96000,
+        "ch": 1,
+        "dauer_s": 5.0,
+        "subtype": "PCM_16",
+        "rms": 0.00839,
+        "hf_anteil_gt6k": 0.163
+      }
+    },
+    {
+      "datei": "data/vinyl_noise_bank/leerrille_platter-chat_lead_out.wav",
+      "rolle": "leerrille_geraeusch",
+      "quelle_url": "https://archive.org/download/78_platter-chatter-waltz_victor-zembruski-and-his-orchestra-h-v-zembruski_gbia0527599b/PLATTER%20CHATTER%20WALTZ%20-%20VICTOR%20ZEMBRUSKI.flac",
+      "ia_sha1": null,
+      "sha256": "8f6e99e6a4535d07c029d7ba8b7ed024d75baefc2bfaa74894694a31d0c22dbf",
+      "lizenz": "pd_pre1930_great78 (Item ohne masch. licenseurl — §9/7 Freigabe erforderlich)",
+      "probe": {
+        "sr": 96000,
+        "ch": 1,
+        "dauer_s": 5.0,
+        "subtype": "PCM_16",
+        "rms": 0.00576,
+        "hf_anteil_gt6k": 0.711
+      }
+    },
+    {
+      "datei": "data/vinyl_noise_bank/echt_beschaedigt_platter-chat.wav",
+      "rolle": "echt_beschaedigt",
+      "quelle_url": "https://archive.org/download/78_platter-chatter-waltz_victor-zembruski-and-his-orchestra-h-v-zembruski_gbia0527599b/PLATTER%20CHATTER%20WALTZ%20-%20VICTOR%20ZEMBRUSKI.flac",
+      "sha256": "675cfa85aafd102f334fb5d461b90524b82312c7e98ec14a29013511819784e2",
+      "lizenz": "pd_pre1930_great78 (Item ohne masch. licenseurl — §9/7 Freigabe erforderlich)",
+      "probe": {
+        "sr": 96000,
+        "ch": 1,
+        "dauer_s": 163.1,
+        "subtype": "PCM_16",
+        "rms": 0.02151,
+        "hf_anteil_gt6k": 0.034
+      }
+    },
+    {
+      "datei": "data/vinyl_noise_bank/leerrille_smiling-iris_lead_in.wav",
+      "rolle": "leerrille_geraeusch",
+      "quelle_url": "https://archive.org/download/78_smiling-irish-eyes_john-spear_gbia3014551a/SMILING%20IRISH%20EYES%20-%20JOHN%20SPEAR.flac",
+      "ia_sha1": null,
+      "sha256": "4583de545994653d14c7769f0ceabe34608e72fde779052c8b2cf57b9cb2c86c",
+      "lizenz": "pd_pre1930_great78 (Item ohne masch. licenseurl — §9/7 Freigabe erforderlich)",
+      "probe": {
+        "sr": 96000,
+        "ch": 1,
+        "dauer_s": 5.0,
+        "subtype": "PCM_16",
+        "rms": 0.00572,
+        "hf_anteil_gt6k": 0.815
+      }
+    },
+    {
+      "datei": "data/vinyl_noise_bank/leerrille_smiling-iris_lead_out.wav",
+      "rolle": "leerrille_geraeusch",
+      "quelle_url": "https://archive.org/download/78_smiling-irish-eyes_john-spear_gbia3014551a/SMILING%20IRISH%20EYES%20-%20JOHN%20SPEAR.flac",
+      "ia_sha1": null,
+      "sha256": "f7b7b74f659a31a13b0afda2aa82b5923ba74e4cc542ed2220c9044be912032a",
+      "lizenz": "pd_pre1930_great78 (Item ohne masch. licenseurl — §9/7 Freigabe erforderlich)",
+      "probe": {
+        "sr": 96000,
+        "ch": 1,
+        "dauer_s": 5.0,
+        "subtype": "PCM_16",
+        "rms": 0.00308,
+        "hf_anteil_gt6k": 0.588
+      }
+    },
+    {
+      "datei": "data/vinyl_noise_bank/echt_beschaedigt_smiling-iris.wav",
+      "rolle": "echt_beschaedigt",
+      "quelle_url": "https://archive.org/download/78_smiling-irish-eyes_john-spear_gbia3014551a/SMILING%20IRISH%20EYES%20-%20JOHN%20SPEAR.flac",
+      "sha256": "3bbe07fd4123d7f1f6f90c52d4315f15fed91b204a0ada0fd62c9c57e4e14119",
+      "lizenz": "pd_pre1930_great78 (Item ohne masch. licenseurl — §9/7 Freigabe erforderlich)",
+      "probe": {
+        "sr": 96000,
+        "ch": 1,
+        "dauer_s": 178.1,
+        "subtype": "PCM_16",
+        "rms": 0.00646,
+        "hf_anteil_gt6k": 0.39
+      }
+    },
+    {
+      "datei": "data/vinyl_noise_bank/pdmark_0_in_die_droomvallei_final.flac",
+      "rolle": "pd_mark_audio",
+      "quelle_url": "https://archive.org/download/in-die-droomvallei-final/In%20Die%20Droomvallei%20%28final%29.flac",
+      "ia_sha1": "af0189cedc85f88ba4ce8f7f511923f57d4f2335",
+      "sha256": "7d1a458c706d601403204ca30a9fd582e2c2de3fbb3a6eb2346c46220a238f1a",
+      "lizenz": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "probe": {
+        "fehler": "nicht abtastbar: Error opening '/media/michael/Software 4TB/Aurik_Standalone/data/vinyl_noise_bank/pdmark_0_in_die_droom"
+      }
+    },
+    {
+      "datei": "data/vinyl_noise_bank/pdmark_1_educational_records_3a_e.mp3",
+      "rolle": "pd_mark_audio",
+      "quelle_url": "https://archive.org/download/educational_records_3a_ed/educational_records_3a_ed.mp3",
+      "ia_sha1": "4de53a910510f24daa74021a292f3eaa83f47ef9",
+      "sha256": "8f92fdf61d7930d46d3dcfe604292e18f9ecc3ca47285a34b421760ae39586f3",
+      "lizenz": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "probe": {
+        "sr": 44100,
+        "ch": 1,
+        "dauer_s": 153.1,
+        "subtype": "MPEG_LAYER_III",
+        "rms": 0.10684,
+        "hf_anteil_gt6k": 0.0
+      }
+    },
+    {
+      "datei": "data/vinyl_noise_bank/pdmark_2_sy_was_arm_maar_sy_was_e.flac",
+      "rolle": "pd_mark_audio",
+      "quelle_url": "https://archive.org/download/sy-was-arm-maar-sy-was-eerlick-final/Sy%20Was%20Arm%20Maar%20Sy%20Was%20Eerlick%20%28final%29.flac",
+      "ia_sha1": "5e676d6028cd7a0cee94bdfd74d988452f3edc96",
+      "sha256": "01787a64b83ede2323c23ba2311729f0f6ef4a08070ce46f70feeb6829189f63",
+      "lizenz": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "probe": {
+        "fehler": "nicht abtastbar: Error opening '/media/michael/Software 4TB/Aurik_Standalone/data/vinyl_noise_bank/pdmark_2_sy_was_arm_m"
+      }
+    }
+  ]
+}

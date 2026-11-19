@@ -1,0 +1,373 @@
+{
+  "per_category": {
+    "digital": {
+      "avg_snr_improvement": -7.275484720865886,
+      "avg_thd_change": 8.671075820922852,
+      "count": 3,
+      "max_snr_improvement": -4.148406982421875,
+      "min_snr_improvement": -10.050239562988281
+    },
+    "tape": {
+      "avg_snr_improvement": -10.840885162353516,
+      "avg_thd_change": 8.363003412882486,
+      "count": 3,
+      "max_snr_improvement": -8.963584899902344,
+      "min_snr_improvement": -14.357948303222656
+    },
+    "vinyl": {
+      "avg_snr_improvement": -12.365371704101562,
+      "avg_thd_change": 8.353515625,
+      "count": 3,
+      "max_snr_improvement": -11.066455841064453,
+      "min_snr_improvement": -13.436386108398438
+    },
+    "vocals": {
+      "avg_snr_improvement": -32.91441853841146,
+      "avg_thd_change": 8.435954411824545,
+      "count": 3,
+      "max_snr_improvement": -26.11347198486328,
+      "min_snr_improvement": -36.38902282714844
+    }
+  },
+  "per_file": [
+    {
+      "category": "vinyl",
+      "filename": "vinyl_test_01.wav",
+      "improvements": {
+        "snr_improvement": -13.436386108398438,
+        "thd_change": 1.7934684753417969
+      },
+      "original": {
+        "dynamic_range_db": 0.005366056691855192,
+        "snr": 66.56314086914062,
+        "spectral_centroid": 949.7335793084842,
+        "spectral_flatness": 1.1374530913599301e-5,
+        "thd": 31.069759368896484
+      },
+      "processed": {
+        "dynamic_range_db": 0.005595779046416283,
+        "snr": 53.12675476074219,
+        "spectral_centroid": 1965.5027614470514,
+        "spectral_flatness": 0.00013664489961229265,
+        "thd": 32.86322784423828
+      },
+      "reference_based": {
+        "correlation": 0.7470709381233857,
+        "mse": 0.027899697422981262,
+        "spectral_distance": 0.492470383644104
+      }
+    },
+    {
+      "category": "vinyl",
+      "filename": "vinyl_test_02.wav",
+      "improvements": {
+        "snr_improvement": -12.593273162841797,
+        "thd_change": 11.462997436523438
+      },
+      "original": {
+        "dynamic_range_db": 0.004300147760659456,
+        "snr": 66.58100891113281,
+        "spectral_centroid": 1249.0084435507829,
+        "spectral_flatness": 1.0349524927733e-5,
+        "thd": 44.55529022216797
+      },
+      "processed": {
+        "dynamic_range_db": 0.0044222683645784855,
+        "snr": 53.987735748291016,
+        "spectral_centroid": 2132.3281808855672,
+        "spectral_flatness": 0.00011195266415597871,
+        "thd": 56.018287658691406
+      },
+      "reference_based": {
+        "correlation": 0.7042703915556799,
+        "mse": 0.02561604417860508,
+        "spectral_distance": 0.4718269407749176
+      }
+    },
+    {
+      "category": "vinyl",
+      "filename": "vinyl_test_03.wav",
+      "improvements": {
+        "snr_improvement": -11.066455841064453,
+        "thd_change": 11.804080963134766
+      },
+      "original": {
+        "dynamic_range_db": 0.0033821198157966137,
+        "snr": 66.5778579711914,
+        "spectral_centroid": 1720.7221917731877,
+        "spectral_flatness": 9.708765901450533e-6,
+        "thd": 33.614013671875
+      },
+      "processed": {
+        "dynamic_range_db": 0.0042794495820999146,
+        "snr": 55.51140213012695,
+        "spectral_centroid": 2481.2853460711904,
+        "spectral_flatness": 7.791617827024311e-5,
+        "thd": 45.418094635009766
+      },
+      "reference_based": {
+        "correlation": 0.10130754535681533,
+        "mse": 0.0864984393119812,
+        "spectral_distance": 0.5189111828804016
+      }
+    },
+    {
+      "category": "tape",
+      "filename": "tape_test_01.wav",
+      "improvements": {
+        "snr_improvement": -8.963584899902344,
+        "thd_change": 1.6396541595458984
+      },
+      "original": {
+        "dynamic_range_db": 0.16048705577850342,
+        "snr": 51.962860107421875,
+        "spectral_centroid": 4060.633165371359,
+        "spectral_flatness": 0.0007494475576095283,
+        "thd": 31.07779884338379
+      },
+      "processed": {
+        "dynamic_range_db": 0.07312875241041183,
+        "snr": 42.99927520751953,
+        "spectral_centroid": 4742.828068094532,
+        "spectral_flatness": 0.001652802457101643,
+        "thd": 32.71745300292969
+      },
+      "reference_based": {
+        "correlation": 0.7442340940979676,
+        "mse": 0.044733915477991104,
+        "spectral_distance": 0.54920893907547
+      }
+    },
+    {
+      "category": "tape",
+      "filename": "tape_test_02.wav",
+      "improvements": {
+        "snr_improvement": -9.201122283935547,
+        "thd_change": 11.698017120361328
+      },
+      "original": {
+        "dynamic_range_db": 0.1606018990278244,
+        "snr": 52.507545471191406,
+        "spectral_centroid": 4296.476444921999,
+        "spectral_flatness": 0.0007251162314787507,
+        "thd": 44.56843185424805
+      },
+      "processed": {
+        "dynamic_range_db": 0.07299423962831497,
+        "snr": 43.30642318725586,
+        "spectral_centroid": 4882.867460659796,
+        "spectral_flatness": 0.0016168340807780623,
+        "thd": 56.266448974609375
+      },
+      "reference_based": {
+        "correlation": 0.7046615724810414,
+        "mse": 0.04859013482928276,
+        "spectral_distance": 0.5527734756469727
+      }
+    },
+    {
+      "category": "tape",
+      "filename": "tape_test_03.wav",
+      "improvements": {
+        "snr_improvement": -14.357948303222656,
+        "thd_change": 11.751338958740234
+      },
+      "original": {
+        "dynamic_range_db": 0.16177482903003693,
+        "snr": 58.863525390625,
+        "spectral_centroid": 4734.652650378116,
+        "spectral_flatness": 0.0004969567526131868,
+        "thd": 33.599327087402344
+      },
+      "processed": {
+        "dynamic_range_db": 0.07162031531333923,
+        "snr": 44.505577087402344,
+        "spectral_centroid": 5159.307291339232,
+        "spectral_flatness": 0.0013360545272007585,
+        "thd": 45.35066604614258
+      },
+      "reference_based": {
+        "correlation": 0.10163295678668356,
+        "mse": 0.09698528796434402,
+        "spectral_distance": 0.536237359046936
+      }
+    },
+    {
+      "category": "digital",
+      "filename": "digital_test_01.wav",
+      "improvements": {
+        "snr_improvement": -10.050239562988281,
+        "thd_change": 5.445316314697266
+      },
+      "original": {
+        "dynamic_range_db": 0.00037896231515333056,
+        "snr": 70.6129150390625,
+        "spectral_centroid": 1386.4333033861042,
+        "spectral_flatness": 8.863379662216175e-6,
+        "thd": 25.867813110351562
+      },
+      "processed": {
+        "dynamic_range_db": 0.0020840882789343596,
+        "snr": 60.56267547607422,
+        "spectral_centroid": 1756.174042848941,
+        "spectral_flatness": 4.7343652113340795e-5,
+        "thd": 31.313129425048828
+      },
+      "reference_based": {
+        "correlation": 0.7483122844892484,
+        "mse": 0.10059726983308792,
+        "spectral_distance": 0.6126794219017029
+      }
+    },
+    {
+      "category": "digital",
+      "filename": "digital_test_02.wav",
+      "improvements": {
+        "snr_improvement": -7.6278076171875,
+        "thd_change": 13.102184295654297
+      },
+      "original": {
+        "dynamic_range_db": 0.0007123526884242892,
+        "snr": 71.80204010009766,
+        "spectral_centroid": 1910.2782147603798,
+        "spectral_flatness": 9.922170647769235e-6,
+        "thd": 32.13763427734375
+      },
+      "processed": {
+        "dynamic_range_db": 0.0015623365761712193,
+        "snr": 64.17423248291016,
+        "spectral_centroid": 2258.4133791549334,
+        "spectral_flatness": 3.375169399078004e-5,
+        "thd": 45.23981857299805
+      },
+      "reference_based": {
+        "correlation": 0.8161428668131159,
+        "mse": 0.09175433963537216,
+        "spectral_distance": 0.6176838278770447
+      }
+    },
+    {
+      "category": "digital",
+      "filename": "digital_test_03.wav",
+      "improvements": {
+        "snr_improvement": -4.148406982421875,
+        "thd_change": 7.465726852416992
+      },
+      "original": {
+        "dynamic_range_db": 0.0014174000825732946,
+        "snr": 77.62345123291016,
+        "spectral_centroid": 2664.7859115566553,
+        "spectral_flatness": 8.05923900770722e-6,
+        "thd": 22.80750846862793
+      },
+      "processed": {
+        "dynamic_range_db": 0.0007372011314146221,
+        "snr": 73.47504425048828,
+        "spectral_centroid": 2988.442611413755,
+        "spectral_flatness": 2.2750306015950628e-5,
+        "thd": 30.273235321044922
+      },
+      "reference_based": {
+        "correlation": 0.13254182941611162,
+        "mse": 0.18480300903320312,
+        "spectral_distance": 0.6173851490020752
+      }
+    },
+    {
+      "category": "vocals",
+      "filename": "vocals_test_01.wav",
+      "improvements": {
+        "snr_improvement": -36.38902282714844,
+        "thd_change": 1.7725391387939453
+      },
+      "original": {
+        "dynamic_range_db": 1.3460693480737973e-5,
+        "snr": 103.81712341308594,
+        "spectral_centroid": 658.9425818021117,
+        "spectral_flatness": 1.0966512036247877e-6,
+        "thd": 31.079599380493164
+      },
+      "processed": {
+        "dynamic_range_db": 0.0009328802116215229,
+        "snr": 67.4281005859375,
+        "spectral_centroid": 1217.6570277433607,
+        "spectral_flatness": 1.8039530914393254e-5,
+        "thd": 32.85213851928711
+      },
+      "reference_based": {
+        "correlation": 0.747412062368577,
+        "mse": 0.027293406426906586,
+        "spectral_distance": 0.48975929617881775
+      }
+    },
+    {
+      "category": "vocals",
+      "filename": "vocals_test_02.wav",
+      "improvements": {
+        "snr_improvement": -36.240760803222656,
+        "thd_change": 11.659561157226562
+      },
+      "original": {
+        "dynamic_range_db": 1.4496130461338907e-5,
+        "snr": 104.2990951538086,
+        "spectral_centroid": 976.3200008281108,
+        "spectral_flatness": 1.6006090390874306e-6,
+        "thd": 44.56258010864258
+      },
+      "processed": {
+        "dynamic_range_db": 0.0011358020128682256,
+        "snr": 68.05833435058594,
+        "spectral_centroid": 1561.589323444757,
+        "spectral_flatness": 1.8143473425880075e-5,
+        "thd": 56.22214126586914
+      },
+      "reference_based": {
+        "correlation": 0.7045027032582937,
+        "mse": 0.03439033403992653,
+        "spectral_distance": 0.5109907984733582
+      }
+    },
+    {
+      "category": "vocals",
+      "filename": "vocals_test_03.wav",
+      "improvements": {
+        "snr_improvement": -26.11347198486328,
+        "thd_change": 11.875762939453125
+      },
+      "original": {
+        "dynamic_range_db": 1.760244049364701e-5,
+        "snr": 101.96937561035156,
+        "spectral_centroid": 1467.180885701275,
+        "spectral_flatness": 3.196196303179022e-6,
+        "thd": 33.608882904052734
+      },
+      "processed": {
+        "dynamic_range_db": 0.0013221546541899443,
+        "snr": 75.85590362548828,
+        "spectral_centroid": 2055.9773915348683,
+        "spectral_flatness": 1.7136906535597518e-5,
+        "thd": 45.48464584350586
+      },
+      "reference_based": {
+        "correlation": 0.10143957747165339,
+        "mse": 0.04626590386033058,
+        "spectral_distance": 0.41020554304122925
+      }
+    }
+  ],
+  "summary": {
+    "avg_snr_improvement": -15.849040031433105,
+    "avg_thd_change": 8.45588731765747,
+    "max_snr_improvement": -4.148406982421875,
+    "min_snr_improvement": -36.38902282714844,
+    "std_snr_improvement": 10.465470929520546,
+    "std_thd_change": 4.3849327984628355,
+    "success_criteria": {
+      "snr_achieved": false,
+      "snr_target": 10.0,
+      "thd_achieved": false,
+      "thd_target": 1.0
+    },
+    "total_files": 12
+  }
+}

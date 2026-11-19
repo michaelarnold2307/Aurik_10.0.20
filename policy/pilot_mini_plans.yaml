@@ -1,0 +1,68 @@
+pilot_mini_plans:
+  shellac_medium_offline:
+    - channel_selection: { mode: auto }
+    - repair_clicks: { wet: 1.0, max_events_per_sec: 5 }
+    - rumble_hpf: { cutoff_hz: 80 }
+  vinyl_medium_offline_stereo:
+    - repair_clicks: { wet: 1.0, max_events_per_sec: 3 }
+    - rumble_hpf: { cutoff_hz: 25 }
+    - dehum: { reduction_50hz_db: 8 }
+  tape_medium_offline_stereo:
+    - wow_flutter: { wow_strength: 0.25, flutter_strength: 0.15 }
+    - dropout_repair_hf: { wet: 1.0, max_ms: 25 }
+  cassette_medium_offline_stereo:
+    - wow_flutter: { wow_strength: 0.20, flutter_strength: 0.12 }
+    - azimuth: { strength: 0.35 }
+    - hiss_taming: { wet: 0.10 }
+  cd_medium_offline_stereo:
+    - true_peak_guard: { target_dbTP: -1.0 }
+    - declip: { strength: 0.18 }
+  dat_medium_offline_stereo:
+    - dropout_repair: { wet: 1.0 }
+    - click_repair: { wet: 1.0 }
+  minidisc_medium_offline_stereo:
+    - declip: { strength: 0.22 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  mp3_medium_offline_stereo:
+    - declip: { strength: 0.20 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  streaming_to_mp3_lossy2_medium_offline_stereo:
+    - declip: { strength: 0.18 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  tape_to_mp3_medium_offline_stereo:
+    - declip: { strength: 0.18 }
+    - wow_flutter: { wow_strength: 0.20, flutter_strength: 0.12 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  cassette_to_mp3_medium_offline_stereo:
+    - declip: { strength: 0.18 }
+    - azimuth: { strength: 0.35 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  cd_to_mp3_medium_offline_stereo:
+    - declip: { strength: 0.18 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  vinyl_to_mp3_medium_offline_stereo:
+    - declip: { strength: 0.18 }
+    - repair_clicks: { wet: 1.0, max_events_per_sec: 2 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  shellac_to_cd_to_mp3_medium_offline:
+    - channel_selection: { mode: auto }
+    - repair_clicks: { wet: 1.0, max_events_per_sec: 3 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -0.8 }
+  tape_to_cd_to_mp3_medium_offline_stereo:
+    - declip: { strength: 0.18 }
+    - wow_flutter: { wow_strength: 0.20, flutter_strength: 0.12 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  cassette_to_cd_to_mp3_medium_offline_stereo:
+    - declip: { strength: 0.18 }
+    - azimuth: { strength: 0.35 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  dat_to_cd_to_mp3_medium_offline_stereo:
+    - dropout_repair: { wet: 1.0 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  minidisc_to_cd_to_mp3_medium_offline_stereo:
+    - declip: { strength: 0.18 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }
+  field_tape_to_mp3_medium_offline_stereo:
+    - declip: { strength: 0.18 }
+    - dropout_repair_hf: { wet: 1.0, max_ms: 25 }
+    - codec_taming: { smoothing_strength: 0.12, hf_tilt_db_at_10k: -1.0 }

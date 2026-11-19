@@ -1,0 +1,169 @@
+profile:
+  name: shellac_medium_offline
+  description: >
+    Medium restoration profile for shellac (78 rpm) transfers.
+    Goal: eliminate perceptual disruptors (clicks, crackle, rumble),
+    preserve historical authenticity, avoid modern sound artifacts.
+  mode: offline
+  medium: shellac
+  channels: stereo_or_mono
+
+analysis:
+  samplerate_expected: any
+  segment_length_sec: 1.5
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 12.0
+
+  stft:
+    window_size: 2048
+    hop_size: 256
+    window: hann
+
+  stft_hf:
+    window_size: 4096
+    hop_size: 512
+    window: hann
+
+budgets:
+  artifact_budget: 0.18
+  identity_budget: 0.12
+  temporal_change_budget: 0.10
+  spectral_change_budget: 0.22
+  stereo_change_budget: 0.05
+  noise_change_budget: 0.08
+
+commit_policy:
+  min_anchor_gain_general: 0.010
+  min_anchor_gain_declick: 0.008
+  min_anchor_gain_decrackle: 0.010
+  min_anchor_gain_denoise: 0.020
+
+  risk_penalty_weight: 2.2
+  change_penalty_weight: 1.0
+
+  max_trials_per_issue: 3
+  max_total_trials_per_segment: 14
+
+hard_gates:
+  safety:
+    new_clipping: forbidden
+    dc_offset_increase: forbidden
+
+  processing_signature:
+    musical_noise_increase: forbidden
+    pumping_increase: forbidden
+    transient_smear_max_percent: 6.0
+
+  identity:
+    pitch_drift: forbidden
+    formant_shift: forbidden
+
+  stereo:
+    mono_fold_regression: forbidden
+    hf_coherence_drop: forbidden
+
+processing_order:
+  - channel_selection
+  - eq_curve
+  - repair
+  - rumble
+  - sibilance
+  - noise
+  - stereo_guard
+  - finalize
+
+modules:
+
+  channel_selection:
+    enabled: true
+    mode: auto
+    strategy:
+      - select_best_channel
+      - sum_if_similar
+    criteria:
+      click_density_weight: 0.5
+      noise_floor_weight: 0.3
+      hf_integrity_weight: 0.2
+
+  eq_curve:
+    enabled: true
+    mode: historical
+    curves:
+      default: flat
+      known_labels:
+        - columbia_pre_1938
+        - victor_pre_1938
+        - hm_pre_1938
+    commit:
+      min_anchor_gain: 0.020
+
+  repair:
+    clicks:
+      detect:
+        impulse_salience_db: 18.0
+        max_duration_ms: 2.5
+      trial:
+        wet: 1.0
+      commit:
+        min_anchor_gain: 0.008
+
+    crackle:
+      detect:
+        micro_impulse_density_per_sec: 120
+      trial:
+        wet: 0.55
+      commit:
+        min_anchor_gain: 0.010
+
+  rumble:
+    enabled: true
+    hpf:
+      cutoff_hz: 80
+      slope_db_per_oct: 12
+    commit:
+      min_anchor_gain: 0.010
+
+  sibilance:
+    detect:
+      hf_band_hz: [4500, 8500]
+      spikiness_warn_db: 11.0
+    trial:
+      resonance_strength: 0.22
+      deesser_wet: 0.18
+    commit:
+      min_anchor_gain: 0.010
+      max_hf_reduction_db: 2.5
+
+  noise:
+    enabled: true
+    mode: surface_noise
+    detect:
+      noise_floor_dbfs: -45.0
+    trial:
+      wet: 0.20
+      wet_max: 0.30
+    commit:
+      min_anchor_gain: 0.020
+      musical_noise_tolerance: 0.0
+
+  stereo_guard:
+    enforce_mono: auto
+    hf_coherence_min_delta: -0.02
+
+finalize:
+  true_peak_guard:
+    enabled: true
+    target_dbTP: -2.0
+
+  dither:
+    enabled: auto
+    bitdepth_out: 24
+    noise_shaping: off
+
+quality_report:
+  export:
+    anchor_stability_before: true
+    anchor_stability_after: true
+    click_density_before_after: true
+    crackle_density_before_after: true
+    applied_modules: true

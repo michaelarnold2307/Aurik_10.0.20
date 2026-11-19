@@ -1,0 +1,4 @@
+- Phase-local resolver helpers are a stable patch/test seam for singleton services in phases; prefer local `_get_phaseXX_*` wrappers over patching imported service symbols directly.
+- Phase public contracts should normalize material inputs at the boundary; `MaterialType` enums and aliases like `cassette` should map to a canonical internal key before parameter lookup.
+- Add focused regression tests for stereo delay fallback paths in preventive shields; these bugs are easy to reintroduce silently without an explicit onset-delay test.
+- Guard-Mappings in UV3 must use current canonical phase IDs (plus optional legacy aliases). Alias drift (e.g. old `phase_23_*`/`phase_38_*` names) can silently disable protection logic while code still "looks" correct.

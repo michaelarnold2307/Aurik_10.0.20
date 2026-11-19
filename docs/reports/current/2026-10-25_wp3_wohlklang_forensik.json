@@ -1,0 +1,470 @@
+{
+  "date": "2026-10-25",
+  "script": "scripts/forensik_vocoder_ordnung.py",
+  "seed": 42,
+  "excerpt_seconds": 8.0,
+  "offset_seconds": 30.0,
+  "delta_eps": 0.02,
+  "results": [
+    {
+      "track": "AM Contra - Heart Peripheral",
+      "stem": "vocals",
+      "sr": 48000,
+      "vocode_model": "vocos_onnx",
+      "goals_before": {
+        "artikulation": 0.798,
+        "authentizitaet": 0.5204,
+        "bass_kraft": 0.0833,
+        "brillanz": 0.3226,
+        "emotionalitaet": 0.923,
+        "groove": 1.0,
+        "micro_dynamics": 0.952,
+        "natuerlichkeit": 0.8488,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.5426,
+        "tonal_center": 0.4641,
+        "transient_energie": 1.0,
+        "transparenz": 0.6223,
+        "waerme": 0.6629
+      },
+      "goals_after": {
+        "artikulation": 0.798,
+        "authentizitaet": 0.4589,
+        "bass_kraft": 0.0548,
+        "brillanz": 0.2233,
+        "emotionalitaet": 0.5214,
+        "groove": 0.9,
+        "micro_dynamics": 0.5,
+        "natuerlichkeit": 0.7395,
+        "separation_fidelity": 0.5,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 1.0,
+        "tonal_center": 0.6755,
+        "transient_energie": 1.0,
+        "transparenz": 0.2,
+        "waerme": 0.0054
+      },
+      "hearing_order_violations": [
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.2114,
+          "at_cost_of": "authentizitaet",
+          "cost_delta": -0.0616,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.2114,
+          "at_cost_of": "bass_kraft",
+          "cost_delta": -0.0285,
+          "tier_improving": 3,
+          "tier_cost": 2
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.2114,
+          "at_cost_of": "emotionalitaet",
+          "cost_delta": -0.4017,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.2114,
+          "at_cost_of": "micro_dynamics",
+          "cost_delta": -0.452,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.2114,
+          "at_cost_of": "natuerlichkeit",
+          "cost_delta": -0.1093,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.2114,
+          "at_cost_of": "waerme",
+          "cost_delta": -0.6575,
+          "tier_improving": 3,
+          "tier_cost": 2
+        }
+      ]
+    },
+    {
+      "track": "AM Contra - Heart Peripheral",
+      "stem": "mixture",
+      "sr": 48000,
+      "vocode_model": "vocos_onnx",
+      "goals_before": {
+        "artikulation": 0.948,
+        "authentizitaet": 0.5706,
+        "bass_kraft": 1.0,
+        "brillanz": 0.0325,
+        "emotionalitaet": 0.9541,
+        "groove": 1.0,
+        "micro_dynamics": 0.952,
+        "natuerlichkeit": 0.8678,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.4499,
+        "tonal_center": 0.4822,
+        "transient_energie": 1.0,
+        "transparenz": 0.5167,
+        "waerme": 0.6215
+      },
+      "goals_after": {
+        "artikulation": 0.798,
+        "authentizitaet": 0.4721,
+        "bass_kraft": 1.0,
+        "brillanz": 0.0945,
+        "emotionalitaet": 0.5305,
+        "groove": 0.9,
+        "micro_dynamics": 0.5,
+        "natuerlichkeit": 0.7053,
+        "separation_fidelity": 0.5,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.9999,
+        "tonal_center": 0.5882,
+        "transient_energie": 1.0,
+        "transparenz": 0.6177,
+        "waerme": 0.7064
+      },
+      "hearing_order_violations": [
+        {
+          "improving_goal": "brillanz",
+          "improving_delta": 0.062,
+          "at_cost_of": "artikulation",
+          "cost_delta": -0.15,
+          "tier_improving": 4,
+          "tier_cost": 3
+        },
+        {
+          "improving_goal": "brillanz",
+          "improving_delta": 0.062,
+          "at_cost_of": "authentizitaet",
+          "cost_delta": -0.0984,
+          "tier_improving": 4,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "brillanz",
+          "improving_delta": 0.062,
+          "at_cost_of": "emotionalitaet",
+          "cost_delta": -0.4236,
+          "tier_improving": 4,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "brillanz",
+          "improving_delta": 0.062,
+          "at_cost_of": "micro_dynamics",
+          "cost_delta": -0.452,
+          "tier_improving": 4,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "brillanz",
+          "improving_delta": 0.062,
+          "at_cost_of": "natuerlichkeit",
+          "cost_delta": -0.1625,
+          "tier_improving": 4,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "brillanz",
+          "improving_delta": 0.062,
+          "at_cost_of": "separation_fidelity",
+          "cost_delta": -0.2,
+          "tier_improving": 4,
+          "tier_cost": 3
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.106,
+          "at_cost_of": "authentizitaet",
+          "cost_delta": -0.0984,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.106,
+          "at_cost_of": "emotionalitaet",
+          "cost_delta": -0.4236,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.106,
+          "at_cost_of": "micro_dynamics",
+          "cost_delta": -0.452,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.106,
+          "at_cost_of": "natuerlichkeit",
+          "cost_delta": -0.1625,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "transparenz",
+          "improving_delta": 0.101,
+          "at_cost_of": "authentizitaet",
+          "cost_delta": -0.0984,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "transparenz",
+          "improving_delta": 0.101,
+          "at_cost_of": "emotionalitaet",
+          "cost_delta": -0.4236,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "transparenz",
+          "improving_delta": 0.101,
+          "at_cost_of": "micro_dynamics",
+          "cost_delta": -0.452,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "transparenz",
+          "improving_delta": 0.101,
+          "at_cost_of": "natuerlichkeit",
+          "cost_delta": -0.1625,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "waerme",
+          "improving_delta": 0.0849,
+          "at_cost_of": "authentizitaet",
+          "cost_delta": -0.0984,
+          "tier_improving": 2,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "waerme",
+          "improving_delta": 0.0849,
+          "at_cost_of": "emotionalitaet",
+          "cost_delta": -0.4236,
+          "tier_improving": 2,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "waerme",
+          "improving_delta": 0.0849,
+          "at_cost_of": "micro_dynamics",
+          "cost_delta": -0.452,
+          "tier_improving": 2,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "waerme",
+          "improving_delta": 0.0849,
+          "at_cost_of": "natuerlichkeit",
+          "cost_delta": -0.1625,
+          "tier_improving": 2,
+          "tier_cost": 1
+        }
+      ]
+    },
+    {
+      "track": "Al James - Schoolboy Facination",
+      "stem": "vocals",
+      "sr": 48000,
+      "vocode_model": "vocos_onnx",
+      "goals_before": {
+        "artikulation": 0.948,
+        "authentizitaet": 0.8919,
+        "bass_kraft": 1.0,
+        "brillanz": 0.6236,
+        "emotionalitaet": 0.919,
+        "groove": 1.0,
+        "micro_dynamics": 0.952,
+        "natuerlichkeit": 0.8834,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.5661,
+        "tonal_center": 0.5061,
+        "transient_energie": 1.0,
+        "transparenz": 0.3759,
+        "waerme": 0.2483
+      },
+      "goals_after": {
+        "artikulation": 0.798,
+        "authentizitaet": 0.4675,
+        "bass_kraft": 0.1078,
+        "brillanz": 0.2359,
+        "emotionalitaet": 0.5243,
+        "groove": 0.9,
+        "micro_dynamics": 0.5,
+        "natuerlichkeit": 0.7406,
+        "separation_fidelity": 0.5,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 1.0,
+        "tonal_center": 0.7571,
+        "transient_energie": 1.0,
+        "transparenz": 0.2,
+        "waerme": 0.0073
+      },
+      "hearing_order_violations": [
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.251,
+          "at_cost_of": "authentizitaet",
+          "cost_delta": -0.4244,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.251,
+          "at_cost_of": "bass_kraft",
+          "cost_delta": -0.8922,
+          "tier_improving": 3,
+          "tier_cost": 2
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.251,
+          "at_cost_of": "emotionalitaet",
+          "cost_delta": -0.3947,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.251,
+          "at_cost_of": "micro_dynamics",
+          "cost_delta": -0.452,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.251,
+          "at_cost_of": "natuerlichkeit",
+          "cost_delta": -0.1427,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.251,
+          "at_cost_of": "waerme",
+          "cost_delta": -0.241,
+          "tier_improving": 3,
+          "tier_cost": 2
+        }
+      ]
+    },
+    {
+      "track": "Al James - Schoolboy Facination",
+      "stem": "mixture",
+      "sr": 48000,
+      "vocode_model": "vocos_onnx",
+      "goals_before": {
+        "artikulation": 0.8253,
+        "authentizitaet": 0.9286,
+        "bass_kraft": 1.0,
+        "brillanz": 0.2708,
+        "emotionalitaet": 0.955,
+        "groove": 1.0,
+        "micro_dynamics": 0.952,
+        "natuerlichkeit": 0.9494,
+        "separation_fidelity": 0.7,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 0.451,
+        "tonal_center": 0.467,
+        "transient_energie": 1.0,
+        "transparenz": 0.4689,
+        "waerme": 0.3211
+      },
+      "goals_after": {
+        "artikulation": 0.798,
+        "authentizitaet": 0.4882,
+        "bass_kraft": 0.3296,
+        "brillanz": 0.1971,
+        "emotionalitaet": 0.5201,
+        "groove": 0.9,
+        "micro_dynamics": 0.5,
+        "natuerlichkeit": 0.704,
+        "separation_fidelity": 0.5,
+        "spatial_depth": 0.75,
+        "timbre_authentizitaet": 1.0,
+        "tonal_center": 0.5427,
+        "transient_energie": 1.0,
+        "transparenz": 0.2,
+        "waerme": 0.021
+      },
+      "hearing_order_violations": [
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.0757,
+          "at_cost_of": "authentizitaet",
+          "cost_delta": -0.4404,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.0757,
+          "at_cost_of": "bass_kraft",
+          "cost_delta": -0.6704,
+          "tier_improving": 3,
+          "tier_cost": 2
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.0757,
+          "at_cost_of": "emotionalitaet",
+          "cost_delta": -0.435,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.0757,
+          "at_cost_of": "micro_dynamics",
+          "cost_delta": -0.452,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.0757,
+          "at_cost_of": "natuerlichkeit",
+          "cost_delta": -0.2453,
+          "tier_improving": 3,
+          "tier_cost": 1
+        },
+        {
+          "improving_goal": "tonal_center",
+          "improving_delta": 0.0757,
+          "at_cost_of": "waerme",
+          "cost_delta": -0.3001,
+          "tier_improving": 3,
+          "tier_cost": 2
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "n_signals": 4,
+    "n_violations": 36
+  }
+}

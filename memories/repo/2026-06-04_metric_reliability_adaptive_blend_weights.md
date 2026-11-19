@@ -1,0 +1,4 @@
+- Neuer Hebel: Runtime-Metric-Reliability-Graph mit adaptiven Blend-Gewichten (base/runtime) statt fixem 60/40-Mix.
+- API: get_blend_weights(material, chain, mode, era) -> normierte Gewichte in sicheren Grenzen (base 0.40-0.75, runtime 0.25-0.60).
+- Integration: UV3 nutzt Gewichte direkt vor §2.78-reschedule und schreibt base/runtime/blended in phase_metadata_accumulator.metric_reliability_confidence.
+- Testpattern: Erst niedrige Runtime-Gewichtung ohne Historie prüfen, dann durch viele Updates support-abhängigen Anstieg der Runtime-Gewichtung validieren.

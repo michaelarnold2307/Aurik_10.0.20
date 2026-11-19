@@ -1,0 +1,65 @@
+{
+  "date": "2026-09-14",
+  "script": "scripts/train_diffwave_vocal_inpaint.py",
+  "goal": "VOCAL-INPAINT-S2/F1: ΔSDR ≥ 0 je Lücke (S1-Ziellücke: mean −1,69 dB)",
+  "lr": 5e-5,
+  "epochs": 7,
+  "masking_beta": 0.3,
+  "seed": 42,
+  "best_epoch": 1,
+  "best_val_mean_sdr_db": -1.444,
+  "baseline_zero_shot_mean_sdr_db": -3.01,
+  "baseline_zero_shot_min_sdr_db": -9.11,
+  "never_worsen_per_gap": false,
+  "history": [
+    {
+      "epoch": 0,
+      "train_loss": 2.355243,
+      "val_mean_sdr_db": -8.438,
+      "val_min_sdr_db": -25.36,
+      "seconds": 726.2
+    },
+    {
+      "epoch": 1,
+      "train_loss": 1.307559,
+      "val_mean_sdr_db": -1.444,
+      "val_min_sdr_db": -4.405,
+      "seconds": 727.2
+    },
+    {
+      "epoch": 2,
+      "train_loss": 1.432222,
+      "val_mean_sdr_db": -2.355,
+      "val_min_sdr_db": -7.109,
+      "seconds": 749.9
+    },
+    {
+      "epoch": 3,
+      "train_loss": 1.585026,
+      "val_mean_sdr_db": -3.057,
+      "val_min_sdr_db": -9.282,
+      "seconds": 746.9
+    },
+    {
+      "epoch": 4,
+      "train_loss": 1.083161,
+      "val_mean_sdr_db": -2.911,
+      "val_min_sdr_db": -8.801,
+      "seconds": 726.7
+    },
+    {
+      "epoch": 5,
+      "train_loss": 1.24571,
+      "val_mean_sdr_db": -4.742,
+      "val_min_sdr_db": -14.309,
+      "seconds": 719.4
+    },
+    {
+      "epoch": 6,
+      "train_loss": 1.093435,
+      "val_mean_sdr_db": -4.165,
+      "val_min_sdr_db": -12.566,
+      "seconds": 718.6
+    }
+  ]
+}

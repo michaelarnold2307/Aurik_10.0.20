@@ -1,0 +1,15 @@
+{
+  "allowedTools": [],
+  "assets": [],
+  "description": "Im Interesse einer offenen und einladenden Gemeinschaft verpflichten wir uns als Beitragende und Betreuer, die Teilnahme an unserem Projekt und in unserer Gemeinschaft zu einer bel\u00e4stigungsfreien Erfahrung f\u00fcr alle zu machen \u2014 unabh\u00e4ngig von Alter, K\u00f6rpergr\u00f6\u00dfe, Behinderung, ethnischer Zugeh\u00f6rigkeit, Geschlechtsmerkmalen, Geschlechtsidentit\u00e4t und -ausdruck, Erfahrungsgrad, Bildung, sozio\u00f6konomischem Status, Nationalit\u00e4t, pers\u00f6nlichem Erscheinungsbild, Rasse, Religion oder sexueller Identit\u00e4t und Orientierung.",
+  "entry": "SKILL.md",
+  "id": "code-of-conduct",
+  "name": "CODE OF CONDUCT",
+  "priority": 0,
+  "triggers": {
+    "commands": [],
+    "fileTypes": [],
+    "promptPatterns": []
+  },
+  "version": "0.0.0"
+}

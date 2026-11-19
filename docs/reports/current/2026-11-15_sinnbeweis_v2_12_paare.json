@@ -1,0 +1,18 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "datum": "2026-11-15",
+  "lauf": "sinn_beweis_v2_12_paare_10_kanaele",
+  "n_paare": 12,
+  "n_besser": 0,
+  "korrektur_v1": "Der v1-Befund (e037055f, 4 Paare: vinyl -0,030 besser) war ein Kontext-Artefakt der 4-Paar-Pegel-Statistik — im 12-Paar-Kontext ist Boogie-vinyl 0,0 (No-Op). DRT-9-Ehrlichkeit: Einzel-Titel-Befunde sind nicht belastbar; nur der volle Lauf zählt.",
+  "reproduzierbar": {
+    "boogie_kassette": "defektlast -0,079 (v1 -0,077, v2 -0,079) — REPRODUZIERBAR, aber musik_mos neutral (-0,010)"
+  },
+  "neue_befunde": {
+    "jets_vinyl": "defektlast -0,203 ABER musik_mos -0,551 — ÜBERRESTAURATION: der Gewinn kostet massiv Wohlklang; die Regionen-Gates (Witness-Q) sehen das nicht — Ganz-Titel-mos-Never-worsen FEHLT",
+    "traeumer_clipping": "defektlast +0,408, musik_mos -0,333 — Pipeline verschlechtert massiv (clipping-Bereich, Declip-Kopf AUS)",
+    "no_op_paare": 5
+  },
+  "fazit": "Ganz-Titel-Sinn-Beweis mit den 10 Kanälen: 0/12 besser (defektlast UND musik_mos). Die k398-Regionen-Q der Kanäle überträgt sich NICHT automatisch auf die synthetischen Rezept-Defekte der 10-s-Titel. Nächste Ursachen: (a) Ganz-Titel-mos-Never-worsen als DRT-10-Kandidat; (b) Trigger-Parität k398-0,1-s-Regionen vs. 10-s-Titel prüfen.",
+  "quellen": ["study_stimuli/sinn_beweis_neu_v2/bewertung.json"]
+}

@@ -1,0 +1,160 @@
+{
+  "_schema": {
+    "version": 1,
+    "description": "Pfad-E2E-Register (Maßnahme 1, Start 2026-10-07): Jeder AUDITIERTE Signalpfad hat Status, Rolle, Domäne, Belegpfade und E2E-Nachweis. Produktive/Challenger-Pfade ohne E2E-Test brauchen eine dokumentierte Lücke (e2e_gap + gap_reason). Phantom-Zustand ist nur als Uebergang mit removal_plan erlaubt (fail-closed verboten als Endzustand).",
+    "status_enum": {
+      "productive": "E2E im Produktions-/Studio-Pfad erreichbar",
+      "challenger": "ausserhalb der Produktion; eigener E2E-Weg (Benchmark/Runde) muss laufen",
+      "k0": "trainiert/beschafft, nicht deployt (stilles Kapital, Register-Klasse K0)",
+      "archived": "aus models/ entfernt, Fingerprint dokumentiert",
+      "phantom_transition": "existiert, wirkt aber nie/falsch — Uebergangszustand MIT removal_plan"
+    }
+  },
+  "paths": [
+    {
+      "id": "vocos_48khz_studio_finisher",
+      "layer": "ml",
+      "status": "productive",
+      "role": "§1.4 Studio-2026-Finisher (Maximum/Studio/Aggressive, PQS-MOS<4.3) — primaere Vocos-Stufe",
+      "domain": "sprache (belegt 2026-10-08: HF-Discussion #2 — Podcasts/VCTK/Expresso, kein Gesang; Aurik-Kriterium: Gesang)",
+      "artifacts": ["models/vocos_48khz/vocos_48khz.onnx"],
+      "call_path": "backend/core/unified_restorer_v3.py (§1.4, Z. 18722) + plugins/vocos_plugin.py",
+      "evidence": [
+        "plugins/vocos_plugin.py",
+        ".github/SOTA_DEFICIT_REGISTER.md (D-K2-3)",
+        ".github/ML_MODEL_DOMAIN_REGISTRY.md"
+      ],
+      "e2e_test": null,
+      "e2e_gap": true,
+      "gap_reason": "kein ausgefuehrter E2E-Smoke im Repo (Code-Inspektion 2026-10-07: aktiv, NIEMALS im Restoration-Modus per Spec); Smoke-Test nachzuruesten"
+    },
+    {
+      "id": "vocos_24k_44k_fallback_stufen",
+      "layer": "ml",
+      "status": "productive",
+      "role": "Studio-Finisher-Fallback-Stufen 2/3 (48k -> 44.1k -> 24k)",
+      "domain": "sprache (24k, LibriTTS belegt; kein Gesang); 44.1k-Datei fehlt im Bestand — Stufe inaktiv",
+      "artifacts": ["models/vocos/vocos_mel_spec_24khz.onnx"],
+      "call_path": "plugins/vocos_plugin.py (Prioritaet 48k -> 44.1k -> 24k)",
+      "evidence": [".github/SOTA_DEFICIT_REGISTER.md (D-K2-2)"],
+      "e2e_test": null,
+      "e2e_gap": true,
+      "gap_reason": "nur als Fallback-Stufe erreichbar; kein eigener E2E-Nachweis"
+    },
+    {
+      "id": "hifigan_plugin_fallback",
+      "layer": "ml",
+      "status": "productive",
+      "role": "Resynthese-Rettungs-Fallback in plugins/bigvgan_v2_plugin.py + audioldm2_plugin.py",
+      "domain": "unbekannt",
+      "artifacts": ["models/hifi_gan/hifi_gan.onnx"],
+      "call_path": "plugins/hifigan_plugin.py via bigvgan_v2_plugin.py:614 / audioldm2_plugin.py:458",
+      "evidence": [".github/SOTA_DEFICIT_REGISTER.md (D-K2-1)"],
+      "e2e_test": null,
+      "e2e_gap": true,
+      "gap_reason": "Fallback-Zweig; kein ausgeführter E2E-Nachweis (sota_speech_superres-Konsument ist Phantom)"
+    },
+    {
+      "id": "nvsr_sbr_phase06",
+      "layer": "ml",
+      "status": "productive",
+      "role": "deterministische SBR-Bandbreiten-Erweiterung 8-16 kHz (Vinyl/MP3-128) + FlashSR-ONNX-Eskalation (Strategie 'flashsr_onnx')",
+      "domain": "dsp-kern domaenenfrei; Eskalations-Artefakt = FlashSR (Musik-F4-Export)",
+      "artifacts": ["models/nvsr/nvsr.onnx"],
+      "call_path": "backend/core/phases/phase_06_frequency_restoration.py:842/1221",
+      "evidence": [".github/SOTA_DEFICIT_REGISTER.md (D-K2-4)"],
+      "e2e_test": null,
+      "e2e_gap": true,
+      "gap_reason": "manueller 48k-Smoke 2026-10-07 bestanden (sota_real, Audio-Out); Phase-06-Integration nicht als E2E-Smoke gepinnt"
+    },
+    {
+      "id": "aero_bwe_challenger",
+      "layer": "ml",
+      "status": "challenger",
+      "role": "BWE 12 -> 48 kHz (Challenger vs. FlashSR-Incumbent; ADOPT erst nach bestandener Runde)",
+      "domain": "sprache (slp-rl/aero)",
+      "artifacts": [
+        "models/aero/aero_12_48.onnx",
+        "models/aero/checkpoint_12-48_hl256.th"
+      ],
+      "call_path": "plugins/aero_plugin.py (get_aero_plugin)",
+      "evidence": [
+        "docs/reports/current/2026-10-06_bwe_candidates.json",
+        "scripts/benchmark_bwe_candidates.py"
+      ],
+      "e2e_test": "tests/unit/test_aero_plugin.py",
+      "e2e_gap": false,
+      "gap_reason": null
+    },
+    {
+      "id": "bigvgan_f3_k0",
+      "layer": "ml",
+      "status": "k0",
+      "role": "MUSDB18-HQ-Vokoder-Finetune (exportiert + paritaetsgeprueft rel <= 6,5e-05, A/B HNR +4,42 dB) — ohne Loader-Pfad",
+      "domain": "musik",
+      "artifacts": ["models/bigvgan/bigvgan_v2_f3.onnx"],
+      "call_path": null,
+      "evidence": [".github/SOTA_DEFICIT_REGISTER.md (D-K0-1, D-K0-2)"],
+      "e2e_test": null,
+      "e2e_gap": false,
+      "gap_reason": null
+    },
+    {
+      "id": "nvsr_ts_k0",
+      "layer": "ml",
+      "status": "archived",
+      "role": "echtes NVSR (TorchScript SynthesizerTrn, forward 8000->48000 = 8->48 kHz, 131.904 Parameter) — archiviert 10.12.25 (kein Loader/Konsument/Test; Aktivierung ohne Gesangs-Domaenen-Beleg ausgeschlossen)",
+      "domain": "unbekannt (Paper-Herkunft Speech laut Haus-Doku; Trainingskorpus unbelegt)",
+      "artifacts": ["models/_archive_20260920/nvsr/nvsr.ts"],
+      "call_path": null,
+      "evidence": [
+        ".github/SOTA_DEFICIT_REGISTER.md (D-K0-10)",
+        ".github/ML_ARTIFACT_FINGERPRINTS.md (Zeile 556)"
+      ],
+      "e2e_test": null,
+      "e2e_gap": false,
+      "gap_reason": null
+    },
+    {
+      "id": "lyrics_guided_phonem_path",
+      "layer": "core",
+      "status": "productive",
+      "role": "§2.36-Phonem-Maske (Whisper-Tiny/wav2vec2) fuer NR-Bypass — pipeline-weit, deterministisch seit 10.12.8",
+      "domain": "n/a (Werkzeug/Metrik — veraendert nur als Schutzmaske)",
+      "artifacts": ["models/whisper/whisper_tiny.onnx"],
+      "call_path": "backend/core/lyrics_guided_enhancement.py (get_phoneme_mask) — Phasen 03/09/18/19/20/23/27/28/29/43",
+      "evidence": [".github/SOTA_DEFICIT_REGISTER.md (D-K3-26)"],
+      "e2e_test": "tests/unit/test_dk326_lyrics_determinism.py",
+      "e2e_gap": false,
+      "gap_reason": null
+    },
+    {
+      "id": "vocoder_chain_spec04",
+      "layer": "core",
+      "status": "phantom_transition",
+      "role": "Spec-04-Vocoder-Kaskade (Vocos 48k -> BigVGAN -> HiFi-GAN -> PGHI) — [RELEASE_MUST] im Spec, NULL Aufrufer im Code (2026-10-07 verifiziert)",
+      "domain": "n/a",
+      "artifacts": [],
+      "call_path": "backend/core/vocoder_chain.py",
+      "evidence": [".github/SOTA_DEFICIT_REGISTER.md (D-K2-1 Verifikation)"],
+      "e2e_test": null,
+      "e2e_gap": false,
+      "gap_reason": null,
+      "removal_plan": "Entscheid: Aufrufer herstellen (Spec-04-Kaskade integrieren) ODER Datei entfernen/archivieren — offen seit 2026-10-07"
+    },
+    {
+      "id": "sota_speech_superres",
+      "layer": "core",
+      "status": "phantom_transition",
+      "role": "Speech-SR-Kette mit hifi_gan-Fallback — keine Aufrufer ausserhalb der Datei (2026-10-07 verifiziert; nur Policy-Kategorie 'speech_superres')",
+      "domain": "n/a",
+      "artifacts": [],
+      "call_path": "backend/core/dsp/sota_speech_superres.py",
+      "evidence": [".github/SOTA_DEFICIT_REGISTER.md (D-K2-1 Verifikation)"],
+      "e2e_test": null,
+      "e2e_gap": false,
+      "gap_reason": null,
+      "removal_plan": "Bedarf pruefen: als 8-kHz-Fallback aktivieren (mit Benchmark) oder entfernen/archivieren — offen seit 2026-10-07"
+    }
+  ]
+}

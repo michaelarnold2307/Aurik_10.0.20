@@ -1,0 +1,43 @@
+profile:
+  name: cd_to_mp3_medium_offline_stereo
+  medium: cd_mp3_hybrid
+  mode: offline
+  channels: stereo
+
+analysis:
+  segment_length_sec: 2.0
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 10.0
+
+budgets:
+  artifact_budget: 0.08
+  identity_budget: 0.06
+  temporal_change_budget: 0.05
+  spectral_change_budget: 0.12
+  noise_change_budget: 0.02
+  stereo_change_budget: 0.08
+
+processing_order:
+  - declip
+  - codec_taming
+  - transient_guard
+  - sibilance
+  - stereo_guard
+  - finalize
+
+modules:
+
+  codec_taming:
+    detect:
+      pre_echo_warn_db: -20
+      pre_echo_strong_db: -15
+      warble_energy_warn: 0.010
+      warble_energy_strong: 0.020
+    trial:
+      smoothing_strength: 0.14
+      hf_tilt_db_at_10k: -1.0
+    commit:
+      min_anchor_gain: 0.015
+      max_hf_loss_db: 1.2
+
+# Declip, Transient Guard, Sibilance, Stereo Guard, Finalize wie im MP3-Profil

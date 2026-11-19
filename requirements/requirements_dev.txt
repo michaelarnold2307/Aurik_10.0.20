@@ -1,0 +1,37 @@
+# Aurik 9 — Entwicklungs-Abhängigkeiten (nicht für Endnutzer)
+# Installation: pip install -r requirements/requirements_dev.txt
+# ============================================================================
+# Diese Pakete werden NUR für lokale Entwicklung, API-Server und CI benötigt.
+# Die Desktop-App (AppImage/EXE) packt diese NICHT ein.
+# ============================================================================
+
+# --- REST-API (optionale Entwicklungs-API, §13.x) ---
+fastapi==0.128.1
+uvicorn[standard]>=0.30.0
+starlette==0.50.0
+
+# --- Wissenschaftliche Bibliotheken (für CI-Tests: benchmarks, normative) ---
+numpy==1.26.4
+scipy>=1.12.0
+soundfile>=0.12.1
+librosa==0.11.0
+resampy==0.4.3
+numba==0.63.1
+
+# --- Testing ---
+pytest>=8.0.0
+pytest-timeout>=2.3.0
+pytest-cov>=4.0.0
+
+# --- Code-Qualität ---
+ruff>=0.4.0
+black>=24.0.0
+mypy>=1.9.0
+isort>=5.13.0
+pre-commit>=3.7.0
+
+# --- Typ-Stubs ---
+types-requests
+types-pyyaml
+psutil>=5.9.0
+zipp>=3.19.1

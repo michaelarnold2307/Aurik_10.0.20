@@ -1,0 +1,48 @@
+{
+  "all_runtime_ready": true,
+  "components": [
+    {
+      "fallback": true,
+      "name": "fcpe",
+      "primary": true,
+      "release_mode": "primary",
+      "resolved_by": "primary",
+      "runtime_ready": true
+    },
+    {
+      "fallback": true,
+      "name": "sgmse_plus",
+      "primary": true,
+      "release_mode": "primary",
+      "resolved_by": "primary",
+      "runtime_ready": true,
+      "source_checkpoint": true
+    },
+    {
+      "fallback": true,
+      "name": "versa",
+      "primary": true,
+      "release_mode": "primary",
+      "resolved_by": "primary",
+      "runtime_ready": true
+    },
+    {
+      "fallback": true,
+      "name": "flow_matching",
+      "primary": false,
+      "release_mode": "fallback",
+      "resolved_by": "cqtdiff_or_diffwave_fallback",
+      "runtime_ready": true
+    },
+    {
+      "fallback": true,
+      "name": "gacela",
+      "primary": true,
+      "release_mode": "primary",
+      "resolved_by": "primary",
+      "runtime_ready": true
+    }
+  ],
+  "missing_runtime_components": [],
+  "mode": "runtime_readiness"
+}

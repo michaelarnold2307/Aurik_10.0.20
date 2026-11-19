@@ -1,0 +1,6874 @@
+{
+  "cases": [
+    {
+      "case_id": "clean_music_like_anti_fp",
+      "confidences": {
+        "aliasing": 0.792,
+        "amplitude_drift": 0.44,
+        "azimuth_error": 0.05,
+        "bandwidth_loss": 0.99,
+        "bias_error": 0.68,
+        "clicks": 0.836,
+        "clipping": 0.792,
+        "compression_artifacts": 0.2827352039447433,
+        "crackle": 0.264,
+        "crosstalk": 0.44,
+        "dc_offset": 0.6218554962215651,
+        "digital_artifacts": 0.5104,
+        "dolby_nr_mismatch": 0.792,
+        "dropouts": 0.7040000000000001,
+        "dynamic_compression_excess": 0.8207999999999999,
+        "flutter": 0.5679956598025007,
+        "flutter_spectral_sidebands": 0.81,
+        "generation_loss": 0.4712723449952436,
+        "groove_echo": 0.88,
+        "head_wear": 0.35200000000000004,
+        "hf_remanence_loss": 0.37726133264820705,
+        "high_freq_noise": 0.7480001008918484,
+        "hum": 0.6481505686743294,
+        "inner_groove_distortion": 0.88,
+        "intermodulation_distortion": 0.44,
+        "jitter_artifacts": 0.9119999999999999,
+        "lacquer_disc_degradation": 0.836,
+        "low_freq_rumble": 0.7920692175118514,
+        "modulation_noise": 0.44,
+        "motor_interference": 0.5866666666666667,
+        "multiband_wow_flutter": 0.44,
+        "nr_breathing_artifact": 0.35200000000000004,
+        "overload_distortion": 0.5309090909090909,
+        "phase_issues": 0.05,
+        "pitch_drift": 0.264,
+        "pre_echo": 0.264,
+        "print_through": 0.44,
+        "proximity_effect_excess": 0.8266666666666667,
+        "quantization_noise": 0.8433097151938337,
+        "reverb_excess": 0.8207999999999999,
+        "riaa_curve_error": 0.748,
+        "room_mode_resonance": 0.44,
+        "scrape_flutter": 0.836,
+        "sibilance": 0.5720000000000001,
+        "soft_saturation": 0.7164444444444444,
+        "speed_calibration_error": 0.6461379415138865,
+        "stereo_imbalance": 0.05,
+        "sticky_shed_residue": 0.44,
+        "stylus_damage": 0.44,
+        "tape_head_clog": 0.836,
+        "tape_head_level_dip": 0.836,
+        "tape_splice_artifact": 0.44,
+        "transient_smearing": 0.6163999999999998,
+        "transport_bump": 0.836,
+        "vocal_harshness": 0.44,
+        "wow": 0.9368888616624855
+      },
+      "duration_seconds": 3.2,
+      "expected": [],
+      "forbidden_defects": [
+        "clicks",
+        "crackle",
+        "dropouts",
+        "hum",
+        "clipping"
+      ],
+      "locations": {
+        "crackle": [
+          [
+            0.03139583333333333,
+            3.1693333333333333
+          ]
+        ]
+      },
+      "metadata": {
+        "material": "cd_digital",
+        "sample_rate": 48000,
+        "transfer_chain": "['wire_recording', 'mp3_low']"
+      },
+      "runtime_seconds": 0.49524426460266113,
+      "severities": {
+        "aliasing": 0.0,
+        "amplitude_drift": 0.0,
+        "azimuth_error": 0.0,
+        "bandwidth_loss": 1.0,
+        "bias_error": 0.7,
+        "clicks": 0.0,
+        "clipping": 0.0,
+        "compression_artifacts": 0.12490135963162174,
+        "crackle": 0.0,
+        "crosstalk": 0.0,
+        "dc_offset": 0.02927176616808607,
+        "digital_artifacts": 0.0,
+        "dolby_nr_mismatch": 0.0,
+        "dropouts": 0.0,
+        "dynamic_compression_excess": 0.846052955384405,
+        "flutter": 0.21883511156809432,
+        "flutter_spectral_sidebands": 1.0,
+        "generation_loss": 0.409133540959192,
+        "groove_echo": 0.0,
+        "head_wear": 0.0,
+        "hf_remanence_loss": 0.31576665810258836,
+        "high_freq_noise": 4.1543702306413174e-07,
+        "hum": 1.2212815356825323e-11,
+        "inner_groove_distortion": 0.0,
+        "intermodulation_distortion": 0.0,
+        "jitter_artifacts": 0.6433871227861901,
+        "lacquer_disc_degradation": 0.0,
+        "low_freq_rumble": 0.0003076333860059507,
+        "modulation_noise": 0.0,
+        "motor_interference": 0.9333333333333333,
+        "multiband_wow_flutter": 0.0,
+        "nr_breathing_artifact": 0.0,
+        "overload_distortion": 0.5,
+        "phase_issues": 0.0,
+        "pitch_drift": 0.0,
+        "pre_echo": 0.0,
+        "print_through": 0.0,
+        "proximity_effect_excess": 1.0,
+        "quantization_noise": 0.46292505409251006,
+        "reverb_excess": 1.0,
+        "riaa_curve_error": 0.0,
+        "room_mode_resonance": 0.0,
+        "scrape_flutter": 0.0,
+        "sibilance": 0.0,
+        "soft_saturation": 1.0,
+        "speed_calibration_error": 1.0,
+        "stereo_imbalance": 0.0,
+        "sticky_shed_residue": 0.0,
+        "stylus_damage": 0.0,
+        "tape_head_clog": 0.0,
+        "tape_head_level_dip": 0.0,
+        "tape_splice_artifact": 0.0,
+        "transient_smearing": 0.125,
+        "transport_bump": 0.0,
+        "vocal_harshness": 0.0,
+        "wow": 1.0
+      }
+    },
+    {
+      "case_id": "vinyl_clicks_locality",
+      "confidences": {
+        "aliasing": 0.48400000000000004,
+        "amplitude_drift": 0.44,
+        "azimuth_error": 0.05,
+        "bandwidth_loss": 0.99,
+        "bias_error": 0.68,
+        "clicks": 0.9383062500000001,
+        "clipping": 0.792,
+        "compression_artifacts": 0.2669668701281771,
+        "crackle": 0.264,
+        "crosstalk": 0.44,
+        "dc_offset": 0.6277403659836729,
+        "digital_artifacts": 0.5104,
+        "dolby_nr_mismatch": 0.792,
+        "dropouts": 0.7150963150024414,
+        "dynamic_compression_excess": 0.8207999999999999,
+        "flutter": 0.575732740225706,
+        "flutter_spectral_sidebands": 0.855,
+        "generation_loss": 0.4712723449952436,
+        "groove_echo": 0.264,
+        "head_wear": 0.35200000000000004,
+        "hf_remanence_loss": 0.37726133264820705,
+        "high_freq_noise": 0.7591109217840156,
+        "hum": 0.7339578327855107,
+        "inner_groove_distortion": 0.264,
+        "intermodulation_distortion": 0.44,
+        "jitter_artifacts": 0.7040000000000001,
+        "lacquer_disc_degradation": 0.836,
+        "low_freq_rumble": 0.792276659679855,
+        "modulation_noise": 0.44,
+        "motor_interference": 0.627,
+        "multiband_wow_flutter": 0.7955787595058654,
+        "nr_breathing_artifact": 0.35200000000000004,
+        "overload_distortion": 0.57,
+        "phase_issues": 0.05,
+        "pitch_drift": 0.264,
+        "pre_echo": 0.264,
+        "print_through": 0.44,
+        "proximity_effect_excess": 0.855,
+        "quantization_noise": 0.8446119155457003,
+        "reverb_excess": 0.8207999999999999,
+        "riaa_curve_error": 0.6611999999999999,
+        "room_mode_resonance": 0.44,
+        "scrape_flutter": 0.836,
+        "sibilance": 0.5720000000000001,
+        "soft_saturation": 0.741,
+        "speed_calibration_error": 0.6810211765751055,
+        "stereo_imbalance": 0.05,
+        "sticky_shed_residue": 0.44,
+        "stylus_damage": 0.44,
+        "tape_head_clog": 0.7036909180458908,
+        "tape_head_level_dip": 0.836,
+        "tape_splice_artifact": 0.44,
+        "transient_smearing": 0.6439735463433651,
+        "transport_bump": 0.528,
+        "vocal_harshness": 0.44,
+        "wow": 0.9689999875546403
+      },
+      "duration_seconds": 3.2,
+      "expected": [
+        {
+          "critical": true,
+          "defect": "clicks",
+          "min_confidence": 0.45,
+          "min_severity": 0.08,
+          "require_locations": true
+        }
+      ],
+      "forbidden_defects": [
+        "dropouts"
+      ],
+      "locations": {
+        "clicks": [
+          [
+            0.015229166666666667,
+            0.015354166666666667
+          ],
+          [
+            0.3499791666666667,
+            0.35002083333333334
+          ],
+          [
+            0.7499791666666666,
+            0.7500208333333334
+          ],
+          [
+            1.1499583333333334,
+            1.15
+          ],
+          [
+            3.184625,
+            3.18475
+          ]
+        ],
+        "crackle": [
+          [
+            0.3103958333333333,
+            0.38766666666666666
+          ],
+          [
+            0.7142083333333333,
+            0.7929583333333333
+          ],
+          [
+            1.1081458333333334,
+            1.1867291666666666
+          ]
+        ],
+        "dropouts": [
+          [
+            0.0,
+            0.0025
+          ]
+        ],
+        "tape_head_clog": [
+          [
+            0.6,
+            0.7
+          ],
+          [
+            0.76,
+            0.96
+          ]
+        ],
+        "transient_smearing": [
+          [
+            0.71075,
+            0.76075
+          ]
+        ]
+      },
+      "metadata": {
+        "material": "vinyl",
+        "sample_rate": 48000,
+        "transfer_chain": "['wire_recording']"
+      },
+      "runtime_seconds": 0.6059198379516602,
+      "severities": {
+        "aliasing": 0.0,
+        "amplitude_drift": 0.0,
+        "azimuth_error": 0.0,
+        "bandwidth_loss": 1.0,
+        "bias_error": 0.7,
+        "clicks": 0.325125,
+        "clipping": 0.0,
+        "compression_artifacts": 0.049447835469618444,
+        "crackle": 0.0,
+        "crosstalk": 0.0,
+        "dc_offset": 0.0418364321804897,
+        "digital_artifacts": 0.0,
+        "dolby_nr_mismatch": 0.0,
+        "dropouts": 0.029484374999999993,
+        "dynamic_compression_excess": 0.8461441006243449,
+        "flutter": 1.0,
+        "flutter_spectral_sidebands": 1.0,
+        "generation_loss": 0.409133540959192,
+        "groove_echo": 0.0,
+        "head_wear": 0.0,
+        "hf_remanence_loss": 0.31576665810258836,
+        "high_freq_noise": 0.04575085440477038,
+        "hum": 6.69585747858347e-07,
+        "inner_groove_distortion": 0.0,
+        "intermodulation_distortion": 0.0,
+        "jitter_artifacts": 0.0,
+        "lacquer_disc_degradation": 0.0,
+        "low_freq_rumble": 0.0006147992885667897,
+        "modulation_noise": 0.0,
+        "motor_interference": 0.9333333333333333,
+        "multiband_wow_flutter": 0.6910889818893708,
+        "nr_breathing_artifact": 0.0,
+        "overload_distortion": 0.5188171217993054,
+        "phase_issues": 0.0,
+        "pitch_drift": 0.0,
+        "pre_echo": 0.0,
+        "print_through": 0.0,
+        "proximity_effect_excess": 1.0,
+        "quantization_noise": 0.601839906625707,
+        "reverb_excess": 1.0,
+        "riaa_curve_error": 1.0,
+        "room_mode_resonance": 0.0,
+        "scrape_flutter": 0.0,
+        "sibilance": 0.0,
+        "soft_saturation": 1.0,
+        "speed_calibration_error": 1.0,
+        "stereo_imbalance": 0.0,
+        "sticky_shed_residue": 0.0,
+        "stylus_damage": 0.0,
+        "tape_head_clog": 0.22954551345980773,
+        "tape_head_level_dip": 0.0,
+        "tape_splice_artifact": 0.0,
+        "transient_smearing": 0.42489217259523854,
+        "transport_bump": 0.0,
+        "vocal_harshness": 0.0,
+        "wow": 1.0
+      }
+    },
+    {
+      "case_id": "tape_hum",
+      "confidences": {
+        "aliasing": 0.48400000000000004,
+        "amplitude_drift": 0.44,
+        "azimuth_error": 0.05,
+        "bandwidth_loss": 0.99,
+        "bias_error": 0.8260710523546608,
+        "clicks": 0.836,
+        "clipping": 0.792,
+        "compression_artifacts": 0.26699821448838335,
+        "crackle": 0.264,
+        "crosstalk": 0.44,
+        "dc_offset": 0.7169965781601964,
+        "digital_artifacts": 0.5104,
+        "dolby_nr_mismatch": 0.748,
+        "dropouts": 0.7040000000000001,
+        "dynamic_compression_excess": 0.7516034127847141,
+        "flutter": 0.6926839000095127,
+        "flutter_spectral_sidebands": 0.855,
+        "generation_loss": 0.5016000460043407,
+        "groove_echo": 0.88,
+        "head_wear": 0.35200000000000004,
+        "hf_remanence_loss": 0.45599999999999996,
+        "high_freq_noise": 0.7480001226783101,
+        "hum": 0.9694593263813188,
+        "inner_groove_distortion": 0.88,
+        "intermodulation_distortion": 0.44,
+        "jitter_artifacts": 0.8224,
+        "lacquer_disc_degradation": 0.836,
+        "low_freq_rumble": 0.99,
+        "modulation_noise": 0.476083759047909,
+        "motor_interference": 0.5866666666666667,
+        "multiband_wow_flutter": 0.44,
+        "nr_breathing_artifact": 0.35200000000000004,
+        "overload_distortion": 0.57,
+        "phase_issues": 0.05,
+        "pitch_drift": 0.264,
+        "pre_echo": 0.264,
+        "print_through": 0.44,
+        "proximity_effect_excess": 0.44,
+        "quantization_noise": 0.8549835781812851,
+        "reverb_excess": 0.8207999999999999,
+        "riaa_curve_error": 0.748,
+        "room_mode_resonance": 0.44,
+        "scrape_flutter": 0.48400000000000004,
+        "sibilance": 0.5720000000000001,
+        "soft_saturation": 0.741,
+        "speed_calibration_error": 0.6768533596393783,
+        "stereo_imbalance": 0.05,
+        "sticky_shed_residue": 0.44,
+        "stylus_damage": 0.44,
+        "tape_head_clog": 0.8572284940002588,
+        "tape_head_level_dip": 0.748,
+        "tape_splice_artifact": 0.44,
+        "transient_smearing": 0.5780666666666666,
+        "transport_bump": 0.528,
+        "vocal_harshness": 0.44,
+        "wow": 0.9689999251551578
+      },
+      "duration_seconds": 3.2,
+      "expected": [
+        {
+          "critical": true,
+          "defect": "hum",
+          "min_confidence": 0.45,
+          "min_severity": 0.1,
+          "require_locations": false
+        }
+      ],
+      "forbidden_defects": [
+        "riaa_curve_error"
+      ],
+      "locations": {
+        "crackle": [
+          [
+            0.024625,
+            3.1752083333333334
+          ]
+        ],
+        "tape_head_clog": [
+          [
+            0.74,
+            0.96
+          ]
+        ]
+      },
+      "metadata": {
+        "material": "tape",
+        "sample_rate": 48000,
+        "transfer_chain": "['wire_recording', 'mp3_low']"
+      },
+      "runtime_seconds": 0.502800464630127,
+      "severities": {
+        "aliasing": 0.0,
+        "amplitude_drift": 0.0,
+        "azimuth_error": 0.0,
+        "bandwidth_loss": 1.0,
+        "bias_error": 1.0,
+        "clicks": 0.0,
+        "clipping": 0.0,
+        "compression_artifacts": 0.04997024147305638,
+        "crackle": 0.0,
+        "crosstalk": 0.0,
+        "dc_offset": 0.2885578732170596,
+        "digital_artifacts": 0.0,
+        "dolby_nr_mismatch": 0.0,
+        "dropouts": 0.0,
+        "dynamic_compression_excess": 0.6555745154706347,
+        "flutter": 0.8061380732702924,
+        "flutter_spectral_sidebands": 1.0,
+        "generation_loss": 0.3000001345156164,
+        "groove_echo": 0.0,
+        "head_wear": 0.0,
+        "hf_remanence_loss": 0.23432680424783717,
+        "high_freq_noise": 3.6081855933449875e-07,
+        "hum": 1.0,
+        "inner_groove_distortion": 0.0,
+        "intermodulation_distortion": 0.0,
+        "jitter_artifacts": 0.74,
+        "lacquer_disc_degradation": 0.0,
+        "low_freq_rumble": 1.0,
+        "modulation_noise": 0.034897342108809765,
+        "motor_interference": 0.9333333333333333,
+        "multiband_wow_flutter": 0.0,
+        "nr_breathing_artifact": 0.0,
+        "overload_distortion": 0.5,
+        "phase_issues": 0.0,
+        "pitch_drift": 0.0,
+        "pre_echo": 0.0,
+        "print_through": 0.0,
+        "proximity_effect_excess": 0.0,
+        "quantization_noise": 0.5663836491950396,
+        "reverb_excess": 1.0,
+        "riaa_curve_error": 0.0,
+        "room_mode_resonance": 0.0,
+        "scrape_flutter": 0.0,
+        "sibilance": 0.0,
+        "soft_saturation": 1.0,
+        "speed_calibration_error": 0.503538886675757,
+        "stereo_imbalance": 0.0,
+        "sticky_shed_residue": 0.0,
+        "stylus_damage": 0.0,
+        "tape_head_clog": 0.17954790183732483,
+        "tape_head_level_dip": 0.0,
+        "tape_splice_artifact": 0.0,
+        "transient_smearing": 0.125,
+        "transport_bump": 0.0,
+        "vocal_harshness": 0.0,
+        "wow": 1.0
+      }
+    },
+    {
+      "case_id": "tape_dropout_locality",
+      "confidences": {
+        "aliasing": 0.48400000000000004,
+        "amplitude_drift": 0.44,
+        "azimuth_error": 0.05,
+        "bandwidth_loss": 0.99,
+        "bias_error": 0.8523220728941789,
+        "clicks": 0.836,
+        "clipping": 0.792,
+        "compression_artifacts": 0.2664566600109695,
+        "crackle": 0.264,
+        "crosstalk": 0.44,
+        "dc_offset": 0.6523358246152061,
+        "digital_artifacts": 0.5104,
+        "dolby_nr_mismatch": 0.748,
+        "dropouts": 0.99,
+        "dynamic_compression_excess": 0.784063528232238,
+        "flutter": 0.5898923694017056,
+        "flutter_spectral_sidebands": 0.855,
+        "generation_loss": 0.5389236710080436,
+        "groove_echo": 0.88,
+        "head_wear": 0.6688000000000001,
+        "hf_remanence_loss": 0.45599999999999996,
+        "high_freq_noise": 0.7480004881898654,
+        "hum": 0.6265495075883588,
+        "inner_groove_distortion": 0.88,
+        "intermodulation_distortion": 0.44,
+        "jitter_artifacts": 0.8126069428764797,
+        "lacquer_disc_degradation": 0.836,
+        "low_freq_rumble": 0.792528331964179,
+        "modulation_noise": 0.44,
+        "motor_interference": 0.5866666666666667,
+        "multiband_wow_flutter": 0.5877769624322057,
+        "nr_breathing_artifact": 0.7409855187422623,
+        "overload_distortion": 0.57,
+        "phase_issues": 0.05,
+        "pitch_drift": 0.264,
+        "pre_echo": 0.264,
+        "print_through": 0.44,
+        "proximity_effect_excess": 0.855,
+        "quantization_noise": 0.7783953389861255,
+        "reverb_excess": 0.8207999999999999,
+        "riaa_curve_error": 0.748,
+        "room_mode_resonance": 0.44,
+        "scrape_flutter": 0.48400000000000004,
+        "sibilance": 0.5720000000000001,
+        "soft_saturation": 0.741,
+        "speed_calibration_error": 0.6728121547696029,
+        "stereo_imbalance": 0.05,
+        "sticky_shed_residue": 0.52725,
+        "stylus_damage": 0.44,
+        "tape_head_clog": 0.8829669832967314,
+        "tape_head_level_dip": 0.748,
+        "tape_splice_artifact": 0.44,
+        "transient_smearing": 0.5906333333333332,
+        "transport_bump": 0.528,
+        "vocal_harshness": 0.44,
+        "wow": 0.9689999999732521
+      },
+      "duration_seconds": 3.2,
+      "expected": [
+        {
+          "critical": true,
+          "defect": "dropouts",
+          "min_confidence": 0.45,
+          "min_severity": 0.08,
+          "require_locations": true
+        }
+      ],
+      "forbidden_defects": [
+        "riaa_curve_error"
+      ],
+      "locations": {
+        "crackle": [
+          [
+            0.025291666666666667,
+            0.6959583333333333
+          ],
+          [
+            0.8289791666666667,
+            3.1751875
+          ]
+        ],
+        "dropouts": [
+          [
+            0.0,
+            0.0025
+          ],
+          [
+            0.7,
+            0.8175
+          ]
+        ],
+        "sticky_shed_residue": [
+          [
+            0.0,
+            0.01
+          ],
+          [
+            0.7,
+            0.8175
+          ]
+        ],
+        "tape_head_clog": [
+          [
+            0.84,
+            0.96
+          ]
+        ]
+      },
+      "metadata": {
+        "material": "tape",
+        "sample_rate": 48000,
+        "transfer_chain": "['wax_cylinder', 'wire_recording', 'mp3_low']"
+      },
+      "runtime_seconds": 0.569817304611206,
+      "severities": {
+        "aliasing": 0.0,
+        "amplitude_drift": 0.0,
+        "azimuth_error": 0.0,
+        "bandwidth_loss": 1.0,
+        "bias_error": 0.5,
+        "clicks": 0.0,
+        "clipping": 0.0,
+        "compression_artifacts": 0.0409443335161585,
+        "crackle": 0.0,
+        "crosstalk": 0.0,
+        "dc_offset": 0.05376707589650233,
+        "digital_artifacts": 0.0,
+        "dolby_nr_mismatch": 0.0,
+        "dropouts": 0.51,
+        "dynamic_compression_excess": 0.8359084901791003,
+        "flutter": 1.0,
+        "flutter_spectral_sidebands": 1.0,
+        "generation_loss": 0.409133540959192,
+        "groove_echo": 0.0,
+        "head_wear": 0.0,
+        "hf_remanence_loss": 0.31576665810258836,
+        "high_freq_noise": 1.435852545559775e-06,
+        "hum": 0.001878201957522807,
+        "inner_groove_distortion": 0.0,
+        "intermodulation_distortion": 0.0,
+        "jitter_artifacts": 0.6787933929779982,
+        "lacquer_disc_degradation": 0.0,
+        "low_freq_rumble": 0.0017611065472632704,
+        "modulation_noise": 0.0,
+        "motor_interference": 0.9333333333333333,
+        "multiband_wow_flutter": 0.5,
+        "nr_breathing_artifact": 0.4,
+        "overload_distortion": 0.5,
+        "phase_issues": 0.0,
+        "pitch_drift": 0.0,
+        "pre_echo": 0.0,
+        "print_through": 0.0,
+        "proximity_effect_excess": 1.0,
+        "quantization_noise": 0.4227015112238188,
+        "reverb_excess": 1.0,
+        "riaa_curve_error": 0.0,
+        "room_mode_resonance": 0.0,
+        "scrape_flutter": 0.0,
+        "sibilance": 0.0,
+        "soft_saturation": 1.0,
+        "speed_calibration_error": 1.0,
+        "stereo_imbalance": 0.0,
+        "sticky_shed_residue": 0.51,
+        "stylus_damage": 0.0,
+        "tape_head_clog": 0.1997963450195036,
+        "tape_head_level_dip": 0.0,
+        "tape_splice_artifact": 0.0,
+        "transient_smearing": 0.125,
+        "transport_bump": 0.0,
+        "vocal_harshness": 0.0,
+        "wow": 1.0
+      }
+    },
+    {
+      "case_id": "digital_clipping_locality",
+      "confidences": {
+        "aliasing": 0.792,
+        "amplitude_drift": 0.44,
+        "azimuth_error": 0.05,
+        "bandwidth_loss": 0.99,
+        "bias_error": 0.748,
+        "clicks": 0.836,
+        "clipping": 0.99,
+        "compression_artifacts": 0.2826169136868557,
+        "crackle": 0.264,
+        "crosstalk": 0.44,
+        "dc_offset": 0.6221052179237044,
+        "digital_artifacts": 0.99,
+        "dolby_nr_mismatch": 0.792,
+        "dropouts": 0.7040000000000001,
+        "dynamic_compression_excess": 0.8207999999999999,
+        "flutter": 0.7077620758565007,
+        "flutter_spectral_sidebands": 0.81,
+        "generation_loss": 0.6048076311631021,
+        "groove_echo": 0.88,
+        "head_wear": 0.6688000000000001,
+        "hf_remanence_loss": 0.9077069478738605,
+        "high_freq_noise": 0.7480057634437335,
+        "hum": 0.792000001960684,
+        "inner_groove_distortion": 0.88,
+        "intermodulation_distortion": 0.44,
+        "jitter_artifacts": 0.8957522273476969,
+        "lacquer_disc_degradation": 0.836,
+        "low_freq_rumble": 0.7920694621255024,
+        "modulation_noise": 0.44,
+        "motor_interference": 0.5866666666666667,
+        "multiband_wow_flutter": 0.5615273295513867,
+        "nr_breathing_artifact": 0.35200000000000004,
+        "overload_distortion": 0.5309090909090909,
+        "phase_issues": 0.05,
+        "pitch_drift": 0.264,
+        "pre_echo": 0.264,
+        "print_through": 0.44,
+        "proximity_effect_excess": 0.8266666666666667,
+        "quantization_noise": 0.8448429101994099,
+        "reverb_excess": 0.8207999999999999,
+        "riaa_curve_error": 0.748,
+        "room_mode_resonance": 0.44,
+        "scrape_flutter": 0.836,
+        "sibilance": 0.5720000000000001,
+        "soft_saturation": 0.7040000000000001,
+        "speed_calibration_error": 0.6461379415138865,
+        "stereo_imbalance": 0.05,
+        "sticky_shed_residue": 0.44,
+        "stylus_damage": 0.44,
+        "tape_head_clog": 0.836,
+        "tape_head_level_dip": 0.836,
+        "tape_splice_artifact": 0.44,
+        "transient_smearing": 0.6163999999999998,
+        "transport_bump": 0.836,
+        "vocal_harshness": 0.5325653385462565,
+        "wow": 0.9368888612963239
+      },
+      "duration_seconds": 3.2,
+      "expected": [
+        {
+          "critical": true,
+          "defect": "clipping",
+          "min_confidence": 0.45,
+          "min_severity": 0.1,
+          "require_locations": true
+        }
+      ],
+      "forbidden_defects": [
+        "clicks",
+        "dropouts"
+      ],
+      "locations": {
+        "clipping": [
+          [
+            0.0220625,
+            3.1779375
+          ]
+        ],
+        "crackle": [
+          [
+            0.038375,
+            3.161979166666667
+          ]
+        ],
+        "digital_artifacts": [
+          [
+            0.0220625,
+            0.0223125
+          ],
+          [
+            0.023145833333333334,
+            0.023395833333333334
+          ],
+          [
+            0.02660416666666667,
+            0.026854166666666665
+          ],
+          [
+            0.0276875,
+            0.0279375
+          ],
+          [
+            0.031145833333333334,
+            0.03139583333333333
+          ],
+          [
+            0.03222916666666667,
+            0.03247916666666667
+          ],
+          [
+            0.035708333333333335,
+            0.035958333333333335
+          ],
+          [
+            0.036770833333333336,
+            0.037020833333333336
+          ],
+          [
+            0.04025,
+            0.0405
+          ],
+          [
+            0.04133333333333333,
+            0.0415625
+          ],
+          [
+            0.04479166666666667,
+            0.04504166666666667
+          ],
+          [
+            0.045875,
+            0.046125
+          ],
+          [
+            0.04933333333333333,
+            0.04958333333333333
+          ],
+          [
+            0.050416666666666665,
+            0.050666666666666665
+          ],
+          [
+            0.053875,
+            0.054125
+          ],
+          [
+            0.05495833333333333,
+            0.05520833333333333
+          ],
+          [
+            0.0584375,
+            0.058666666666666666
+          ],
+          [
+            0.0595,
+            0.05975
+          ],
+          [
+            0.06297916666666667,
+            0.06322916666666667
+          ],
+          [
+            0.06404166666666666,
+            0.06429166666666666
+          ],
+          [
+            0.06752083333333334,
+            0.06777083333333334
+          ],
+          [
+            0.06860416666666666,
+            0.06885416666666666
+          ],
+          [
+            0.0720625,
+            0.0723125
+          ],
+          [
+            0.07314583333333333,
+            0.07339583333333333
+          ],
+          [
+            0.07660416666666667,
+            0.07685416666666667
+          ],
+          [
+            0.0776875,
+            0.0779375
+          ],
+          [
+            0.08114583333333333,
+            0.08139583333333333
+          ],
+          [
+            0.08222916666666667,
+            0.08247916666666667
+          ],
+          [
+            0.08570833333333333,
+            0.08595833333333333
+          ],
+          [
+            0.08677083333333334,
+            0.08702083333333334
+          ],
+          [
+            0.09025,
+            0.0905
+          ],
+          [
+            0.09133333333333334,
+            0.0915625
+          ],
+          [
+            0.09479166666666666,
+            0.09504166666666666
+          ],
+          [
+            0.095875,
+            0.096125
+          ],
+          [
+            0.09933333333333333,
+            0.09958333333333333
+          ],
+          [
+            0.10041666666666667,
+            0.10066666666666667
+          ],
+          [
+            0.103875,
+            0.104125
+          ],
+          [
+            0.10495833333333333,
+            0.10520833333333333
+          ],
+          [
+            0.1084375,
+            0.10866666666666666
+          ],
+          [
+            0.1095,
+            0.10975
+          ],
+          [
+            0.11297916666666667,
+            0.11322916666666667
+          ],
+          [
+            0.11404166666666667,
+            0.11429166666666667
+          ],
+          [
+            0.11752083333333334,
+            0.11777083333333334
+          ],
+          [
+            0.11860416666666666,
+            0.11885416666666666
+          ],
+          [
+            0.1220625,
+            0.1223125
+          ],
+          [
+            0.12314583333333333,
+            0.12339583333333333
+          ],
+          [
+            0.12660416666666666,
+            0.12685416666666666
+          ],
+          [
+            0.1276875,
+            0.1279375
+          ],
+          [
+            0.13114583333333332,
+            0.13139583333333332
+          ],
+          [
+            0.13222916666666668,
+            0.13247916666666668
+          ],
+          [
+            0.13570833333333332,
+            0.13595833333333332
+          ],
+          [
+            0.13677083333333334,
+            0.13702083333333334
+          ],
+          [
+            0.14025,
+            0.1405
+          ],
+          [
+            0.14133333333333334,
+            0.1415625
+          ],
+          [
+            0.14479166666666668,
+            0.14504166666666668
+          ],
+          [
+            0.145875,
+            0.146125
+          ],
+          [
+            0.14933333333333335,
+            0.14958333333333335
+          ],
+          [
+            0.15041666666666667,
+            0.15066666666666667
+          ],
+          [
+            0.153875,
+            0.154125
+          ],
+          [
+            0.15495833333333334,
+            0.15520833333333334
+          ],
+          [
+            0.1584375,
+            0.15866666666666668
+          ],
+          [
+            0.1595,
+            0.15975
+          ],
+          [
+            0.16297916666666667,
+            0.16322916666666668
+          ],
+          [
+            0.16404166666666667,
+            0.16429166666666667
+          ],
+          [
+            0.16752083333333334,
+            0.16777083333333334
+          ],
+          [
+            0.16860416666666667,
+            0.16885416666666667
+          ],
+          [
+            0.1720625,
+            0.1723125
+          ],
+          [
+            0.17314583333333333,
+            0.17339583333333333
+          ],
+          [
+            0.17660416666666667,
+            0.17685416666666667
+          ],
+          [
+            0.1776875,
+            0.1779375
+          ],
+          [
+            0.18114583333333334,
+            0.18139583333333334
+          ],
+          [
+            0.18222916666666666,
+            0.18247916666666666
+          ],
+          [
+            0.18570833333333334,
+            0.18595833333333334
+          ],
+          [
+            0.18677083333333333,
+            0.18702083333333333
+          ],
+          [
+            0.19025,
+            0.1905
+          ],
+          [
+            0.19133333333333333,
+            0.1915625
+          ],
+          [
+            0.19479166666666667,
+            0.19504166666666667
+          ],
+          [
+            0.195875,
+            0.196125
+          ],
+          [
+            0.19933333333333333,
+            0.19958333333333333
+          ],
+          [
+            0.20041666666666666,
+            0.20066666666666666
+          ],
+          [
+            0.203875,
+            0.204125
+          ],
+          [
+            0.20495833333333333,
+            0.20520833333333333
+          ],
+          [
+            0.2084375,
+            0.20866666666666667
+          ],
+          [
+            0.2095,
+            0.20975
+          ],
+          [
+            0.21297916666666666,
+            0.21322916666666666
+          ],
+          [
+            0.21404166666666666,
+            0.21429166666666666
+          ],
+          [
+            0.21752083333333333,
+            0.21777083333333333
+          ],
+          [
+            0.21860416666666665,
+            0.21885416666666666
+          ],
+          [
+            0.2220625,
+            0.2223125
+          ],
+          [
+            0.22314583333333332,
+            0.22339583333333332
+          ],
+          [
+            0.22660416666666666,
+            0.22685416666666666
+          ],
+          [
+            0.2276875,
+            0.2279375
+          ],
+          [
+            0.23114583333333333,
+            0.23139583333333333
+          ],
+          [
+            0.23222916666666665,
+            0.23247916666666665
+          ],
+          [
+            0.23570833333333333,
+            0.23595833333333333
+          ],
+          [
+            0.23677083333333335,
+            0.23702083333333332
+          ],
+          [
+            0.24025,
+            0.2405
+          ],
+          [
+            0.24133333333333334,
+            0.2415625
+          ],
+          [
+            0.24479166666666666,
+            0.24504166666666666
+          ],
+          [
+            0.245875,
+            0.246125
+          ],
+          [
+            0.24933333333333332,
+            0.24958333333333332
+          ],
+          [
+            0.2504166666666667,
+            0.25066666666666665
+          ],
+          [
+            0.253875,
+            0.254125
+          ],
+          [
+            0.25495833333333334,
+            0.2552083333333333
+          ],
+          [
+            0.2584375,
+            0.25866666666666666
+          ],
+          [
+            0.2595,
+            0.25975
+          ],
+          [
+            0.26297916666666665,
+            0.2632291666666667
+          ],
+          [
+            0.2640416666666667,
+            0.26429166666666665
+          ],
+          [
+            0.2675208333333333,
+            0.26777083333333335
+          ],
+          [
+            0.26860416666666664,
+            0.26885416666666667
+          ],
+          [
+            0.2720625,
+            0.2723125
+          ],
+          [
+            0.2731458333333333,
+            0.27339583333333334
+          ],
+          [
+            0.27660416666666665,
+            0.2768541666666667
+          ],
+          [
+            0.2776875,
+            0.2779375
+          ],
+          [
+            0.2811458333333333,
+            0.28139583333333335
+          ],
+          [
+            0.28222916666666664,
+            0.28247916666666667
+          ],
+          [
+            0.28570833333333334,
+            0.2859583333333333
+          ],
+          [
+            0.2867708333333333,
+            0.28702083333333334
+          ],
+          [
+            0.29025,
+            0.2905
+          ],
+          [
+            0.29133333333333333,
+            0.2915625
+          ],
+          [
+            0.2947916666666667,
+            0.29504166666666665
+          ],
+          [
+            0.295875,
+            0.296125
+          ],
+          [
+            0.29933333333333334,
+            0.2995833333333333
+          ],
+          [
+            0.30041666666666667,
+            0.3006666666666667
+          ],
+          [
+            0.303875,
+            0.304125
+          ],
+          [
+            0.30495833333333333,
+            0.30520833333333336
+          ],
+          [
+            0.3084375,
+            0.30866666666666664
+          ],
+          [
+            0.3095,
+            0.30975
+          ],
+          [
+            0.31297916666666664,
+            0.31322916666666667
+          ],
+          [
+            0.31404166666666666,
+            0.3142916666666667
+          ],
+          [
+            0.3175208333333333,
+            0.31777083333333334
+          ],
+          [
+            0.3186041666666667,
+            0.31885416666666666
+          ],
+          [
+            0.3220625,
+            0.3223125
+          ],
+          [
+            0.32314583333333335,
+            0.3233958333333333
+          ],
+          [
+            0.32660416666666664,
+            0.32685416666666667
+          ],
+          [
+            0.3276875,
+            0.3279375
+          ],
+          [
+            0.3311458333333333,
+            0.33139583333333333
+          ],
+          [
+            0.3322291666666667,
+            0.33247916666666666
+          ],
+          [
+            0.33570833333333333,
+            0.33595833333333336
+          ],
+          [
+            0.33677083333333335,
+            0.3370208333333333
+          ],
+          [
+            0.34025,
+            0.3405
+          ],
+          [
+            0.3413333333333333,
+            0.3415625
+          ],
+          [
+            0.34479166666666666,
+            0.3450416666666667
+          ],
+          [
+            0.345875,
+            0.346125
+          ],
+          [
+            0.34933333333333333,
+            0.34958333333333336
+          ],
+          [
+            0.35041666666666665,
+            0.3506666666666667
+          ],
+          [
+            0.353875,
+            0.354125
+          ],
+          [
+            0.3549583333333333,
+            0.35520833333333335
+          ],
+          [
+            0.3584375,
+            0.3586666666666667
+          ],
+          [
+            0.3595,
+            0.35975
+          ],
+          [
+            0.3629791666666667,
+            0.36322916666666666
+          ],
+          [
+            0.36404166666666665,
+            0.3642916666666667
+          ],
+          [
+            0.36752083333333335,
+            0.3677708333333333
+          ],
+          [
+            0.3686041666666667,
+            0.36885416666666665
+          ],
+          [
+            0.3720625,
+            0.3723125
+          ],
+          [
+            0.37314583333333334,
+            0.3733958333333333
+          ],
+          [
+            0.3766041666666667,
+            0.37685416666666666
+          ],
+          [
+            0.3776875,
+            0.3779375
+          ],
+          [
+            0.38114583333333335,
+            0.3813958333333333
+          ],
+          [
+            0.3822291666666667,
+            0.38247916666666665
+          ],
+          [
+            0.3857083333333333,
+            0.38595833333333335
+          ],
+          [
+            0.38677083333333334,
+            0.3870208333333333
+          ],
+          [
+            0.39025,
+            0.3905
+          ],
+          [
+            0.3913333333333333,
+            0.3915625
+          ],
+          [
+            0.39479166666666665,
+            0.3950416666666667
+          ],
+          [
+            0.395875,
+            0.396125
+          ],
+          [
+            0.3993333333333333,
+            0.39958333333333335
+          ],
+          [
+            0.40041666666666664,
+            0.40066666666666667
+          ],
+          [
+            0.403875,
+            0.404125
+          ],
+          [
+            0.4049583333333333,
+            0.40520833333333334
+          ],
+          [
+            0.4084375,
+            0.4086666666666667
+          ],
+          [
+            0.4095,
+            0.40975
+          ],
+          [
+            0.4129791666666667,
+            0.41322916666666665
+          ],
+          [
+            0.41404166666666664,
+            0.41429166666666667
+          ],
+          [
+            0.41752083333333334,
+            0.4177708333333333
+          ],
+          [
+            0.41860416666666667,
+            0.4188541666666667
+          ],
+          [
+            0.4220625,
+            0.4223125
+          ],
+          [
+            0.42314583333333333,
+            0.42339583333333336
+          ],
+          [
+            0.4266041666666667,
+            0.42685416666666665
+          ],
+          [
+            0.4276875,
+            0.4279375
+          ],
+          [
+            0.43114583333333334,
+            0.4313958333333333
+          ],
+          [
+            0.43222916666666666,
+            0.4324791666666667
+          ],
+          [
+            0.4357083333333333,
+            0.43595833333333334
+          ],
+          [
+            0.43677083333333333,
+            0.43702083333333336
+          ],
+          [
+            0.44025,
+            0.4405
+          ],
+          [
+            0.44133333333333336,
+            0.4415625
+          ],
+          [
+            0.44479166666666664,
+            0.44504166666666667
+          ],
+          [
+            0.445875,
+            0.446125
+          ],
+          [
+            0.4493333333333333,
+            0.44958333333333333
+          ],
+          [
+            0.4504166666666667,
+            0.45066666666666666
+          ],
+          [
+            0.453875,
+            0.454125
+          ],
+          [
+            0.45495833333333335,
+            0.4552083333333333
+          ],
+          [
+            0.4584375,
+            0.45866666666666667
+          ],
+          [
+            0.4595,
+            0.45975
+          ],
+          [
+            0.46297916666666666,
+            0.4632291666666667
+          ],
+          [
+            0.4640416666666667,
+            0.46429166666666666
+          ],
+          [
+            0.46752083333333333,
+            0.46777083333333336
+          ],
+          [
+            0.46860416666666665,
+            0.4688541666666667
+          ],
+          [
+            0.4720625,
+            0.4723125
+          ],
+          [
+            0.4731458333333333,
+            0.47339583333333335
+          ],
+          [
+            0.47660416666666666,
+            0.4768541666666667
+          ],
+          [
+            0.4776875,
+            0.4779375
+          ],
+          [
+            0.48114583333333333,
+            0.48139583333333336
+          ],
+          [
+            0.48222916666666665,
+            0.4824791666666667
+          ],
+          [
+            0.48570833333333335,
+            0.4859583333333333
+          ],
+          [
+            0.4867708333333333,
+            0.48702083333333335
+          ],
+          [
+            0.49025,
+            0.4905
+          ],
+          [
+            0.49133333333333334,
+            0.4915625
+          ],
+          [
+            0.4947916666666667,
+            0.49504166666666666
+          ],
+          [
+            0.495875,
+            0.496125
+          ],
+          [
+            0.49933333333333335,
+            0.4995833333333333
+          ],
+          [
+            0.5004166666666666,
+            0.5006666666666667
+          ],
+          [
+            0.503875,
+            0.504125
+          ],
+          [
+            0.5049583333333333,
+            0.5052083333333334
+          ],
+          [
+            0.5084375,
+            0.5086666666666667
+          ],
+          [
+            0.5095,
+            0.50975
+          ],
+          [
+            0.5129791666666667,
+            0.5132291666666666
+          ],
+          [
+            0.5140416666666666,
+            0.5142916666666667
+          ],
+          [
+            0.5175208333333333,
+            0.5177708333333333
+          ],
+          [
+            0.5186041666666666,
+            0.5188541666666666
+          ],
+          [
+            0.5220625,
+            0.5223125
+          ],
+          [
+            0.5231458333333333,
+            0.5233958333333333
+          ],
+          [
+            0.5266041666666667,
+            0.5268541666666666
+          ],
+          [
+            0.5276875,
+            0.5279375
+          ],
+          [
+            0.5311458333333333,
+            0.5313958333333333
+          ],
+          [
+            0.5322291666666666,
+            0.5324791666666666
+          ],
+          [
+            0.5357083333333333,
+            0.5359583333333333
+          ],
+          [
+            0.5367708333333333,
+            0.5370208333333333
+          ],
+          [
+            0.54025,
+            0.5405
+          ],
+          [
+            0.5413333333333333,
+            0.5415625
+          ],
+          [
+            0.5447916666666667,
+            0.5450416666666666
+          ],
+          [
+            0.545875,
+            0.546125
+          ],
+          [
+            0.5493333333333333,
+            0.5495833333333333
+          ],
+          [
+            0.5504166666666667,
+            0.5506666666666666
+          ],
+          [
+            0.553875,
+            0.554125
+          ],
+          [
+            0.5549583333333333,
+            0.5552083333333333
+          ],
+          [
+            0.5584375,
+            0.5586666666666666
+          ],
+          [
+            0.5595,
+            0.55975
+          ],
+          [
+            0.5629791666666667,
+            0.5632291666666667
+          ],
+          [
+            0.5640416666666667,
+            0.5642916666666666
+          ],
+          [
+            0.5675208333333334,
+            0.5677708333333333
+          ],
+          [
+            0.5686041666666667,
+            0.5688541666666667
+          ],
+          [
+            0.5720625,
+            0.5723125
+          ],
+          [
+            0.5731458333333334,
+            0.5733958333333333
+          ],
+          [
+            0.5766041666666667,
+            0.5768541666666667
+          ],
+          [
+            0.5776875,
+            0.5779375
+          ],
+          [
+            0.5811458333333334,
+            0.5813958333333333
+          ],
+          [
+            0.5822291666666667,
+            0.5824791666666667
+          ],
+          [
+            0.5857083333333334,
+            0.5859583333333334
+          ],
+          [
+            0.5867708333333334,
+            0.5870208333333333
+          ],
+          [
+            0.59025,
+            0.5905
+          ],
+          [
+            0.5913333333333334,
+            0.5915625
+          ],
+          [
+            0.5947916666666667,
+            0.5950416666666667
+          ],
+          [
+            0.595875,
+            0.596125
+          ],
+          [
+            0.5993333333333334,
+            0.5995833333333334
+          ],
+          [
+            0.6004166666666667,
+            0.6006666666666667
+          ],
+          [
+            0.603875,
+            0.604125
+          ],
+          [
+            0.6049583333333334,
+            0.6052083333333333
+          ],
+          [
+            0.6084375,
+            0.6086666666666667
+          ],
+          [
+            0.6095,
+            0.60975
+          ],
+          [
+            0.6129791666666666,
+            0.6132291666666667
+          ],
+          [
+            0.6140416666666667,
+            0.6142916666666667
+          ],
+          [
+            0.6175208333333333,
+            0.6177708333333334
+          ],
+          [
+            0.6186041666666666,
+            0.6188541666666667
+          ],
+          [
+            0.6220625,
+            0.6223125
+          ],
+          [
+            0.6231458333333333,
+            0.6233958333333334
+          ],
+          [
+            0.6266041666666666,
+            0.6268541666666667
+          ],
+          [
+            0.6276875,
+            0.6279375
+          ],
+          [
+            0.6311458333333333,
+            0.6313958333333334
+          ],
+          [
+            0.6322291666666666,
+            0.6324791666666667
+          ],
+          [
+            0.6357083333333333,
+            0.6359583333333333
+          ],
+          [
+            0.6367708333333333,
+            0.6370208333333334
+          ],
+          [
+            0.64025,
+            0.6405
+          ],
+          [
+            0.6413333333333333,
+            0.6415625
+          ],
+          [
+            0.6447916666666667,
+            0.6450416666666666
+          ],
+          [
+            0.645875,
+            0.646125
+          ],
+          [
+            0.6493333333333333,
+            0.6495833333333333
+          ],
+          [
+            0.6504166666666666,
+            0.6506666666666666
+          ],
+          [
+            0.653875,
+            0.654125
+          ],
+          [
+            0.6549583333333333,
+            0.6552083333333333
+          ],
+          [
+            0.6584375,
+            0.6586666666666666
+          ],
+          [
+            0.6595,
+            0.65975
+          ],
+          [
+            0.6629791666666667,
+            0.6632291666666666
+          ],
+          [
+            0.6640416666666666,
+            0.6642916666666666
+          ],
+          [
+            0.6675208333333333,
+            0.6677708333333333
+          ],
+          [
+            0.6686041666666667,
+            0.6688541666666666
+          ],
+          [
+            0.6720625,
+            0.6723125
+          ],
+          [
+            0.6731458333333333,
+            0.6733958333333333
+          ],
+          [
+            0.6766041666666667,
+            0.6768541666666666
+          ],
+          [
+            0.6776875,
+            0.6779375
+          ],
+          [
+            0.6811458333333333,
+            0.6813958333333333
+          ],
+          [
+            0.6822291666666667,
+            0.6824791666666666
+          ],
+          [
+            0.6857083333333334,
+            0.6859583333333333
+          ],
+          [
+            0.6867708333333333,
+            0.6870208333333333
+          ],
+          [
+            0.69025,
+            0.6905
+          ],
+          [
+            0.6913333333333334,
+            0.6915625
+          ],
+          [
+            0.6947916666666667,
+            0.6950416666666667
+          ],
+          [
+            0.695875,
+            0.696125
+          ],
+          [
+            0.6993333333333334,
+            0.6995833333333333
+          ],
+          [
+            0.7004166666666667,
+            0.7006666666666667
+          ],
+          [
+            0.703875,
+            0.704125
+          ],
+          [
+            0.7049583333333334,
+            0.7052083333333333
+          ],
+          [
+            0.7084375,
+            0.7086666666666667
+          ],
+          [
+            0.7095,
+            0.70975
+          ],
+          [
+            0.7129791666666667,
+            0.7132291666666667
+          ],
+          [
+            0.7140416666666667,
+            0.7142916666666667
+          ],
+          [
+            0.7175208333333334,
+            0.7177708333333334
+          ],
+          [
+            0.7186041666666667,
+            0.7188541666666667
+          ],
+          [
+            0.7220625,
+            0.7223125
+          ],
+          [
+            0.7231458333333334,
+            0.7233958333333333
+          ],
+          [
+            0.7266041666666667,
+            0.7268541666666667
+          ],
+          [
+            0.7276875,
+            0.7279375
+          ],
+          [
+            0.7311458333333334,
+            0.7313958333333334
+          ],
+          [
+            0.7322291666666667,
+            0.7324791666666667
+          ],
+          [
+            0.7357083333333333,
+            0.7359583333333334
+          ],
+          [
+            0.7367708333333334,
+            0.7370208333333333
+          ],
+          [
+            0.74025,
+            0.7405
+          ],
+          [
+            0.7413333333333333,
+            0.7415625
+          ],
+          [
+            0.7447916666666666,
+            0.7450416666666667
+          ],
+          [
+            0.745875,
+            0.746125
+          ],
+          [
+            0.7493333333333333,
+            0.7495833333333334
+          ],
+          [
+            0.7504166666666666,
+            0.7506666666666667
+          ],
+          [
+            0.753875,
+            0.754125
+          ],
+          [
+            0.7549583333333333,
+            0.7552083333333334
+          ],
+          [
+            0.7584375,
+            0.7586666666666667
+          ],
+          [
+            0.7595,
+            0.75975
+          ],
+          [
+            0.7629791666666667,
+            0.7632291666666666
+          ],
+          [
+            0.7640416666666666,
+            0.7642916666666667
+          ],
+          [
+            0.7675208333333333,
+            0.7677708333333333
+          ],
+          [
+            0.7686041666666666,
+            0.7688541666666666
+          ],
+          [
+            0.7720625,
+            0.7723125
+          ],
+          [
+            0.7731458333333333,
+            0.7733958333333333
+          ],
+          [
+            0.7766041666666667,
+            0.7768541666666666
+          ],
+          [
+            0.7776875,
+            0.7779375
+          ],
+          [
+            0.7811458333333333,
+            0.7813958333333333
+          ],
+          [
+            0.7822291666666666,
+            0.7824791666666666
+          ],
+          [
+            0.7857083333333333,
+            0.7859583333333333
+          ],
+          [
+            0.7867708333333333,
+            0.7870208333333333
+          ],
+          [
+            0.79025,
+            0.7905
+          ],
+          [
+            0.7913333333333333,
+            0.7915625
+          ],
+          [
+            0.7947916666666667,
+            0.7950416666666666
+          ],
+          [
+            0.795875,
+            0.796125
+          ],
+          [
+            0.7993333333333333,
+            0.7995833333333333
+          ],
+          [
+            0.8004166666666667,
+            0.8006666666666666
+          ],
+          [
+            0.803875,
+            0.804125
+          ],
+          [
+            0.8049583333333333,
+            0.8052083333333333
+          ],
+          [
+            0.8084375,
+            0.8086666666666666
+          ],
+          [
+            0.8095,
+            0.80975
+          ],
+          [
+            0.8129791666666667,
+            0.8132291666666667
+          ],
+          [
+            0.8140416666666667,
+            0.8142916666666666
+          ],
+          [
+            0.8175208333333334,
+            0.8177708333333333
+          ],
+          [
+            0.8186041666666667,
+            0.8188541666666667
+          ],
+          [
+            0.8220625,
+            0.8223125
+          ],
+          [
+            0.8231458333333334,
+            0.8233958333333333
+          ],
+          [
+            0.8266041666666667,
+            0.8268541666666667
+          ],
+          [
+            0.8276875,
+            0.8279375
+          ],
+          [
+            0.8311458333333334,
+            0.8313958333333333
+          ],
+          [
+            0.8322291666666667,
+            0.8324791666666667
+          ],
+          [
+            0.8357083333333334,
+            0.8359583333333334
+          ],
+          [
+            0.8367708333333334,
+            0.8370208333333333
+          ],
+          [
+            0.84025,
+            0.8405
+          ],
+          [
+            0.8413333333333334,
+            0.8415625
+          ],
+          [
+            0.8447916666666667,
+            0.8450416666666667
+          ],
+          [
+            0.845875,
+            0.846125
+          ],
+          [
+            0.8493333333333334,
+            0.8495833333333334
+          ],
+          [
+            0.8504166666666667,
+            0.8506666666666667
+          ],
+          [
+            0.853875,
+            0.854125
+          ],
+          [
+            0.8549583333333334,
+            0.8552083333333333
+          ],
+          [
+            0.8584375,
+            0.8586666666666667
+          ],
+          [
+            0.8595,
+            0.85975
+          ],
+          [
+            0.8629791666666666,
+            0.8632291666666667
+          ],
+          [
+            0.8640416666666667,
+            0.8642916666666667
+          ],
+          [
+            0.8675208333333333,
+            0.8677708333333334
+          ],
+          [
+            0.8686041666666666,
+            0.8688541666666667
+          ],
+          [
+            0.8720625,
+            0.8723125
+          ],
+          [
+            0.8731458333333333,
+            0.8733958333333334
+          ],
+          [
+            0.8766041666666666,
+            0.8768541666666667
+          ],
+          [
+            0.8776875,
+            0.8779375
+          ],
+          [
+            0.8811458333333333,
+            0.8813958333333334
+          ],
+          [
+            0.8822291666666666,
+            0.8824791666666667
+          ],
+          [
+            0.8857083333333333,
+            0.8859583333333333
+          ],
+          [
+            0.8867708333333333,
+            0.8870208333333334
+          ],
+          [
+            0.89025,
+            0.8905
+          ],
+          [
+            0.8913333333333333,
+            0.8915625
+          ],
+          [
+            0.8947916666666667,
+            0.8950416666666666
+          ],
+          [
+            0.895875,
+            0.896125
+          ],
+          [
+            0.8993333333333333,
+            0.8995833333333333
+          ],
+          [
+            0.9004166666666666,
+            0.9006666666666666
+          ],
+          [
+            0.903875,
+            0.904125
+          ],
+          [
+            0.9049583333333333,
+            0.9052083333333333
+          ],
+          [
+            0.9084375,
+            0.9086666666666666
+          ],
+          [
+            0.9095,
+            0.90975
+          ],
+          [
+            0.9129791666666667,
+            0.9132291666666666
+          ],
+          [
+            0.9140416666666666,
+            0.9142916666666666
+          ],
+          [
+            0.9175208333333333,
+            0.9177708333333333
+          ],
+          [
+            0.9186041666666667,
+            0.9188541666666666
+          ],
+          [
+            0.9220625,
+            0.9223125
+          ],
+          [
+            0.9231458333333333,
+            0.9233958333333333
+          ],
+          [
+            0.9266041666666667,
+            0.9268541666666666
+          ],
+          [
+            0.9276875,
+            0.9279375
+          ],
+          [
+            0.9311458333333333,
+            0.9313958333333333
+          ],
+          [
+            0.9322291666666667,
+            0.9324791666666666
+          ],
+          [
+            0.9357083333333334,
+            0.9359583333333333
+          ],
+          [
+            0.9367708333333333,
+            0.9370208333333333
+          ],
+          [
+            0.94025,
+            0.9405
+          ],
+          [
+            0.9413333333333334,
+            0.9415625
+          ],
+          [
+            0.9447916666666667,
+            0.9450416666666667
+          ],
+          [
+            0.945875,
+            0.946125
+          ],
+          [
+            0.9493333333333334,
+            0.9495833333333333
+          ],
+          [
+            0.9504166666666667,
+            0.9506666666666667
+          ],
+          [
+            0.953875,
+            0.954125
+          ],
+          [
+            0.9549583333333334,
+            0.9552083333333333
+          ],
+          [
+            0.9584375,
+            0.9586666666666667
+          ],
+          [
+            0.9595,
+            0.95975
+          ],
+          [
+            0.9629791666666667,
+            0.9632291666666667
+          ],
+          [
+            0.9640416666666667,
+            0.9642916666666667
+          ],
+          [
+            0.9675208333333334,
+            0.9677708333333334
+          ],
+          [
+            0.9686041666666667,
+            0.9688541666666667
+          ],
+          [
+            0.9720625,
+            0.9723125
+          ],
+          [
+            0.9731458333333334,
+            0.9733958333333333
+          ],
+          [
+            0.9766041666666667,
+            0.9768541666666667
+          ],
+          [
+            0.9776875,
+            0.9779375
+          ],
+          [
+            0.9811458333333334,
+            0.9813958333333334
+          ],
+          [
+            0.9822291666666667,
+            0.9824791666666667
+          ],
+          [
+            0.9857083333333333,
+            0.9859583333333334
+          ],
+          [
+            0.9867708333333334,
+            0.9870208333333333
+          ],
+          [
+            0.99025,
+            0.9905
+          ],
+          [
+            0.9913333333333333,
+            0.9915625
+          ],
+          [
+            0.9947916666666666,
+            0.9950416666666667
+          ],
+          [
+            0.995875,
+            0.996125
+          ],
+          [
+            0.9993333333333333,
+            0.9995833333333334
+          ],
+          [
+            1.0004166666666667,
+            1.0006666666666666
+          ],
+          [
+            1.003875,
+            1.004125
+          ],
+          [
+            1.0049583333333334,
+            1.0052083333333333
+          ],
+          [
+            1.0084375,
+            1.0086666666666666
+          ],
+          [
+            1.0095,
+            1.00975
+          ],
+          [
+            1.0129791666666668,
+            1.0132291666666666
+          ],
+          [
+            1.0140416666666667,
+            1.0142916666666666
+          ],
+          [
+            1.0175208333333334,
+            1.0177708333333333
+          ],
+          [
+            1.0186041666666668,
+            1.0188541666666666
+          ],
+          [
+            1.0220625,
+            1.0223125
+          ],
+          [
+            1.0231458333333334,
+            1.0233958333333333
+          ],
+          [
+            1.0266041666666668,
+            1.0268541666666666
+          ],
+          [
+            1.0276875,
+            1.0279375
+          ],
+          [
+            1.0311458333333334,
+            1.0313958333333333
+          ],
+          [
+            1.0322291666666668,
+            1.0324791666666666
+          ],
+          [
+            1.0357083333333332,
+            1.0359583333333333
+          ],
+          [
+            1.0367708333333334,
+            1.0370208333333333
+          ],
+          [
+            1.04025,
+            1.0405
+          ],
+          [
+            1.0413333333333334,
+            1.0415625
+          ],
+          [
+            1.0447916666666666,
+            1.0450416666666666
+          ],
+          [
+            1.045875,
+            1.046125
+          ],
+          [
+            1.0493333333333332,
+            1.0495833333333333
+          ],
+          [
+            1.0504166666666668,
+            1.0506666666666666
+          ],
+          [
+            1.053875,
+            1.054125
+          ],
+          [
+            1.0549583333333334,
+            1.0552083333333333
+          ],
+          [
+            1.0584375,
+            1.0586666666666666
+          ],
+          [
+            1.0595,
+            1.05975
+          ],
+          [
+            1.0629791666666666,
+            1.0632291666666667
+          ],
+          [
+            1.0640416666666668,
+            1.0642916666666666
+          ],
+          [
+            1.0675208333333333,
+            1.0677708333333333
+          ],
+          [
+            1.0686041666666666,
+            1.0688541666666667
+          ],
+          [
+            1.0720625,
+            1.0723125
+          ],
+          [
+            1.0731458333333332,
+            1.0733958333333333
+          ],
+          [
+            1.0766041666666666,
+            1.0768541666666667
+          ],
+          [
+            1.0776875,
+            1.0779375
+          ],
+          [
+            1.0811458333333333,
+            1.0813958333333333
+          ],
+          [
+            1.0822291666666666,
+            1.0824791666666667
+          ],
+          [
+            1.0857083333333333,
+            1.0859583333333334
+          ],
+          [
+            1.0867708333333332,
+            1.0870208333333333
+          ],
+          [
+            1.09025,
+            1.0905
+          ],
+          [
+            1.0913333333333333,
+            1.0915625
+          ],
+          [
+            1.0947916666666666,
+            1.0950416666666667
+          ],
+          [
+            1.095875,
+            1.096125
+          ],
+          [
+            1.0993333333333333,
+            1.0995833333333334
+          ],
+          [
+            1.1004166666666666,
+            1.1006666666666667
+          ],
+          [
+            1.103875,
+            1.104125
+          ],
+          [
+            1.1049583333333333,
+            1.1052083333333333
+          ],
+          [
+            1.1084375,
+            1.1086666666666667
+          ],
+          [
+            1.1095,
+            1.10975
+          ],
+          [
+            1.1129791666666666,
+            1.1132291666666667
+          ],
+          [
+            1.1140416666666666,
+            1.1142916666666667
+          ],
+          [
+            1.1175208333333333,
+            1.1177708333333334
+          ],
+          [
+            1.1186041666666666,
+            1.1188541666666667
+          ],
+          [
+            1.1220625,
+            1.1223125
+          ],
+          [
+            1.1231458333333333,
+            1.1233958333333334
+          ],
+          [
+            1.1266041666666666,
+            1.1268541666666667
+          ],
+          [
+            1.1276875,
+            1.1279375
+          ],
+          [
+            1.1311458333333333,
+            1.1313958333333334
+          ],
+          [
+            1.1322291666666666,
+            1.1324791666666667
+          ],
+          [
+            1.1357083333333333,
+            1.1359583333333334
+          ],
+          [
+            1.1367708333333333,
+            1.1370208333333334
+          ],
+          [
+            1.14025,
+            1.1405
+          ],
+          [
+            1.1413333333333333,
+            1.1415625
+          ],
+          [
+            1.1447916666666667,
+            1.1450416666666667
+          ],
+          [
+            1.145875,
+            1.146125
+          ],
+          [
+            1.1493333333333333,
+            1.1495833333333334
+          ],
+          [
+            1.1504166666666666,
+            1.1506666666666667
+          ],
+          [
+            1.153875,
+            1.154125
+          ],
+          [
+            1.1549583333333333,
+            1.1552083333333334
+          ],
+          [
+            1.1584375,
+            1.1586666666666667
+          ],
+          [
+            1.1595,
+            1.15975
+          ],
+          [
+            1.1629791666666667,
+            1.1632291666666668
+          ],
+          [
+            1.1640416666666666,
+            1.1642916666666667
+          ],
+          [
+            1.1675208333333333,
+            1.1677708333333334
+          ],
+          [
+            1.1686041666666667,
+            1.1688541666666667
+          ],
+          [
+            1.1720625,
+            1.1723125
+          ],
+          [
+            1.1731458333333333,
+            1.1733958333333334
+          ],
+          [
+            1.1766041666666667,
+            1.1768541666666668
+          ],
+          [
+            1.1776875,
+            1.1779375
+          ],
+          [
+            1.1811458333333333,
+            1.1813958333333334
+          ],
+          [
+            1.1822291666666667,
+            1.1824791666666667
+          ],
+          [
+            1.1857083333333334,
+            1.1859583333333332
+          ],
+          [
+            1.1867708333333333,
+            1.1870208333333334
+          ],
+          [
+            1.19025,
+            1.1905
+          ],
+          [
+            1.1913333333333334,
+            1.1915625
+          ],
+          [
+            1.1947916666666667,
+            1.1950416666666666
+          ],
+          [
+            1.195875,
+            1.196125
+          ],
+          [
+            1.1993333333333334,
+            1.1995833333333332
+          ],
+          [
+            1.2004166666666667,
+            1.2006666666666668
+          ],
+          [
+            1.203875,
+            1.204125
+          ],
+          [
+            1.2049583333333334,
+            1.2052083333333334
+          ],
+          [
+            1.2084375,
+            1.2086666666666666
+          ],
+          [
+            1.2095,
+            1.20975
+          ],
+          [
+            1.2129791666666667,
+            1.2132291666666666
+          ],
+          [
+            1.2140416666666667,
+            1.2142916666666668
+          ],
+          [
+            1.2175208333333334,
+            1.2177708333333332
+          ],
+          [
+            1.2186041666666667,
+            1.2188541666666666
+          ],
+          [
+            1.2220625,
+            1.2223125
+          ],
+          [
+            1.2231458333333334,
+            1.2233958333333332
+          ],
+          [
+            1.2266041666666667,
+            1.2268541666666666
+          ],
+          [
+            1.2276875,
+            1.2279375
+          ],
+          [
+            1.2311458333333334,
+            1.2313958333333332
+          ],
+          [
+            1.2322291666666667,
+            1.2324791666666666
+          ],
+          [
+            1.2357083333333334,
+            1.2359583333333333
+          ],
+          [
+            1.2367708333333334,
+            1.2370208333333332
+          ],
+          [
+            1.24025,
+            1.2405
+          ],
+          [
+            1.2413333333333334,
+            1.2415625
+          ],
+          [
+            1.2447916666666667,
+            1.2450416666666666
+          ],
+          [
+            1.245875,
+            1.246125
+          ],
+          [
+            1.2493333333333334,
+            1.2495833333333333
+          ],
+          [
+            1.2504166666666667,
+            1.2506666666666666
+          ],
+          [
+            1.253875,
+            1.254125
+          ],
+          [
+            1.2549583333333334,
+            1.2552083333333333
+          ],
+          [
+            1.2584375,
+            1.2586666666666666
+          ],
+          [
+            1.2595,
+            1.25975
+          ],
+          [
+            1.2629791666666668,
+            1.2632291666666666
+          ],
+          [
+            1.2640416666666667,
+            1.2642916666666666
+          ],
+          [
+            1.2675208333333334,
+            1.2677708333333333
+          ],
+          [
+            1.2686041666666668,
+            1.2688541666666666
+          ],
+          [
+            1.2720625,
+            1.2723125
+          ],
+          [
+            1.2731458333333334,
+            1.2733958333333333
+          ],
+          [
+            1.2766041666666668,
+            1.2768541666666666
+          ],
+          [
+            1.2776875,
+            1.2779375
+          ],
+          [
+            1.2811458333333334,
+            1.2813958333333333
+          ],
+          [
+            1.2822291666666668,
+            1.2824791666666666
+          ],
+          [
+            1.2857083333333332,
+            1.2859583333333333
+          ],
+          [
+            1.2867708333333334,
+            1.2870208333333333
+          ],
+          [
+            1.29025,
+            1.2905
+          ],
+          [
+            1.2913333333333334,
+            1.2915625
+          ],
+          [
+            1.2947916666666666,
+            1.2950416666666666
+          ],
+          [
+            1.295875,
+            1.296125
+          ],
+          [
+            1.2993333333333332,
+            1.2995833333333333
+          ],
+          [
+            1.3004166666666668,
+            1.3006666666666666
+          ],
+          [
+            1.303875,
+            1.304125
+          ],
+          [
+            1.3049583333333334,
+            1.3052083333333333
+          ],
+          [
+            1.3084375,
+            1.3086666666666666
+          ],
+          [
+            1.3095,
+            1.30975
+          ],
+          [
+            1.3129791666666666,
+            1.3132291666666667
+          ],
+          [
+            1.3140416666666668,
+            1.3142916666666666
+          ],
+          [
+            1.3175208333333333,
+            1.3177708333333333
+          ],
+          [
+            1.3186041666666666,
+            1.3188541666666667
+          ],
+          [
+            1.3220625,
+            1.3223125
+          ],
+          [
+            1.3231458333333332,
+            1.3233958333333333
+          ],
+          [
+            1.3266041666666666,
+            1.3268541666666667
+          ],
+          [
+            1.3276875,
+            1.3279375
+          ],
+          [
+            1.3311458333333333,
+            1.3313958333333333
+          ],
+          [
+            1.3322291666666666,
+            1.3324791666666667
+          ],
+          [
+            1.3357083333333333,
+            1.3359583333333334
+          ],
+          [
+            1.3367708333333332,
+            1.3370208333333333
+          ],
+          [
+            1.34025,
+            1.3405
+          ],
+          [
+            1.3413333333333333,
+            1.3415625
+          ],
+          [
+            1.3447916666666666,
+            1.3450416666666667
+          ],
+          [
+            1.345875,
+            1.346125
+          ],
+          [
+            1.3493333333333333,
+            1.3495833333333334
+          ],
+          [
+            1.3504166666666666,
+            1.3506666666666667
+          ],
+          [
+            1.353875,
+            1.354125
+          ],
+          [
+            1.3549583333333333,
+            1.3552083333333333
+          ],
+          [
+            1.3584375,
+            1.3586666666666667
+          ],
+          [
+            1.3595,
+            1.35975
+          ],
+          [
+            1.3629791666666666,
+            1.3632291666666667
+          ],
+          [
+            1.3640416666666666,
+            1.3642916666666667
+          ],
+          [
+            1.3675208333333333,
+            1.3677708333333334
+          ],
+          [
+            1.3686041666666666,
+            1.3688541666666667
+          ],
+          [
+            1.3720625,
+            1.3723125
+          ],
+          [
+            1.3731458333333333,
+            1.3733958333333334
+          ],
+          [
+            1.3766041666666666,
+            1.3768541666666667
+          ],
+          [
+            1.3776875,
+            1.3779375
+          ],
+          [
+            1.3811458333333333,
+            1.3813958333333334
+          ],
+          [
+            1.3822291666666666,
+            1.3824791666666667
+          ],
+          [
+            1.3857083333333333,
+            1.3859583333333334
+          ],
+          [
+            1.3867708333333333,
+            1.3870208333333334
+          ],
+          [
+            1.39025,
+            1.3905
+          ],
+          [
+            1.3913333333333333,
+            1.3915625
+          ],
+          [
+            1.3947916666666667,
+            1.3950416666666667
+          ],
+          [
+            1.395875,
+            1.396125
+          ],
+          [
+            1.3993333333333333,
+            1.3995833333333334
+          ],
+          [
+            1.4004166666666666,
+            1.4006666666666667
+          ],
+          [
+            1.403875,
+            1.404125
+          ],
+          [
+            1.4049583333333333,
+            1.4052083333333334
+          ],
+          [
+            1.4084375,
+            1.4086666666666667
+          ],
+          [
+            1.4095,
+            1.40975
+          ],
+          [
+            1.4129791666666667,
+            1.4132291666666668
+          ],
+          [
+            1.4140416666666666,
+            1.4142916666666667
+          ],
+          [
+            1.4175208333333333,
+            1.4177708333333334
+          ],
+          [
+            1.4186041666666667,
+            1.4188541666666667
+          ],
+          [
+            1.4220625,
+            1.4223125
+          ],
+          [
+            1.4231458333333333,
+            1.4233958333333334
+          ],
+          [
+            1.4266041666666667,
+            1.4268541666666668
+          ],
+          [
+            1.4276875,
+            1.4279375
+          ],
+          [
+            1.4311458333333333,
+            1.4313958333333334
+          ],
+          [
+            1.4322291666666667,
+            1.4324791666666667
+          ],
+          [
+            1.4357083333333334,
+            1.4359583333333332
+          ],
+          [
+            1.4367708333333333,
+            1.4370208333333334
+          ],
+          [
+            1.44025,
+            1.4405
+          ],
+          [
+            1.4413333333333334,
+            1.4415625
+          ],
+          [
+            1.4447916666666667,
+            1.4450416666666666
+          ],
+          [
+            1.445875,
+            1.446125
+          ],
+          [
+            1.4493333333333334,
+            1.4495833333333332
+          ],
+          [
+            1.4504166666666667,
+            1.4506666666666668
+          ],
+          [
+            1.453875,
+            1.454125
+          ],
+          [
+            1.4549583333333334,
+            1.4552083333333334
+          ],
+          [
+            1.4584375,
+            1.4586666666666666
+          ],
+          [
+            1.4595,
+            1.45975
+          ],
+          [
+            1.4629791666666667,
+            1.4632291666666666
+          ],
+          [
+            1.4640416666666667,
+            1.4642916666666668
+          ],
+          [
+            1.4675208333333334,
+            1.4677708333333332
+          ],
+          [
+            1.4686041666666667,
+            1.4688541666666666
+          ],
+          [
+            1.4720625,
+            1.4723125
+          ],
+          [
+            1.4731458333333334,
+            1.4733958333333332
+          ],
+          [
+            1.4766041666666667,
+            1.4768541666666666
+          ],
+          [
+            1.4776875,
+            1.4779375
+          ],
+          [
+            1.4811458333333334,
+            1.4813958333333332
+          ],
+          [
+            1.4822291666666667,
+            1.4824791666666666
+          ],
+          [
+            1.4857083333333334,
+            1.4859583333333333
+          ],
+          [
+            1.4867708333333334,
+            1.4870208333333332
+          ],
+          [
+            1.49025,
+            1.4905
+          ],
+          [
+            1.4913333333333334,
+            1.4915625
+          ],
+          [
+            1.4947916666666667,
+            1.4950416666666666
+          ],
+          [
+            1.495875,
+            1.496125
+          ],
+          [
+            1.4993333333333334,
+            1.4995833333333333
+          ],
+          [
+            1.5004166666666667,
+            1.5006666666666666
+          ],
+          [
+            1.503875,
+            1.504125
+          ],
+          [
+            1.5049583333333334,
+            1.5052083333333333
+          ],
+          [
+            1.5084375,
+            1.5086666666666666
+          ],
+          [
+            1.5095,
+            1.50975
+          ],
+          [
+            1.5129791666666668,
+            1.5132291666666666
+          ],
+          [
+            1.5140416666666667,
+            1.5142916666666666
+          ],
+          [
+            1.5175208333333334,
+            1.5177708333333333
+          ],
+          [
+            1.5186041666666668,
+            1.5188541666666666
+          ],
+          [
+            1.5220625,
+            1.5223125
+          ],
+          [
+            1.5231458333333334,
+            1.5233958333333333
+          ],
+          [
+            1.5266041666666668,
+            1.5268541666666666
+          ],
+          [
+            1.5276875,
+            1.5279375
+          ],
+          [
+            1.5311458333333334,
+            1.5313958333333333
+          ],
+          [
+            1.5322291666666668,
+            1.5324791666666666
+          ],
+          [
+            1.5357083333333332,
+            1.5359583333333333
+          ],
+          [
+            1.5367708333333334,
+            1.5370208333333333
+          ],
+          [
+            1.54025,
+            1.5405
+          ],
+          [
+            1.5413333333333334,
+            1.5415625
+          ],
+          [
+            1.5447916666666666,
+            1.5450416666666666
+          ],
+          [
+            1.545875,
+            1.546125
+          ],
+          [
+            1.5493333333333332,
+            1.5495833333333333
+          ],
+          [
+            1.5504166666666668,
+            1.5506666666666666
+          ],
+          [
+            1.553875,
+            1.554125
+          ],
+          [
+            1.5549583333333334,
+            1.5552083333333333
+          ],
+          [
+            1.5584375,
+            1.5586666666666666
+          ],
+          [
+            1.5595,
+            1.55975
+          ],
+          [
+            1.5629791666666666,
+            1.5632291666666667
+          ],
+          [
+            1.5640416666666668,
+            1.5642916666666666
+          ],
+          [
+            1.5675208333333333,
+            1.5677708333333333
+          ],
+          [
+            1.5686041666666666,
+            1.5688541666666667
+          ],
+          [
+            1.5720625,
+            1.5723125
+          ],
+          [
+            1.5731458333333332,
+            1.5733958333333333
+          ],
+          [
+            1.5766041666666666,
+            1.5768541666666667
+          ],
+          [
+            1.5776875,
+            1.5779375
+          ],
+          [
+            1.5811458333333333,
+            1.5813958333333333
+          ],
+          [
+            1.5822291666666666,
+            1.5824791666666667
+          ],
+          [
+            1.5857083333333333,
+            1.5859583333333334
+          ],
+          [
+            1.5867708333333332,
+            1.5870208333333333
+          ],
+          [
+            1.59025,
+            1.5905
+          ],
+          [
+            1.5913333333333333,
+            1.5915625
+          ],
+          [
+            1.5947916666666666,
+            1.5950416666666667
+          ],
+          [
+            1.595875,
+            1.596125
+          ],
+          [
+            1.5993333333333333,
+            1.5995833333333334
+          ],
+          [
+            1.6004166666666666,
+            1.6006666666666667
+          ],
+          [
+            1.603875,
+            1.604125
+          ],
+          [
+            1.6049583333333333,
+            1.6052083333333333
+          ],
+          [
+            1.6084375,
+            1.6086666666666667
+          ],
+          [
+            1.6095,
+            1.60975
+          ],
+          [
+            1.6129791666666666,
+            1.6132291666666667
+          ],
+          [
+            1.6140416666666666,
+            1.6142916666666667
+          ],
+          [
+            1.6175208333333333,
+            1.6177708333333334
+          ],
+          [
+            1.6186041666666666,
+            1.6188541666666667
+          ],
+          [
+            1.6220625,
+            1.6223125
+          ],
+          [
+            1.6231458333333333,
+            1.6233958333333334
+          ],
+          [
+            1.6266041666666666,
+            1.6268541666666667
+          ],
+          [
+            1.6276875,
+            1.6279375
+          ],
+          [
+            1.6311458333333333,
+            1.6313958333333334
+          ],
+          [
+            1.6322291666666666,
+            1.6324791666666667
+          ],
+          [
+            1.6357083333333333,
+            1.6359583333333334
+          ],
+          [
+            1.6367708333333333,
+            1.6370208333333334
+          ],
+          [
+            1.64025,
+            1.6405
+          ],
+          [
+            1.6413333333333333,
+            1.6415625
+          ],
+          [
+            1.6447916666666667,
+            1.6450416666666667
+          ],
+          [
+            1.645875,
+            1.646125
+          ],
+          [
+            1.6493333333333333,
+            1.6495833333333334
+          ],
+          [
+            1.6504166666666666,
+            1.6506666666666667
+          ],
+          [
+            1.653875,
+            1.654125
+          ],
+          [
+            1.6549583333333333,
+            1.6552083333333334
+          ],
+          [
+            1.6584375,
+            1.6586666666666667
+          ],
+          [
+            1.6595,
+            1.65975
+          ],
+          [
+            1.6629791666666667,
+            1.6632291666666668
+          ],
+          [
+            1.6640416666666666,
+            1.6642916666666667
+          ],
+          [
+            1.6675208333333333,
+            1.6677708333333334
+          ],
+          [
+            1.6686041666666667,
+            1.6688541666666667
+          ],
+          [
+            1.6720625,
+            1.6723125
+          ],
+          [
+            1.6731458333333333,
+            1.6733958333333334
+          ],
+          [
+            1.6766041666666667,
+            1.6768541666666668
+          ],
+          [
+            1.6776875,
+            1.6779375
+          ],
+          [
+            1.6811458333333333,
+            1.6813958333333334
+          ],
+          [
+            1.6822291666666667,
+            1.6824791666666667
+          ],
+          [
+            1.6857083333333334,
+            1.6859375
+          ],
+          [
+            1.6867708333333333,
+            1.6870208333333334
+          ],
+          [
+            1.69025,
+            1.6905
+          ],
+          [
+            1.6913333333333334,
+            1.6915625
+          ],
+          [
+            1.6947916666666667,
+            1.6950416666666666
+          ],
+          [
+            1.695875,
+            1.696125
+          ],
+          [
+            1.6993333333333334,
+            1.6995833333333332
+          ],
+          [
+            1.7004166666666667,
+            1.7006666666666668
+          ],
+          [
+            1.703875,
+            1.704125
+          ],
+          [
+            1.7049583333333334,
+            1.7052083333333334
+          ],
+          [
+            1.7084375,
+            1.7086666666666666
+          ],
+          [
+            1.7095,
+            1.70975
+          ],
+          [
+            1.7129791666666667,
+            1.7132291666666666
+          ],
+          [
+            1.7140416666666667,
+            1.7142916666666668
+          ],
+          [
+            1.7175208333333334,
+            1.7177708333333332
+          ],
+          [
+            1.7186041666666667,
+            1.7188541666666666
+          ],
+          [
+            1.7220625,
+            1.7223125
+          ],
+          [
+            1.7231458333333334,
+            1.7233958333333332
+          ],
+          [
+            1.7266041666666667,
+            1.7268541666666666
+          ],
+          [
+            1.7276875,
+            1.7279375
+          ],
+          [
+            1.7311458333333334,
+            1.7313958333333332
+          ],
+          [
+            1.7322291666666667,
+            1.7324791666666666
+          ],
+          [
+            1.7357083333333334,
+            1.7359583333333333
+          ],
+          [
+            1.7367708333333334,
+            1.7370208333333332
+          ],
+          [
+            1.74025,
+            1.7405
+          ],
+          [
+            1.7413333333333334,
+            1.7415625
+          ],
+          [
+            1.7447916666666667,
+            1.7450416666666666
+          ],
+          [
+            1.745875,
+            1.746125
+          ],
+          [
+            1.7493333333333334,
+            1.7495833333333333
+          ],
+          [
+            1.7504166666666667,
+            1.7506666666666666
+          ],
+          [
+            1.753875,
+            1.754125
+          ],
+          [
+            1.7549583333333334,
+            1.7552083333333333
+          ],
+          [
+            1.7584375,
+            1.7586666666666666
+          ],
+          [
+            1.7595,
+            1.75975
+          ],
+          [
+            1.7629791666666668,
+            1.7632291666666666
+          ],
+          [
+            1.7640416666666667,
+            1.7642916666666666
+          ],
+          [
+            1.7675208333333334,
+            1.7677708333333333
+          ],
+          [
+            1.7686041666666668,
+            1.7688541666666666
+          ],
+          [
+            1.7720625,
+            1.7723125
+          ],
+          [
+            1.7731458333333334,
+            1.7733958333333333
+          ],
+          [
+            1.7766041666666668,
+            1.7768541666666666
+          ],
+          [
+            1.7776875,
+            1.7779375
+          ],
+          [
+            1.7811458333333334,
+            1.7813958333333333
+          ],
+          [
+            1.7822291666666668,
+            1.7824791666666666
+          ],
+          [
+            1.7857083333333332,
+            1.7859583333333333
+          ],
+          [
+            1.7867708333333334,
+            1.7870208333333333
+          ],
+          [
+            1.79025,
+            1.7905
+          ],
+          [
+            1.7913333333333334,
+            1.7915625
+          ],
+          [
+            1.7947916666666666,
+            1.7950416666666666
+          ],
+          [
+            1.795875,
+            1.796125
+          ],
+          [
+            1.7993333333333332,
+            1.7995833333333333
+          ],
+          [
+            1.8004166666666668,
+            1.8006666666666666
+          ],
+          [
+            1.803875,
+            1.804125
+          ],
+          [
+            1.8049583333333334,
+            1.8052083333333333
+          ],
+          [
+            1.8084375,
+            1.8086666666666666
+          ],
+          [
+            1.8095,
+            1.80975
+          ],
+          [
+            1.8129791666666666,
+            1.8132291666666667
+          ],
+          [
+            1.8140416666666668,
+            1.8142916666666666
+          ],
+          [
+            1.8175208333333333,
+            1.8177708333333333
+          ],
+          [
+            1.8186041666666666,
+            1.8188541666666667
+          ],
+          [
+            1.8220625,
+            1.8223125
+          ],
+          [
+            1.8231458333333332,
+            1.8233958333333333
+          ],
+          [
+            1.8266041666666666,
+            1.8268541666666667
+          ],
+          [
+            1.8276875,
+            1.8279375
+          ],
+          [
+            1.8311458333333333,
+            1.8313958333333333
+          ],
+          [
+            1.8322291666666666,
+            1.8324791666666667
+          ],
+          [
+            1.8357083333333333,
+            1.8359583333333334
+          ],
+          [
+            1.8367708333333332,
+            1.8370208333333333
+          ],
+          [
+            1.84025,
+            1.8405
+          ],
+          [
+            1.8413333333333333,
+            1.8415625
+          ],
+          [
+            1.8447916666666666,
+            1.8450416666666667
+          ],
+          [
+            1.845875,
+            1.846125
+          ],
+          [
+            1.8493333333333333,
+            1.8495833333333334
+          ],
+          [
+            1.8504166666666666,
+            1.8506666666666667
+          ],
+          [
+            1.853875,
+            1.854125
+          ],
+          [
+            1.8549583333333333,
+            1.8552083333333333
+          ],
+          [
+            1.8584375,
+            1.8586666666666667
+          ],
+          [
+            1.8595,
+            1.85975
+          ],
+          [
+            1.8629791666666666,
+            1.8632291666666667
+          ],
+          [
+            1.8640416666666666,
+            1.8642916666666667
+          ],
+          [
+            1.8675208333333333,
+            1.8677708333333334
+          ],
+          [
+            1.8686041666666666,
+            1.8688541666666667
+          ],
+          [
+            1.8720625,
+            1.8723125
+          ],
+          [
+            1.8731458333333333,
+            1.8733958333333334
+          ],
+          [
+            1.8766041666666666,
+            1.8768541666666667
+          ],
+          [
+            1.8776875,
+            1.8779375
+          ],
+          [
+            1.8811458333333333,
+            1.8813958333333334
+          ],
+          [
+            1.8822291666666666,
+            1.8824791666666667
+          ],
+          [
+            1.8857083333333333,
+            1.8859583333333334
+          ],
+          [
+            1.8867708333333333,
+            1.8870208333333334
+          ],
+          [
+            1.89025,
+            1.8905
+          ],
+          [
+            1.8913333333333333,
+            1.8915625
+          ],
+          [
+            1.8947916666666667,
+            1.8950416666666667
+          ],
+          [
+            1.895875,
+            1.896125
+          ],
+          [
+            1.8993333333333333,
+            1.8995833333333334
+          ],
+          [
+            1.9004166666666666,
+            1.9006666666666667
+          ],
+          [
+            1.903875,
+            1.904125
+          ],
+          [
+            1.9049583333333333,
+            1.9052083333333334
+          ],
+          [
+            1.9084375,
+            1.9086666666666667
+          ],
+          [
+            1.9095,
+            1.90975
+          ],
+          [
+            1.9129791666666667,
+            1.9132291666666668
+          ],
+          [
+            1.9140416666666666,
+            1.9142916666666667
+          ],
+          [
+            1.9175208333333333,
+            1.9177708333333334
+          ],
+          [
+            1.9186041666666667,
+            1.9188541666666667
+          ],
+          [
+            1.9220625,
+            1.9223125
+          ],
+          [
+            1.9231458333333333,
+            1.9233958333333334
+          ],
+          [
+            1.9266041666666667,
+            1.9268541666666668
+          ],
+          [
+            1.9276875,
+            1.9279375
+          ],
+          [
+            1.9311458333333333,
+            1.9313958333333334
+          ],
+          [
+            1.9322291666666667,
+            1.9324791666666667
+          ],
+          [
+            1.9357083333333334,
+            1.9359375
+          ],
+          [
+            1.9367708333333333,
+            1.9370208333333334
+          ],
+          [
+            1.94025,
+            1.9405
+          ],
+          [
+            1.9413333333333334,
+            1.9415625
+          ],
+          [
+            1.9447916666666667,
+            1.9450416666666666
+          ],
+          [
+            1.945875,
+            1.946125
+          ],
+          [
+            1.9493333333333334,
+            1.9495833333333332
+          ],
+          [
+            1.9504166666666667,
+            1.9506666666666668
+          ],
+          [
+            1.953875,
+            1.954125
+          ],
+          [
+            1.9549583333333334,
+            1.9552083333333334
+          ],
+          [
+            1.9584375,
+            1.9586666666666666
+          ],
+          [
+            1.9595,
+            1.95975
+          ],
+          [
+            1.9629791666666667,
+            1.9632291666666666
+          ],
+          [
+            1.9640416666666667,
+            1.9642916666666668
+          ],
+          [
+            1.9675208333333334,
+            1.9677708333333332
+          ],
+          [
+            1.9686041666666667,
+            1.9688541666666666
+          ],
+          [
+            1.9720625,
+            1.9723125
+          ],
+          [
+            1.9731458333333334,
+            1.9733958333333332
+          ],
+          [
+            1.9766041666666667,
+            1.9768541666666666
+          ],
+          [
+            1.9776875,
+            1.9779375
+          ],
+          [
+            1.9811458333333334,
+            1.9813958333333332
+          ],
+          [
+            1.9822291666666667,
+            1.9824791666666666
+          ],
+          [
+            1.9857083333333334,
+            1.9859583333333333
+          ],
+          [
+            1.9867708333333334,
+            1.9870208333333332
+          ],
+          [
+            1.99025,
+            1.9905
+          ],
+          [
+            1.9913333333333334,
+            1.9915625
+          ],
+          [
+            1.9947916666666667,
+            1.9950416666666666
+          ],
+          [
+            1.995875,
+            1.996125
+          ],
+          [
+            1.9993333333333334,
+            1.9995833333333333
+          ],
+          [
+            2.0004166666666667,
+            2.0006666666666666
+          ],
+          [
+            2.003875,
+            2.004125
+          ],
+          [
+            2.004958333333333,
+            2.0052083333333335
+          ],
+          [
+            2.0084375,
+            2.0086666666666666
+          ],
+          [
+            2.0095,
+            2.00975
+          ],
+          [
+            2.0129791666666668,
+            2.0132291666666666
+          ],
+          [
+            2.0140416666666665,
+            2.014291666666667
+          ],
+          [
+            2.017520833333333,
+            2.0177708333333335
+          ],
+          [
+            2.0186041666666665,
+            2.018854166666667
+          ],
+          [
+            2.0220625,
+            2.0223125
+          ],
+          [
+            2.0231458333333334,
+            2.0233958333333333
+          ],
+          [
+            2.0266041666666665,
+            2.026854166666667
+          ],
+          [
+            2.0276875,
+            2.0279375
+          ],
+          [
+            2.0311458333333334,
+            2.0313958333333333
+          ],
+          [
+            2.0322291666666668,
+            2.0324791666666666
+          ],
+          [
+            2.0357083333333335,
+            2.0359583333333333
+          ],
+          [
+            2.036770833333333,
+            2.0370208333333335
+          ],
+          [
+            2.04025,
+            2.0405
+          ],
+          [
+            2.041333333333333,
+            2.0415625
+          ],
+          [
+            2.044791666666667,
+            2.0450416666666666
+          ],
+          [
+            2.045875,
+            2.046125
+          ],
+          [
+            2.0493333333333332,
+            2.0495833333333335
+          ],
+          [
+            2.0504166666666666,
+            2.050666666666667
+          ],
+          [
+            2.053875,
+            2.054125
+          ],
+          [
+            2.0549583333333334,
+            2.0552083333333333
+          ],
+          [
+            2.0584375,
+            2.058666666666667
+          ],
+          [
+            2.0595,
+            2.05975
+          ],
+          [
+            2.0629791666666666,
+            2.0632291666666664
+          ],
+          [
+            2.0640416666666668,
+            2.0642916666666666
+          ],
+          [
+            2.0675208333333335,
+            2.0677708333333333
+          ],
+          [
+            2.068604166666667,
+            2.0688541666666667
+          ],
+          [
+            2.0720625,
+            2.0723125
+          ],
+          [
+            2.0731458333333332,
+            2.0733958333333335
+          ],
+          [
+            2.076604166666667,
+            2.0768541666666667
+          ],
+          [
+            2.0776875,
+            2.0779375
+          ],
+          [
+            2.0811458333333333,
+            2.081395833333333
+          ],
+          [
+            2.0822291666666666,
+            2.082479166666667
+          ],
+          [
+            2.0857083333333333,
+            2.085958333333333
+          ],
+          [
+            2.0867708333333335,
+            2.0870208333333333
+          ],
+          [
+            2.09025,
+            2.0905
+          ],
+          [
+            2.0913333333333335,
+            2.0915625
+          ],
+          [
+            2.0947916666666666,
+            2.0950416666666665
+          ],
+          [
+            2.095875,
+            2.096125
+          ],
+          [
+            2.0993333333333335,
+            2.0995833333333334
+          ],
+          [
+            2.100416666666667,
+            2.1006666666666667
+          ],
+          [
+            2.103875,
+            2.104125
+          ],
+          [
+            2.1049583333333333,
+            2.105208333333333
+          ],
+          [
+            2.1084375,
+            2.1086666666666667
+          ],
+          [
+            2.1095,
+            2.10975
+          ],
+          [
+            2.112979166666667,
+            2.1132291666666667
+          ],
+          [
+            2.1140625,
+            2.1142916666666665
+          ],
+          [
+            2.1175208333333333,
+            2.117770833333333
+          ],
+          [
+            2.1186041666666666,
+            2.1188541666666665
+          ],
+          [
+            2.1220625,
+            2.1223125
+          ],
+          [
+            2.1231458333333335,
+            2.1233958333333334
+          ],
+          [
+            2.1266041666666666,
+            2.1268541666666665
+          ],
+          [
+            2.1276875,
+            2.1279375
+          ],
+          [
+            2.1311458333333335,
+            2.1313958333333334
+          ],
+          [
+            2.132229166666667,
+            2.1324791666666667
+          ],
+          [
+            2.1357083333333335,
+            2.1359375
+          ],
+          [
+            2.1367708333333333,
+            2.137020833333333
+          ],
+          [
+            2.14025,
+            2.1405
+          ],
+          [
+            2.1413333333333333,
+            2.1415625
+          ],
+          [
+            2.144791666666667,
+            2.1450416666666667
+          ],
+          [
+            2.145875,
+            2.146125
+          ],
+          [
+            2.1493333333333333,
+            2.149583333333333
+          ],
+          [
+            2.1504166666666666,
+            2.1506666666666665
+          ],
+          [
+            2.153875,
+            2.154125
+          ],
+          [
+            2.1549583333333335,
+            2.1552083333333334
+          ],
+          [
+            2.1584375,
+            2.1586666666666665
+          ],
+          [
+            2.1595,
+            2.15975
+          ],
+          [
+            2.1629791666666667,
+            2.1632291666666665
+          ],
+          [
+            2.164041666666667,
+            2.1642916666666667
+          ],
+          [
+            2.167520833333333,
+            2.1677708333333334
+          ],
+          [
+            2.168604166666667,
+            2.1688541666666667
+          ],
+          [
+            2.1720625,
+            2.1723125
+          ],
+          [
+            2.1731458333333333,
+            2.173395833333333
+          ],
+          [
+            2.1766041666666665,
+            2.1768541666666668
+          ],
+          [
+            2.1776875,
+            2.1779375
+          ],
+          [
+            2.1811458333333333,
+            2.181395833333333
+          ],
+          [
+            2.1822291666666667,
+            2.1824791666666665
+          ],
+          [
+            2.1857083333333334,
+            2.1859375
+          ],
+          [
+            2.1867708333333336,
+            2.1870208333333334
+          ],
+          [
+            2.19025,
+            2.1905
+          ],
+          [
+            2.191333333333333,
+            2.1915625
+          ],
+          [
+            2.1947916666666667,
+            2.1950416666666666
+          ],
+          [
+            2.195875,
+            2.196125
+          ],
+          [
+            2.199333333333333,
+            2.1995833333333334
+          ],
+          [
+            2.2004166666666665,
+            2.2006666666666668
+          ],
+          [
+            2.203875,
+            2.204125
+          ],
+          [
+            2.2049583333333334,
+            2.205208333333333
+          ],
+          [
+            2.2084375,
+            2.208666666666667
+          ],
+          [
+            2.2095,
+            2.20975
+          ],
+          [
+            2.2129791666666665,
+            2.213229166666667
+          ],
+          [
+            2.2140416666666667,
+            2.2142916666666665
+          ],
+          [
+            2.2175208333333334,
+            2.2177708333333332
+          ],
+          [
+            2.2186041666666667,
+            2.2188541666666666
+          ],
+          [
+            2.2220625,
+            2.2223125
+          ],
+          [
+            2.223145833333333,
+            2.2233958333333335
+          ],
+          [
+            2.2266041666666667,
+            2.2268541666666666
+          ],
+          [
+            2.2276875,
+            2.2279375
+          ],
+          [
+            2.231145833333333,
+            2.2313958333333335
+          ],
+          [
+            2.2322291666666665,
+            2.232479166666667
+          ],
+          [
+            2.235708333333333,
+            2.2359583333333335
+          ],
+          [
+            2.2367708333333334,
+            2.2370208333333332
+          ],
+          [
+            2.24025,
+            2.2405
+          ],
+          [
+            2.2413333333333334,
+            2.2415625
+          ],
+          [
+            2.2447916666666665,
+            2.245041666666667
+          ],
+          [
+            2.245875,
+            2.246125
+          ],
+          [
+            2.2493333333333334,
+            2.2495833333333333
+          ],
+          [
+            2.2504166666666667,
+            2.2506666666666666
+          ],
+          [
+            2.253875,
+            2.254125
+          ],
+          [
+            2.254958333333333,
+            2.2552083333333335
+          ],
+          [
+            2.2584375,
+            2.2586666666666666
+          ],
+          [
+            2.2595,
+            2.25975
+          ],
+          [
+            2.2629791666666668,
+            2.2632291666666666
+          ],
+          [
+            2.2640416666666665,
+            2.264291666666667
+          ],
+          [
+            2.267520833333333,
+            2.2677708333333335
+          ],
+          [
+            2.2686041666666665,
+            2.268854166666667
+          ],
+          [
+            2.2720625,
+            2.2723125
+          ],
+          [
+            2.2731458333333334,
+            2.2733958333333333
+          ],
+          [
+            2.2766041666666665,
+            2.276854166666667
+          ],
+          [
+            2.2776875,
+            2.2779375
+          ],
+          [
+            2.2811458333333334,
+            2.2813958333333333
+          ],
+          [
+            2.2822291666666668,
+            2.2824791666666666
+          ],
+          [
+            2.2857083333333335,
+            2.2859583333333333
+          ],
+          [
+            2.286770833333333,
+            2.2870208333333335
+          ],
+          [
+            2.29025,
+            2.2905
+          ],
+          [
+            2.291333333333333,
+            2.2915625
+          ],
+          [
+            2.294791666666667,
+            2.2950416666666666
+          ],
+          [
+            2.295875,
+            2.296125
+          ],
+          [
+            2.2993333333333332,
+            2.2995833333333335
+          ],
+          [
+            2.3004166666666666,
+            2.300666666666667
+          ],
+          [
+            2.303875,
+            2.304125
+          ],
+          [
+            2.3049583333333334,
+            2.3052083333333333
+          ],
+          [
+            2.3084375,
+            2.308666666666667
+          ],
+          [
+            2.3095,
+            2.30975
+          ],
+          [
+            2.3129791666666666,
+            2.3132291666666664
+          ],
+          [
+            2.3140416666666668,
+            2.3142916666666666
+          ],
+          [
+            2.3175208333333335,
+            2.3177708333333333
+          ],
+          [
+            2.318604166666667,
+            2.3188541666666667
+          ],
+          [
+            2.3220625,
+            2.3223125
+          ],
+          [
+            2.3231458333333332,
+            2.3233958333333335
+          ],
+          [
+            2.326604166666667,
+            2.3268541666666667
+          ],
+          [
+            2.3276875,
+            2.3279375
+          ],
+          [
+            2.3311458333333333,
+            2.331395833333333
+          ],
+          [
+            2.3322291666666666,
+            2.332479166666667
+          ],
+          [
+            2.3357083333333333,
+            2.335958333333333
+          ],
+          [
+            2.3367708333333335,
+            2.3370208333333333
+          ],
+          [
+            2.34025,
+            2.3405
+          ],
+          [
+            2.3413333333333335,
+            2.3415625
+          ],
+          [
+            2.3447916666666666,
+            2.3450416666666665
+          ],
+          [
+            2.345875,
+            2.346125
+          ],
+          [
+            2.3493333333333335,
+            2.3495833333333334
+          ],
+          [
+            2.350416666666667,
+            2.3506666666666667
+          ],
+          [
+            2.353875,
+            2.354125
+          ],
+          [
+            2.3549583333333333,
+            2.355208333333333
+          ],
+          [
+            2.3584375,
+            2.3586666666666667
+          ],
+          [
+            2.3595,
+            2.35975
+          ],
+          [
+            2.362979166666667,
+            2.3632291666666667
+          ],
+          [
+            2.3640625,
+            2.3642916666666665
+          ],
+          [
+            2.3675208333333333,
+            2.367770833333333
+          ],
+          [
+            2.3686041666666666,
+            2.3688541666666665
+          ],
+          [
+            2.3720625,
+            2.3723125
+          ],
+          [
+            2.3731458333333335,
+            2.3733958333333334
+          ],
+          [
+            2.3766041666666666,
+            2.3768541666666665
+          ],
+          [
+            2.3776875,
+            2.3779375
+          ],
+          [
+            2.3811458333333335,
+            2.3813958333333334
+          ],
+          [
+            2.382229166666667,
+            2.3824791666666667
+          ],
+          [
+            2.3857083333333335,
+            2.3859375
+          ],
+          [
+            2.3867708333333333,
+            2.387020833333333
+          ],
+          [
+            2.39025,
+            2.3905
+          ],
+          [
+            2.3913333333333333,
+            2.3915625
+          ],
+          [
+            2.394791666666667,
+            2.3950416666666667
+          ],
+          [
+            2.395875,
+            2.396125
+          ],
+          [
+            2.3993333333333333,
+            2.399583333333333
+          ],
+          [
+            2.4004166666666666,
+            2.4006666666666665
+          ],
+          [
+            2.403875,
+            2.404125
+          ],
+          [
+            2.4049583333333335,
+            2.4052083333333334
+          ],
+          [
+            2.4084375,
+            2.4086666666666665
+          ],
+          [
+            2.4095,
+            2.40975
+          ],
+          [
+            2.4129791666666667,
+            2.4132291666666665
+          ],
+          [
+            2.414041666666667,
+            2.4142916666666667
+          ],
+          [
+            2.417520833333333,
+            2.4177708333333334
+          ],
+          [
+            2.418604166666667,
+            2.4188541666666667
+          ],
+          [
+            2.4220625,
+            2.4223125
+          ],
+          [
+            2.4231458333333333,
+            2.423395833333333
+          ],
+          [
+            2.4266041666666665,
+            2.4268541666666668
+          ],
+          [
+            2.4276875,
+            2.4279375
+          ],
+          [
+            2.4311458333333333,
+            2.431395833333333
+          ],
+          [
+            2.4322291666666667,
+            2.4324791666666665
+          ],
+          [
+            2.4357083333333334,
+            2.4359375
+          ],
+          [
+            2.4367708333333336,
+            2.4370208333333334
+          ],
+          [
+            2.44025,
+            2.4405
+          ],
+          [
+            2.441333333333333,
+            2.4415625
+          ],
+          [
+            2.4447916666666667,
+            2.4450416666666666
+          ],
+          [
+            2.445875,
+            2.446125
+          ],
+          [
+            2.449333333333333,
+            2.4495833333333334
+          ],
+          [
+            2.4504166666666665,
+            2.4506666666666668
+          ],
+          [
+            2.453875,
+            2.454125
+          ],
+          [
+            2.4549583333333334,
+            2.455208333333333
+          ],
+          [
+            2.4584375,
+            2.458666666666667
+          ],
+          [
+            2.4595,
+            2.45975
+          ],
+          [
+            2.4629791666666665,
+            2.463229166666667
+          ],
+          [
+            2.4640416666666667,
+            2.4642916666666665
+          ],
+          [
+            2.4675208333333334,
+            2.4677708333333332
+          ],
+          [
+            2.4686041666666667,
+            2.4688541666666666
+          ],
+          [
+            2.4720625,
+            2.4723125
+          ],
+          [
+            2.473145833333333,
+            2.4733958333333335
+          ],
+          [
+            2.4766041666666667,
+            2.4768541666666666
+          ],
+          [
+            2.4776875,
+            2.4779375
+          ],
+          [
+            2.481145833333333,
+            2.4813958333333335
+          ],
+          [
+            2.4822291666666665,
+            2.482479166666667
+          ],
+          [
+            2.485708333333333,
+            2.4859583333333335
+          ],
+          [
+            2.4867708333333334,
+            2.4870208333333332
+          ],
+          [
+            2.49025,
+            2.4905
+          ],
+          [
+            2.4913333333333334,
+            2.4915625
+          ],
+          [
+            2.4947916666666665,
+            2.495041666666667
+          ],
+          [
+            2.495875,
+            2.496125
+          ],
+          [
+            2.4993333333333334,
+            2.4995833333333333
+          ],
+          [
+            2.5004166666666667,
+            2.5006666666666666
+          ],
+          [
+            2.503875,
+            2.504125
+          ],
+          [
+            2.504958333333333,
+            2.5052083333333335
+          ],
+          [
+            2.5084375,
+            2.5086666666666666
+          ],
+          [
+            2.5095,
+            2.50975
+          ],
+          [
+            2.5129791666666668,
+            2.5132291666666666
+          ],
+          [
+            2.5140416666666665,
+            2.514291666666667
+          ],
+          [
+            2.517520833333333,
+            2.5177708333333335
+          ],
+          [
+            2.5186041666666665,
+            2.518854166666667
+          ],
+          [
+            2.5220625,
+            2.5223125
+          ],
+          [
+            2.5231458333333334,
+            2.5233958333333333
+          ],
+          [
+            2.5266041666666665,
+            2.526854166666667
+          ],
+          [
+            2.5276875,
+            2.5279375
+          ],
+          [
+            2.5311458333333334,
+            2.5313958333333333
+          ],
+          [
+            2.5322291666666668,
+            2.5324791666666666
+          ],
+          [
+            2.5357083333333335,
+            2.5359583333333333
+          ],
+          [
+            2.536770833333333,
+            2.5370208333333335
+          ],
+          [
+            2.54025,
+            2.5405
+          ],
+          [
+            2.541333333333333,
+            2.5415625
+          ],
+          [
+            2.544791666666667,
+            2.5450416666666666
+          ],
+          [
+            2.545875,
+            2.546125
+          ],
+          [
+            2.5493333333333332,
+            2.5495833333333335
+          ],
+          [
+            2.5504166666666666,
+            2.550666666666667
+          ],
+          [
+            2.553875,
+            2.554125
+          ],
+          [
+            2.5549583333333334,
+            2.5552083333333333
+          ],
+          [
+            2.5584375,
+            2.558666666666667
+          ],
+          [
+            2.5595,
+            2.55975
+          ],
+          [
+            2.5629791666666666,
+            2.5632291666666664
+          ],
+          [
+            2.5640416666666668,
+            2.5642916666666666
+          ],
+          [
+            2.5675208333333335,
+            2.5677708333333333
+          ],
+          [
+            2.568604166666667,
+            2.5688541666666667
+          ],
+          [
+            2.5720625,
+            2.5723125
+          ],
+          [
+            2.5731458333333332,
+            2.5733958333333335
+          ],
+          [
+            2.576604166666667,
+            2.5768541666666667
+          ],
+          [
+            2.5776875,
+            2.5779375
+          ],
+          [
+            2.5811458333333333,
+            2.581395833333333
+          ],
+          [
+            2.5822291666666666,
+            2.582479166666667
+          ],
+          [
+            2.5857083333333333,
+            2.585958333333333
+          ],
+          [
+            2.5867708333333335,
+            2.5870208333333333
+          ],
+          [
+            2.59025,
+            2.5905
+          ],
+          [
+            2.5913333333333335,
+            2.5915625
+          ],
+          [
+            2.5947916666666666,
+            2.5950416666666665
+          ],
+          [
+            2.595875,
+            2.596125
+          ],
+          [
+            2.5993333333333335,
+            2.5995833333333334
+          ],
+          [
+            2.600416666666667,
+            2.6006666666666667
+          ],
+          [
+            2.603875,
+            2.604125
+          ],
+          [
+            2.6049583333333333,
+            2.605208333333333
+          ],
+          [
+            2.6084375,
+            2.6086666666666667
+          ],
+          [
+            2.6095,
+            2.60975
+          ],
+          [
+            2.612979166666667,
+            2.6132291666666667
+          ],
+          [
+            2.6140416666666666,
+            2.6142916666666665
+          ],
+          [
+            2.6175208333333333,
+            2.617770833333333
+          ],
+          [
+            2.6186041666666666,
+            2.6188541666666665
+          ],
+          [
+            2.6220625,
+            2.6223125
+          ],
+          [
+            2.6231458333333335,
+            2.6233958333333334
+          ],
+          [
+            2.6266041666666666,
+            2.6268541666666665
+          ],
+          [
+            2.6276875,
+            2.6279375
+          ],
+          [
+            2.6311458333333335,
+            2.6313958333333334
+          ],
+          [
+            2.632229166666667,
+            2.6324791666666667
+          ],
+          [
+            2.6357083333333335,
+            2.6359375
+          ],
+          [
+            2.6367708333333333,
+            2.637020833333333
+          ],
+          [
+            2.64025,
+            2.6405
+          ],
+          [
+            2.6413333333333333,
+            2.6415625
+          ],
+          [
+            2.644791666666667,
+            2.6450416666666667
+          ],
+          [
+            2.645875,
+            2.646125
+          ],
+          [
+            2.6493333333333333,
+            2.649583333333333
+          ],
+          [
+            2.6504166666666666,
+            2.6506666666666665
+          ],
+          [
+            2.653875,
+            2.654125
+          ],
+          [
+            2.6549583333333335,
+            2.6552083333333334
+          ],
+          [
+            2.6584375,
+            2.6586666666666665
+          ],
+          [
+            2.6595,
+            2.65975
+          ],
+          [
+            2.6629791666666667,
+            2.6632291666666665
+          ],
+          [
+            2.664041666666667,
+            2.6642916666666667
+          ],
+          [
+            2.667520833333333,
+            2.6677708333333334
+          ],
+          [
+            2.668604166666667,
+            2.6688541666666667
+          ],
+          [
+            2.6720625,
+            2.6723125
+          ],
+          [
+            2.6731458333333333,
+            2.673395833333333
+          ],
+          [
+            2.6766041666666665,
+            2.6768541666666668
+          ],
+          [
+            2.6776875,
+            2.6779375
+          ],
+          [
+            2.6811458333333333,
+            2.681395833333333
+          ],
+          [
+            2.6822291666666667,
+            2.6824791666666665
+          ],
+          [
+            2.6857083333333334,
+            2.6859375
+          ],
+          [
+            2.6867708333333336,
+            2.6870208333333334
+          ],
+          [
+            2.69025,
+            2.6905
+          ],
+          [
+            2.691333333333333,
+            2.6915625
+          ],
+          [
+            2.6947916666666667,
+            2.6950416666666666
+          ],
+          [
+            2.695875,
+            2.696125
+          ],
+          [
+            2.699333333333333,
+            2.6995833333333334
+          ],
+          [
+            2.7004166666666665,
+            2.7006666666666668
+          ],
+          [
+            2.703875,
+            2.704125
+          ],
+          [
+            2.7049583333333334,
+            2.705208333333333
+          ],
+          [
+            2.7084375,
+            2.708666666666667
+          ],
+          [
+            2.7095,
+            2.70975
+          ],
+          [
+            2.7129791666666665,
+            2.713229166666667
+          ],
+          [
+            2.7140416666666667,
+            2.7142916666666665
+          ],
+          [
+            2.7175208333333334,
+            2.7177708333333332
+          ],
+          [
+            2.7186041666666667,
+            2.7188541666666666
+          ],
+          [
+            2.7220625,
+            2.7223125
+          ],
+          [
+            2.723145833333333,
+            2.7233958333333335
+          ],
+          [
+            2.7266041666666667,
+            2.7268541666666666
+          ],
+          [
+            2.7276875,
+            2.7279375
+          ],
+          [
+            2.731145833333333,
+            2.7313958333333335
+          ],
+          [
+            2.7322291666666665,
+            2.732479166666667
+          ],
+          [
+            2.735708333333333,
+            2.7359583333333335
+          ],
+          [
+            2.7367708333333334,
+            2.7370208333333332
+          ],
+          [
+            2.74025,
+            2.7405
+          ],
+          [
+            2.7413333333333334,
+            2.7415625
+          ],
+          [
+            2.7447916666666665,
+            2.745041666666667
+          ],
+          [
+            2.745875,
+            2.746125
+          ],
+          [
+            2.7493333333333334,
+            2.7495833333333333
+          ],
+          [
+            2.7504166666666667,
+            2.7506666666666666
+          ],
+          [
+            2.753875,
+            2.754125
+          ],
+          [
+            2.754958333333333,
+            2.7552083333333335
+          ],
+          [
+            2.7584375,
+            2.7586666666666666
+          ],
+          [
+            2.7595,
+            2.75975
+          ],
+          [
+            2.7629791666666668,
+            2.7632291666666666
+          ],
+          [
+            2.7640416666666665,
+            2.764291666666667
+          ],
+          [
+            2.767520833333333,
+            2.7677708333333335
+          ],
+          [
+            2.7686041666666665,
+            2.768854166666667
+          ],
+          [
+            2.7720625,
+            2.7723125
+          ],
+          [
+            2.7731458333333334,
+            2.7733958333333333
+          ],
+          [
+            2.7766041666666665,
+            2.776854166666667
+          ],
+          [
+            2.7776875,
+            2.7779375
+          ],
+          [
+            2.7811458333333334,
+            2.7813958333333333
+          ],
+          [
+            2.7822291666666668,
+            2.7824791666666666
+          ],
+          [
+            2.7857083333333335,
+            2.7859583333333333
+          ],
+          [
+            2.786770833333333,
+            2.7870208333333335
+          ],
+          [
+            2.79025,
+            2.7905
+          ],
+          [
+            2.791333333333333,
+            2.7915625
+          ],
+          [
+            2.794791666666667,
+            2.7950416666666666
+          ],
+          [
+            2.795875,
+            2.796125
+          ],
+          [
+            2.7993333333333332,
+            2.7995833333333335
+          ],
+          [
+            2.8004166666666666,
+            2.800666666666667
+          ],
+          [
+            2.803875,
+            2.804125
+          ],
+          [
+            2.8049583333333334,
+            2.8052083333333333
+          ],
+          [
+            2.8084375,
+            2.808666666666667
+          ],
+          [
+            2.8095,
+            2.80975
+          ],
+          [
+            2.8129791666666666,
+            2.8132291666666664
+          ],
+          [
+            2.8140416666666668,
+            2.8142916666666666
+          ],
+          [
+            2.8175208333333335,
+            2.8177708333333333
+          ],
+          [
+            2.818604166666667,
+            2.8188541666666667
+          ],
+          [
+            2.8220625,
+            2.8223125
+          ],
+          [
+            2.8231458333333332,
+            2.8233958333333335
+          ],
+          [
+            2.826604166666667,
+            2.8268541666666667
+          ],
+          [
+            2.8276875,
+            2.8279375
+          ],
+          [
+            2.8311458333333333,
+            2.831395833333333
+          ],
+          [
+            2.8322291666666666,
+            2.832479166666667
+          ],
+          [
+            2.8357083333333333,
+            2.835958333333333
+          ],
+          [
+            2.8367708333333335,
+            2.8370208333333333
+          ],
+          [
+            2.84025,
+            2.8405
+          ],
+          [
+            2.8413333333333335,
+            2.8415625
+          ],
+          [
+            2.8447916666666666,
+            2.8450416666666665
+          ],
+          [
+            2.845875,
+            2.846125
+          ],
+          [
+            2.8493333333333335,
+            2.8495833333333334
+          ],
+          [
+            2.850416666666667,
+            2.8506666666666667
+          ],
+          [
+            2.853875,
+            2.854125
+          ],
+          [
+            2.8549583333333333,
+            2.855208333333333
+          ],
+          [
+            2.8584375,
+            2.8586666666666667
+          ],
+          [
+            2.8595,
+            2.85975
+          ],
+          [
+            2.862979166666667,
+            2.8632291666666667
+          ],
+          [
+            2.8640416666666666,
+            2.8642916666666665
+          ],
+          [
+            2.8675208333333333,
+            2.867770833333333
+          ],
+          [
+            2.8686041666666666,
+            2.8688541666666665
+          ],
+          [
+            2.8720625,
+            2.8723125
+          ],
+          [
+            2.8731458333333335,
+            2.8733958333333334
+          ],
+          [
+            2.8766041666666666,
+            2.8768541666666665
+          ],
+          [
+            2.8776875,
+            2.8779375
+          ],
+          [
+            2.8811458333333335,
+            2.8813958333333334
+          ],
+          [
+            2.882229166666667,
+            2.8824791666666667
+          ],
+          [
+            2.8857083333333335,
+            2.8859375
+          ],
+          [
+            2.8867708333333333,
+            2.887020833333333
+          ],
+          [
+            2.89025,
+            2.8905
+          ],
+          [
+            2.8913333333333333,
+            2.8915625
+          ],
+          [
+            2.894791666666667,
+            2.8950416666666667
+          ],
+          [
+            2.895875,
+            2.896125
+          ],
+          [
+            2.8993333333333333,
+            2.899583333333333
+          ],
+          [
+            2.9004166666666666,
+            2.9006666666666665
+          ],
+          [
+            2.903875,
+            2.904125
+          ],
+          [
+            2.9049583333333335,
+            2.9052083333333334
+          ],
+          [
+            2.9084375,
+            2.9086666666666665
+          ],
+          [
+            2.9095,
+            2.90975
+          ],
+          [
+            2.9129791666666667,
+            2.9132291666666665
+          ],
+          [
+            2.914041666666667,
+            2.9142916666666667
+          ],
+          [
+            2.917520833333333,
+            2.9177708333333334
+          ],
+          [
+            2.918604166666667,
+            2.9188541666666667
+          ],
+          [
+            2.9220625,
+            2.9223125
+          ],
+          [
+            2.9231458333333333,
+            2.923395833333333
+          ],
+          [
+            2.9266041666666665,
+            2.9268541666666668
+          ],
+          [
+            2.9276875,
+            2.9279375
+          ],
+          [
+            2.9311458333333333,
+            2.931395833333333
+          ],
+          [
+            2.9322291666666667,
+            2.9324791666666665
+          ],
+          [
+            2.9357083333333334,
+            2.9359375
+          ],
+          [
+            2.9367708333333336,
+            2.9370208333333334
+          ],
+          [
+            2.94025,
+            2.9405
+          ],
+          [
+            2.941333333333333,
+            2.9415625
+          ],
+          [
+            2.9447916666666667,
+            2.9450416666666666
+          ],
+          [
+            2.945875,
+            2.946125
+          ],
+          [
+            2.949333333333333,
+            2.9495833333333334
+          ],
+          [
+            2.9504166666666665,
+            2.9506666666666668
+          ],
+          [
+            2.953875,
+            2.954125
+          ],
+          [
+            2.9549583333333334,
+            2.955208333333333
+          ],
+          [
+            2.9584375,
+            2.958666666666667
+          ],
+          [
+            2.9595,
+            2.95975
+          ],
+          [
+            2.9629791666666665,
+            2.963229166666667
+          ],
+          [
+            2.9640416666666667,
+            2.9642916666666665
+          ],
+          [
+            2.9675208333333334,
+            2.9677708333333332
+          ],
+          [
+            2.9686041666666667,
+            2.9688541666666666
+          ],
+          [
+            2.9720625,
+            2.9723125
+          ],
+          [
+            2.973145833333333,
+            2.9733958333333335
+          ],
+          [
+            2.9766041666666667,
+            2.9768541666666666
+          ],
+          [
+            2.9776875,
+            2.9779375
+          ],
+          [
+            2.981145833333333,
+            2.9813958333333335
+          ],
+          [
+            2.9822291666666665,
+            2.982479166666667
+          ],
+          [
+            2.985708333333333,
+            2.9859583333333335
+          ],
+          [
+            2.9867708333333334,
+            2.9870208333333332
+          ],
+          [
+            2.99025,
+            2.9905
+          ],
+          [
+            2.9913333333333334,
+            2.9915625
+          ],
+          [
+            2.9947916666666665,
+            2.995041666666667
+          ],
+          [
+            2.995875,
+            2.996125
+          ],
+          [
+            2.9993333333333334,
+            2.9995833333333333
+          ],
+          [
+            3.0004166666666667,
+            3.0006666666666666
+          ],
+          [
+            3.003875,
+            3.004125
+          ],
+          [
+            3.004958333333333,
+            3.0052083333333335
+          ],
+          [
+            3.0084375,
+            3.0086666666666666
+          ],
+          [
+            3.0095,
+            3.00975
+          ],
+          [
+            3.0129791666666668,
+            3.0132291666666666
+          ],
+          [
+            3.0140416666666665,
+            3.014291666666667
+          ],
+          [
+            3.017520833333333,
+            3.0177708333333335
+          ],
+          [
+            3.0186041666666665,
+            3.018854166666667
+          ],
+          [
+            3.0220625,
+            3.0223125
+          ],
+          [
+            3.0231458333333334,
+            3.0233958333333333
+          ],
+          [
+            3.0266041666666665,
+            3.026854166666667
+          ],
+          [
+            3.0276875,
+            3.0279375
+          ],
+          [
+            3.0311458333333334,
+            3.0313958333333333
+          ],
+          [
+            3.0322291666666668,
+            3.0324791666666666
+          ],
+          [
+            3.0357083333333335,
+            3.0359583333333333
+          ],
+          [
+            3.036770833333333,
+            3.0370208333333335
+          ],
+          [
+            3.04025,
+            3.0405
+          ],
+          [
+            3.041333333333333,
+            3.0415625
+          ],
+          [
+            3.044791666666667,
+            3.0450416666666666
+          ],
+          [
+            3.045875,
+            3.046125
+          ],
+          [
+            3.0493333333333332,
+            3.0495833333333335
+          ],
+          [
+            3.0504166666666666,
+            3.050666666666667
+          ],
+          [
+            3.053875,
+            3.054125
+          ],
+          [
+            3.0549583333333334,
+            3.0552083333333333
+          ],
+          [
+            3.0584375,
+            3.058666666666667
+          ],
+          [
+            3.0595,
+            3.05975
+          ],
+          [
+            3.0629791666666666,
+            3.0632291666666664
+          ],
+          [
+            3.0640416666666668,
+            3.0642916666666666
+          ],
+          [
+            3.0675208333333335,
+            3.0677708333333333
+          ],
+          [
+            3.068604166666667,
+            3.0688541666666667
+          ],
+          [
+            3.0720625,
+            3.0723125
+          ],
+          [
+            3.0731458333333332,
+            3.0733958333333335
+          ],
+          [
+            3.076604166666667,
+            3.0768541666666667
+          ],
+          [
+            3.0776875,
+            3.0779375
+          ],
+          [
+            3.0811458333333333,
+            3.081395833333333
+          ],
+          [
+            3.0822291666666666,
+            3.082479166666667
+          ],
+          [
+            3.0857083333333333,
+            3.085958333333333
+          ],
+          [
+            3.0867708333333335,
+            3.0870208333333333
+          ],
+          [
+            3.09025,
+            3.0905
+          ],
+          [
+            3.0913333333333335,
+            3.0915625
+          ],
+          [
+            3.0947916666666666,
+            3.0950416666666665
+          ],
+          [
+            3.095875,
+            3.096125
+          ],
+          [
+            3.0993333333333335,
+            3.0995833333333334
+          ],
+          [
+            3.100416666666667,
+            3.1006666666666667
+          ],
+          [
+            3.103875,
+            3.104125
+          ],
+          [
+            3.1049583333333333,
+            3.105208333333333
+          ],
+          [
+            3.1084375,
+            3.1086666666666667
+          ],
+          [
+            3.1095,
+            3.10975
+          ],
+          [
+            3.112979166666667,
+            3.1132291666666667
+          ],
+          [
+            3.1140416666666666,
+            3.1142916666666665
+          ],
+          [
+            3.1175208333333333,
+            3.117770833333333
+          ],
+          [
+            3.1186041666666666,
+            3.1188541666666665
+          ],
+          [
+            3.1220625,
+            3.1223125
+          ],
+          [
+            3.1231458333333335,
+            3.1233958333333334
+          ],
+          [
+            3.1266041666666666,
+            3.1268541666666665
+          ],
+          [
+            3.1276875,
+            3.1279375
+          ],
+          [
+            3.1311458333333335,
+            3.1313958333333334
+          ],
+          [
+            3.132229166666667,
+            3.1324791666666667
+          ],
+          [
+            3.1357083333333335,
+            3.1359375
+          ],
+          [
+            3.1367708333333333,
+            3.137020833333333
+          ],
+          [
+            3.14025,
+            3.1405
+          ],
+          [
+            3.1413333333333333,
+            3.1415625
+          ],
+          [
+            3.144791666666667,
+            3.1450416666666667
+          ],
+          [
+            3.145875,
+            3.146125
+          ],
+          [
+            3.1493333333333333,
+            3.149583333333333
+          ],
+          [
+            3.1504166666666666,
+            3.1506666666666665
+          ],
+          [
+            3.153875,
+            3.154125
+          ],
+          [
+            3.1549583333333335,
+            3.1552083333333334
+          ],
+          [
+            3.1584375,
+            3.1586666666666665
+          ],
+          [
+            3.1595,
+            3.15975
+          ],
+          [
+            3.1629791666666667,
+            3.1632291666666665
+          ],
+          [
+            3.164041666666667,
+            3.1642916666666667
+          ],
+          [
+            3.167520833333333,
+            3.1677708333333334
+          ],
+          [
+            3.168604166666667,
+            3.1688541666666667
+          ],
+          [
+            3.1720625,
+            3.1723125
+          ],
+          [
+            3.1731458333333333,
+            3.173395833333333
+          ],
+          [
+            3.1766041666666665,
+            3.1768541666666668
+          ],
+          [
+            3.1776875,
+            3.1779375
+          ]
+        ]
+      },
+      "metadata": {
+        "material": "cd_digital",
+        "sample_rate": 48000,
+        "transfer_chain": "['wire_recording', 'mp3_low']"
+      },
+      "runtime_seconds": 3.4142684936523438,
+      "severities": {
+        "aliasing": 0.0,
+        "amplitude_drift": 0.0,
+        "azimuth_error": 0.0,
+        "bandwidth_loss": 1.0,
+        "bias_error": 0.0,
+        "clicks": 0.0,
+        "clipping": 0.7453934802530773,
+        "compression_artifacts": 0.12411275791237131,
+        "crackle": 0.0,
+        "crosstalk": 0.0,
+        "dc_offset": 0.030497407230207628,
+        "digital_artifacts": 0.8244460431654677,
+        "dolby_nr_mismatch": 0.0,
+        "dropouts": 0.0,
+        "dynamic_compression_excess": 0.9388479241671603,
+        "flutter": 1.0,
+        "flutter_spectral_sidebands": 1.0,
+        "generation_loss": 0.7000157668218889,
+        "groove_echo": 0.0,
+        "head_wear": 0.0,
+        "hf_remanence_loss": 0.6428163770770032,
+        "high_freq_noise": 2.3731827137889075e-05,
+        "hum": 9.803419963948352e-09,
+        "inner_groove_distortion": 0.0,
+        "intermodulation_distortion": 0.0,
+        "jitter_artifacts": 0.6008239244084789,
+        "lacquer_disc_degradation": 0.0,
+        "low_freq_rumble": 0.00030872055778840825,
+        "modulation_noise": 0.0,
+        "motor_interference": 0.9333333333333333,
+        "multiband_wow_flutter": 0.2649632938830258,
+        "nr_breathing_artifact": 0.0,
+        "overload_distortion": 0.5,
+        "phase_issues": 0.0,
+        "pitch_drift": 0.0,
+        "pre_echo": 0.0,
+        "print_through": 0.0,
+        "proximity_effect_excess": 1.0,
+        "quantization_noise": 0.4648740464537079,
+        "reverb_excess": 1.0,
+        "riaa_curve_error": 0.0,
+        "room_mode_resonance": 0.0,
+        "scrape_flutter": 0.0,
+        "sibilance": 0.0,
+        "soft_saturation": 0.0,
+        "speed_calibration_error": 1.0,
+        "stereo_imbalance": 0.0,
+        "sticky_shed_residue": 0.0,
+        "stylus_damage": 0.0,
+        "tape_head_clog": 0.0,
+        "tape_head_level_dip": 0.0,
+        "tape_splice_artifact": 0.0,
+        "transient_smearing": 0.125,
+        "transport_bump": 0.0,
+        "vocal_harshness": 0.11037576942331026,
+        "wow": 1.0
+      }
+    },
+    {
+      "case_id": "digital_quantization_noise",
+      "confidences": {
+        "aliasing": 0.792,
+        "amplitude_drift": 0.44,
+        "azimuth_error": 0.05,
+        "bandwidth_loss": 0.99,
+        "bias_error": 0.748,
+        "clicks": 0.7951875,
+        "clipping": 0.792,
+        "compression_artifacts": 0.3222159921526909,
+        "crackle": 0.264,
+        "crosstalk": 0.44,
+        "dc_offset": 0.6194519032884425,
+        "digital_artifacts": 0.8492335324187374,
+        "dolby_nr_mismatch": 0.792,
+        "dropouts": 0.7040000000000001,
+        "dynamic_compression_excess": 0.8207999999999999,
+        "flutter": 0.7418852864439358,
+        "flutter_spectral_sidebands": 0.8266666666666667,
+        "generation_loss": 0.6388324908396228,
+        "groove_echo": 0.88,
+        "head_wear": 0.6688000000000001,
+        "hf_remanence_loss": 0.878018198445882,
+        "high_freq_noise": 0.7648114704713361,
+        "hum": 0.7920487316900677,
+        "inner_groove_distortion": 0.88,
+        "intermodulation_distortion": 0.44,
+        "jitter_artifacts": 0.9119999999999999,
+        "lacquer_disc_degradation": 0.836,
+        "low_freq_rumble": 0.7920557413189269,
+        "modulation_noise": 0.44,
+        "motor_interference": 0.5866666666666667,
+        "multiband_wow_flutter": 0.7145035598534569,
+        "nr_breathing_artifact": 0.35200000000000004,
+        "overload_distortion": 0.5114285714285715,
+        "phase_issues": 0.05,
+        "pitch_drift": 0.264,
+        "pre_echo": 0.264,
+        "print_through": 0.44,
+        "proximity_effect_excess": 0.8474999999999999,
+        "quantization_noise": 0.6250703125,
+        "reverb_excess": 0.8207999999999999,
+        "riaa_curve_error": 0.748,
+        "room_mode_resonance": 0.44,
+        "scrape_flutter": 0.836,
+        "sibilance": 0.5720000000000001,
+        "soft_saturation": 0.7020000000000001,
+        "speed_calibration_error": 0.6567855173418469,
+        "stereo_imbalance": 0.05,
+        "sticky_shed_residue": 0.44,
+        "stylus_damage": 0.44,
+        "tape_head_clog": 0.836,
+        "tape_head_level_dip": 0.836,
+        "tape_splice_artifact": 0.44,
+        "transient_smearing": 0.6163999999999998,
+        "transport_bump": 0.528,
+        "vocal_harshness": 0.5088708404475792,
+        "wow": 0.9179999736124533
+      },
+      "duration_seconds": 3.2,
+      "expected": [
+        {
+          "critical": true,
+          "defect": "quantization_noise",
+          "min_confidence": 0.45,
+          "min_severity": 0.08,
+          "require_locations": false
+        }
+      ],
+      "forbidden_defects": [
+        "riaa_curve_error"
+      ],
+      "locations": {
+        "clicks": [
+          [
+            0.002979166666666667,
+            0.002979166666666667
+          ],
+          [
+            3.197,
+            3.197
+          ]
+        ],
+        "crackle": [
+          [
+            1.6547083333333332,
+            1.6853541666666667
+          ],
+          [
+            1.9047083333333332,
+            1.9353541666666667
+          ],
+          [
+            3.0035625,
+            3.0475
+          ],
+          [
+            3.1249583333333333,
+            3.1467916666666667
+          ]
+        ]
+      },
+      "metadata": {
+        "material": "minidisc",
+        "sample_rate": 48000,
+        "transfer_chain": "['unknown']"
+      },
+      "runtime_seconds": 0.5564708709716797,
+      "severities": {
+        "aliasing": 0.0,
+        "amplitude_drift": 0.0,
+        "azimuth_error": 0.0,
+        "bandwidth_loss": 1.0,
+        "bias_error": 0.0,
+        "clicks": 0.0159375,
+        "clipping": 0.0,
+        "compression_artifacts": 0.19405330717563632,
+        "crackle": 0.0,
+        "crosstalk": 0.0,
+        "dc_offset": 0.022156085207878234,
+        "digital_artifacts": 0.6597667804166233,
+        "dolby_nr_mismatch": 0.0,
+        "dropouts": 0.0,
+        "dynamic_compression_excess": 0.699801303376931,
+        "flutter": 1.0,
+        "flutter_spectral_sidebands": 1.0,
+        "generation_loss": 0.7012645930983126,
+        "groove_echo": 0.0,
+        "head_wear": 0.0,
+        "hf_remanence_loss": 0.4778788802549003,
+        "high_freq_noise": 0.05933460166353928,
+        "hum": 0.00024365845033925848,
+        "inner_groove_distortion": 0.0,
+        "intermodulation_distortion": 0.0,
+        "jitter_artifacts": 0.6504745147907407,
+        "lacquer_disc_degradation": 0.0,
+        "low_freq_rumble": 0.00027870659463423143,
+        "modulation_noise": 0.0,
+        "motor_interference": 0.9333333333333333,
+        "multiband_wow_flutter": 0.5570939023486369,
+        "nr_breathing_artifact": 0.0,
+        "overload_distortion": 0.5,
+        "phase_issues": 0.0,
+        "pitch_drift": 0.0,
+        "pre_echo": 0.0,
+        "print_through": 0.0,
+        "proximity_effect_excess": 1.0,
+        "quantization_noise": 0.24267578125,
+        "reverb_excess": 1.0,
+        "riaa_curve_error": 0.0,
+        "room_mode_resonance": 0.0,
+        "scrape_flutter": 0.0,
+        "sibilance": 0.0,
+        "soft_saturation": 1.0,
+        "speed_calibration_error": 1.0,
+        "stereo_imbalance": 0.0,
+        "sticky_shed_residue": 0.0,
+        "stylus_damage": 0.0,
+        "tape_head_clog": 0.0,
+        "tape_head_level_dip": 0.0,
+        "tape_splice_artifact": 0.0,
+        "transient_smearing": 0.125,
+        "transport_bump": 0.0,
+        "vocal_harshness": 0.090439419809379,
+        "wow": 1.0
+      }
+    },
+    {
+      "case_id": "digital_jitter_artifacts",
+      "confidences": {
+        "aliasing": 0.792,
+        "amplitude_drift": 0.44,
+        "azimuth_error": 0.05,
+        "bandwidth_loss": 0.99,
+        "bias_error": 0.68,
+        "clicks": 0.88,
+        "clipping": 0.792,
+        "compression_artifacts": 0.28242226817971094,
+        "crackle": 0.264,
+        "crosstalk": 0.44,
+        "dc_offset": 0.6160496321406308,
+        "digital_artifacts": 0.5104,
+        "dolby_nr_mismatch": 0.792,
+        "dropouts": 0.7040000000000001,
+        "dynamic_compression_excess": 0.8207999999999999,
+        "flutter": 0.5307417223934497,
+        "flutter_spectral_sidebands": 0.81,
+        "generation_loss": 0.6050265801320656,
+        "groove_echo": 0.88,
+        "head_wear": 0.6534,
+        "hf_remanence_loss": 0.9720000000000001,
+        "high_freq_noise": 0.7708894026533949,
+        "hum": 0.7920007665979735,
+        "inner_groove_distortion": 0.88,
+        "intermodulation_distortion": 0.9844112646920341,
+        "jitter_artifacts": 0.9119999999999999,
+        "lacquer_disc_degradation": 0.836,
+        "low_freq_rumble": 0.7920002865365716,
+        "modulation_noise": 0.44,
+        "motor_interference": 0.44,
+        "multiband_wow_flutter": 0.35200000000000004,
+        "nr_breathing_artifact": 0.35200000000000004,
+        "overload_distortion": 0.5309090909090909,
+        "phase_issues": 0.05,
+        "pitch_drift": 0.264,
+        "pre_echo": 0.264,
+        "print_through": 0.44,
+        "proximity_effect_excess": 0.44,
+        "quantization_noise": 0.8722354239312475,
+        "reverb_excess": 0.8207999999999999,
+        "riaa_curve_error": 0.748,
+        "room_mode_resonance": 0.44,
+        "scrape_flutter": 0.836,
+        "sibilance": 0.9445454613512211,
+        "soft_saturation": 0.7164444444444444,
+        "speed_calibration_error": 0.6478219212190115,
+        "stereo_imbalance": 0.05,
+        "sticky_shed_residue": 0.44,
+        "stylus_damage": 0.44,
+        "tape_head_clog": 0.836,
+        "tape_head_level_dip": 0.836,
+        "tape_splice_artifact": 0.44,
+        "transient_smearing": 0.6163999999999998,
+        "transport_bump": 0.836,
+        "vocal_harshness": 0.7979999999999999,
+        "wow": 0.9359439582787088
+      },
+      "duration_seconds": 3.2,
+      "expected": [
+        {
+          "critical": true,
+          "defect": "jitter_artifacts",
+          "min_confidence": 0.45,
+          "min_severity": 0.08,
+          "require_locations": false
+        }
+      ],
+      "forbidden_defects": [
+        "riaa_curve_error"
+      ],
+      "locations": {
+        "crackle": [
+          [
+            0.020104166666666666,
+            3.1799791666666666
+          ]
+        ],
+        "sibilance": [
+          [
+            0.0,
+            3.2
+          ]
+        ],
+        "vocal_harshness": [
+          [
+            0.0,
+            3.2
+          ]
+        ]
+      },
+      "metadata": {
+        "material": "cd_digital",
+        "sample_rate": 48000,
+        "transfer_chain": "['wire_recording', 'mp3_low']"
+      },
+      "runtime_seconds": 0.510857105255127,
+      "severities": {
+        "aliasing": 0.0,
+        "amplitude_drift": 0.0,
+        "azimuth_error": 0.0,
+        "bandwidth_loss": 1.0,
+        "bias_error": 0.35,
+        "clicks": 0.0,
+        "clipping": 0.0,
+        "compression_artifacts": 0.12281512119807304,
+        "crackle": 0.0,
+        "crosstalk": 0.0,
+        "dc_offset": 0.00022640498451960886,
+        "digital_artifacts": 0.0,
+        "dolby_nr_mismatch": 0.0,
+        "dropouts": 0.0,
+        "dynamic_compression_excess": 0.985751264640204,
+        "flutter": 0.13766873372632787,
+        "flutter_spectral_sidebands": 1.0,
+        "generation_loss": 0.7004681019636336,
+        "groove_echo": 0.0,
+        "head_wear": 0.55,
+        "hf_remanence_loss": 1.0,
+        "high_freq_noise": 0.0942504815139789,
+        "hum": 3.832989867993448e-06,
+        "inner_groove_distortion": 0.0,
+        "intermodulation_distortion": 0.7482660293579101,
+        "jitter_artifacts": 0.5700000000000001,
+        "lacquer_disc_degradation": 0.0,
+        "low_freq_rumble": 1.273495873690797e-06,
+        "modulation_noise": 0.0,
+        "motor_interference": 0.0,
+        "multiband_wow_flutter": 0.0,
+        "nr_breathing_artifact": 0.0,
+        "overload_distortion": 0.5,
+        "phase_issues": 0.0,
+        "pitch_drift": 0.0,
+        "pre_echo": 0.0,
+        "print_through": 0.0,
+        "proximity_effect_excess": 0.0,
+        "quantization_noise": 0.5115576279521958,
+        "reverb_excess": 1.0,
+        "riaa_curve_error": 0.0,
+        "room_mode_resonance": 0.0,
+        "scrape_flutter": 0.0,
+        "sibilance": 0.7624601380391555,
+        "soft_saturation": 1.0,
+        "speed_calibration_error": 1.0,
+        "stereo_imbalance": 0.0,
+        "sticky_shed_residue": 0.0,
+        "stylus_damage": 0.0,
+        "tape_head_clog": 0.0,
+        "tape_head_level_dip": 0.0,
+        "tape_splice_artifact": 0.0,
+        "transient_smearing": 0.125,
+        "transport_bump": 0.0,
+        "vocal_harshness": 0.6621499162691475,
+        "wow": 1.0
+      }
+    },
+    {
+      "case_id": "digitization_aliasing",
+      "confidences": {
+        "aliasing": 0.627,
+        "amplitude_drift": 0.44,
+        "azimuth_error": 0.05,
+        "bandwidth_loss": 0.616,
+        "bias_error": 0.748,
+        "clicks": 0.836,
+        "clipping": 0.792,
+        "compression_artifacts": 0.26443770027710123,
+        "crackle": 0.264,
+        "crosstalk": 0.44,
+        "dc_offset": 0.6170225984567038,
+        "digital_artifacts": 0.8342399999999999,
+        "dolby_nr_mismatch": 0.792,
+        "dropouts": 0.7040000000000001,
+        "dynamic_compression_excess": 0.7824313638790819,
+        "flutter": 0.6416438023937657,
+        "flutter_spectral_sidebands": 0.855,
+        "generation_loss": 0.46736823830583074,
+        "groove_echo": 0.264,
+        "head_wear": 0.5808,
+        "hf_remanence_loss": 0.846,
+        "high_freq_noise": 0.9689999999999999,
+        "hum": 0.6808474899243911,
+        "inner_groove_distortion": 0.264,
+        "intermodulation_distortion": 0.44,
+        "jitter_artifacts": 0.7808239531373093,
+        "lacquer_disc_degradation": 0.836,
+        "low_freq_rumble": 0.792001889005352,
+        "modulation_noise": 0.5235798068123328,
+        "motor_interference": 0.44,
+        "multiband_wow_flutter": 0.7816607734255206,
+        "nr_breathing_artifact": 0.35200000000000004,
+        "overload_distortion": 0.57,
+        "phase_issues": 0.05,
+        "pitch_drift": 0.264,
+        "pre_echo": 0.264,
+        "print_through": 0.44,
+        "proximity_effect_excess": 0.44,
+        "quantization_noise": 0.8530308931860568,
+        "reverb_excess": 0.8207999999999999,
+        "riaa_curve_error": 0.5104,
+        "room_mode_resonance": 0.5491542064197611,
+        "scrape_flutter": 0.836,
+        "sibilance": 0.5720000000000001,
+        "soft_saturation": 0.7383460355482788,
+        "speed_calibration_error": 0.6836939996506236,
+        "stereo_imbalance": 0.05,
+        "sticky_shed_residue": 0.44,
+        "stylus_damage": 0.44,
+        "tape_head_clog": 0.836,
+        "tape_head_level_dip": 0.836,
+        "tape_splice_artifact": 0.44,
+        "transient_smearing": 0.264,
+        "transport_bump": 0.528,
+        "vocal_harshness": 0.44,
+        "wow": 0.9689728477713201
+      },
+      "duration_seconds": 3.2,
+      "expected": [
+        {
+          "critical": true,
+          "defect": "aliasing",
+          "min_confidence": 0.45,
+          "min_severity": 0.08,
+          "require_locations": false
+        }
+      ],
+      "forbidden_defects": [
+        "riaa_curve_error"
+      ],
+      "locations": {
+        "crackle": [
+          [
+            2.0833333333333333e-05,
+            3.1999791666666666
+          ]
+        ]
+      },
+      "metadata": {
+        "material": "vinyl",
+        "sample_rate": 48000,
+        "transfer_chain": "['unknown']"
+      },
+      "runtime_seconds": 0.4974558353424072,
+      "severities": {
+        "aliasing": 1.0,
+        "amplitude_drift": 0.0,
+        "azimuth_error": 0.0,
+        "bandwidth_loss": 0.0,
+        "bias_error": 0.0,
+        "clicks": 0.0,
+        "clipping": 0.0,
+        "compression_artifacts": 0.007295004618354141,
+        "crackle": 0.0,
+        "crosstalk": 0.0,
+        "dc_offset": 0.003637088108127619,
+        "digital_artifacts": 0.34,
+        "dolby_nr_mismatch": 0.0,
+        "dropouts": 0.0,
+        "dynamic_compression_excess": 0.6201306828295079,
+        "flutter": 0.4219685488772691,
+        "flutter_spectral_sidebands": 1.0,
+        "generation_loss": 0.4001247221953236,
+        "groove_echo": 0.0,
+        "head_wear": 0.0,
+        "hf_remanence_loss": 0.3,
+        "high_freq_noise": 1.0,
+        "hum": 6.845539657958159e-06,
+        "inner_groove_distortion": 0.0,
+        "intermodulation_distortion": 0.0,
+        "jitter_artifacts": 0.4801497071081826,
+        "lacquer_disc_degradation": 0.0,
+        "low_freq_rumble": 4.197789671050243e-06,
+        "modulation_noise": 0.11896984969997329,
+        "motor_interference": 0.0,
+        "multiband_wow_flutter": 0.7703078206273583,
+        "nr_breathing_artifact": 0.0,
+        "overload_distortion": 0.5,
+        "phase_issues": 0.0,
+        "pitch_drift": 0.0,
+        "pre_echo": 0.0,
+        "print_through": 0.0,
+        "proximity_effect_excess": 0.0,
+        "quantization_noise": 0.5560459051026544,
+        "reverb_excess": 1.0,
+        "riaa_curve_error": 0.0,
+        "room_mode_resonance": 0.44617881774902346,
+        "scrape_flutter": 0.0,
+        "sibilance": 0.0,
+        "soft_saturation": 0.5118339555331656,
+        "speed_calibration_error": 1.0,
+        "stereo_imbalance": 0.0,
+        "sticky_shed_residue": 0.0,
+        "stylus_damage": 0.0,
+        "tape_head_clog": 0.0,
+        "tape_head_level_dip": 0.0,
+        "tape_splice_artifact": 0.0,
+        "transient_smearing": 0.0,
+        "transport_bump": 0.0,
+        "vocal_harshness": 0.0,
+        "wow": 1.0
+      }
+    }
+  ],
+  "gate": {
+    "case_failures": {},
+    "detected_expected": 7,
+    "detected_locality_total": 3,
+    "expected_total": 7,
+    "fail_reasons": [],
+    "false_positive_total": 0,
+    "locality_recall": 1.0,
+    "max_runtime_factor": 1.0669589042663574,
+    "mean_confidence": 0.8645479841259027,
+    "passed": true,
+    "precision": 1.0,
+    "recall": 1.0,
+    "required_locality_total": 3
+  }
+}

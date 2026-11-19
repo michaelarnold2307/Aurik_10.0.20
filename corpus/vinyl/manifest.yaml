@@ -1,0 +1,1443 @@
+corpus_version: 1.0.0
+material: vinyl
+description: 'Vinyl-Untercorpus: Bestands-Einträge (CC0-Synthetik/Validierung) + 55
+  deterministische LP-Rezept-Proben (D-K0-8, SOTA-M18, Seed 42) — echte Vinyl-Rauschbank
+  + Klicker + Bandlimit. era_year ist die SIMULIERTE Ära (keine echte Provenienz,
+  Lizenz-unbedenklich).'
+entries:
+- checksum_sha256: a7d79ff68b176bf8c21fc4e31a52f338be82662a4170b4ec05f4454ce4684954
+  defect_types: []
+  duration_s: 10.0
+  era_year: 1965
+  file: clean/vinyl_rock_1960s_clean.wav
+  genre: rock
+  license: CC0 (generated)
+  material: vinyl
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+- checksum_sha256: c3c5059262d6301ae64ed7b90790ac5c819c693f554ea25a51d80fa4c18032ca
+  defect_description: 8 Clicks/s
+  defect_types:
+  - clicks
+  duration_s: 10.0
+  era_year: 1965
+  file: damaged/vinyl_rock_1960s_clicks.wav
+  genre: rock
+  license: CC0 (generated)
+  material: vinyl
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  chain:
+  - vinyl
+- checksum_sha256: 4e94a946e0bdbd99b9fff4e8e9daa9736ee0fe41d9bf31655af5f60a27636205
+  defect_description: 60Hz Brumm + Knistern
+  defect_types: []
+  duration_s: 10.0
+  era_year: 1965
+  file: damaged/vinyl_rock_1960s_hum_crackle.wav
+  genre: rock
+  license: CC0 (generated)
+  material: vinyl
+  sample_rate: 48000
+  source: Synthetic (Aurik Corpus Generator)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  chain:
+  - vinyl
+- file: clean/vinyl_blues_1950s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1954
+  genre: blues
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: f0a54b8be44d40d3bc140fcbc780e55157af65b412679ccb3245cbc67ddcf705
+  defect_types: []
+- file: damaged/vinyl_blues_1950s_hiss_hum.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1954
+  genre: blues
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: a44aab1c6f8ab55d913be7e0bc81d778fe3597dabfe22ed805cafeb8b39b56e9
+  defect_types:
+  - hiss
+  - hum
+  chain:
+  - vinyl
+- file: damaged/vinyl_blues_1950s_crackle.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1954
+  genre: blues
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 07d980d189f5bc3237817bd5e7e68e6d91bc93578a96cba92a872e9c35d2cb43
+  defect_types:
+  - crackle
+  chain:
+  - vinyl
+- file: clean/vinyl_jazz_1960s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1963
+  genre: jazz
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 734bb85cc881113550ec510925f94531e15bcacf44abb3425f9182bcc58b9afb
+  defect_types: []
+- file: damaged/vinyl_jazz_1960s_hiss_crackle.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1963
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: fe0c4765989ad80e2b648980049b99728fb87751c903058350d41ae3e6b21d7a
+  defect_types:
+  - hiss
+  - crackle
+  chain:
+  - vinyl
+- file: damaged/vinyl_jazz_1960s_surface_noise.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1963
+  genre: jazz
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 59c5e310547d1ff1759ea0971baf365aa63b155e6e8719e19c1b872c7a6bc85b
+  defect_types:
+  - surface
+  - noise
+  chain:
+  - vinyl
+- file: clean/vinyl_rock_1970s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1972
+  genre: rock
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: ae5fa335d5330430ee564be25e7e25ae63c07317efba32f090845ec79047d3f9
+  defect_types: []
+- file: damaged/vinyl_rock_1970s_clicks.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1972
+  genre: rock
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 8cd59330d7a01601d699f10f3f4f24c68edd26077d221eef8029467e1d683c4e
+  defect_types:
+  - clicks
+  chain:
+  - vinyl
+- file: damaged/vinyl_rock_1970s_hiss.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1972
+  genre: rock
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 2b7ca8f40bcd0371e979ed47b882622e1fc5d242825d11a5c3f5698aebf678d7
+  defect_types:
+  - hiss
+  chain:
+  - vinyl
+- file: clean/vinyl_classical_1960s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1961
+  genre: classical
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 634810e18abe6c32eeeffc33e813d2ad0a120c889a49902171059d9446826947
+  defect_types: []
+- file: damaged/vinyl_classical_1960s_hiss_hum_wow.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1961
+  genre: classical
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: aac8c13d9b0678442bee44f4d5ba342438ecf59c213a183435d1685c9aefc925
+  defect_types:
+  - hiss
+  - hum
+  - wow
+  chain:
+  - vinyl
+- file: damaged/vinyl_classical_1960s_surface_noise.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1961
+  genre: classical
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: false
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: d1bdf37917f1d4445a70458fe9b06aad87563fdbe8a4cc19f9fbff39f8e72028
+  defect_types:
+  - surface
+  - noise
+  chain:
+  - vinyl
+- file: clean/vinyl_soul_1970s_clean.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  condition: clean
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 9366bc37eddcb619ec6531efeaeb5bd35a71f0779ce48aee620102d875871a75
+  defect_types: []
+- file: damaged/vinyl_soul_1970s_crackle_hiss.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 4781340a5c785dae1aa25e9621493c92c5cebac3d8934e617c3d14aafc8e2f48
+  defect_types:
+  - crackle
+  - hiss
+  chain:
+  - vinyl
+- file: damaged/vinyl_soul_1970s_wow_flutter.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  condition: damaged
+  channels: 2
+  bit_depth: 16
+  vocal: true
+  license: CC0 (synthetisch generiert)
+  source_attribution: Aurik Corpus Generator (synthetisch, Public Domain)
+  checksum_sha256: 332cfe615619979b3ace274e4969750590c7be1e89bdc1e64e2198af1b2f41fb
+  defect_types:
+  - wow
+  - flutter
+  chain:
+  - vinyl
+- file: damaged/vinyl_blues_1950s_crackle_chain_vinyl_cassette.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1954
+  genre: blues
+  defect_types:
+  - chain_artifacts
+  license: CC0 (generated)
+  source: Synthetic (Aurik Corpus Generator) — chain synthesis (deterministic)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  checksum_sha256: d69ee1b87b018e1e5ec7c868aedf1a047cc146bd200a914e6092240533742a12
+  chain:
+  - vinyl
+  - cassette
+- file: damaged/vinyl_blues_1950s_crackle_chain_vinyl_reel_tape_mp3_low.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1954
+  genre: blues
+  defect_types:
+  - chain_artifacts
+  license: CC0 (generated)
+  source: Synthetic (Aurik Corpus Generator) — chain synthesis (deterministic)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  checksum_sha256: ae5350a47f7908e658f703f964adc53fa28766ff8a75d24eb7789861660c5e7e
+  chain:
+  - vinyl
+  - reel_tape
+  - mp3_low
+- file: damaged/vinyl_blues_1950s_crackle_chain_vinyl_reel_tape_cassette_mp3_low.wav
+  duration_s: 15.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1954
+  genre: blues
+  defect_types:
+  - chain_artifacts
+  license: CC0 (generated)
+  source: Synthetic (Aurik Corpus Generator) — chain synthesis (deterministic)
+  source_attribution: Synthetic Corpus Generator (CC0)
+  checksum_sha256: 70a1dcf587c9f70b3d2b2026616c59f664e1b357335830d9082ceb19f063b451
+  chain:
+  - vinyl
+  - reel_tape
+  - cassette
+  - mp3_low
+- file: damaged/vinyl_synth_000_A Classic Education - NightO.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 01f60f88565f4289bcf96366b6556d92b1e1a639fb524a283687e1b4e37d9acc
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 5687205
+    snr_db: 11.267
+- file: damaged/vinyl_synth_001_ANiMAL - Clinic A.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a80085de98584673fd6fc51ffb835451c14c5fb4b188ee4291a2cdc9d82473c5
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 4093199
+    snr_db: 15.407
+- file: damaged/vinyl_synth_002_ANiMAL - Easy Tiger.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 24e4248bea265112c9906e7894ef49046177a559e7ad397da548966b6fb705cd
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 2066569
+    snr_db: 13.913
+- file: damaged/vinyl_synth_003_ANiMAL - Rockshow.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: e24c5fd3230767e58a1b1f7e1495d276264de6238e9382d8643f7c5e3592de9f
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_smiling-iris.wav
+    start_sample: 7529635
+    snr_db: 15.652
+- file: damaged/vinyl_synth_004_Actions - Devil's Words.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: eb5c0dced2c0bf1f9bfae697de861b64af9c910a3bb0e0efd1edbb1033c2ce5f
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_out.wav
+    start_sample: 0
+    snr_db: 10.41
+- file: damaged/vinyl_synth_005_Actions - One Minute Smile.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 9cdc34c4fba71c85f79fff207946531d989fc01097ec380e2d6aa9508f3fba11
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 13.645
+- file: damaged/vinyl_synth_006_Actions - South Of The Water.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: eb2cae5bd71324a10585ca6f61d35e82693a0631f707aaea23736b676b25eaf2
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_platter-chat_lead_in.wav
+    start_sample: 0
+    snr_db: 7.781
+- file: damaged/vinyl_synth_007_Aimee Norwich - Child.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 4825969feb674f71a7585621520c0f9d8b64a9efc29669bb713dc61ef6944fc5
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_in.wav
+    start_sample: 0
+    snr_db: 10.711
+- file: damaged/vinyl_synth_008_Alexander Ross - Goodbye Bol.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5570c957bf59821350adc4464684f25df2c4167cb07052345a84e00193f8fb02
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 17.735
+- file: damaged/vinyl_synth_009_Alexander Ross - Velvet Curt.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 6628ee6f19daee71a516edd321ced08fce25e86d476955179c35c9981a98e0a2
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_smiling-iris.wav
+    start_sample: 1431546
+    snr_db: 16.492
+- file: damaged/vinyl_synth_010_Angela Thomas Wade - Milk Co.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: d40c34a398273f592ef9a21bf70cae743d6de2e477d641b766e42df362c269d9
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_out.wav
+    start_sample: 0
+    snr_db: 9.051
+- file: damaged/vinyl_synth_011_Atlantis Bound - It Was My F.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a4d36bbb973d0e5b287f4c5848f00e17071562c037645b4b72bdc40deae3965f
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_out.wav
+    start_sample: 0
+    snr_db: 10.549
+- file: damaged/vinyl_synth_012_Auctioneer - Our Future Face.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a37f19d0744b127ff12e79c92e23248a09393a6b9fc1b2423a2b7107accdf567
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_in.wav
+    start_sample: 0
+    snr_db: 8.482
+- file: damaged/vinyl_synth_013_AvaLuna - Waterduct.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: b1682d285a01ea8eb3e8522762c38bf9b632949fa7aa7dd29d26ae70bedf1a30
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 3474124
+    snr_db: 17.401
+- file: damaged/vinyl_synth_014_BigTroubles - Phantom.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: bf2654c6144d33e9e1da6441b3329a8eaabd22126a71404f7610c2335c4e29a8
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 13.738
+- file: damaged/vinyl_synth_015_Bill Chudziak - Children Of .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 30a6259665784f5e3b7983bff90c5ba4742f2dfb4fd6f317042a412a02a09b2d
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 3341924
+    snr_db: 7.113
+- file: damaged/vinyl_synth_016_Black Bloc - If You Want Suc.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 860ee7043dd3373df35c088472ee03f740a630a30cb21f9fc90eff1a9e0a648e
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_platter-chat_lead_in.wav
+    start_sample: 0
+    snr_db: 13.326
+- file: damaged/vinyl_synth_017_Celestial Shore - Die For Us.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: d44cdacaa6ba569e43444e8da3903f3b60864d9e23b1fc9ac28d73328354ff49
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 16.545
+- file: damaged/vinyl_synth_018_Chris Durban - Celebrate.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 227117bdd576c20dfb38aabf6f0a4e80e87526b1a035ef2650ed564fad16e158
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 9.728
+- file: damaged/vinyl_synth_019_Clara Berry And Wooldog - Ai.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 96558f5110beb78ce66745f502bdbb4629048fd9fa2684bfa24b41ab6d707fd3
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 6.802
+- file: damaged/vinyl_synth_020_Clara Berry And Wooldog - St.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 7712e4e4941c6fc97ef7b41fb0dd14c8454c222b8f0c08a701da25080a5fd97e
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_smiling-iris.wav
+    start_sample: 5071596
+    snr_db: 16.406
+- file: damaged/vinyl_synth_021_Clara Berry And Wooldog - Wa.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 521d12694ef4b4eb578d24329f183573c6f76c77849acaac69913d93cc03e3c4
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_out.wav
+    start_sample: 0
+    snr_db: 10.84
+- file: damaged/vinyl_synth_022_Cnoc An Tursa - Bannockburn.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: c82d5352e9b1944dac52447ebb10b430d887526ffdd9fbf38de31caede8b7ad0
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_in.wav
+    start_sample: 0
+    snr_db: 9.616
+- file: damaged/vinyl_synth_023_Creepoid - OldTree.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f64c5f5b1fc85db612b99073fbadcd3fefc44f7bd5b9e31801fb2d241147bbd9
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 9.692
+- file: damaged/vinyl_synth_024_Dark Ride - Burning Bridges.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 2d78f63f972bf9f0a0cd687dd27f25ae6fb38ca880ee1635ea1303ae8de84e61
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 9.638
+- file: damaged/vinyl_synth_025_Dreamers Of The Ghetto - Hea.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a014f7d8c3b07270a9785fd621f5c77db74832db769239a6b93f8c4c08f48853
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 6.214
+- file: damaged/vinyl_synth_026_Drumtracks - Ghost Bitch.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a7e2e9da6d948af39b4831126ea59e972c26f56cba9fbeced79f41aa98a01c51
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_smiling-iris.wav
+    start_sample: 3180219
+    snr_db: 15.724
+- file: damaged/vinyl_synth_027_Faces On Film - Waiting For .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: d5115cb3355955eba9b3929140462e6f47be77d8be122f86d7f15fb9c119e150
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 13.278
+- file: damaged/vinyl_synth_028_Fergessen - Back From The St.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a5a0f3b98054adf78848e55f57a274b3e3f9f9df2876f2c02c5d8c92d3708849
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 17.611
+- file: damaged/vinyl_synth_029_Fergessen - Nos Palpitants.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: e9b5212bfb5e768a34dc6da4cb88d6d272d9051e9975b0218b4931dd021515ed
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_in.wav
+    start_sample: 0
+    snr_db: 11.149
+- file: damaged/vinyl_synth_030_Fergessen - The Wind.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: c53b5cc28eb5dafe1bec5da5611f09e0cbedeff0e0fa6fe6127bed4df5a3d26a
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 16.419
+- file: damaged/vinyl_synth_031_Flags - 54.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 52a9bb2c7873892cac40cb7a54bd863cb6dd82a5d1d43fb724b26a861a8f55a2
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_smiling-iris.wav
+    start_sample: 4337200
+    snr_db: 11.845
+- file: damaged/vinyl_synth_032_Giselle - Moss.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 85f6e0dfefaf9f04a37e75a11aaa0c864798ba6c56af8f18930b1f133db4cfad
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_smiling-iris.wav
+    start_sample: 3245313
+    snr_db: 6.611
+- file: damaged/vinyl_synth_033_Grants - PunchDrunk.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 4feb0fe235b2e0f76b8781c04fc50cc0d9c4cfda89a96e6c92ab0c308eb46453
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 7315567
+    snr_db: 6.19
+- file: damaged/vinyl_synth_034_Helado Negro - Mitad Del Mun.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 3c1509fa4315d7fa3bda680122cb1c61cfb9253505172317c089b9e1c36c7ae0
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 13.975
+- file: damaged/vinyl_synth_035_Hezekiah Jones - Borrowed He.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 7cc0bd504eacafad63de71061d5b84bd3f426a0a06549eda2a857a1e3ff6a6a3
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 15.417
+- file: damaged/vinyl_synth_036_Hollow Ground - Left Blind.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 040a05b728d357aaea6b31401298873b911aca2ceab3f0fe3c1a0abd38daa535
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_platter-chat_lead_out.wav
+    start_sample: 0
+    snr_db: 8.937
+- file: damaged/vinyl_synth_037_Hop Along - Sister Cities.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 70f605257d08c7093fcd39813e0b46df943fcadacb668ec3d9bb7f284c3fe739
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_out.wav
+    start_sample: 0
+    snr_db: 9.949
+- file: damaged/vinyl_synth_038_Invisible Familiars - Distur.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5308d2a1b9ab3cde523b61103526798e3dc816ec2b34ae6a62b19377be5e626d
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 5858464
+    snr_db: 17.638
+- file: damaged/vinyl_synth_039_James May - All Souls Moon.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 8c5e15fb241690feaac2a623e4bec38255f53af0195a4e36773eea78b5c95a65
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_platter-chat_lead_out.wav
+    start_sample: 0
+    snr_db: 10.557
+- file: damaged/vinyl_synth_040_James May - Dont Let Go.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: d93ed07d7cb8a365d4940f45c518c9c7a34c6ff898d5117f0827b9a056f45f9c
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 9.247
+- file: damaged/vinyl_synth_041_James May - If You Say.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 00558096cab57b7ba56856b133908d124be8791a39ad6504c093ef1ec02c41c3
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 12.66
+- file: damaged/vinyl_synth_042_James May - On The Line.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 1659c1dca0304e76f98ce1ec5be2005470bde3197af56ea695b60d6b2bfb11df
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 5071148
+    snr_db: 14.449
+- file: damaged/vinyl_synth_043_Jay Menon - Through My Eyes.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 316b728e8bbaba6f3d8bfbda5d609caeab4b2fe9a4357f075aa04511cfb34739
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 6573637
+    snr_db: 9.947
+- file: damaged/vinyl_synth_044_Johnny Lokke - Promises & Li.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 7da3c72dbc6c33533164ec5c638b3a5351fa473a49290ccff1f5764c7fd64fef
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 5344125
+    snr_db: 12.691
+- file: damaged/vinyl_synth_045_Johnny Lokke - Whisper To A .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 98dedf22699e88d06f91ab753795b6bfe5baaa8ce8254afac7ad4f3c1bdc5b2e
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 14.176
+- file: damaged/vinyl_synth_046_Jokers, Jacks & Kings - Sea .wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: b8e975a9f51c696d4f68f808305227c6325876d3735fd1db7540ee144c3cfdf7
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 10.685
+- file: damaged/vinyl_synth_047_Leaf - Come Around.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 7a3e60559711889df3d9677ba9b55c6631d852543a77c5cb6e44f944ab066545
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 1807779
+    snr_db: 8.886
+- file: damaged/vinyl_synth_048_Leaf - Summerghost.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: a25e6e732c8f79f97a580a6093256606c41bd0384192b75613d4d72064553dc8
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: echt_beschaedigt_smiling-iris.wav
+    start_sample: 218889
+    snr_db: 12.129
+- file: damaged/vinyl_synth_049_Leaf - Wicked.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 63fdfb3c5b8a185ff21488dd12d7a3661578584397dd824daf14bd5ffea02d2c
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_platter-chat_lead_in.wav
+    start_sample: 0
+    snr_db: 15.222
+- file: damaged/vinyl_synth_050_Lushlife - Toynbee Suite.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: jazz
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: b2aab2a1e0cc367fe7affde12283de4ef176e0d1361fcd8b4d92ad0ac28729ec
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: echt_beschaedigt_platter-chat.wav
+    start_sample: 2939780
+    snr_db: 7.602
+- file: damaged/vinyl_synth_051_Matthew Entwistle - Dont You.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: rock
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: e9b9685747565d1e5be770ddb957e83c6ca1abf40dc1ead82cf9250435af9e5a
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 7.673
+- file: damaged/vinyl_synth_052_Meaxic - Take A Step.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: pop
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 1511619edb1f28f86d50660b71871edad6bccddeccc65b6f65682d3622cdd7b8
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_out.wav
+    start_sample: 0
+    snr_db: 15.938
+- file: damaged/vinyl_synth_053_Meaxic - You Listen.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: blues
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: f01faabc90c0dfb1dfe01252869ba67f74260487a8664a3053b6095a695dfee7
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: false
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 11.129
+- file: damaged/vinyl_synth_054_Music Delta - 80s Rock.wav
+  duration_s: 10.0
+  sample_rate: 48000
+  material: vinyl
+  era_year: 1975
+  genre: soul
+  defect_types:
+  - crackle
+  - surface_noise
+  source: Synthetic (Aurik Corpus Generator, vinyl recipe)
+  source_attribution: Synthetic Corpus Generator (CC0); vinyl_noise_bank + MUSDB18-HQ
+  license: CC0 (generated)
+  checksum_sha256: 5804f5e6937e661ffe13c48ae6a7993a15d3aa6c1530e32983f89c112e5f10b5
+  synthetic: true
+  recipe_params:
+    klicks_dichte: 3.0
+    scratch: true
+    quelle: leerrille_smiling-iris_lead_in.wav
+    start_sample: 0
+    snr_db: 8.43

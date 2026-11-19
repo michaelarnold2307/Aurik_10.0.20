@@ -1,0 +1,114 @@
+{
+  "date": "2026-11-04",
+  "script": "scripts/train_diffwave_vocal_inpaint.py",
+  "goal": "VOCAL-INPAINT-S2/F1: ΔSDR ≥ 0 je Lücke (S1-Ziellücke: mean −1,69 dB)",
+  "lr": 0.0002,
+  "epochs": 14,
+  "masking_beta": 0.3,
+  "seed": 42,
+  "best_epoch": 19,
+  "best_val_mean_sdr_db": 3.23,
+  "baseline_zero_shot_mean_sdr_db": -3.01,
+  "baseline_zero_shot_min_sdr_db": -9.11,
+  "never_worsen_per_gap": true,
+  "history": [
+    {
+      "epoch": 16,
+      "train_loss": 0.115331,
+      "val_mean_sdr_db": 1.078,
+      "val_min_sdr_db": -0.553,
+      "seconds": 1386.6
+    },
+    {
+      "epoch": 17,
+      "train_loss": 0.104081,
+      "val_mean_sdr_db": -6.793,
+      "val_min_sdr_db": -20.11,
+      "seconds": 1407.0
+    },
+    {
+      "epoch": 18,
+      "train_loss": 0.112982,
+      "val_mean_sdr_db": -0.774,
+      "val_min_sdr_db": -2.135,
+      "seconds": 1438.5
+    },
+    {
+      "epoch": 19,
+      "train_loss": 0.111745,
+      "val_mean_sdr_db": 3.23,
+      "val_min_sdr_db": -0.413,
+      "seconds": 1470.4
+    },
+    {
+      "epoch": 20,
+      "train_loss": 0.110516,
+      "val_mean_sdr_db": -6.41,
+      "val_min_sdr_db": -19.059,
+      "seconds": 1514.0
+    },
+    {
+      "epoch": 21,
+      "train_loss": 0.111459,
+      "val_mean_sdr_db": -5.412,
+      "val_min_sdr_db": -16.118,
+      "seconds": 1501.2
+    },
+    {
+      "epoch": 22,
+      "train_loss": 0.114293,
+      "val_mean_sdr_db": -2.924,
+      "val_min_sdr_db": -8.733,
+      "seconds": 1476.4
+    },
+    {
+      "epoch": 23,
+      "train_loss": 0.110992,
+      "val_mean_sdr_db": -4.588,
+      "val_min_sdr_db": -13.679,
+      "seconds": 1478.7
+    },
+    {
+      "epoch": 24,
+      "train_loss": 0.109608,
+      "val_mean_sdr_db": 1.681,
+      "val_min_sdr_db": -0.421,
+      "seconds": 1441.0
+    },
+    {
+      "epoch": 25,
+      "train_loss": 0.102629,
+      "val_mean_sdr_db": -3.313,
+      "val_min_sdr_db": -9.8,
+      "seconds": 1311.4
+    },
+    {
+      "epoch": 26,
+      "train_loss": 0.112594,
+      "val_mean_sdr_db": -1.364,
+      "val_min_sdr_db": -3.905,
+      "seconds": 1262.4
+    },
+    {
+      "epoch": 27,
+      "train_loss": 0.100759,
+      "val_mean_sdr_db": -1.336,
+      "val_min_sdr_db": -3.902,
+      "seconds": 1274.2
+    },
+    {
+      "epoch": 28,
+      "train_loss": 0.103299,
+      "val_mean_sdr_db": -1.303,
+      "val_min_sdr_db": -3.743,
+      "seconds": 1263.6
+    },
+    {
+      "epoch": 29,
+      "train_loss": 0.110672,
+      "val_mean_sdr_db": -3.687,
+      "val_min_sdr_db": -10.981,
+      "seconds": 1290.2
+    }
+  ]
+}

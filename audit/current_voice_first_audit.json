@@ -1,0 +1,33 @@
+[
+  {
+    "decision_quality": {
+      "causal_credit_confidence": 0.0,
+      "decision_stability_score": 1.0,
+      "learning_applied": false,
+      "legacy_bridge": true,
+      "prior_drift_ratio": 0.0
+    },
+    "quality_gate_passed": true,
+    "scores": {
+      "media_characteristics": {
+        "vocal": true
+      },
+      "vocal_scores": {
+        "authentizit\u00e4t": 0.89,
+        "expressivit\u00e4t": 0.88,
+        "klarheit": 0.91
+      }
+    },
+    "step": "voice_first_snapshot",
+    "timestamp": "2026-03-20T10:02:37.776998",
+    "vocal_quality_check": {
+      "authentizit\u00e4t": true,
+      "expressivit\u00e4t": true,
+      "formant_integrity": true,
+      "klarheit": true,
+      "micro_dynamic_correlation": true,
+      "vibrato_depth_preserved": true,
+      "vqi": true
+    }
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "schema": "aurik.witness_kopf_gate/1",
+  "datum": "2026-11-19",
+  "seed": 42,
+  "klasse": "dropout_oxide",
+  "holdout_titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+  "checkpoint": "models/klassen_koepfe/witness_dropout_oxide_best.pt",
+  "n_regionen": 100,
+  "n_uebersprungen": 62,
+  "q_median": null,
+  "q_anteil_ge_0_5": null,
+  "never_worsen_anteil": 1.0,
+  "gate_bestanden": false,
+  "musik_mos_delta_mittel": 1.1494,
+  "musik_mos_delta_anteil_ge_minus_jnd": 1.0,
+  "drt_8_10": "Report-only Zwei-Metrik-Messung (defektlast UND musik_mos); Gate-Urteil unverändert"
+}

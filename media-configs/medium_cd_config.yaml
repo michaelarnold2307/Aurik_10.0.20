@@ -1,0 +1,176 @@
+profile:
+  name: CD_medium_offline_stereo
+  description: >
+    Medium restoration profile for CD audio.
+    Goal: remove technical stressors without remastering or audible processing.
+  mode: offline
+  medium: cd
+  channels: stereo
+
+analysis:
+  samplerate_expected: 44100
+  segment_length_sec: 2.0
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 10.0
+
+  stft:
+    window_size: 2048
+    hop_size: 256
+    window: hann
+
+  stft_hf:
+    window_size: 4096
+    hop_size: 512
+    window: hann
+
+budgets:
+  artifact_budget: 0.12
+  identity_budget: 0.08
+  temporal_change_budget: 0.10
+  spectral_change_budget: 0.18
+  stereo_change_budget: 0.08
+  noise_change_budget: 0.05
+
+commit_policy:
+  min_anchor_gain_general: 0.010
+  min_anchor_gain_preemphasis: 0.030
+  min_anchor_gain_declip: 0.015
+  min_anchor_gain_denoise: 0.020
+
+  risk_penalty_weight: 2.4
+  change_penalty_weight: 1.2
+
+  max_trials_per_issue: 3
+  max_trials_per_segment: 12
+
+hard_gates:
+  safety:
+    true_peak_regression: forbidden
+    new_clipping: forbidden
+    dc_offset_increase: forbidden
+
+  processing_signature:
+    pumping_increase: forbidden
+    musical_noise_increase: forbidden
+    transient_smear_max_percent: 4.0
+
+  identity:
+    pitch_drift: forbidden
+    formant_shift: forbidden
+    lisping: forbidden
+
+  stereo:
+    mono_fold_regression: forbidden
+    hf_coherence_drop: forbidden
+
+processing_order:
+  - preemphasis
+  - repair
+  - declip
+  - sibilance
+  - stereo_guard
+  - finalize
+
+modules:
+
+  preemphasis:
+    enabled: true
+    detect:
+      hf_tilt_db: 10.0        # 6–12 kHz vs 200 Hz–2 kHz
+      sibilance_spike_db: 12.0
+      spectral_centroid_hz: 3500
+    commit:
+      min_anchor_gain: 0.030
+      max_midband_loss_db: 2.0
+    trial:
+      deterministic: true
+
+  repair:
+    clicks:
+      detect:
+        sample_diff_threshold: 0.35
+        max_duration_ms: 1.5
+      trial:
+        wet: 1.0
+      commit:
+        min_anchor_gain: 0.010
+
+    dropouts:
+      detect:
+        rms_drop_db: -12.0
+        min_duration_ms: 15
+      trial:
+        spectral_inpaint_wet: 1.0
+      commit:
+        min_anchor_gain: 0.015
+
+  declip:
+    detect:
+      pct_samples_above_minus_0_1dbfs_warn: 0.5
+      pct_samples_above_minus_0_1dbfs_strong: 1.5
+      flat_top_events_per_minute: 20
+      true_peak_warn_dbTP: -0.3
+      true_peak_strong_dbTP: 0.0
+
+    trial:
+      strength_warn: 0.25
+      strength_strong: 0.40
+      strength_max: 0.45
+
+    commit:
+      min_anchor_gain: 0.015
+      max_transient_loss_percent: 4.0
+      max_true_peak_dbTP: -1.0
+
+  sibilance:
+    detect:
+      hf_band_hz: [5000, 10000]
+      spikiness_warn_db: 10.0
+      spikiness_strong_db: 13.0
+
+    resonance:
+      band_hz: [2000, 8000]
+      peak_over_neighbors_db: 9.0
+
+    trial:
+      resonance_strength: 0.18
+      deesser_wet_default: 0.15
+      deesser_wet_max: 0.25
+
+    commit:
+      min_anchor_gain: 0.010
+      max_hf_reduction_db: 2.0
+      max_midband_loss_db: 1.5
+
+  denoise:
+    enabled: false
+    detect:
+      noise_floor_dbfs: -70.0
+      nonstationarity: 0.25
+    trial:
+      wet_default: 0.10
+      wet_max: 0.18
+    commit:
+      min_anchor_gain: 0.020
+      musical_noise_tolerance: 0.0
+
+  stereo_guard:
+    hf_coherence_min_delta: -0.03
+    mono_fold_max_regression_db: 0.0
+
+finalize:
+  true_peak_guard:
+    enabled: true
+    target_dbTP: -1.0
+
+  dither:
+    enabled: auto
+    bitdepth_out: 16
+    noise_shaping: gentle
+
+quality_report:
+  export:
+    anchor_stability_before: true
+    anchor_stability_after: true
+    hard_gate_violations: true
+    applied_modules: true

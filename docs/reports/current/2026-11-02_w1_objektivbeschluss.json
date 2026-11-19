@@ -1,0 +1,47 @@
+{
+  "verfahren": "aurik.objektivbeschluss/1",
+  "stufe": "W-1 HR-V1",
+  "zielmetrik": "HF-Gain + Never-worsen RMS",
+  "rows": [
+    {
+      "sample": "cassette_hiphop_1980s_hiss",
+      "hf_gain": 1.0,
+      "rms_delta_db": -0.029,
+      "applied": true,
+      "bands": 6,
+      "never_worsen_rms": true
+    },
+    {
+      "sample": "cassette_hiphop_1980s_wow_",
+      "hf_gain": 1.0145,
+      "rms_delta_db": -0.026,
+      "applied": true,
+      "bands": 11,
+      "never_worsen_rms": true
+    },
+    {
+      "sample": "cassette_pop_1980s_combine",
+      "hf_gain": 0.9782,
+      "rms_delta_db": -0.023,
+      "applied": true,
+      "bands": 18,
+      "never_worsen_rms": true
+    }
+  ],
+  "never_worsen": true,
+  "applied_count": 3,
+  "schema": "aurik.objektivbeschluss/1",
+  "flag": "use_bigvgan_v2_hr",
+  "referenz_songs": 3,
+  "signifikant": true,
+  "defekt_fallbacks": 0,
+  "metrik_identitaet": {
+    "zielmetrik": "HF-Reparatur in maskierten Baendern (bands_released>0) + Never-worsen RMS ±0.5dB",
+    "formel": "bands_released = count(mean(w_band)>0.05); RMS-Delta = 20log10(rms(out)/rms(in))",
+    "referenz_set_seed": "corpus/*/damaged (3 Samples), Seed 42",
+    "artefakt": "plugins/bigvgan_v2_plugin.py::apply_hr_v1_additive (models/bigvgan_v2.onnx)"
+  },
+  "vermerk": "Objektivbeschluss (B3) — Hör-Vorbehalt: spaetere Hör-Abnahme hebt auf aktiv, Hör-Widerspruch setzt zurueck",
+  "blind": false,
+  "offener_schritt": "B3-Bedingung 5 (Blindheit): Auswertung auf anonymisierten Paaren (ab_harness) fehlt — Direktvergleich war nicht blind. Metriken + Never-worsen sind gemessen; Blind-Nachweis vor der Buchung."
+}

@@ -1,0 +1,139 @@
+{
+  "seed": 42,
+  "gap_ms": 300.0,
+  "witness_cos_min": 0.92,
+  "tracks": [
+    {
+      "track": "BKS - Bulldozer",
+      "gaps": [
+        {
+          "pos_s": 1.65,
+          "arm": "cqtdiff",
+          "sdr_fill_db": 0.04,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": 0.04,
+          "witness_cos": 0.8178
+        },
+        {
+          "pos_s": 14.35,
+          "arm": "cqtdiff",
+          "sdr_fill_db": -0.02,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": -0.02,
+          "witness_cos": 0.9628
+        },
+        {
+          "pos_s": 18.95,
+          "arm": "cqtdiff",
+          "sdr_fill_db": -0.09,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": -0.09,
+          "witness_cos": 0.885
+        },
+        {
+          "pos_s": 23.55,
+          "arm": "cqtdiff",
+          "sdr_fill_db": 0.03,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": 0.03,
+          "witness_cos": 0.9395
+        }
+      ]
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "gaps": [
+        {
+          "pos_s": 2.55,
+          "arm": "cqtdiff",
+          "sdr_fill_db": 0.06,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": 0.06,
+          "witness_cos": 0.9394
+        },
+        {
+          "pos_s": 13.15,
+          "arm": "cqtdiff",
+          "sdr_fill_db": -0.12,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": -0.12,
+          "witness_cos": 0.8895
+        },
+        {
+          "pos_s": 20.15,
+          "arm": "cqtdiff",
+          "sdr_fill_db": 0.07,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": 0.07,
+          "witness_cos": 0.9146
+        },
+        {
+          "pos_s": 23.05,
+          "arm": "cqtdiff",
+          "sdr_fill_db": 0.0,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": 0.0,
+          "witness_cos": 0.9292
+        }
+      ]
+    },
+    {
+      "track": "Speak Softly - Broken Man",
+      "gaps": [
+        {
+          "pos_s": 1.95,
+          "arm": "cqtdiff",
+          "sdr_fill_db": -0.11,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": -0.11,
+          "witness_cos": 0.9306
+        },
+        {
+          "pos_s": 13.15,
+          "arm": "cqtdiff",
+          "sdr_fill_db": 0.04,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": 0.04,
+          "witness_cos": 0.9571
+        },
+        {
+          "pos_s": 13.25,
+          "arm": "cqtdiff",
+          "sdr_fill_db": -0.01,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": -0.01,
+          "witness_cos": 0.9659
+        },
+        {
+          "pos_s": 19.95,
+          "arm": "cqtdiff",
+          "sdr_fill_db": 0.13,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": 0.13,
+          "witness_cos": 0.7629
+        },
+        {
+          "pos_s": 22.35,
+          "arm": "cqtdiff",
+          "sdr_fill_db": 0.02,
+          "sdr_silence_db": 0.0,
+          "delta_vs_silence_db": 0.02,
+          "witness_cos": 0.9375
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "n_gaps": 13,
+    "mean_delta_vs_silence_db": 0.005203895087135806,
+    "min_delta_vs_silence_db": -0.1217238530459498,
+    "delta_ge_0_per_segment": false,
+    "witness_cos_min_measured": 0.7628864894801015,
+    "witness_cos_ge_0_92": false,
+    "determinism_bit_identical": true,
+    "arms_used": {
+      "cqtdiff": 13
+    },
+    "verdict": "S4-NICHT-BESTANDEN"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "label_a": "W-1 HR-V1",
+  "label_b": "ohne HR-V1",
+  "quelle": "scripts/ab_harness.py prepare",
+  "repeats": 1,
+  "schema": "aurik.ab_trials/1",
+  "seed": 42,
+  "trials": [
+    {
+      "item_id": "w1_0",
+      "quelle": "prepare(seed=42) · w1_0",
+      "repeat": 0,
+      "stimuli": {
+        "left": "stimuli/w1_0__r0_left.wav",
+        "right": "stimuli/w1_0__r0_right.wav"
+      },
+      "trial_id": "w1_0__r0"
+    },
+    {
+      "item_id": "w1_1",
+      "quelle": "prepare(seed=42) · w1_1",
+      "repeat": 0,
+      "stimuli": {
+        "left": "stimuli/w1_1__r0_left.wav",
+        "right": "stimuli/w1_1__r0_right.wav"
+      },
+      "trial_id": "w1_1__r0"
+    },
+    {
+      "item_id": "w1_2",
+      "quelle": "prepare(seed=42) · w1_2",
+      "repeat": 0,
+      "stimuli": {
+        "left": "stimuli/w1_2__r0_left.wav",
+        "right": "stimuli/w1_2__r0_right.wav"
+      },
+      "trial_id": "w1_2__r0"
+    },
+    {
+      "item_id": "w1_3",
+      "quelle": "prepare(seed=42) · w1_3",
+      "repeat": 0,
+      "stimuli": {
+        "left": "stimuli/w1_3__r0_left.wav",
+        "right": "stimuli/w1_3__r0_right.wav"
+      },
+      "trial_id": "w1_3__r0"
+    },
+    {
+      "item_id": "w1_4",
+      "quelle": "prepare(seed=42) · w1_4",
+      "repeat": 0,
+      "stimuli": {
+        "left": "stimuli/w1_4__r0_left.wav",
+        "right": "stimuli/w1_4__r0_right.wav"
+      },
+      "trial_id": "w1_4__r0"
+    },
+    {
+      "item_id": "w1_5",
+      "quelle": "prepare(seed=42) · w1_5",
+      "repeat": 0,
+      "stimuli": {
+        "left": "stimuli/w1_5__r0_left.wav",
+        "right": "stimuli/w1_5__r0_right.wav"
+      },
+      "trial_id": "w1_5__r0"
+    },
+    {
+      "item_id": "w1_6",
+      "quelle": "prepare(seed=42) · w1_6",
+      "repeat": 0,
+      "stimuli": {
+        "left": "stimuli/w1_6__r0_left.wav",
+        "right": "stimuli/w1_6__r0_right.wav"
+      },
+      "trial_id": "w1_6__r0"
+    },
+    {
+      "item_id": "w1_7",
+      "quelle": "prepare(seed=42) · w1_7",
+      "repeat": 0,
+      "stimuli": {
+        "left": "stimuli/w1_7__r0_left.wav",
+        "right": "stimuli/w1_7__r0_right.wav"
+      },
+      "trial_id": "w1_7__r0"
+    }
+  ]
+}

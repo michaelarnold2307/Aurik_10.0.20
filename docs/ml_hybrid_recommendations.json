@@ -1,0 +1,472 @@
+{
+  "analysis_date": "2026-02-15",
+  "current_performance": {
+    "goals": {
+      "authentizitaet": {
+        "score": 0.93,
+        "status": "\u2705"
+      },
+      "basskraft": {
+        "score": 1.0,
+        "status": "\u2705"
+      },
+      "brillanz": {
+        "score": 0.97,
+        "status": "\u2705"
+      },
+      "emotionalitaet": {
+        "score": 0.94,
+        "status": "\u2705"
+      },
+      "natuerlichkeit": {
+        "score": 0.55,
+        "status": "\u26a0\ufe0f KRITISCH"
+      },
+      "transparenz": {
+        "score": 0.86,
+        "status": "\u2705"
+      },
+      "waerme": {
+        "score": 0.88,
+        "status": "\u2705"
+      }
+    },
+    "overall_score": 0.83,
+    "weak_phases": {
+      "1": {
+        "goal": "natuerlichkeit",
+        "name": "Click Removal",
+        "score": 0.5
+      },
+      "18": {
+        "goal": "natuerlichkeit",
+        "name": "Noise Gate",
+        "score": 0.49
+      },
+      "2": {
+        "goal": "natuerlichkeit",
+        "name": "Hum Removal",
+        "score": 0.5
+      },
+      "23": {
+        "goal": "transparenz/natuerlichkeit",
+        "name": "Spectral Repair",
+        "score": 0.39
+      },
+      "24": {
+        "goal": "natuerlichkeit",
+        "name": "Dropout Repair",
+        "score": 0.5
+      },
+      "29": {
+        "goal": "natuerlichkeit",
+        "name": "Tape Hiss Reduction",
+        "score": 0.5
+      },
+      "9": {
+        "goal": "natuerlichkeit",
+        "name": "Crackle Removal",
+        "score": 0.5
+      }
+    }
+  },
+  "hybrid_strategies": {
+    "cascade_processing": {
+      "benefit": "Reduziert ML-Last, verbessert Endergebnis",
+      "description": "DSP Vorverarbeitung, dann ML Feintuning",
+      "phases": [1, 2, 3, 9, 18, 29],
+      "rule": "DSP entfernt 80%, ML entfernt verbleibende 20%"
+    },
+    "defect_severity_routing": {
+      "benefit": "ML-Power nur wo n\u00f6tig",
+      "description": "ML nur bei schweren Defekten",
+      "phases": [1, 2, 9, 24, 27],
+      "rule": "Defect Score > 0.7: ML | < 0.7: DSP"
+    },
+    "dsp_detect_ml_repair": {
+      "benefit": "Best-of-Both: Geschwindigkeit + Qualit\u00e4t",
+      "description": "DSP f\u00fcr Detektion (schnell), ML f\u00fcr Reparatur (qualitativ)",
+      "phases": [1, 9, 23, 24],
+      "rule": "Immer: DSP \u2192 ML Pipeline"
+    },
+    "material_adaptive_ml": {
+      "benefit": "Optimale Modell-Wahl pro Material",
+      "description": "Material-spezifische ML-Modelle",
+      "phases": [9, 28],
+      "rule": "Vinyl: BANQUET | Tape: DeepFilterNet | CD: DSP only"
+    },
+    "parallel_vote": {
+      "benefit": "Immer beste Qualit\u00e4t, aber langsam (2\u00d7 Processing)",
+      "description": "DSP und ML parallel, w\u00e4hle besseres Ergebnis",
+      "phases": [3, 23, 29],
+      "rule": "Quality Metric entscheidet"
+    },
+    "snr_based_routing": {
+      "benefit": "Geschwindigkeit bei guten Aufnahmen, Qualit\u00e4t bei schlechten",
+      "description": "W\u00e4hle DSP oder ML basierend auf Signal-to-Noise Ratio",
+      "phases": [3, 29],
+      "rule": "SNR > -30dB: DSP | SNR < -30dB: ML"
+    }
+  },
+  "implementation_priority": [
+    {
+      "effort": "Medium (FlashSR Plugin existiert bereits)",
+      "expected_gain": "+0.45 (0.39 \u2192 0.84)",
+      "impact": "MASSIV - Transparenz von 0.12 \u2192 0.80",
+      "ml_model": "FlashSR",
+      "name": "Spectral Repair",
+      "phase": 23,
+      "priority": 1,
+      "reason": "KRITISCH: Score nur 0.39, gr\u00f6\u00dfter Schwachpunkt"
+    },
+    {
+      "effort": "Low (Silero Plugin existiert)",
+      "expected_gain": "+0.35 (0.49 \u2192 0.84)",
+      "impact": "HOCH - Nat\u00fcrlichere Stille-Behandlung",
+      "ml_model": "Silero VAD",
+      "name": "Noise Gate",
+      "phase": 18,
+      "priority": 2,
+      "reason": "Score 0.49, unnat\u00fcrliches Gating"
+    },
+    {
+      "effort": "Medium (BANQUET Plugin existiert)",
+      "expected_gain": "+0.35 (0.50 \u2192 0.85)",
+      "impact": "HOCH - Vinyl-Restaurierung deutlich besser",
+      "ml_model": "BANQUET",
+      "name": "Crackle Removal",
+      "phase": 9,
+      "priority": 3,
+      "reason": "Score 0.50, Vinyl-Material kritisch"
+    },
+    {
+      "effort": "Low (Plugin existiert bereits)",
+      "expected_gain": "+0.12 (0.83 \u2192 0.95)",
+      "impact": "MEDIUM - Vor allem f\u00fcr Tape/Shellac wichtig",
+      "ml_model": "DeepFilterNet v3 II",
+      "name": "Denoise",
+      "phase": 3,
+      "priority": 4,
+      "reason": "Score 0.83, aber verbesserbar f\u00fcr schweres Rauschen"
+    },
+    {
+      "effort": "Low (Plugin existiert)",
+      "expected_gain": "+0.30 (0.50 \u2192 0.80)",
+      "impact": "MEDIUM - Brillanz bleibt erhalten",
+      "ml_model": "DeepFilterNet v3 II",
+      "name": "Tape Hiss Reduction",
+      "phase": 29,
+      "priority": 5,
+      "reason": "Score 0.50, entfernt zu viel HF-Detail"
+    }
+  ],
+  "ml_recommendations": {
+    "1": {
+      "current_approach": "DSP (Median Filtering + Interpolation)",
+      "hybrid_mode": {
+        "performance": "0.8\u00d7 RT (DSP) + 1.5\u00d7 RT (ML selective) = 2.3\u00d7 RT total",
+        "quality_gain": "+0.30 (0.50 \u2192 0.80)",
+        "steps": [
+          "1. DSP: Schnelle Click-Detektion (Energie-Spikes)",
+          "2. DSP: Grobe Entfernung (Median-Filter)",
+          "3. ML: Feines Inpainting mit DeepFilterNet",
+          "4. Blend: 70% ML, 30% DSP f\u00fcr Robustheit"
+        ],
+        "strategy": "DSP-First mit ML-Refinement"
+      },
+      "ml_models": [
+        {
+          "advantage": "Lernt nat\u00fcrliche Audio-Muster, entfernt Clicks ohne Artefakte",
+          "expected_improvement": "+0.30 (0.50 \u2192 0.80)",
+          "hybrid_strategy": "DSP f\u00fcr Click-Detection, ML f\u00fcr Inpainting",
+          "name": "DeepFilterNet v3 II",
+          "path": "models/deepfilternet_v3_ii/",
+          "plugin": "deepfilternet_v3_ii_plugin.py"
+        },
+        {
+          "advantage": "Deep Complex Network, preserviert Phasen-Information",
+          "expected_improvement": "+0.25 (0.50 \u2192 0.75)",
+          "hybrid_strategy": "DSP Vorfilter, ML finales Cleanup",
+          "name": "DCCRN",
+          "path": "models/dccrn/",
+          "plugin": "dccrn_plugin.py"
+        }
+      ],
+      "phase_name": "Click Removal",
+      "problem": "Unnat\u00fcrliche Reparatur, Artefakte bleiben",
+      "score": 0.5
+    },
+    "18": {
+      "current_approach": "DSP (Threshold-based Gate)",
+      "hybrid_mode": {
+        "performance": "0.5\u00d7 RT (Silero) + 0.2\u00d7 RT (DSP) = 0.7\u00d7 RT",
+        "quality_gain": "+0.35 (0.49 \u2192 0.84)",
+        "steps": [
+          "1. ML: Silero VAD detektiert Signal/Noise-Segmente",
+          "2. DSP: Smooth Gating basierend auf VAD-Confidence",
+          "3. Envelope: Sanfte Attack/Release (keine Clicks)",
+          "4. Preserve: Reverb-Tails, musikalische Pausen"
+        ],
+        "strategy": "ML-VAD + DSP-Gate"
+      },
+      "ml_models": [
+        {
+          "advantage": "ML-basierte Voice/Music Activity Detection, sehr pr\u00e4zise",
+          "expected_improvement": "+0.35 (0.49 \u2192 0.84)",
+          "hybrid_strategy": "Silero VAD f\u00fcr Detektion, DSP f\u00fcr Gating",
+          "name": "Silero VAD",
+          "path": "models/silero-vad/",
+          "plugin": "silero_plugin.py"
+        }
+      ],
+      "phase_name": "Noise Gate",
+      "problem": "Schneidet musikalische Details ab, unnat\u00fcrliche Stille",
+      "score": 0.49
+    },
+    "2": {
+      "current_approach": "DSP (Notch Filters 50/60/120 Hz)",
+      "hybrid_mode": {
+        "performance": "0.3\u00d7 RT (DSP) + 1.5\u00d7 RT (ML) = 1.8\u00d7 RT",
+        "quality_gain": "+0.25 (0.50 \u2192 0.75)",
+        "steps": [
+          "1. DSP: Grobe Notch-Filter (50/60/100/120/150 Hz)",
+          "2. ML: Feine Hum-Removal mit harmonischer Erhaltung",
+          "3. Crossfade: Nahtlose \u00dcberg\u00e4nge zwischen Frequenzb\u00e4ndern"
+        ],
+        "strategy": "Dual-Stage Processing"
+      },
+      "ml_models": [
+        {
+          "advantage": "Adaptive Hum-Entfernung, erh\u00e4lt musikalische B\u00e4sse",
+          "expected_improvement": "+0.25 (0.50 \u2192 0.75)",
+          "hybrid_strategy": "DSP f\u00fcr grobe Notch-Filter, ML f\u00fcr harmonische Bereinigung",
+          "name": "DeepFilterNet v3 II",
+          "path": "models/deepfilternet_v3_ii/",
+          "plugin": "deepfilternet_v3_ii_plugin.py"
+        }
+      ],
+      "phase_name": "Hum Removal",
+      "problem": "Statische Filterung, harmonische Verzerrungen",
+      "score": 0.5
+    },
+    "23": {
+      "current_approach": "DSP (Interpolation + Median Filtering)",
+      "hybrid_mode": {
+        "performance": "0.5\u00d7 RT (DSP) + 8.0\u00d7 RT (FlashSR selective) = ~4\u00d7 RT",
+        "quality_gain": "+0.45 (0.39 \u2192 0.84) - MASSIV!",
+        "steps": [
+          "1. DSP: STFT-Analyse, Defekt-Detektion (z-score, energy)",
+          "2. DSP: Masken-Erstellung (wo reparieren?)",
+          "3. ML: FlashSR rekonstruiert fehlende Spektral-Regionen",
+          "4. Blend: 80% ML, 20% DSP f\u00fcr Sicherheit"
+        ],
+        "strategy": "Defect-Detect (DSP) + ML-Inpainting (FlashSR)"
+      },
+      "ml_models": [
+        {
+          "advantage": "Diffusion-basierte Audio-SR, rekonstruiert fehlende Frequenzen",
+          "expected_improvement": "+0.45 (0.39 \u2192 0.84)",
+          "hybrid_strategy": "DSP f\u00fcr Defect-Detection, FlashSR f\u00fcr Inpainting",
+          "name": "FlashSR (Super-Resolution)",
+          "path": "models/flashsr/",
+          "plugin": "flashsr_plugin.py"
+        },
+        {
+          "advantage": "Trennt Quellen (Vocals/Instruments), repariert dann einzeln",
+          "expected_improvement": "+0.40 (0.39 \u2192 0.79)",
+          "hybrid_strategy": "MDX23C f\u00fcr komplexe Reparaturen",
+          "name": "MDX23C (Kim_Vocal_2 / Kim_Inst)",
+          "path": "models/mdx23c/",
+          "plugin": "mdx23c_plugin.py"
+        }
+      ],
+      "phase_name": "Spectral Repair",
+      "problem": "Schlechte Inpainting-Qualit\u00e4t, verliert Transparenz (0.12!)",
+      "score": 0.39
+    },
+    "24": {
+      "current_approach": "DSP (Linear Interpolation)",
+      "hybrid_mode": {
+        "performance": "0.3\u00d7 RT (DSP) bis 6.0\u00d7 RT (ML f\u00fcr lange Dropouts)",
+        "quality_gain": "+0.30 (0.50 \u2192 0.80) bei langen Dropouts",
+        "steps": [
+          "1. Dropout-Detection: Messe L\u00e4nge und Kontext",
+          "2. If <50ms: DSP Linear Interpolation (schnell)",
+          "3. If 50-200ms: DSP Cubic Spline (besser)",
+          "4. If >200ms: ML FlashSR Inpainting (nat\u00fcrlich)",
+          "5. Crossfade: Sanfte \u00dcberg\u00e4nge"
+        ],
+        "strategy": "Length-Based Routing"
+      },
+      "ml_models": [
+        {
+          "advantage": "Halluziniert plausible Audio-Inhalte f\u00fcr Dropouts",
+          "expected_improvement": "+0.30 (0.50 \u2192 0.80)",
+          "hybrid_strategy": "DSP f\u00fcr kurze Dropouts (<100ms), ML f\u00fcr lange",
+          "name": "FlashSR",
+          "path": "models/flashsr/",
+          "plugin": "flashsr_plugin.py"
+        },
+        {
+          "advantage": "Diffusion Model, nat\u00fcrliche Audio-Generierung",
+          "expected_improvement": "+0.28 (0.50 \u2192 0.78)",
+          "hybrid_strategy": "Conditional Generation basierend auf Kontext",
+          "name": "DiffWave",
+          "path": "models/diffwave/",
+          "plugin": "diffwave_plugin.py"
+        }
+      ],
+      "phase_name": "Dropout Repair",
+      "problem": "Zu simpel, lange Dropouts klingen unnat\u00fcrlich",
+      "score": 0.5
+    },
+    "29": {
+      "current_approach": "DSP (High-Pass + Wiener)",
+      "hybrid_mode": {
+        "performance": "0.4\u00d7 RT (DSP) + 2.0\u00d7 RT (ML HF-only) = 2.4\u00d7 RT",
+        "quality_gain": "+0.30 (0.50 \u2192 0.80)",
+        "steps": [
+          "1. Frequency Split: <8kHz (DSP), >8kHz (ML)",
+          "2. DSP: Low-Band Passthrough (kein Hiss)",
+          "3. ML: High-Band Hiss Removal (DeepFilterNet)",
+          "4. Merge: Rekombiniere ohne Phasen-Artefakte"
+        ],
+        "strategy": "Band-Specific Processing"
+      },
+      "ml_models": [
+        {
+          "advantage": "Trennt Hiss von Music/Speech HF-Content",
+          "expected_improvement": "+0.30 (0.50 \u2192 0.80)",
+          "hybrid_strategy": "DSP f\u00fcr grobe HF-D\u00e4mpfung, ML f\u00fcr feine Separation",
+          "name": "DeepFilterNet v3 II",
+          "path": "models/deepfilternet_v3_ii/",
+          "plugin": "deepfilternet_v3_ii_plugin.py"
+        },
+        {
+          "advantage": "Sub-Band Approach, erh\u00e4lt HF-Musik besser",
+          "expected_improvement": "+0.28 (0.50 \u2192 0.78)",
+          "hybrid_strategy": "Parallele DSP/ML mit Best-of-Both",
+          "name": "FullSubNet Plus",
+          "path": "models/fullsubnet_plus/",
+          "plugin": "fullsubnet_plus_plugin.py"
+        }
+      ],
+      "phase_name": "Tape Hiss Reduction",
+      "problem": "Entfernt zu viel HF-Detail, dumpfer Klang",
+      "score": 0.5
+    },
+    "3": {
+      "current_approach": "DSP (Spectral Subtraction + Wiener)",
+      "hybrid_mode": {
+        "performance": "1.2\u00d7 RT (DSP only) oder 3.5\u00d7 RT (ML fallback)",
+        "quality_gain": "+0.12 (0.83 \u2192 0.95) bei schwierigen F\u00e4llen",
+        "steps": [
+          "1. SNR-Estimation: Messe Rausch-Niveau",
+          "2. If SNR > -30dB: DSP (schnell, ausreichend)",
+          "3. If SNR < -30dB: ML (langsam, aber besser)",
+          "4. Blend: Smooth Transition zwischen Modi"
+        ],
+        "strategy": "Adaptive SNR-Based Routing"
+      },
+      "ml_models": [
+        {
+          "advantage": "State-of-the-Art Speech/Music Denoising, kein Musical Noise",
+          "expected_improvement": "+0.12 (0.83 \u2192 0.95)",
+          "hybrid_strategy": "DSP f\u00fcr leichtes Rauschen (<-40dB SNR), ML f\u00fcr schweres Rauschen",
+          "name": "DeepFilterNet v3 II",
+          "path": "models/deepfilternet_v3_ii/",
+          "plugin": "deepfilternet_v3_ii_plugin.py"
+        },
+        {
+          "advantage": "Exzellent f\u00fcr Music Denoising",
+          "expected_improvement": "+0.10 (0.83 \u2192 0.93)",
+          "hybrid_strategy": "Parallele Verarbeitung, Best-of-Both-Worlds",
+          "name": "DCCRN",
+          "path": "models/dccrn/",
+          "plugin": "dccrn_plugin.py"
+        },
+        {
+          "advantage": "Full-Band + Sub-Band Processing, sehr nat\u00fcrlich",
+          "expected_improvement": "+0.11 (0.83 \u2192 0.94)",
+          "hybrid_strategy": "ML f\u00fcr komplexe Szenen, DSP f\u00fcr einfache",
+          "name": "FullSubNet Plus",
+          "path": "models/fullsubnet_plus/",
+          "plugin": "fullsubnet_plus_plugin.py"
+        }
+      ],
+      "phase_name": "Denoise",
+      "problem": "Musical Noise bei starkem Rauschen",
+      "score": 0.83
+    },
+    "9": {
+      "current_approach": "DSP (Morphological Filtering)",
+      "hybrid_mode": {
+        "performance": "0.5\u00d7 RT (DSP) oder 4.0\u00d7 RT (BANQUET)",
+        "quality_gain": "+0.35 (0.50 \u2192 0.85) f\u00fcr Vinyl",
+        "steps": [
+          "1. Material Detection: Shellac/Vinyl/Tape/CD",
+          "2. If Vinyl: BANQUET ML Model (optimal)",
+          "3. If Shellac/Tape: DSP (ausreichend)",
+          "4. If CD: Skip (keine Crackles erwartet)"
+        ],
+        "strategy": "Material-Adaptive ML Selection"
+      },
+      "ml_models": [
+        {
+          "advantage": "Spezialisiert auf Vinyl-Crackles und Surface Noise",
+          "expected_improvement": "+0.35 (0.50 \u2192 0.85)",
+          "hybrid_strategy": "BANQUET f\u00fcr Vinyl, DSP f\u00fcr andere Materialien",
+          "name": "BANQUET (Vinyl Restoration)",
+          "path": "models/banquet/",
+          "plugin": "banquet_vinyl_plugin.py"
+        },
+        {
+          "advantage": "U-Net basierte Spectrogram-Inpainting",
+          "expected_improvement": "+0.30 (0.50 \u2192 0.80)",
+          "hybrid_strategy": "DSP Detection + ML Inpainting",
+          "name": "SpectralRepair ML (Custom)",
+          "path": "models/spectral_repair_ml/",
+          "plugin": "TBD"
+        }
+      ],
+      "phase_name": "Crackle Removal",
+      "problem": "\u00dcbersieht feine Crackles, erzeugt Artefakte",
+      "score": 0.5
+    }
+  },
+  "performance_analysis": {
+    "hybrid_adaptive": {
+      "performance": "0.7\u00d7 - 3.5\u00d7 RT (average: 1.8\u00d7 RT)",
+      "quality": "~0.89 (best-of-both)",
+      "strengths": [
+        "Schnell f\u00fcr einfache F\u00e4lle (DSP)",
+        "Hochwertig f\u00fcr schwere Defekte (ML)",
+        "Nat\u00fcrlichkeit ~0.75 (massiv verbessert)",
+        "Flexibel (User-Wahl: Speed vs Quality)"
+      ],
+      "weaknesses": [
+        "Komplexere Implementierung",
+        "Routing-Logik ben\u00f6tigt"
+      ]
+    },
+    "pure_dsp": {
+      "performance": "0.2\u00d7 - 2.0\u00d7 RT (average: 0.7\u00d7 RT)",
+      "quality": "0.83 (current)",
+      "strengths": ["Schnell", "Deterministisch", "Keine GPU ben\u00f6tigt"],
+      "weaknesses": [
+        "Nat\u00fcrlichkeit nur 0.55",
+        "Artefakte bei schweren Defekten"
+      ]
+    },
+    "pure_ml": {
+      "performance": "2.0\u00d7 - 10.0\u00d7 RT (average: 4.5\u00d7 RT)",
+      "quality": "~0.92 (estimated)",
+      "strengths": [
+        "Exzellente Nat\u00fcrlichkeit (~0.85)",
+        "Keine Artefakte",
+        "SOTA-Qualit\u00e4t"
+      ],
+      "weaknesses": ["Langsam", "GPU empfohlen", "Nicht-deterministisch"]
+    }
+  }
+}

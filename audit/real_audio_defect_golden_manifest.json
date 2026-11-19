@@ -1,0 +1,214 @@
+{
+  "cases": [
+    {
+      "case_id": "real_vinyl_jazz_1950s_scratched",
+      "description": "Vinyl jazz fixture with scratched surface noise and impulses.",
+      "expected_defects": [
+        {
+          "defect": "clicks",
+          "min_confidence": 0.75,
+          "min_severity": 0.35,
+          "require_locations": true
+        },
+        {
+          "defect": "crackle",
+          "min_confidence": 0.75,
+          "min_severity": 0.7,
+          "require_locations": true
+        },
+        {
+          "defect": "high_freq_noise",
+          "min_confidence": 0.75,
+          "min_severity": 0.5
+        }
+      ],
+      "forbidden_defects": [
+        "dropouts",
+        "clipping"
+      ],
+      "material_type": "vinyl",
+      "max_seconds": 20.0,
+      "path": "test_audio/vinyl/jazz_1950s_scratched.wav"
+    },
+    {
+      "case_id": "real_vinyl_classical_1960s_hiss",
+      "description": "Vinyl classical fixture with hiss / HF-noise and bandwidth limitation.",
+      "expected_defects": [
+        {
+          "defect": "high_freq_noise",
+          "min_confidence": 0.75,
+          "min_severity": 0.45
+        },
+        {
+          "defect": "bandwidth_loss",
+          "min_confidence": 0.75,
+          "min_severity": 0.8
+        }
+      ],
+      "forbidden_defects": [
+        "dropouts",
+        "clipping"
+      ],
+      "material_type": "vinyl",
+      "max_seconds": 20.0,
+      "path": "test_audio/vinyl/classical_1960s_hiss.wav"
+    },
+    {
+      "case_id": "real_vinyl_rock_1970s_worn",
+      "description": "Worn vinyl rock fixture with dropouts, clicks, and high-frequency noise.",
+      "expected_defects": [
+        {
+          "defect": "dropouts",
+          "min_confidence": 0.75,
+          "min_severity": 0.35,
+          "require_locations": true
+        },
+        {
+          "defect": "clicks",
+          "min_confidence": 0.75,
+          "min_severity": 0.35,
+          "require_locations": true
+        },
+        {
+          "defect": "high_freq_noise",
+          "min_confidence": 0.75,
+          "min_severity": 0.6
+        }
+      ],
+      "forbidden_defects": [
+        "clipping"
+      ],
+      "material_type": "vinyl",
+      "max_seconds": 20.0,
+      "path": "test_audio/vinyl/rock_1970s_worn.wav"
+    },
+    {
+      "case_id": "real_tape_reel_1940s_dropout",
+      "description": "Reel tape fixture with annotated dropout and tape HF loss/noise.",
+      "expected_defects": [
+        {
+          "defect": "dropouts",
+          "min_confidence": 0.75,
+          "min_severity": 0.35,
+          "require_locations": true
+        },
+        {
+          "defect": "high_freq_noise",
+          "min_confidence": 0.75,
+          "min_severity": 0.6
+        },
+        {
+          "defect": "hf_remanence_loss",
+          "min_confidence": 0.75,
+          "min_severity": 0.65
+        }
+      ],
+      "forbidden_defects": [
+        "riaa_curve_error",
+        "clipping"
+      ],
+      "material_type": "tape",
+      "max_seconds": 20.0,
+      "path": "test_audio/tape/reel_1940s_dropout.wav"
+    },
+    {
+      "case_id": "real_tape_cassette_1980s_wow",
+      "description": "Cassette fixture with wow and tape noise. KEINE flutter-Erwartung: unabhaengige FM-Messung 2026-10-07 am Fixture (44,1 kHz, dominanter Teilton 301 Hz) ergab die Modulation bei 1,0/0,75/1,5 Hz mit 24/23,7/21,4 Cent — also WOW — und keinen 4-8-Hz-Anteil; der kohaerente Subband-Kanal des Flutter-Detektors misst coh 0,25/amp 0,0675 Cent, also WENIGER als ein sauberer Traeger (coh 0,36/amp 0,47, Kalibrierung 2026-09-27). Der Generator des Repos (scripts/generate_corpus.py::_add_wow_flutter) erzeugt ebenfalls nur 0,35-0,7 Hz. Die fruehere Erwartung \"flutter min_severity 0,5\" war damit eine unbelegte Aussage ueber das Material (D-K3-26 im SOTA-Defizit-Register).",
+      "expected_defects": [
+        {
+          "defect": "wow",
+          "min_confidence": 0.75,
+          "min_severity": 0.8
+        },
+        {
+          "defect": "high_freq_noise",
+          "min_confidence": 0.75,
+          "min_severity": 0.6
+        }
+      ],
+      "forbidden_defects": [
+        "riaa_curve_error",
+        "clipping"
+      ],
+      "material_type": "tape",
+      "max_seconds": 20.0,
+      "path": "test_audio/tape/cassette_1980s_wow.wav"
+    },
+    {
+      "case_id": "real_digital_mp3_64kbps_artifacts",
+      "description": "Low-bitrate MP3 fixture with codec artifacts and bandwidth loss.",
+      "expected_defects": [
+        {
+          "defect": "compression_artifacts",
+          "min_confidence": 0.2,
+          "min_severity": 0.12
+        },
+        {
+          "defect": "bandwidth_loss",
+          "min_confidence": 0.75,
+          "min_severity": 0.8
+        }
+      ],
+      "forbidden_defects": [
+        "riaa_curve_error",
+        "clipping"
+      ],
+      "material_type": "mp3_low",
+      "max_seconds": 20.0,
+      "path": "test_audio/digital/mp3_64kbps_artifacts.wav"
+    },
+    {
+      "case_id": "real_digital_streaming_glitches",
+      "description": "Streaming fixture with packet-loss style glitches and codec residue.",
+      "expected_defects": [
+        {
+          "defect": "dropouts",
+          "min_confidence": 0.75,
+          "min_severity": 0.3,
+          "require_locations": true
+        },
+        {
+          "defect": "compression_artifacts",
+          "min_confidence": 0.3,
+          "min_severity": 0.1
+        }
+      ],
+      "forbidden_defects": [
+        "riaa_curve_error",
+        "clipping"
+      ],
+      "material_type": "streaming",
+      "max_seconds": 20.0,
+      "path": "test_audio/digital/streaming_glitches.wav"
+    },
+    {
+      "case_id": "real_vocal_choir_breaths_hiss",
+      "description": "Vocal/choir fixture where HF noise is expected while breath material must remain a context marker.",
+      "expected_defects": [
+        {
+          "defect": "high_freq_noise",
+          "min_confidence": 0.75,
+          "min_severity": 0.5
+        }
+      ],
+      "forbidden_defects": [
+        "dropouts",
+        "clipping"
+      ],
+      "material_type": "vinyl",
+      "max_seconds": 20.0,
+      "path": "test_audio/vocals/choir_breaths.wav"
+    }
+  ],
+  "description": "Real-audio Golden-Set annotations for DefectScanner import-song defect recognition.",
+  "schema_version": 1,
+  "target_sample_rate": 48000,
+  "thresholds": {
+    "max_forbidden_severity": 0.15,
+    "max_runtime_factor": 1.4,
+    "min_locality_recall": 0.9,
+    "min_mean_confidence": 0.62,
+    "min_precision": 0.92,
+    "min_recall": 0.95
+  }
+}

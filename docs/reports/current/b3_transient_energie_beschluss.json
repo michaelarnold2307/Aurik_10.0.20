@@ -1,0 +1,163 @@
+{
+  "schema": "aurik.transient_energie.beschluss/1",
+  "seed": 42,
+  "n_fenster": 6,
+  "zeilen": [
+    {
+      "trial_id": "cassette_1980s_wow__w0",
+      "mos_alt": 4.7961,
+      "mos_neu": 4.7961,
+      "last_alt": 0.3846,
+      "last_neu": 0.3846,
+      "transient_alt": 1.0,
+      "transient_neu": 1.0
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w1",
+      "mos_alt": 4.7787,
+      "mos_neu": 4.7787,
+      "last_alt": 0.4913,
+      "last_neu": 0.4913,
+      "transient_alt": 1.0,
+      "transient_neu": 1.0
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w2",
+      "mos_alt": 4.7629,
+      "mos_neu": 4.7629,
+      "last_alt": 0.4843,
+      "last_neu": 0.4843,
+      "transient_alt": 0.8747,
+      "transient_neu": 0.9825
+    },
+    {
+      "trial_id": "cassette_1980s_wow__w3",
+      "mos_alt": 4.8546,
+      "mos_neu": 4.8546,
+      "last_alt": 0.4771,
+      "last_neu": 0.4771,
+      "transient_alt": 0.8992,
+      "transient_neu": 0.9326
+    },
+    {
+      "trial_id": "jazz_1950s_scratched__w5",
+      "mos_alt": 4.9257,
+      "mos_neu": 4.9257,
+      "last_alt": 0.1817,
+      "last_neu": 0.1817,
+      "transient_alt": 0.714,
+      "transient_neu": 0.7843
+    },
+    {
+      "trial_id": "reel_1940s_dropout__w4",
+      "mos_alt": 4.9588,
+      "mos_neu": 4.9588,
+      "last_alt": 0.0325,
+      "last_neu": 0.0325,
+      "transient_alt": 0.6255,
+      "transient_neu": 0.7327
+    }
+  ],
+  "never_worsen": true,
+  "vorteile": "0/6",
+  "p_wert": 0.03125,
+  "signifikant": false,
+  "scorecard_diff": {
+    "artikulation": {
+      "mittel_alt": 0.9134,
+      "mittel_neu": 0.9134,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "authentizitaet": {
+      "mittel_alt": 0.9756,
+      "mittel_neu": 0.9756,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "bass_kraft": {
+      "mittel_alt": 0.7639,
+      "mittel_neu": 0.7639,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "brillanz": {
+      "mittel_alt": 0.2702,
+      "mittel_neu": 0.2702,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "emotionalitaet": {
+      "mittel_alt": 0.946,
+      "mittel_neu": 0.946,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "groove": {
+      "mittel_alt": 0.9437,
+      "mittel_neu": 0.9437,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "micro_dynamics": {
+      "mittel_alt": 0.9424,
+      "mittel_neu": 0.9424,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "natuerlichkeit": {
+      "mittel_alt": 0.9389,
+      "mittel_neu": 0.9389,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "separation_fidelity": {
+      "mittel_alt": 0.8108,
+      "mittel_neu": 0.8108,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "spatial_depth": {
+      "mittel_alt": 0.75,
+      "mittel_neu": 0.75,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "timbre_authentizitaet": {
+      "mittel_alt": 0.9305,
+      "mittel_neu": 0.9305,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "tonal_center": {
+      "mittel_alt": 0.9938,
+      "mittel_neu": 0.9938,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    },
+    "transient_energie": {
+      "mittel_alt": 0.9053,
+      "mittel_neu": 0.9053,
+      "delta": 0.0,
+      "baseline_2026_11_03": 0.1609
+    },
+    "transparenz": {
+      "mittel_alt": 0.8002,
+      "mittel_neu": 0.8002,
+      "delta": 0.0,
+      "baseline_2026_11_03": 0.5226
+    },
+    "waerme": {
+      "mittel_alt": 0.718,
+      "mittel_neu": 0.718,
+      "delta": 0.0,
+      "baseline_2026_11_03": null
+    }
+  },
+  "baseline_2026_11_03": {
+    "transient_energie": 0.1609,
+    "transparenz": 0.5226
+  },
+  "ergebnis": "ERFUELLT",
+  "quelle": "scripts/b3_transient_energie_neverworsen.py"
+}

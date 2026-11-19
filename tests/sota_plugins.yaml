@@ -1,0 +1,9 @@
+# SOTA-Plugin YAML-Beispiel
+
+resample_enhance:
+  model_path: aurik4/models/resemble_enhance/denoiser.onnx
+  test: tests/sota/test_resample_enhance_plugin.py
+  description: SOTA-Resample-Enhance-Modul für Denoise & Spektrale Retusche
+  status: stable
+
+# Weitere Plugins können nach diesem Schema ergänzt werden.

@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-11-14T23:37:13.997460",
+  "files_scanned": 1791,
+  "duration_s": 136.213,
+  "per_rule_counts": {
+    "dither_missing_int_conversion": 2,
+    "silent_fallback_no_log": 6
+  },
+  "suppressed": {
+    "determinism_time_usage": 317,
+    "truncated_max_findings": 10
+  },
+  "total_findings": 8,
+  "findings": [
+    {
+      "rule_id": "dither_missing_int_conversion",
+      "severity": "high",
+      "file": "backend/core/dsp/audibility_budget.py",
+      "line": 118,
+      "evidence": "clipped: np.ndarray = np.clip(idx, 0, e.size - 2).astype(np.int32)",
+      "spec_ref": "§V5 (copilot-instructions.md)",
+      "recommendation": "POW-r Type 3 (primär) oder TPDF (Fallback) vor der Konversion anwenden; kein nacktes astype(np.int16). (§V5 (copilot-instructions.md) Truncation-ohne-Dither-Verbot)"
+    },
+    {
+      "rule_id": "dither_missing_int_conversion",
+      "severity": "high",
+      "file": "backend/core/dsp/musik_declip_kopf.py",
+      "line": 148,
+      "evidence": "kanten = np.diff(maske.astype(np.int8))",
+      "spec_ref": "§V5 (copilot-instructions.md)",
+      "recommendation": "POW-r Type 3 (primär) oder TPDF (Fallback) vor der Konversion anwenden; kein nacktes astype(np.int16). (§V5 (copilot-instructions.md) Truncation-ohne-Dither-Verbot)"
+    },
+    {
+      "rule_id": "silent_fallback_no_log",
+      "severity": "high",
+      "file": "backend/core/defect_scanner.py",
+      "line": 693,
+      "evidence": "except Exception:  # §V6 (copilot-instructions.md)",
+      "spec_ref": "§V6 (copilot-instructions.md)",
+      "recommendation": "logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)"
+    },
+    {
+      "rule_id": "silent_fallback_no_log",
+      "severity": "high",
+      "file": "backend/core/defect_scanner.py",
+      "line": 720,
+      "evidence": "except Exception:  # §V6 (copilot-instructions.md)",
+      "spec_ref": "§V6 (copilot-instructions.md)",
+      "recommendation": "logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)"
+    },
+    {
+      "rule_id": "silent_fallback_no_log",
+      "severity": "high",
+      "file": "backend/core/dsp/deep_loudness_net.py",
+      "line": 82,
+      "evidence": "except Exception:  # §V6 (copilot-instructions.md)",
+      "spec_ref": "§V6 (copilot-instructions.md)",
+      "recommendation": "logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)"
+    },
+    {
+      "rule_id": "silent_fallback_no_log",
+      "severity": "high",
+      "file": "backend/core/dsp/deep_loudness_net.py",
+      "line": 100,
+      "evidence": "except Exception:  # §V6 (copilot-instructions.md)",
+      "spec_ref": "§V6 (copilot-instructions.md)",
+      "recommendation": "logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)"
+    },
+    {
+      "rule_id": "silent_fallback_no_log",
+      "severity": "high",
+      "file": "backend/core/dsp/music_mos_oracle.py",
+      "line": 79,
+      "evidence": "except (TypeError, ValueError):",
+      "spec_ref": "§V6 (copilot-instructions.md)",
+      "recommendation": "logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)"
+    },
+    {
+      "rule_id": "silent_fallback_no_log",
+      "severity": "high",
+      "file": "backend/core/dsp/music_vad_oracle.py",
+      "line": 110,
+      "evidence": "except (TypeError, ValueError):",
+      "spec_ref": "§V6 (copilot-instructions.md)",
+      "recommendation": "logger.warning() + Begründung ergänzen, damit ML→DSP-Fallbacks nie stumm bleiben. (§V6 (copilot-instructions.md) Silent-Failure-Verbot)"
+    }
+  ]
+}

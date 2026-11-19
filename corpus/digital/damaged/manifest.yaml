@@ -1,0 +1,12 @@
+- channels: 1
+  checksum_sha256: 87fc01f789d8507bb0674ff56d23260bf0f60b16339acedca22efc3c1f3dead6
+  defects: []
+  duration_s: 3.0
+  era: 2015
+  file: digital_test_damaged.wav
+  genre: Electronic
+  license: CC0
+  material: digital
+  notes: Synthetische Test-Aufnahme
+  sample_rate: 48000
+  source: Synthetic Test Corpus

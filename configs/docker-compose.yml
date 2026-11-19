@@ -1,0 +1,162 @@
+# LEGACY — Docker-Compose nur für Entwickler-Referenz behalten.
+# Aurik 9 operiert vollständig standalone via lokalem ONNX (onnxruntime).
+# Kein Docker für Endnutzer erforderlich.
+version: '3.8'
+
+services:
+  aurik-backend:
+    build: .
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "8000:8000"
+
+  deepfilternet:
+    build: ./Aurik_Standalone/models/deepfilternet_v3_ll
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5001:5001"
+
+  dccrn:
+    build: ./Aurik_Standalone6/models/dccrn
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5002:5002"
+
+  demucs:
+    build: ./Aurik_Standalone/models/demucs
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5003:5003"
+
+  waveunet:
+    build: ./Aurik_Standalone/models/waveunet
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5004/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5004:5004"
+
+  # dnsmos/nisqa/pesq/visqol: entfernt — verboten §4.4+§10.2 (Sprach-Qualitätsmetriken, kein Musik-Support)
+
+  conv-tasnet:
+    build: ./Aurik_Standalone/models/conv-tasnet
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5010:5010"
+
+  fullsubnet_plus:
+    build: ./Aurik_Standalone/models/fullsubnet_plus
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5011:5011"
+
+  sgmse_plus:
+    build: ./Aurik_Standalone/models/sgmse_plus
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5012:5012"
+
+  uvr_mdx_net:
+    build: ./Aurik_Standalone/models/uvr_mdx_net
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5013/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5013:5013"
+
+  crepe:
+    build: ./Aurik_Standalone/models/crepe
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5014/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5014:5014"
+
+  diffwave:
+    build: ./Aurik_Standalone/models/diffwave
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5015/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5015:5015"
+
+  hifi_gan:
+    build: ./Aurik_Standalone/models/hifi_gan
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5017/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5017:5017"
+
+  mdx23c:
+    build: ./Aurik_Standalone/models/mdx23c
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5018/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5018:5018"
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"

@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "aurik_path": "../fixtures/aurik/amrb_01_tape_hiss_aurik.wav",
+      "cedar_path": "../fixtures/cedar/amrb_01_tape_hiss_cedar.wav",
+      "defect_class": "hiss",
+      "input_path": "../fixtures/input/amrb_01_tape_hiss_input.wav",
+      "material": "tape",
+      "reference_path": "../fixtures/reference/amrb_01_tape_hiss_ref.wav",
+      "rx11_path": "../fixtures/rx11/amrb_01_tape_hiss_rx11.wav",
+      "scenario_id": "AMRB-01-TAPE-HISS-A"
+    },
+    {
+      "aurik_path": "../fixtures/aurik/amrb_02_vinyl_crackle_aurik.wav",
+      "cedar_path": "../fixtures/cedar/amrb_02_vinyl_crackle_cedar.wav",
+      "defect_class": "crackle",
+      "input_path": "../fixtures/input/amrb_02_vinyl_crackle_input.wav",
+      "material": "vinyl",
+      "reference_path": "../fixtures/reference/amrb_02_vinyl_crackle_ref.wav",
+      "rx11_path": "../fixtures/rx11/amrb_02_vinyl_crackle_rx11.wav",
+      "scenario_id": "AMRB-02-VINYL-CRACKLE-A"
+    }
+  ],
+  "notes": "Use identical reference/input per scenario across Aurik, RX11 and CEDAR outputs.",
+  "run_id": "competitive_2026_04_26"
+}

@@ -1,0 +1,14 @@
+# Shellac-Konfiguration: typische Defekte und Policy
+medium: shellac
+defects:
+  - click
+  - noise
+  - sibilance
+policy:
+  prefer_ml: false
+  max_chain_length: 8
+  audit: true
+  quality:
+    min_hf_ratio: 0.65
+    max_loudness: -16.0
+    min_transparency: 0.7

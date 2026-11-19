@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+# Aurik 10 — Nachinstallation (§VI Startup-Vertrag: venv + python3 -B)
+APP_DIR="/opt/aurik"
+if [ ! -d "$APP_DIR" ]; then
+    echo "Aurik: $APP_DIR fehlt — Installation unvollständig." >&2
+    exit 1
+fi
+# Laufzeit-Requirements in eigenes venv (python3-venv ist Dependency)
+if [ -f "$APP_DIR/requirements/requirements_aurik.txt" ]; then
+    python3 -m venv "$APP_DIR/venv" 2>/dev/null || true
+    if [ -x "$APP_DIR/venv/bin/pip" ]; then
+        "$APP_DIR/venv/bin/pip" install --no-cache-dir -r "$APP_DIR/requirements/requirements_aurik.txt" \
+            || echo "Aurik: pip-Install teilweise fehlgeschlagen (App startet mit System-Python)." >&2
+    fi
+fi
+# Desktop-Datenbank aktualisieren
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database /usr/share/applications 2>/dev/null || true
+fi
+exit 0

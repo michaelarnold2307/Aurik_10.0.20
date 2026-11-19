@@ -1,0 +1,210 @@
+"""§P0-1 Song-Ebene-Analytik — Entscheidungsmatrix der End-Gate-Kaskade
++ Einladungs-Gate-Messung (Block b) + measure_all-Skip (Block a1).
+
+Im Chunked-Pfad läuft die End-Gate-Recovery-Kaskade nur auf dem letzten
+Chunk; die Stufe-2-Nachbehandlung (m1b) führt sie einmal auf dem
+assemblierten Song aus. Außerhalb des Chunked-Pfads bleibt das Verhalten
+bit-identisch zum bisherigen Stand.
+"""
+
+from __future__ import annotations
+
+import sys
+import types
+
+import numpy as np
+import pytest
+
+from backend.core.unified_restorer_v3 import UnifiedRestorerV3, _should_run_end_gate_cascade
+
+
+class _FakeChecker:
+    """Minimaler measure_all-Double — kein DSP, nur Zähl-Semantik."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple] = []
+
+    def measure_all(
+        self,
+        audio,
+        sample_rate,
+        *,
+        reference=None,
+        material_type=None,
+        panns_singing=0.0,
+        pre_pipeline_reference=None,
+    ):
+        # Fake-Double synchron zur echten Signatur (musical_goals_metrics.py
+        # Z. 4730: pre_pipeline_reference ist Produktions-Kwarg, §1.4.6).
+        self.calls.append((len(audio), sample_rate, reference, material_type, panns_singing, pre_pipeline_reference))
+        return {"brillanz": 0.5}
+
+
+@pytest.mark.parametrize(
+    ("violations", "tail_skip", "chunked_last", "expected"),
+    [
+        # Außerhalb des Chunked-Pfads: Verhalten unverändert
+        ([], False, False, False),
+        (["brillanz"], False, False, True),
+        (["brillanz"], False, True, True),
+        # Chunked-Pfad: Kaskade nur auf dem letzten Chunk
+        ([], True, False, False),
+        ([], True, True, False),
+        (["brillanz"], True, False, False),  # mittlere Chunks: übersprungen
+        (["brillanz"], True, True, True),  # letzter Chunk: Safety-Netz
+        (["natuerlichkeit", "transient_energie"], True, False, False),
+        (["natuerlichkeit", "transient_energie"], True, True, True),
+    ],
+)
+def test_end_gate_cascade_decision_matrix(
+    violations: list[str],
+    tail_skip: bool,
+    chunked_last: bool,
+    expected: bool,
+) -> None:
+    assert _should_run_end_gate_cascade(violations, tail_skip, chunked_last) is expected
+
+
+def test_measure_goals_for_tail_chunk_skip() -> None:
+    """§P0-1 a1: Nicht-letzter Chunk überspringt measure_all; letzter misst."""
+    checker = _FakeChecker()
+    restorer = UnifiedRestorerV3.__new__(UnifiedRestorerV3)  # ohne schwere Init
+    restorer._restoration_context = {}
+    audio = [0.0] * 1000
+
+    skipped = restorer._measure_goals_for_tail(
+        checker,
+        audio,
+        48000,
+        None,
+        "vinyl",
+        chunked_tail_skip=True,
+        chunked_last=False,
+    )
+    assert skipped == {}
+    assert checker.calls == []
+
+    measured = restorer._measure_goals_for_tail(
+        checker,
+        audio,
+        48000,
+        None,
+        "vinyl",
+        chunked_tail_skip=True,
+        chunked_last=True,
+    )
+    assert measured == {"brillanz": 0.5}
+    assert len(checker.calls) == 1
+    assert checker.calls[0][1] == 48000 and checker.calls[0][3] == "vinyl"
+
+
+def test_measure_goals_for_tail_normal_path() -> None:
+    """Außerhalb des Chunked-Pfads misst jeder Aufruf (Verhalten unverändert)."""
+    checker = _FakeChecker()
+    restorer = UnifiedRestorerV3.__new__(UnifiedRestorerV3)
+    restorer._restoration_context = {}
+    result = restorer._measure_goals_for_tail(checker, [0.0] * 100, 48000, None, "cd_digital")
+    assert result == {"brillanz": 0.5}
+    assert len(checker.calls) == 1
+
+
+def test_inviting_gate_skip_returns_none() -> None:
+    """§P0-1 (b): skip=True → keine Messung, kein Import-Aufwand."""
+    restorer = UnifiedRestorerV3.__new__(UnifiedRestorerV3)
+    restorer._restoration_context = {}
+    assert restorer._run_inviting_gate_measure(np.zeros(100, dtype=np.float32), 48000, None, skip=True) is None
+
+
+def test_inviting_gate_measure_stubbed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """§P0-1 (b): Messpfad liefert das Context-Dict (Modul-Stub) — und reicht
+    die Pre-Referenz durch (Wiring-Guard: ohne dieses Durchreichen wäre das
+    delta-basierte Pumpen-Kriterium der Hörordnung §6 eine Phantom-Norm;
+    2026-11-08).
+    """
+    mod = types.ModuleType("backend.core.inviting_sound_gate")
+
+    class _Res:
+        passed = True
+        max_asper_in_voice = 0.01
+        sharpness_jump_max = 0.1
+        details = {"sharpness_jump_raw_max": 0.2, "exempted_jumps": 3, "failures": []}
+        max_vacil = 0.03
+        max_vacil_input = 0.02
+        fluctuation_regression = False
+        fatigue_abort = False
+        n_windows = 4
+
+    _captured: dict = {}
+
+    def _fake_check_inviting(*a: object, **k: object) -> _Res:  # type: ignore[valid-type]
+        _captured.update(k)
+        return _Res()
+
+    mod.check_inviting_gate = _fake_check_inviting
+    monkeypatch.setitem(sys.modules, "backend.core.inviting_sound_gate", mod)
+    restorer = UnifiedRestorerV3.__new__(UnifiedRestorerV3)
+    restorer._restoration_context = {"singing_mask": None}
+    _ref = np.zeros(1000, dtype=np.float32)
+    ctx = restorer._run_inviting_gate_measure(np.zeros(1000, dtype=np.float32), 48000, None, reference_audio=_ref)
+    assert ctx is not None
+    assert ctx["passed"] is True
+    assert ctx["n_windows"] == 4
+    assert ctx["exempted_jumps"] == 3
+    assert ctx["max_vacil"] == 0.03
+    assert ctx["fluctuation_regression"] is False
+    # Wiring-Guard: die Referenz MUSS als reference_audio beim Gate ankommen.
+    assert _captured.get("reference_audio") is _ref
+
+    # Ohne Referenz: None durchreichen (diagnostischer Modus).
+    _captured.clear()
+    ctx2 = restorer._run_inviting_gate_measure(np.zeros(1000, dtype=np.float32), 48000, None)
+    assert ctx2 is not None
+    assert _captured.get("reference_audio") is None
+
+
+# ============================================================
+# WIRING-GUARD (2026-10-07) — Mechanik getestet, Verdrahtung nicht
+# ============================================================
+# Befund: Die Tests oben pruefen die ENTSCHEIDUNG
+# (_should_run_end_gate_cascade) und die Mess-Helfer. Die VERDRAHTUNG — also
+# dass der Chunked-Pfad die Flags ueberhaupt setzt und der song-globale Tail
+# ihn wirklich aufruft — war ungeprueft: faellt
+# `_chunk_kwargs["_chunked_tail_skip"]` weg, bleiben ALLE Tests gruen und die
+# song-globale Analytik laeuft wieder je Chunk (genau der Zustand, den P0-1
+# beheben soll). Diese beiden Tests pinnen die Verdrahtung.
+
+
+def _uv3_source() -> str:
+    from pathlib import Path as _P
+
+    root = _P(__file__).resolve().parents[2]
+    return (root / "backend" / "core" / "unified_restorer_v3.py").read_text(encoding="utf-8")
+
+
+def test_restore_chunked_wires_the_deferral_flags() -> None:
+    """Der Chunked-Pfad MUSS beide Deferral-Flags setzen (Konsum- und Setz-Seite)."""
+    src = _uv3_source()
+    # Konsum-Seite (restore()): beide Flags werden aus kwargs gelesen.
+    assert 'kwargs.pop("_chunked_tail_skip", False)' in src
+    assert 'kwargs.pop("_chunked_last", False)' in src
+    # Setz-Seite (Chunked-Pfad): Skip fuer alle Chunks, „last" pro Chunk.
+    assert '_chunk_kwargs["_chunked_tail_skip"] = True' in src
+    assert '_chunk_kwargs["_chunked_last"] = False' in src
+    assert '_chunk_kwargs["_chunked_last"] = i == len(chunks) - 1' in src
+
+
+def test_song_level_tail_runs_in_the_chunked_assembly_path() -> None:
+    """Der song-globale Tail MUSS im Rumpf von _restore_chunked aufgerufen werden."""
+    src = _uv3_source()
+    assert "def _restore_chunked" in src
+    start = src.index("def _restore_chunked")
+    rest = src[start + 1 :]
+    end = rest.find("\n    def ")
+    body = rest[: end if end > 0 else len(rest)]
+    assert len(body) > 1000, "Rumpf nicht gefunden — Anker 'def _restore_chunked' pruefen"
+    # Der End-Gate-Tail fuer den assemblierten Song MUSS dort stehen (sonst
+    # waere P0-1 wieder inert, ohne dass ein Test fehlschlaegt).
+    assert "_run_song_level_end_gate(" in body, (
+        "Kein song-globaler End-Gate-Aufruf im Chunked-Pfad — P0-1 waere wieder inert"
+    )
+    assert "p0_1_song_end_gate_applied" in body

@@ -1,0 +1,40 @@
+{
+  "schema": "release_candidates_v1",
+  "seed": 20261027,
+  "smoke": false,
+  "seconds": 2.0,
+  "corpus": ["test_audio/tape/cassette_1980s_wow.wav"],
+  "kandidaten": [
+    {
+      "key": "bw_v5",
+      "flag": "use_bw_v5",
+      "defizit": "D-K1-5",
+      "stufe": "HF-Rekonstruktion",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 1,
+        "n_fehler": 0,
+        "mean_rms_delta_db": 2.87,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 0.588
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "material": "vinyl",
+          "status": "ok",
+          "finite": true,
+          "peak_out": 0.9120108485221863,
+          "rms_delta_db": 2.8703988466723613,
+          "noise_floor_delta_db": 1.2239954678332268,
+          "stereo_corr_before": 0.6632505902843502,
+          "stereo_corr_after": 0.5884455542484701,
+          "clip_ratio": 0.0
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/bw_v5/hoer_manifest.json",
+      "n_trials": 1
+    }
+  ],
+  "hinweis": "Kein Flag-Flip durch dieses Skript (§v10.802 (copilot-instructions.md)); Freigabe erst nach Hör-Verdikt + Wohlklang-Vertrag (Belege 1–6, .github/WOHLKLANG_CLAIMS.md)."
+}

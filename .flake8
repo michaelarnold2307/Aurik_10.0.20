@@ -1,0 +1,77 @@
+[flake8]
+# ==========================================================================
+# Flake8-Konfiguration — Aurik 9.10.46 (SOTA Code-Qualität, März 2026)
+# ==========================================================================
+
+max-line-length = 120
+max-doc-length = 140
+max-complexity = 15
+
+# Ausschlüsse (Verzeichnisse und Dateimuster)
+exclude =
+    .git,
+    .venv_aurik,
+    .venv,
+    __pycache__,
+    build,
+    dist,
+    models,
+    output_audio,
+    sessions,
+    logs,
+    data,
+    golden_samples,
+    chain_templates,
+    .eggs,
+    *.egg-info,
+    configs,
+    plugins/_vendor_aero,
+    plugins/_vendor_muq,
+    *.pyi
+
+# Ignorierte Regeln:
+# E203 — Leerzeichen vor ':' (Black-kompatibel)
+# W503 — Zeilenumbruch vor binärem Operator (Black-Stil)
+# E501 — Zeilenlänge (durch Black und max-line-length abgedeckt)
+# E731 — Lambda-Zuweisung (legitim in Callbacks)
+# E741 — Ambiguose Variablen (n, l, O legitim in Mathe/DSP)
+# W504 — Zeilenumbruch nach binärem Operator
+# N802 — CamelCase-Funktionsnamen: Qt-Override-Methoden (resizeEvent etc.) und DSP-Konvention — sync pyproject.toml
+# N806 — UPPER_CASE-Variablen in Funktionen: DSP-Konstanten-Konvention — sync pyproject.toml
+# N803 — Argument-Namen: sr, N, X — Audio/DSP-Konvention — sync pyproject.toml
+# SIM105 — contextlib.suppress: bewusstes try/except-Pattern — sync pyproject.toml
+# B008 — Funktionsaufruf als Default-Argument: bewusste Closure-Bindung in Qt-Callbacks
+# D400 — Docstring endet mit Punkt: UI-Methoden oft imperative Einzeiler
+# D401 — Imperativstil im Docstring: wird in UI/DSP-Code nicht erzwungen
+# D403 — Kapitalisierung erster Wort: wird in Qt-Methodennamen akzeptiert
+# D415 — Satzzeichen am Ende des Docstrings
+ignore = E203,W503,W504,E501,E731,E741,E402,W505,C901,E128,E712,E722,F401,F405,F541,F841,E241,E221,E201,E222,E226,N802,N806,N803,N812,N813,N814,SIM105,SIM115,B008,D400,D401,D403,D415,D100,D101,D102,D103,D105,D107,D200,D202,D205,D209,SIM102,B028,B007,D402,SIM114,SIM401,SIM901,SIM113,D301,B014,SIM910,SIM909,SIM904,SIM117
+
+# Pro-Datei-Ausnahmen
+per-file-ignores =
+    # __init__.py: wildcard imports und ungenuzte Importe für Re-Exports
+    __init__.py:F401,F403,F811
+    # Tests: assert und direktimporte
+    tests/*.py:S101,F401,N802,N803,F811
+    tests/**/*.py:S101,F401,N802,N803,F811
+    # aurik_exceptions: stabile öffentliche API-Namen seit v10 — N818 bewusst
+    backend/core/aurik_exceptions.py:N818
+    # Skripte: print() erlaubt
+    scripts/*.py:T201,F811
+    aurik_cli.py:T201
+    # Plugins: _release-Reimport in try/except-Chains erlaubt
+    plugins/*.py:F811
+    # UV3: historisch gewachsene 8000-Zeilen-Datei — vorbestehende Style-Warnungen
+    backend/core/unified_restorer_v3.py:D102,D107,D200,D205,B007,B015,B036,N811,N814,SIM102,SIM113,SIM114,SIM401,SIM901
+    # modern_window: intentionale Loop-Closures (Qt-Signal-Lambdas)
+    Aurik10/ui/modern_window.py:B023
+    # defect_scanner: intentionale Loop-Closures
+    backend/core/defect_scanner.py:B023
+    # Legacy-Code
+    backend/processing_pipeline_v8.py:ALL
+
+# Statistiken
+statistics = True
+count = True
+show-source = True
+show-pep8 = True

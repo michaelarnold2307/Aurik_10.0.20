@@ -1,0 +1,18 @@
+audit:
+  log_path: audit/conduct_enforcer_decisions.json
+epistemic:
+  min_confidence: 0.8
+metrics:
+  cas:
+    max_delta: 0.025
+  dcs:
+    max: 0.15
+  listener_diff:
+    max: 0.3
+musical_goals:
+  bass_kraft:
+    hard_stop_below: 0.7
+    threshold: 0.85
+  brillanz:
+    hard_stop_below: 0.7
+    threshold: 0.85

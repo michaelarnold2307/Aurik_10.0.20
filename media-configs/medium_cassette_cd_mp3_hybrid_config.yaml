@@ -1,0 +1,127 @@
+profile:
+  name: cassette_to_cd_to_mp3_medium_offline_stereo
+  medium: cassette_cd_mp3_hybrid
+  mode: offline
+  channels: stereo
+
+analysis:
+  segment_length_sec: 2.0
+  segment_overlap_sec: 0.5
+  decision_smoothing_sec: 14.0
+
+budgets:
+  artifact_budget: 0.10
+  identity_budget: 0.08
+  temporal_change_budget: 0.15
+  spectral_change_budget: 0.15
+  noise_change_budget: 0.08
+  stereo_change_budget: 0.08
+
+processing_order:
+  - declip
+  - wow_flutter_limited
+  - azimuth
+  - dropout_repair_hf
+  - codec_taming
+  - hiss_taming_optional
+  - sibilance
+  - stereo_guard
+  - finalize
+
+modules:
+
+  wow_flutter_limited:
+    detect:
+      wow_norm_min: 0.030
+      flutter_norm_min: 0.020
+      stereo_corr_min: 0.65
+    trial:
+      wow_strength_max: 0.20
+      flutter_strength_max: 0.12
+    commit:
+      min_anchor_gain: 0.020
+      forbid_warble_increase: true
+      forbid_pre_echo_increase: true
+      forbid_chorus: true
+
+  azimuth:
+    detect:
+      hf_coherence_warn: 0.55
+      hf_coherence_strong: 0.45
+      phase_slope_warn_rad_per_khz: 0.25
+      phase_slope_strong_rad_per_khz: 0.35
+    trial:
+      strength_warn: 0.40
+      strength_strong: 0.55
+    commit:
+      min_anchor_gain: 0.015
+      forbid_hf_phasiness: true
+
+  dropout_repair_hf:
+    detect:
+      hf_drop_strong_db: -10.0
+      min_duration_ms: 25
+    trial:
+      spectral_inpaint_wet: 1.0
+    commit:
+      min_anchor_gain: 0.010
+      forbid_tonal_islands: true
+
+  declip:
+    detect:
+      pct_samples_above_minus_0_2dbfs_warn: 0.5
+      pct_samples_above_minus_0_2dbfs_strong: 1.5
+      true_peak_warn_dbTP: -0.3
+    trial:
+      strength_warn: 0.20
+      strength_strong: 0.35
+      strength_max: 0.40
+    commit:
+      min_anchor_gain: 0.015
+      max_true_peak_dbTP: -1.0
+
+  codec_taming:
+    detect:
+      pre_echo_warn_db: -20
+      pre_echo_strong_db: -15
+      warble_energy_warn: 0.010
+      warble_energy_strong: 0.020
+    trial:
+      smoothing_strength: 0.15
+      hf_tilt_db_at_10k: -1.2
+    commit:
+      min_anchor_gain: 0.015
+      forbid_musical_noise_increase: true
+
+  hiss_taming_optional:
+    enabled: true
+    detect:
+      noise_floor_dbfs: -52.0
+      nonstationarity: 0.40
+    trial:
+      wet: 0.10
+      wet_max: 0.20
+    commit:
+      min_anchor_gain: 0.020
+      musical_noise_tolerance: 0.0
+      forbid_pumping_increase: true
+
+  sibilance:
+    detect:
+      spikiness_warn_db: 9.0
+      spikiness_strong_db: 12.0
+    trial:
+      resonance_strength: 0.15
+      deesser_wet: 0.12
+      deesser_wet_max: 0.20
+    commit:
+      min_anchor_gain: 0.010
+
+  stereo_guard:
+    mono_fold_max_regression_db: 0.0
+    hf_coherence_min_delta: -0.02
+
+finalize:
+  true_peak_guard:
+    enabled: true
+    target_dbTP: -1.0

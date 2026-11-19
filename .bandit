@@ -1,0 +1,14 @@
+[bandit]
+exclude_dirs =
+    /tests/,
+    /.venv/,
+    /.venv_*/,
+    /build/,
+    /dist/,
+    /visqol/,
+    /models/deepfilternet_v3_ii/
+
+skips = B101,B601,B603,B607
+
+[bandit.format]
+format = txt

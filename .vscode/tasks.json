@@ -1,0 +1,360 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "env": {
+      "TERM": "xterm-256color",
+      "TERMINFO": "/usr/share/terminfo",
+      "TERMINFO_DIRS": "/usr/share/terminfo:/lib/terminfo:/etc/terminfo",
+      "PYTHONWARNINGS": "ignore::RuntimeWarning:trio._core._multierror"
+    }
+  },
+  // ══════════════════════════════════════════════════════════════════════════
+  // AURIK TEST-TASK-STRATEGIE (Feb 2026)
+  //
+  // VS Code Test Explorer → echter Smoke-Slice mit harter Kappe
+  //   Konfiguriert in settings.json → python.testing.pytestArgs
+  //   Verhindert JSON-RPC-Testevent-Flood + ONNX-OOM-Absturz.
+  //
+  // Vollsuite → Terminal-Tasks hier (Strg+Shift+B):
+  //   Die Tasks laufen im integrierten Terminal, NICHT über den Extension-Host.
+  //   Kein JSON-RPC-Protokoll, kein Pipe-Overhead, kein VS Code-Absturz.
+  //
+  // Empfohlene Reihenfolge für tägliche Entwicklung:
+  //   1. "Unit-Tests" (schnell, immer) → Task; Test Explorer nur Smoke-Slice
+  //   2. "Integrations-Tests" (mittelschnell, nach Feature-Fertigstellung)
+  //   3. "Vollsuite parallel" (langsam, vor Commit/PR) → ausschließlich Terminal
+  // ══════════════════════════════════════════════════════════════════════════
+  "tasks": [
+    // ── 1. SCHNELL+STABIL: tests/unit chunked-safe (alle Chunks) ───────────
+    {
+      "label": "pytest: Unit-Tests (tests/unit/, schnell)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=12 AURIK_SWAP_MB=2048 AURIK_BATCH_FILES=12 AURIK_CHUNK_LIMIT=0 \"${workspaceFolder}/run_tests_chunked_safe.sh\" tests/unit --timeout=30 --tb=short -qq -o console_output_style=count --maxfail=3 -x",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "never",
+        "panel": "dedicated",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 2. MITTEL: tests/ ohne e2e und ml-Marker ────────────────────────
+    {
+      "label": "pytest: Integrations-Tests (ohne E2E/ML)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=12 AURIK_SWAP_MB=3072 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=250 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests -m \"not e2e and not ml\" -p no:xdist --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=30 --tb=short -q --disable-warnings --no-header --maxfail=20 --ignore=tests/unit",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 3. VOLLSUITE: 2 Worker im Terminal (kein VS Code Extension-Host) ─
+    {
+      "label": "pytest: Vollsuite (2 Worker, Terminal — NICHT für Test Explorer)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=14 AURIK_SWAP_MB=4096 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=220 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests -n 2 --dist=loadfile --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=60 --tb=line -q --disable-warnings --no-header --maxfail=3 -x",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 3b. VOLLSUITE STABIL: seriell + cgroup-Isolation (empfohlen bei VS-Code-Crash) ─
+    {
+      "label": "pytest: Vollsuite STABIL (seriell, low-overhead)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=16 AURIK_SWAP_MB=4096 AURIK_BATCH_FILES=8 AURIK_OOM_RETRY_MEM_GB=20 AURIK_OOM_RETRY_SWAP_MB=6144 AURIK_CHUNK_LIMIT=0 AURIK_ULTRA_QUIET=1 \"${workspaceFolder}/run_tests_chunked_safe.sh\" tests --timeout=45 --tb=short -qq -o console_output_style=count --maxfail=3 -x --ignore=tests/unit/test_phase23_shared_deadline.py",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 3c. VOLLSUITE ULTRA-STABIL: aggressiver Crash-Schutz für VS Code ─
+    {
+      "label": "pytest: Vollsuite ULTRA-STABIL (max Crash-Schutz)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=12 AURIK_SWAP_MB=2048 AURIK_BATCH_FILES=4 AURIK_OOM_RETRY_MEM_GB=16 AURIK_OOM_RETRY_SWAP_MB=4096 AURIK_CHUNK_LIMIT=0 AURIK_ULTRA_QUIET=1 AURIK_STREAM_TO_TERMINAL=0 \"${workspaceFolder}/run_tests_chunked_safe.sh\" tests --timeout=45 --tb=short -qq -o console_output_style=count --maxfail=3 -x --ignore=tests/unit/test_phase23_shared_deadline.py",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "pytest: OOM-Isolat phase23_shared_deadline",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=24 AURIK_SWAP_MB=8192 \"${workspaceFolder}/run_tests_safe.sh\" tests/unit/test_phase23_shared_deadline.py --timeout=60 --tb=short -qq -o console_output_style=count -x",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 4. SCHNELL: Musical Goals speziell ─────────────────────────────
+    {
+      "label": "pytest: Musical Goals (tests/musical_goals/ + tests/unit/)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=12 AURIK_SWAP_MB=3072 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=250 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests/musical_goals tests/unit -p no:xdist --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=30 --tb=short -q --disable-warnings --no-header",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 4b. CHUNK A: Unit + Musical Goals (stabil, schnell) ───────────
+    {
+      "label": "pytest: Chunk A (unit + musical_goals)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=12 AURIK_SWAP_MB=3072 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=250 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests/unit tests/musical_goals -p no:xdist --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=30 --tb=line -q --disable-warnings --no-header --maxfail=5",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 4c. CHUNK B: Integration + Normative ──────────────────────────
+    {
+      "label": "pytest: Chunk B (integration + normative)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=14 AURIK_SWAP_MB=4096 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=240 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests/integration tests/normative -p no:xdist -m \"not e2e and not ml\" --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=45 --tb=line -q --disable-warnings --no-header --maxfail=5",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "pytest: Full Spec Gate (integration + normative, ungefiltert)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=16 AURIK_SWAP_MB=4096 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=300 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests/integration tests/normative -p no:xdist --run-heavy-tests --run-gui-tests --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=90 --tb=line -q --disable-warnings --no-header --show-capture=no --maxfail=5",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "pytest: Spec Gate CORE (ohne AMRB)",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/scripts/pytest_clean.sh\" tests/integration tests/normative -p no:xdist --run-heavy-tests --run-gui-tests -m \"not amrb and not competitive\" --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=90 --tb=line -q --disable-warnings --no-header --show-capture=no --maxfail=5",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "pytest: AMRB Gate (separat, langlaufend)",
+      "type": "shell",
+      "command": "QT_QPA_PLATFORM=offscreen AURIK_MEM_GB=16 AURIK_SWAP_MB=4096 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=250 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests/normative/test_amrb_ci_gate.py -p no:xdist --run-heavy-tests --run-gui-tests --timeout=600 --tb=short -q --disable-warnings --no-header --show-capture=no --maxfail=1",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "pytest: Competitive Gate (separat, langlaufend)",
+      "type": "shell",
+      "command": "AURIK_COMPETITIVE_BENCHMARK_TIMEOUT_S=660 AURIK_COMPETITIVE_BENCHMARK_GRACE_S=75 QT_QPA_PLATFORM=offscreen AURIK_MEM_GB=16 AURIK_SWAP_MB=4096 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=250 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests/normative/test_competitive_ci_gate.py -p no:xdist --run-heavy-tests --run-gui-tests --timeout=1200 --tb=short -q --disable-warnings --no-header --show-capture=no --maxfail=1",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 4d. CHUNK C: Restliche Tests ohne ML/E2E (Top-Level) ──────────
+    {
+      "label": "pytest: Chunk C (restliche tests/, ohne unit+goals+integration)",
+      "type": "shell",
+      "command": "while IFS= read -r -d '' d; do if find \"$d\" -type f -name \"test_*.py\" -print -quit | grep -q .; then \"${workspaceFolder}/.venv_aurik/bin/python\" -m pytest \"$d\" -p no:xdist -m \"not e2e and not ml\" --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --collect-only -q >/dev/null 2>&1; rc=$?; if [[ $rc -eq 5 ]]; then continue; elif [[ $rc -ne 0 ]]; then exit $rc; fi; AURIK_MEM_GB=16 AURIK_SWAP_MB=4096 AURIK_BATCH_FILES=8 AURIK_OOM_RETRY_MEM_GB=20 AURIK_OOM_RETRY_SWAP_MB=6144 AURIK_CHUNK_LIMIT=0 \"${workspaceFolder}/run_tests_chunked_safe.sh\" \"$d\" -p no:xdist -m \"not e2e and not ml\" --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=45 --tb=short -qq -o console_output_style=count --maxfail=5 || exit $?; fi; done < <(find \"${workspaceFolder}/tests\" -mindepth 1 -maxdepth 1 -type d ! -name unit ! -name musical_goals ! -name integration ! -name normative -print0 | sort -z)",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 4e. CHUNK HEAVY: ML/Slow/E2E nur bewusst manuell ──────────────
+    {
+      "label": "pytest: Chunk HEAVY (ml/slow/e2e, manuell)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=16 AURIK_SWAP_MB=6144 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=180 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests -p no:xdist -m \"ml or slow or e2e\" --run-heavy-tests --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=90 --tb=line -q --disable-warnings --no-header --maxfail=3 -x",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 4f. REAL-AUDIO-GATE: UAT R5-R12 auf echter MP3-Fixture ─────────
+    {
+      "label": "pytest: Real-Audio-Gate (UAT R5-R12)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=16 AURIK_SWAP_MB=6144 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=180 \"${workspaceFolder}/scripts/pytest_clean.sh\" tests/test_uat_acceptance_criteria.py -p no:xdist -k \"test_restoration_criteria and (R5 or R6 or R7 or R8 or R9 or R10 or R11 or R12)\" --run-heavy-tests --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=180 --tb=short -v --disable-warnings --no-header",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 5. RAUCH-TEST: Chunked + crash-sicherer Unit-Slice ─────────────────
+    {
+      "label": "pytest: Smoke-Test (50 Tests, maxfail=3)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=12 AURIK_SWAP_MB=2048 AURIK_BATCH_FILES=12 AURIK_CHUNK_LIMIT=1 \"${workspaceFolder}/run_tests_chunked_safe.sh\" tests/unit --timeout=20 --tb=line -qq -o console_output_style=count --maxfail=3 -x",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 5b. WORLDCLASS KPI: Dashboard + Release-Gate ────────────────────────
+    {
+      "label": "worldclass: KPI Dashboard",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv_aurik/bin/python\" scripts/worldclass_kpi_dashboard.py --repo-root . --threshold-config config/worldclass_kpi_thresholds.json --out-dir reports/worldclass",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "worldclass: Release Gate",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv_aurik/bin/python\" scripts/worldclass_release_gate.py --dashboard-json reports/worldclass/worldclass_kpi_dashboard.json",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    {
+      "label": "worldclass: Autopilot Pipeline (E2E)",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv_aurik/bin/python\" scripts/worldclass_autopilot_pipeline.py --repo-root . --create-plan --execute-wp1 --max-cases 5 --max-seconds 8 --ml-runtime-budget-s 20",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true,
+        "group": "tests"
+      }
+    },
+    // ── 6. EINZELNE DATEI: aktive Editor-Datei testen ───────────────────
+    {
+      "label": "pytest: Aktive Test-Datei (Editor)",
+      "type": "shell",
+      "command": "AURIK_MEM_GB=10 AURIK_SWAP_MB=2048 AURIK_STREAM_TO_TERMINAL=0 AURIK_TERMINAL_LINE_BUDGET=200 \"${workspaceFolder}/scripts/pytest_clean.sh\" \"${file}\" -p no:xdist --override-ini=\"addopts=--strict-markers --import-mode=importlib\" --timeout=30 --tb=short -v --disable-warnings --no-header",
+      "args": [],
+      "isBackground": false,
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    }
+  ]
+}

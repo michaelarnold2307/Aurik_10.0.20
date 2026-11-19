@@ -1,0 +1,21 @@
+{
+  "cases": [
+    {
+      "audio_path": "test_audio/Testkünstlerin (Schlager) - 30 Sekunden.mp3",
+      "case_id": "real_schlager_001",
+      "material": "mp3_low",
+      "mode": "restoration",
+      "restorability_bin": "40to70",
+      "vocal_focus": true
+    },
+    {
+      "audio_path": "test_audio/Testkünstlerin (Schlager) - Du wolltest nur ein Abenteuer, aber ich suchte einen Freund.mp3",
+      "case_id": "real_schlager_002",
+      "material": "mp3_low",
+      "mode": "restoration",
+      "restorability_bin": "40to70",
+      "vocal_focus": true
+    }
+  ],
+  "description": "Reale Stereo-Schlager-Vokal-Samples (echtes Aurik-Zielmaterial) fuer ehrliche Confidence-Revalidierung statt synthetischer Mono-Platzhalter."
+}

@@ -1,0 +1,11 @@
+{
+  "author": "Aurik SDK",
+  "dependencies": ["numpy>=1.21"],
+  "description": "Beispiel-Plugin: Gain-Anpassung mit dB-Steuerung",
+  "entry_point": "mein_plugin.py:ExamplePlugin",
+  "license": "MIT",
+  "min_aurik_version": "10.0.0",
+  "name": "example-plugin",
+  "tags": ["example", "gain", "tutorial"],
+  "version": "1.0.0"
+}

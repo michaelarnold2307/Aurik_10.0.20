@@ -1,0 +1,13 @@
+{
+  "schema": "aurik.schadensbewertung/1",
+  "datum": "2026-11-16",
+  "lauf": "kontext_beweis_v5_3_titel_ohne_kanaele",
+  "befund": "KONTEXT-BEWEIS: v5 (3 Titel, OHNE Kanäle) zeigt Jets-vinyl -0,203/-0,551 — IDENTISCH zu v2 (Kanäle aktiv) und v4 (Sperre/Bypass). Die Witness-Köpfe sind vollständig entlastet: Die Jets-vinyl-Verschlechterung stammt aus der Bestands-Pipeline im 3-Titel-Lauf-Kontext (1-Titel-Kontrolle: -0,060/+0,101). KORREKTUR der Ablations-Interpretation vom 2026-11-15 — DRT-12-Kontroll-Bedingung deckte den Fehlschluss auf. NAECHSTER §V7-Schritt: Kontext-Isolation der Bestands-Pipeline (3-Titel- vs. 1-Titel-Prozess).",
+  "quellen": [
+    "study_stimuli/sinn_beweis_neu_v5/",
+    "study_stimuli/sinn_beweis_neu_v4/",
+    "study_stimuli/sinn_beweis_neu_v2/bewertung.json"
+  ],
+  "status": "korrigiert_durch_input_gleichheits_befund",
+  "korrektur": "Die Interpretation „3-Titel-Kontext verursacht die Verschlechterung\" war ein Input-Artefakt: mit bit-identischem Schaden ist Solo = 3-Titel (-0,203/-0,551). Die Kanaele UND die Bestands-Pipeline sind entlastet; der Unterschied kam vom seed-abhaengigen Schaden-Input."
+}

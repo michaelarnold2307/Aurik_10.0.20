@@ -1,0 +1,15 @@
+{
+  "schema": "aurik.ab_stats/1",
+  "n_verdikte": 6,
+  "n_entscheidend": 6,
+  "gleichstaende": 0,
+  "siege_a": 6,
+  "siege_b": 0,
+  "siegquote_a": 1.0,
+  "p_wert_vorzeichen_test": 0.03125,
+  "signifikant": true,
+  "label_a": "Kandidat A",
+  "label_b": "Kandidat B",
+  "entscheidung": "M5 Lücken-Synthese: lineare Interpolation vs. vocos-Finetune-Resynthese",
+  "quelle": "scripts/hoer_entscheidung.py"
+}

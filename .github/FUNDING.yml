@@ -1,0 +1,7 @@
+# GitHub Sponsors und Spendenlinks für Aurik 9
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+github: []            # GitHub-Sponsors-Benutzername hier eintragen, z. B. [michael-arnold-audio]
+ko_fi: ""             # Ko-fi-Benutzername hier eintragen
+custom:
+  - "https://paypal.me/aurik9"   # anpassen oder entfernen

@@ -1,0 +1,11 @@
+{
+  "schema": "aurik.hoerproben_witness_kopf/1",
+  "datum": "2026-11-15",
+  "seed": 42,
+  "klassen": {
+    "transport_bump": {
+      "paare": 1,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/transport_bump"
+    }
+  }
+}

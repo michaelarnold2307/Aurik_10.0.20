@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "all_resolved": false,
+    "hf_token_set": false,
+    "targets_checked": 2,
+    "token_missing_for_private": true,
+    "token_required_targets": [
+      "versa",
+      "flow_matching"
+    ],
+    "unresolved": 2
+  },
+  "targets": {
+    "flow_matching": {
+      "detail": "onnx_toolchain_import_failed:TypeError:ufunc 'isnan' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''|numpy=1.26.4|ml_dtypes=0.5.4|onnx=1.20.1",
+      "hf_token_set": false,
+      "source": "models/.dropin/flow_matching_src_1.pth",
+      "status": "blocked"
+    },
+    "versa": {
+      "detail": "no local/downloadable PT candidate | https://huggingface.co/shijt2020/VERSA/resolve/main/versa_mos.pt::download_failed:http_401_missing_token_set_HF_TOKEN_or_HUGGINGFACE_TOKEN",
+      "hf_token_set": false,
+      "status": "missing"
+    }
+  }
+}

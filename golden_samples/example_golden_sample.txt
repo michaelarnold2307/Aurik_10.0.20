@@ -1,0 +1,1 @@
+Dies ist ein Platzhalter für ein Golden Sample. Hier können Audiodateien oder Metadaten für die SOTA-Validierung abgelegt werden.

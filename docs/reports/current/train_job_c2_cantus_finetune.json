@@ -1,0 +1,28 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "fine_tune-20261110T230105Z-b06a07",
+  "name": "c2_cantus_finetune",
+  "phase": "fine_tune",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss --epochs=30 --batch-size 2 --grad-accum 4 --data data/cantus_pairs/manifest.jsonl --resume models/cantus/checkpoint_latest.pt",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss --epochs=30 --batch-size 2 --grad-accum 4 --data data/cantus_pairs/manifest.jsonl --resume models/cantus/checkpoint_latest.pt",
+  "timeout_s": 43200.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 20159.7,
+      "timed_out": false,
+      "output_tail": "lugin: ONNX model geladen: fcpe.onnx (provider=CPUExecutionProvider)\nINFO backend.core.plugin_lifecycle_manager: PluginLifecycleManager: initialisiert (RAM eviction Schwelle 75 %)\nINFO backend.core.dsp.fcpe_torch_rocm: §SOTA-ML-V7 FCPE-Kern auf ROCm geladen (Radeon RX 7900 XTX)\nINFO __main__: epoch=1/30 val=4.6824 (best=inf)\nINFO __main__: epoch=2/30 val=4.2447 (best=4.6824)\nINFO __main__: epoch=3/30 val=4.7348 (best=4.2447)\nINFO __main__: epoch=4/30 val=3.9076 (best=4.2447)\nINFO __main__: epoch=5/30 val=4.4319 (best=3.9076)\nINFO __main__: epoch=6/30 val=4.0566 (best=3.9076)\nINFO __main__: epoch=7/30 val=4.4681 (best=3.9076)\nINFO __main__: epoch=8/30 val=4.1963 (best=3.9076)\nINFO __main__: epoch=9/30 val=3.7397 (best=3.9076)\nINFO __main__: epoch=10/30 val=4.1684 (best=3.7397)\nINFO __main__: epoch=11/30 val=4.0910 (best=3.7397)\nINFO __main__: epoch=12/30 val=4.4502 (best=3.7397)\nINFO __main__: epoch=13/30 val=4.1957 (best=3.7397)\nINFO __main__: epoch=14/30 val=4.0614 (best=3.7397)\nINFO __main__: epoch=15/30 val=4.8373 (best=3.7397)\nINFO __main__: epoch=16/30 val=4.7658 (best=3.7397)\nINFO __main__: epoch=17/30 val=4.0424 (best=3.7397)\nINFO __main__: epoch=18/30 val=4.4548 (best=3.7397)\nINFO __main__: epoch=19/30 val=4.0702 (best=3.7397)\nINFO __main__: epoch=20/30 val=4.2073 (best=3.7397)\nINFO __main__: epoch=21/30 val=4.4687 (best=3.7397)\nINFO __main__: epoch=22/30 val=4.2516 (best=3.7397)\nINFO __main__: epoch=23/30 val=4.2501 (best=3.7397)\nINFO __main__: epoch=24/30 val=4.3251 (best=3.7397)\nINFO __main__: epoch=25/30 val=4.2027 (best=3.7397)\nINFO __main__: epoch=26/30 val=3.6314 (best=3.7397)\nINFO __main__: epoch=27/30 val=3.9062 (best=3.6314)\nINFO __main__: epoch=28/30 val=4.4924 (best=3.6314)\nINFO __main__: epoch=29/30 val=3.6633 (best=3.6314)\nINFO __main__: epoch=30/30 val=3.5381 (best=3.6314)\nINFO __main__: Fertig: best_val=3.5381 — Report: /media/michael/Software 4TB/Aurik_Standalone/models/cantus/train_report_fine_tune.json\nLoading weights from local directory\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_cantus.py --phase=fine_tune --preset=full --singmos-loss --epochs=30 --batch-size 2 --grad-accum 4 --data data/cantus_pairs/manifest.jsonl --resume models/cantus/checkpoint_latest.pt"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "cantus_dit.onnx": "ea2556b23dd511bb8e73eb231efd06bfdfd3128f4bf941f3550bdf5b6d7820cc",
+    "checkpoint_best.pt": "25981eef425fa7688e31cc059f11c192299081395a4967c50bca33af90f872e9",
+    "checkpoint_latest.pt": "c6132ce8b231e80db7a28b15cd14918d70dd657ed473281fd2e589b468f8957c"
+  },
+  "ergebnis": "erfolgreich"
+}

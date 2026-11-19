@@ -1,0 +1,15 @@
+{
+  "allowedTools": [],
+  "assets": [],
+  "description": "Thank you for your interest in contributing to Aurik 9! This document provides guidelines and instructions for contributing to this project.",
+  "entry": "SKILL.md",
+  "id": "contributing",
+  "name": "CONTRIBUTING",
+  "priority": 0,
+  "triggers": {
+    "commands": [],
+    "fileTypes": [],
+    "promptPatterns": []
+  },
+  "version": "0.0.0"
+}

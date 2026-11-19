@@ -1,0 +1,14 @@
+{
+  "schema": "aurik.witness_kopf_gate/1",
+  "datum": "2026-11-15",
+  "seed": 42,
+  "klasse": "sibilance",
+  "holdout_titel": "Elke Best - Träumer (Dreamer) 1981 Digital Source audio 320 ",
+  "checkpoint": "models/klassen_koepfe/witness_sibilance_best.pt",
+  "n_regionen": 200,
+  "n_uebersprungen": 1,
+  "q_median": 1.1469,
+  "q_anteil_ge_0_5": 1.0,
+  "never_worsen_anteil": 0.9598,
+  "gate_bestanden": true
+}

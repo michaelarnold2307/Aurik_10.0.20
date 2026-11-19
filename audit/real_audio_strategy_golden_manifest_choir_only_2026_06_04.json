@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "accepted_causes": [
+        "high_freq_noise",
+        "riaa_curve_error",
+        "bandwidth_loss",
+        "hf_remanence_loss"
+      ],
+      "case_id": "real_vocal_choir_breaths_hiss",
+      "cause_top_k": 5,
+      "description": "Vocal choir hiss must route to gentle tonal/noise repair without crackle or studio vocal enhancement.",
+      "forbidden_phases": [
+        "phase_09_crackle_removal",
+        "phase_35_multiband_compression",
+        "phase_42_vocal_enhancement"
+      ],
+      "material_type": "vinyl",
+      "max_seconds": 20.0,
+      "ordered_before": [],
+      "path": "test_audio/vocals/choir_breaths.wav",
+      "required_phases": [
+        "phase_04_eq_correction",
+        "phase_06_frequency_restoration",
+        "phase_03_denoise"
+      ]
+    }
+  ],
+  "description": "Real-audio Golden-Set annotations for choir vocal-contract validation.",
+  "schema_version": 1,
+  "target_sample_rate": 48000,
+  "thresholds": {
+    "max_forbidden_phase_violations": 0,
+    "max_order_violations": 0,
+    "max_runtime_factor": 1.5,
+    "min_cause_topk_accuracy": 1.0,
+    "min_phase_precision": 1.0,
+    "min_phase_recall": 1.0
+  }
+}

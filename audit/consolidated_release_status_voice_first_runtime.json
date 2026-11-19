@@ -1,0 +1,21 @@
+{
+  "contradiction": false,
+  "coverage_baseline_ok": true,
+  "coverage_baseline_path": "audit/voice_first_guard_coverage_manifest_baseline.json",
+  "coverage_drift_findings": [],
+  "coverage_drift_ok": true,
+  "coverage_manifest_ok": true,
+  "coverage_manifest_path": "audit/voice_first_guard_coverage_manifest.json",
+  "final_ready": true,
+  "latest_source": "runtime",
+  "reasons": [],
+  "release_ready": true,
+  "release_report_path": "audit/release_report_voice_first_runtime.json",
+  "release_timestamp": "2026-05-20T23:16:40.433850",
+  "required_passed": 3,
+  "required_total": 3,
+  "runtime_compliance_ok": true,
+  "runtime_report_path": "audit/runtime_spec_report_voice_first_runtime.json",
+  "runtime_timestamp": "2026-05-21T04:17:53.656465",
+  "timestamp": "2026-05-21T04:17:53.719698"
+}

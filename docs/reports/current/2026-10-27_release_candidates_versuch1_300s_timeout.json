@@ -1,0 +1,329 @@
+{
+  "schema": "release_candidates_v1",
+  "seed": 20261027,
+  "smoke": false,
+  "seconds": 20.0,
+  "corpus": [
+    "test_audio/tape/cassette_1980s_wow.wav",
+    "test_audio/tape/reel_1940s_dropout.wav",
+    "test_audio/vinyl/jazz_1950s_scratched.wav"
+  ],
+  "kandidaten": [
+    {
+      "key": "scnet",
+      "flag": "use_scnet_music",
+      "defizit": "D-K0-5",
+      "stufe": "Separation (4Stems)",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 0,
+        "n_fehler": 3,
+        "mean_rms_delta_db": null,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 1.0,
+        "fallback_count": 0,
+        "flag_freigabe": "offen (Hör-Gate ausstehend)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_scnet_music)"
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_scnet_music)"
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_scnet_music)"
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/scnet/hoer_manifest.json",
+      "n_trials": 0
+    },
+    {
+      "key": "sgmse",
+      "flag": "use_sgmse_musik",
+      "defizit": "D-K0-3",
+      "stufe": "Denoise/Dereverb",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 0,
+        "n_fehler": 3,
+        "mean_rms_delta_db": null,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 1.0,
+        "fallback_count": 0,
+        "flag_freigabe": "offen (Hör-Gate ausstehend)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_sgmse_musik)"
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_sgmse_musik)"
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_sgmse_musik)"
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/sgmse/hoer_manifest.json",
+      "n_trials": 0
+    },
+    {
+      "key": "bigvgan_f3",
+      "flag": "use_bigvgan_f3_studio",
+      "defizit": "D-K0-1/D-K2-3",
+      "stufe": "Studio-Finisher",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 0,
+        "n_fehler": 3,
+        "mean_rms_delta_db": null,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 1.0,
+        "fallback_count": 0,
+        "flag_freigabe": "offen (Hör-Gate ausstehend)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_bigvgan_f3_studio)"
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_bigvgan_f3_studio)"
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_bigvgan_f3_studio)"
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/bigvgan_f3/hoer_manifest.json",
+      "n_trials": 0
+    },
+    {
+      "key": "bw_v5",
+      "flag": "use_bw_v5",
+      "defizit": "D-K1-5",
+      "stufe": "HF-Rekonstruktion",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 0,
+        "n_fehler": 3,
+        "mean_rms_delta_db": null,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 1.0,
+        "fallback_count": 0,
+        "flag_freigabe": "offen (Hör-Gate ausstehend)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_bw_v5)"
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_bw_v5)"
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_bw_v5)"
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/bw_v5/hoer_manifest.json",
+      "n_trials": 0
+    },
+    {
+      "key": "wf4",
+      "flag": "use_wf4_warp_head",
+      "defizit": "D-K4-7",
+      "stufe": "Warp-Schätzung",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 0,
+        "n_fehler": 3,
+        "mean_rms_delta_db": null,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 1.0,
+        "fallback_count": 0,
+        "flag_freigabe": "offen (Hör-Gate ausstehend)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_wf4_warp_head)"
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_wf4_warp_head)"
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_wf4_warp_head)"
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/wf4/hoer_manifest.json",
+      "n_trials": 0
+    },
+    {
+      "key": "tp_v2",
+      "flag": "use_tp_v2_phase",
+      "defizit": "D-K4-8",
+      "stufe": "Phasenschätzung",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 0,
+        "n_fehler": 3,
+        "mean_rms_delta_db": null,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 1.0,
+        "fallback_count": 0,
+        "flag_freigabe": "offen (Hör-Gate ausstehend)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_tp_v2_phase)"
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_tp_v2_phase)"
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_tp_v2_phase)"
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/tp_v2/hoer_manifest.json",
+      "n_trials": 0
+    },
+    {
+      "key": "rt60",
+      "flag": "use_rt60_regressor",
+      "defizit": "D-K4-10",
+      "stufe": "Dereverb-RT60",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 0,
+        "n_fehler": 3,
+        "mean_rms_delta_db": null,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 1.0,
+        "fallback_count": 0,
+        "flag_freigabe": "offen (Hör-Gate ausstehend)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_rt60_regressor)"
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_rt60_regressor)"
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_rt60_regressor)"
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/rt60/hoer_manifest.json",
+      "n_trials": 0
+    },
+    {
+      "key": "aspade",
+      "flag": "use_aspade_declipper",
+      "defizit": "D-K4-1",
+      "stufe": "Declipper",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 0,
+        "n_fehler": 3,
+        "mean_rms_delta_db": null,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 1.0,
+        "fallback_count": 0,
+        "flag_freigabe": "offen (Hör-Gate ausstehend)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_aspade_declipper)"
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_aspade_declipper)"
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_aspade_declipper)"
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/aspade/hoer_manifest.json",
+      "n_trials": 0
+    },
+    {
+      "key": "tf_gridnet",
+      "flag": "use_tf_gridnet_quality",
+      "defizit": "D-K4-2",
+      "stufe": "Vollband-Denoise",
+      "status": "gemessen",
+      "summary": {
+        "n_ok": 0,
+        "n_fehler": 3,
+        "mean_rms_delta_db": null,
+        "max_clip_ratio": 0.0,
+        "min_stereo_corr_after": 1.0,
+        "fallback_count": 0,
+        "flag_freigabe": "offen (Hör-Gate ausstehend)"
+      },
+      "cases": [
+        {
+          "clip": "test_audio/tape/cassette_1980s_wow.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_tf_gridnet_quality)"
+        },
+        {
+          "clip": "test_audio/tape/reel_1940s_dropout.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_tf_gridnet_quality)"
+        },
+        {
+          "clip": "test_audio/vinyl/jazz_1950s_scratched.wav",
+          "status": "fehler",
+          "error": "Restore-Timeout nach 300s (flag=use_tf_gridnet_quality)"
+        }
+      ],
+      "hoer_manifest": "output/release_candidates/tf_gridnet/hoer_manifest.json",
+      "n_trials": 0
+    }
+  ],
+  "hinweis": "Kein Flag-Flip durch dieses Skript (§v10.802 (copilot-instructions.md)); Freigabe erst nach Hör-Verdikt + Wohlklang-Vertrag (Belege 1–6, .github/WOHLKLANG_CLAIMS.md)."
+}

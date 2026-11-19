@@ -1,0 +1,34 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#162447"/>
+      <stop offset="55%" stop-color="#1f4068"/>
+      <stop offset="100%" stop-color="#22a6b3"/>
+    </linearGradient>
+    <radialGradient id="disc" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f7fbff"/>
+      <stop offset="65%" stop-color="#c5d9ff"/>
+      <stop offset="100%" stop-color="#6f91d6"/>
+    </radialGradient>
+    <linearGradient id="restore" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#12c2e9"/>
+      <stop offset="100%" stop-color="#2af598"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#bg)"/>
+
+  <circle cx="512" cy="512" r="320" fill="#0f1e3b" opacity="0.45"/>
+  <circle cx="512" cy="512" r="268" fill="url(#disc)"/>
+  <circle cx="512" cy="512" r="166" fill="#243b73" opacity="0.32"/>
+  <circle cx="512" cy="512" r="54" fill="#ecf4ff"/>
+  <circle cx="512" cy="512" r="23" fill="#153160"/>
+
+  <path d="M512 244a268 268 0 0 1 189 78L433 590a268 268 0 0 1 79-346z" fill="url(#restore)" opacity="0.88"/>
+
+  <g transform="translate(720 282)">
+    <path d="M56 0l16 34 38 5-28 27 7 38-33-18-33 18 7-38-28-27 38-5z" fill="#ffd166"/>
+    <circle cx="0" cy="86" r="10" fill="#b8fff1"/>
+    <circle cx="110" cy="120" r="8" fill="#ffffff"/>
+  </g>
+</svg>

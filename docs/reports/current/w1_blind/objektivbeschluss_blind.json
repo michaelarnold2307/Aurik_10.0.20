@@ -1,0 +1,15 @@
+{
+  "schema": "aurik.objektivbeschluss/1",
+  "flag": "BIGVGAN_V2_HR_ACTIVATED",
+  "referenz_songs": 3,
+  "never_worsen": true,
+  "signifikant": true,
+  "defekt_fallbacks": 0,
+  "blind": true,
+  "messung": "docs/reports/current/w1_blind/trials.json",
+  "zielmetrik": {
+    "name": "W-1 HF-Reparatur (maskierte Baender) + Never-worsen RMS"
+  },
+  "vermerk": "Objektivbeschluss (B3) — blind ausgewertet auf anonymisierten Paaren (ab_harness), Schluessel erst nach Metrik-Auswertung aufgeloest. Hör-Vorbehalt.",
+  "blind_ausgewertet": true
+}

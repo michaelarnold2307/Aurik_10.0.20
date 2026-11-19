@@ -1,0 +1,28 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "d_k2_3-20261111T055124Z-a7c6c2",
+  "name": "vocos_48khz_finetune",
+  "phase": "d_k2_3",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_vocos_48khz_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/vocos_48khz/finetune",
+  "resume_befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_vocos_48khz_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/vocos_48khz/finetune",
+  "timeout_s": 21600.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 7.9,
+      "timed_out": false,
+      "output_tail": "2026-11-11 06:51:24,152 INFO __main__: D-K2-3 Finetune: musdb=data/musdb18hq epochs=30 device=cuda out=models/vocos_48khz/finetune\n2026-11-11 06:51:28,187 INFO __main__: Resume ab Epoche 30 aus models/vocos_48khz/finetune/checkpoint_latest.pt\n2026-11-11 06:51:31,390 INFO __main__: Manifest: degraded\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. nice -n 15 /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_vocos_48khz_finetune.py --musdb-root data/musdb18hq --epochs 30 --device cuda --out-dir models/vocos_48khz/finetune"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "checkpoint_latest.pt": "aa36414ccce5cc7abcf25f706b10c9cf508035d94071095b5bf92d17a51e5942",
+    "vocos_48khz_music_ft.onnx": "2dd1c726ff438e69373cf14a2afa1cb31484a9087073e7ad2973150c6d051371",
+    "vocos_48khz_music_ft.pt": "bccd5e24c6fc52d560aff25c021ef9afc068bfe592a1b62d0e85768429977676"
+  },
+  "ergebnis": "erfolgreich"
+}

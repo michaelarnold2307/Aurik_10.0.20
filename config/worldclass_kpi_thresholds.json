@@ -1,0 +1,114 @@
+{
+  "description": "Harte KPI-Ziele fuer Weltspitzen-Autopilot (30-60-90 Operationalisierung)",
+  "real_audio_corpus": {
+    "all_required_cases_must_be_vocal_focus": true,
+    "min_cases": 5,
+    "required_case_ids": [
+      "shellac_vocal_001",
+      "vinyl_vocal_001",
+      "tape_vocal_001",
+      "cd_vocal_001",
+      "mp3_vocal_001"
+    ],
+    "required_materials": ["shellac", "vinyl", "tape", "cd_digital", "mp3_low"]
+  },
+  "targets": {
+    "artifact_freedom_min_samples": 5,
+    "artifact_freedom_pass_rate_min": 0.99,
+    "defect_confidence_coverage_rate_min": 0.95,
+    "defect_confidence_min_samples": 5,
+    "defect_confidence_pass_rate_min": 0.9,
+    "defect_confidence_value_min": 0.09,
+    "defect_detection_min_samples": 5,
+    "defect_detection_pass_rate_min": 0.95,
+    "defect_inaudible_min_samples": 5,
+    "defect_inaudible_or_max_reduction_pass_rate_min": 0.95,
+    "era_confidence_pass_rate_min": 0.8,
+    "era_confidence_value_min": 0.5,
+    "false_reject_rate_max": 0.08,
+    "genre_confidence_pass_rate_min": 0.8,
+    "genre_confidence_value_min": 0.5,
+    "material_confidence_pass_rate_min": 0.8,
+    "material_confidence_value_min": 0.45,
+    "pipeline_confidence_pass_rate_min": 0.9,
+    "pipeline_confidence_value_min": 0.6,
+    "runtime_min_samples": 5,
+    "runtime_p95_seconds_max": 720.0,
+    "runtime_p95_seconds_max_note": "720s = 12-min-Obergrenze pro Einzellauf: Real-Songs (bis ~4 min) mit voller SOTA-ML-Kette inkl. Modell-Kaltstart benoetigen 584-660s; normatives Budget (370 s/min Pipeline+FeedbackChain+Scanner) + Kaltstart-Fixkost. 600s war fuer 2-3s-Synthetikproben kalibriert.",
+    "uncertainty_coverage_rate_min": 0.7,
+    "vqi_margin_pass_rate_min": 0.95,
+    "vqi_min_samples": 5,
+    "wcs_min_samples": 5,
+    "wcs_pass_rate_min": 0.95
+  },
+  "trusted_vocal_restoration": {
+    "allow_metric_only_claims": false,
+    "fully_automated_operation": {
+      "allowed_user_decisions": ["mode_selection"],
+      "max_manual_interventions_per_case": 0,
+      "max_user_parameters_per_case": 0,
+      "require_autonomous_export_decision": true,
+      "require_canonical_bridge_contract": true,
+      "required": true
+    },
+    "human_hearing_focus": {
+      "required_metrics": [
+        "naturalness",
+        "emotional_arc_preservation",
+        "micro_dynamic_correlation",
+        "formant_integrity",
+        "vibrato_depth_preservation",
+        "noise_texture_distance"
+      ],
+      "thresholds": {
+        "emotional_arc_preservation_min": 0.84,
+        "formant_integrity_min": 0.72,
+        "micro_dynamic_correlation_min": 0.97,
+        "naturalness_min": 0.9,
+        "noise_texture_distance_max": 0.25,
+        "vibrato_depth_preservation_min": 0.8
+      }
+    },
+    "min_professional_cases": 20,
+    "required_aurik_metrics": [
+      "artifact_freedom",
+      "hpi",
+      "vqi",
+      "timbral_fidelity"
+    ],
+    "required_baseline_families": [
+      "input_passthrough",
+      "classical_dsp",
+      "sota_ml",
+      "commercial_reference"
+    ],
+    "required_report_sections": [
+      "executive_verdict",
+      "corpus_coverage",
+      "baseline_comparison",
+      "human_hearing_focus",
+      "fully_automated_operation",
+      "user_confidence_summary",
+      "safety_regressions",
+      "phase_hardening_actions",
+      "professional_limitations"
+    ],
+    "safety_regression_limits": {
+      "artifact_freedom_delta_min": 0.0,
+      "hpi_delta_min": 0.0,
+      "vqi_delta_min": 0.0
+    },
+    "target_cases": 50
+  },
+  "version": "1.3",
+  "vqi_margin": {
+    "default_margin": 0.02,
+    "material_floors": {
+      "cd_digital": 0.82,
+      "mp3_low": 0.72,
+      "shellac": 0.62,
+      "tape": 0.74,
+      "vinyl": 0.72
+    }
+  }
+}

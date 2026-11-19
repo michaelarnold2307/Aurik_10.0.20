@@ -1,0 +1,168 @@
+{
+  "cases": [
+    {
+      "artifact_contract_passed": true,
+      "artifact_freedom": 1.0,
+      "case_id": "real_vocal_choir_breaths_hiss",
+      "degradation_status": "degraded",
+      "duration_seconds": 3.0,
+      "export_blocked": true,
+      "export_contract_passed": true,
+      "export_strategy": "blocked",
+      "fail_reasons": [
+        "MUSICAL_GOALS_VIOLATION",
+        "NOISE_TEXTURE_INCOHERENT",
+        "VQI_BELOW_MAXIMUM_ALIGNMENT",
+        "PSYCHO_NATURALNESS_FAIL"
+      ],
+      "forbidden_executed": [],
+      "hpi": 0.6882,
+      "hpi_contract_passed": true,
+      "metadata": {
+        "frisson_goosebumps_recovery": null,
+        "goal_directed_candidate_recovery": {
+          "attempted": true,
+          "candidate_ranking_after": [
+            2,
+            2,
+            0,
+            1,
+            0.5005835723956507,
+            0.5105835723956507,
+            2,
+            -0.8301875611538274
+          ],
+          "candidate_ranking_applied": true,
+          "candidate_ranking_before": [
+            3,
+            3,
+            0,
+            0,
+            0.5848568061064503,
+            0.5848568061064503,
+            0,
+            -0.8065114836468376
+          ],
+          "candidate_ranking_best": "hpi_best_checkpoint",
+          "candidate_ranking_evaluated": 17,
+          "final_violations": [
+            "brillanz",
+            "transparenz"
+          ],
+          "global_blend_applied": false,
+          "initial_violations": [
+            "brillanz",
+            "transparenz",
+            "waerme"
+          ],
+          "p1p2_blend_applied": false,
+          "resolved": false,
+          "resolved_count": 1,
+          "transparency_objective": 0.7734181408771945
+        },
+        "material": "vinyl",
+        "noise_texture_repair": {
+          "applied": false,
+          "attempted": true,
+          "best_candidate": "current",
+          "final_coherence": 0.3621353713182886,
+          "initial_coherence": 0.3621353713182886,
+          "material": "vinyl",
+          "resolved": false
+        },
+        "path": "test_audio/vocals/choir_breaths.wav",
+        "quality_estimate": 0.6947454126513635,
+        "sample_rate": 48000,
+        "sidecar_degradation_status": null,
+        "sidecar_quality_gate_passed": null,
+        "vqi_floor": 0.72,
+        "vqi_source": "uv3_metadata"
+      },
+      "missing_phase_deltas": [],
+      "missing_required_executions": [],
+      "phase_delta_phases": [
+        "coalition:broadband_nr_restoration",
+        "coalition:tape_transport",
+        "coalition:vocal_production",
+        "phase_02_hum_removal",
+        "phase_03_denoise",
+        "phase_04_eq_correction",
+        "phase_05_rumble_filter",
+        "phase_06_frequency_restoration",
+        "phase_07_harmonic_restoration",
+        "phase_08_transient_preservation",
+        "phase_12_wow_flutter_fix",
+        "phase_14_phase_correction",
+        "phase_16_final_eq",
+        "phase_17_mastering_polish",
+        "phase_20_reverb_reduction",
+        "phase_22_tape_saturation",
+        "phase_23_spectral_repair",
+        "phase_25_azimuth_correction",
+        "phase_26_dynamic_range_expansion",
+        "phase_31_speed_pitch_correction",
+        "phase_40_loudness_normalization",
+        "phase_49_advanced_dereverb",
+        "phase_61_groove_echo_cancellation"
+      ],
+      "phases_executed": [
+        "phase_02_hum_removal",
+        "phase_03_denoise",
+        "phase_04_eq_correction",
+        "phase_05_rumble_filter",
+        "phase_06_frequency_restoration",
+        "phase_07_harmonic_restoration",
+        "phase_12_wow_flutter_fix",
+        "phase_20_reverb_reduction",
+        "phase_22_tape_saturation",
+        "phase_23_spectral_repair",
+        "phase_25_azimuth_correction",
+        "phase_26_dynamic_range_expansion",
+        "phase_31_speed_pitch_correction",
+        "phase_49_advanced_dereverb",
+        "phase_61_groove_echo_cancellation"
+      ],
+      "phases_skipped": [],
+      "planned_phases": [
+        "phase_04_eq_correction",
+        "phase_06_frequency_restoration",
+        "phase_07_harmonic_restoration",
+        "phase_05_rumble_filter",
+        "phase_61_groove_echo_cancellation",
+        "phase_20_reverb_reduction",
+        "phase_03_denoise",
+        "phase_02_hum_removal",
+        "phase_12_wow_flutter_fix",
+        "phase_31_speed_pitch_correction",
+        "phase_23_spectral_repair",
+        "phase_49_advanced_dereverb",
+        "phase_22_tape_saturation"
+      ],
+      "required_phases": [
+        "phase_04_eq_correction",
+        "phase_06_frequency_restoration",
+        "phase_03_denoise"
+      ],
+      "runtime_seconds": 74.20189118385315,
+      "vocal_contract_passed": true,
+      "vocal_required": true,
+      "vqi": 0.8034563897609859
+    }
+  ],
+  "elapsed_seconds": 75.34731221199036,
+  "gate": {
+    "artifact_contract_rate": 1.0,
+    "export_contract_rate": 1.0,
+    "fail_reasons": [],
+    "forbidden_phase_executions": 0,
+    "hpi_contract_rate": 1.0,
+    "passed": true,
+    "phase_delta_coverage": 1.0,
+    "phase_execution_recall": 1.0,
+    "runtime_factor": 24.73396372795105,
+    "vocal_contract_rate": 1.0
+  },
+  "manifest_path": "/media/michael/Software 4TB/Aurik_Standalone/audit/real_audio_strategy_golden_manifest_choir_only_2026_06_04.json",
+  "scanned_cases": 1,
+  "skipped_cases": []
+}

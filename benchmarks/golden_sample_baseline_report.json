@@ -1,0 +1,241 @@
+{
+  "configuration": {
+    "enable_perceptual_metrics": false,
+    "enable_quality_gates": true,
+    "golden_samples_dir": "golden_samples",
+    "processing_mode": "studio_2026"
+  },
+  "results": [
+    {
+      "achieved_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      },
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "degradations": {
+        "brillanz": -0.8389232934354796,
+        "natuerlichkeit": -0.02702732266058072,
+        "transparenz": -0.6139691957280347
+      },
+      "filename": "vocal_001_synthetic.wav",
+      "improvements": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "emotionalitaet": 0.6084733255349395,
+        "waerme": 0.07999999999999996
+      },
+      "passed": false,
+      "perceptual_metrics": null,
+      "processing_time_s": 0.0018749237060546875,
+      "quality_gate_decision": "rollback_required",
+      "timestamp": "2026-02-11T05:51:27.274460"
+    },
+    {
+      "achieved_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      },
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "degradations": {
+        "brillanz": -0.8389232934354796,
+        "natuerlichkeit": -0.02702732266058072,
+        "transparenz": -0.6139691957280347
+      },
+      "filename": "vocal_002_synthetic.wav",
+      "improvements": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "emotionalitaet": 0.6084733255349395,
+        "waerme": 0.07999999999999996
+      },
+      "passed": false,
+      "perceptual_metrics": null,
+      "processing_time_s": 0.00022411346435546875,
+      "quality_gate_decision": "rollback_required",
+      "timestamp": "2026-02-11T05:51:28.214262"
+    },
+    {
+      "achieved_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      },
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "degradations": {
+        "brillanz": -0.8389232934354796,
+        "natuerlichkeit": -0.02702732266058072,
+        "transparenz": -0.6139691957280347
+      },
+      "filename": "vocal_003_synthetic.wav",
+      "improvements": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "emotionalitaet": 0.6084733255349395,
+        "waerme": 0.07999999999999996
+      },
+      "passed": false,
+      "perceptual_metrics": null,
+      "processing_time_s": 0.00026798248291015625,
+      "quality_gate_decision": "rollback_required",
+      "timestamp": "2026-02-11T05:51:29.159995"
+    },
+    {
+      "achieved_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      },
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "degradations": {
+        "brillanz": -0.8389232934354796,
+        "natuerlichkeit": -0.02702732266058072,
+        "transparenz": -0.6139691957280347
+      },
+      "filename": "vocal_004_synthetic.wav",
+      "improvements": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "emotionalitaet": 0.6084733255349395,
+        "waerme": 0.07999999999999996
+      },
+      "passed": false,
+      "perceptual_metrics": null,
+      "processing_time_s": 0.0002715587615966797,
+      "quality_gate_decision": "rollback_required",
+      "timestamp": "2026-02-11T05:51:30.075975"
+    },
+    {
+      "achieved_scores": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "brillanz": 0.11107670656452039,
+        "emotionalitaet": 0.6084733255349395,
+        "natuerlichkeit": 0.8829726773394193,
+        "transparenz": 0.3460308042719653,
+        "waerme": 1.0
+      },
+      "baseline_scores": {
+        "bass-kraft": 0.88,
+        "brillanz": 0.95,
+        "dynamik": 0.94,
+        "natuerlichkeit": 0.91,
+        "raeumlichkeit": 0.9,
+        "transparenz": 0.96,
+        "waerme": 0.92
+      },
+      "category": "vocal",
+      "degradations": {
+        "brillanz": -0.8389232934354796,
+        "natuerlichkeit": -0.02702732266058072,
+        "transparenz": -0.6139691957280347
+      },
+      "filename": "vocal_005_synthetic.wav",
+      "improvements": {
+        "authentizitaet": 0.23071512738623606,
+        "bass_kraft": 1.0,
+        "emotionalitaet": 0.6084733255349395,
+        "waerme": 0.07999999999999996
+      },
+      "passed": false,
+      "perceptual_metrics": null,
+      "processing_time_s": 0.0003414154052734375,
+      "quality_gate_decision": "rollback_required",
+      "timestamp": "2026-02-11T05:51:30.993329"
+    }
+  ],
+  "summary": {
+    "achieved_avg": {
+      "authentizitaet": 0.23071512738623606,
+      "bass-kraft": 0.0,
+      "bass_kraft": 1.0,
+      "brillanz": 0.11107670656452037,
+      "dynamik": 0.0,
+      "emotionalitaet": 0.6084733255349395,
+      "natuerlichkeit": 0.8829726773394192,
+      "raeumlichkeit": 0.0,
+      "transparenz": 0.3460308042719653,
+      "waerme": 1.0
+    },
+    "avg_improvement": 0.4797971132302939,
+    "avg_processing_time_s": 0.000595998764038086,
+    "baseline_avg": {
+      "authentizitaet": 0.0,
+      "bass-kraft": 0.8800000000000001,
+      "bass_kraft": 0.0,
+      "brillanz": 0.95,
+      "dynamik": 0.9399999999999998,
+      "emotionalitaet": 0.0,
+      "natuerlichkeit": 0.9099999999999999,
+      "raeumlichkeit": 0.9,
+      "transparenz": 0.96,
+      "waerme": 0.9200000000000002
+    },
+    "category_results": {
+      "vocal": {
+        "avg_improvement": 0.4797971132302939,
+        "pass_rate": 0.0,
+        "passed": 0,
+        "total": 5
+      }
+    },
+    "failed": 5,
+    "pass_rate": 0.0,
+    "passed": 0,
+    "timestamp": "2026-02-11T05:51:30.993544",
+    "total_samples": 5
+  }
+}

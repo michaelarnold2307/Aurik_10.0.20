@@ -1,0 +1,212 @@
+---
+version: 1.1
+last_update: 2026-02-02
+
+push_rulebook:
+  version: 1
+  worldclass_chain_aware_oracle:
+    required: true
+    description: "Per-Phase-Oracle muss transfer_chain + material_confidence direkt verarbeiten."
+    required_tests:
+      - tests/unit/test_phase_strength_oracle.py::test_oracle_chain_factor_reduces_strength_for_multistage_chain
+      - tests/unit/test_phase_strength_oracle.py::test_uv3_runtime_context_applies_o8_cap_for_spectral_family
+      - tests/unit/test_phase_strength_oracle.py::test_uv3_runtime_context_applies_o10_cap_for_output_family
+      - tests/unit/test_phase_strength_oracle.py::test_uv3_runtime_context_keeps_explicit_strength_for_o10_output_phase
+    required_code_paths:
+      - backend/core/dsp/phase_strength_oracle.py
+      - backend/core/unified_restorer_v3.py
+    release_gate:
+      fail_on_missing_chain_factor: true
+      fail_on_missing_chain_handover: true
+
+policies:
+  - name: MP3 Restoration
+    media: mp3
+    defects: [clipping, noise, compression_artifacts]
+    quality_targets:
+      min_hf_ratio: 0.8
+      min_transparency: 0.85
+      max_artefact: 0.15
+    audit:
+      enabled: true
+      report_format: json
+      required: true
+    compliance:
+      rollback_on_fail: true
+      min_modules: 1
+      sota_required: true
+  - name: DAT Restoration
+    media: dat
+    defects: [dropouts, noise]
+    quality_targets:
+      min_hf_ratio: 0.8
+      min_transparency: 0.85
+      max_artefact: 0.15
+    audit:
+      enabled: true
+      report_format: json
+      required: true
+    compliance:
+      rollback_on_fail: true
+      min_modules: 1
+      sota_required: true
+  - name: Vinyl Restoration
+    media: vinyl
+    defects: [crackle, hiss, hum, clipping]
+    quality_targets:
+      min_hf_ratio: 0.75
+      min_transparency: 0.8
+      max_artefact: 0.2
+    audit:
+      enabled: true
+      report_format: json
+      required: true
+    compliance:
+      rollback_on_fail: true
+      min_modules: 3
+      sota_required: true
+  - name: Tape Restoration
+    media: tape
+    defects: [hum, hiss, wow_flutter, clipping]
+    quality_targets:
+      min_hf_ratio: 0.7
+      min_transparency: 0.75
+      max_artefact: 0.25
+    audit:
+      enabled: true
+      report_format: json
+      required: true
+    compliance:
+      rollback_on_fail: true
+      min_modules: 2
+      sota_required: true
+  - name: Shellac Restoration
+    media: shellac
+    defects: [crackle, hiss, hum]
+    quality_targets:
+      min_hf_ratio: 0.7
+      min_transparency: 0.7
+      max_artefact: 0.3
+    audit:
+      enabled: true
+      report_format: json
+      required: true
+    compliance:
+      rollback_on_fail: true
+      min_modules: 2
+      sota_required: true
+  - name: CD Restoration
+    media: cd
+    defects: [clipping, dropouts, jitter, noise]
+    quality_targets:
+      min_hf_ratio: 0.85
+      min_transparency: 0.9
+      max_artefact: 0.1
+    audit:
+      enabled: true
+      report_format: json
+      required: true
+    compliance:
+      rollback_on_fail: true
+      min_modules: 1
+      sota_required: true
+
+# Jede Policy kann um weitere Felder (z.B. User-Feedback, Benchmarks, Testdaten) ergänzt werden.
+# Änderungen an Policies, Audit- oder Compliance-Regeln sind hier versioniert und nachvollziehbar zu dokumentieren.
+
+modules:
+  - name: RMSEnergy
+    chains: [default, min_artefakte, max_lautheit, vocal_separation, dereverberation, speech_superres, music_enhancement]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Wird in mehreren Chains genutzt, Schnittstelle laut PolicyEngine erfüllt."
+  - name: ZeroCrossingRate
+    chains: [default, max_sprachverstaendlichkeit, max_lautheit]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Standard-Feature-Extraktor."
+  - name: WowFlutterRemover
+    chains: [max_sprachverstaendlichkeit, speech_enhancement, vocal_enhance, formant_preserving_chain, max_clarity_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Spezialmodul für Band- und Kassettenartefakte."
+  - name: SpectralCentroid
+    chains: [max_sprachverstaendlichkeit, max_clarity_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Spektral-Feature, Kettensteuerung."
+  - name: SpectralRolloff
+    chains: [min_artefakte]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Artefakt-Detektion."
+  - name: CustomCompressor
+    chains: [kompression]
+    interface: "process(audio, sr) -> result"
+    contract_status: teilimplementiert
+    notes: "Optional, ImportError möglich."
+  - name: SotaDenoiser
+    chains: [denoise, speech_enhancement, vocal_enhance, noise_reduction_chain, dynamic_enhancement_chain, transient_processing_chain, harmonic_enhancement_chain, stereo_enhancement_chain, finalization_chain, de_essing_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Zentrales SOTA-Modul für Entrauschung."
+  - name: SpectralGate
+    chains: [speech_enhancement, vocal_enhance, noise_reduction_chain, dynamic_enhancement_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Gate für Sprach-/Musiktrennung."
+  - name: SpectralSubtractor
+    chains: [noise_reduction_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Klassische Entrauschung."
+  - name: DynamicRangeExpander
+    chains: [dynamic_enhancement_chain, transient_processing_chain, harmonic_enhancement_chain, max_loudness_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Dynamikbearbeitung."
+  - name: TransientShaper
+    chains: [transient_processing_chain, max_transient_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Transientenbearbeitung."
+  - name: HarmonicExciter
+    chains: [harmonic_enhancement_chain, stereo_enhancement_chain, formant_preserving_chain, max_clarity_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Harmonische Anreicherung."
+  - name: StereoWidener
+    chains: [stereo_enhancement_chain, finalization_chain, max_stereo_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Stereoverbreiterung."
+  - name: Limiter
+    chains: [finalization_chain, de_essing_chain, max_transient_chain, max_stereo_chain, max_loudness_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Lautheitsbegrenzung."
+  - name: DeEsser
+    chains: [de_essing_chain]
+    interface: "process(audio, sr) -> result"
+    contract_status: implementiert
+    notes: "Sibilanz-Reduktion."
+  - name: SotaVocalSeparator
+    chains: [vocal_separation]
+    interface: "process(audio, sr) -> result"
+    contract_status: teilimplementiert
+    notes: "SOTA-Modell, ggf. experimentell."
+  - name: SotaDereverberator
+    chains: [dereverberation]
+    interface: "process(audio, sr) -> result"
+    contract_status: teilimplementiert
+    notes: "SOTA-Modell, ggf. experimentell."
+  - name: SotaSpeechSuperRes
+    chains: [speech_superres]
+    interface: "process(audio, sr) -> result"
+    contract_status: teilimplementiert
+    notes: "SOTA-Modell, ggf. experimentell."
+  - name: SotaMusicEnhancer
+    chains: [music_enhancement]
+    interface: "process(audio, sr) -> result"
+    contract_status: teilimplementiert
+    notes: "SOTA-Modell, ggf. experimentell."

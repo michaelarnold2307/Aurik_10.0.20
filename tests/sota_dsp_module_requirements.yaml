@@ -1,0 +1,49 @@
+# SOTA- und Beyond-SOTA-Anforderungen für alle DSP-Module und Plugins (Aurik 6.0)
+# Generiert aus README.md, Abschnitt über der DSP-Übersicht
+
+requirements:
+  - Modularisierung:
+      description: "Jedes DSP-Modul ist als eigenständige, wiederverwendbare Komponente implementiert. Keine monolithischen Strukturen."
+      must: true
+  - SOTA-Konformität:
+      description: "Alle Algorithmen und Methoden entsprechen dem aktuellen Stand der Technik (SOTA) oder gehen darüber hinaus."
+      must: true
+  - Programmierleitplanken:
+      description: "Strikte Einhaltung der Aurik-Programmierrichtlinien und Roadmap."
+      must: true
+  - Policy-Steuerung:
+      description: "Jedes Modul ist über YAML-Policies steuerbar und konfigurierbar."
+      must: true
+  - DefectGraph-Integration:
+      description: "Fehler- und Maßnahmen-Tracking ist für jedes Modul möglich (DefectGraph-kompatibel)."
+      must: true
+  - QA-Framework:
+      description: "Alle Module sind in das QA- und Logging-Framework eingebunden (SOTALogger, Score-Dashboard, Undo/Redo)."
+      must: true
+  - Quality Prediction:
+      description: "Vorhersage der Signalqualität vor und nach jedem Processing-Schritt ist möglich."
+      must: true
+  - User-Feedback:
+      description: "Module können User-Feedback aufnehmen und adaptiv reagieren."
+      must: true
+  - Session-Memory:
+      description: "Module unterstützen Session-Memory für adaptive Verarbeitung."
+      must: true
+  - Hybrid-Architektur:
+      description: "DSP- und ML-Modelle können hybrid kombiniert werden (SOTAModules, Confidence-Fusion)."
+      must: true
+  - Testbarkeit:
+      description: "Automatisierte Tests (pytest) für alle Module und Pipelines, inkl. Regression und Golden Snippets."
+      must: true
+  - Auditierbarkeit:
+      description: "Vollständiges Logging, Undo/Redo, Score-Dashboard, Explainable-AI für alle Verarbeitungsschritte."
+      must: true
+  - CLI/YAML-Support:
+      description: "Alle Module sind über CLI und YAML-Blueprints steuerbar."
+      must: true
+  - Erweiterbarkeit:
+      description: "Externe Modelle/Plugins können ohne Core-Änderung integriert werden (Hot-Swap, DAW, Plugin-Formate)."
+      must: true
+  - Dokumentation:
+      description: "Jedes Modul ist dokumentiert (Code, YAML, README, QA-Blueprints)."
+      must: true

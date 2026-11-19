@@ -1,0 +1,15 @@
+{
+  "allowedTools": [],
+  "assets": [],
+  "description": "> **852 eindeutige \u00a7-Referenzen** in `backend/core/`, `denker/`, `forensics/`. > Dieser Index dokumentiert die h\u00e4ufigsten und architektonisch wichtigsten. > Neue \u00a7-Referenzen M\u00dcSSEN hier eingetragen werden (Pre-Commit-Check).",
+  "entry": "SKILL.md",
+  "id": "spec",
+  "name": "SPEC",
+  "priority": 0,
+  "triggers": {
+    "commands": [],
+    "fileTypes": [],
+    "promptPatterns": []
+  },
+  "version": "0.0.0"
+}

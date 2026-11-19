@@ -1,0 +1,112 @@
+{
+  "backend_log": "logs/aurik_backend.log",
+  "checks": [
+    {
+      "evidence": "AurikDenker.denke() gestartet gefunden",
+      "id": "entry_denker",
+      "passed": true,
+      "required": true,
+      "title": "AurikDenker Einstieg genutzt"
+    },
+    {
+      "evidence": "Kein AurikDenker-Abschluss im Run-Window",
+      "id": "run_completed",
+      "passed": false,
+      "required": true,
+      "title": "AurikDenker Lauf vollst\u00e4ndig abgeschlossen"
+    },
+    {
+      "evidence": "mode=restoration/studio_2026 vorhanden",
+      "id": "mode_contract",
+      "passed": true,
+      "required": true,
+      "title": "Nur erlaubter Betriebsmodus"
+    },
+    {
+      "evidence": "Cached Defect/PreAnalysis im Lauf genutzt",
+      "id": "preanalysis_handover",
+      "passed": true,
+      "required": true,
+      "title": "\u00a72.47a PreAnalysis-Handover sichtbar"
+    },
+    {
+      "evidence": "\ud83d\udd0d MediumDetector fresh_count=0 (cached ignoriert)",
+      "id": "medium_detect_single",
+      "passed": true,
+      "required": true,
+      "title": "MediumDetector im Lauf nicht mehrfach aktiv"
+    },
+    {
+      "evidence": "artifact_freedom=1.000",
+      "id": "artifact_gate",
+      "passed": true,
+      "required": true,
+      "title": "\u00a72.49 Artifact-Freedom Gate erf\u00fcllt"
+    },
+    {
+      "evidence": "HPI-Eintrag vorhanden",
+      "id": "hpi_gate",
+      "passed": true,
+      "required": true,
+      "title": "\u00a72.44 HPI-Gate protokolliert"
+    },
+    {
+      "evidence": "Joy-Index-Signal gefunden",
+      "id": "exp_joy_runtime",
+      "passed": true,
+      "required": true,
+      "title": "\u00a72.53 joy_runtime_index propagiert"
+    },
+    {
+      "evidence": "Auto-Improve-Signal gefunden",
+      "id": "exp_auto_improve",
+      "passed": true,
+      "required": true,
+      "title": "\u00a72.53 auto_improvement_recommendations propagiert"
+    },
+    {
+      "evidence": "cluster_policy gefunden",
+      "id": "exp_cluster_policy",
+      "passed": true,
+      "required": true,
+      "title": "\u00a72.53 cluster_policy propagiert"
+    },
+    {
+      "evidence": "Finale DAG-Validierung fehlt",
+      "id": "dag_final_clean",
+      "passed": false,
+      "required": true,
+      "title": "\u00a77.5a Finale DAG-Validierung ohne Verletzung"
+    },
+    {
+      "evidence": "Phase 12 gestartet, aber low-confidence Skip erkannt",
+      "id": "phase12_effective_when_started",
+      "passed": false,
+      "required": true,
+      "title": "Phase 12 wirkt bei Ausf\u00fchrung (kein low-confidence Komplett-Skip)"
+    },
+    {
+      "evidence": "MediumDetector meldet cassette, SongCalibration nutzt tape",
+      "id": "material_specificity_guard",
+      "passed": false,
+      "required": true,
+      "title": "Material-Spezifit\u00e4t erhalten (kein cassette\u2192tape Downcast)"
+    },
+    {
+      "evidence": "Kein expliziter Exzellenz-API-Hinweis im Log (inconclusive)",
+      "id": "exzellenz_api_contract",
+      "passed": false,
+      "required": false,
+      "title": "\u00a72.53a Exzellenz-API-Pfad erkennbar"
+    }
+  ],
+  "compliance_ok": false,
+  "frontend_log": "logs/aurik_frontend.out",
+  "latest_run_window": {
+    "end_line": 17308,
+    "start_line": 14361
+  },
+  "required_passed": 9,
+  "required_total": 13,
+  "timestamp": "2026-05-20T23:15:28.852350"
+}

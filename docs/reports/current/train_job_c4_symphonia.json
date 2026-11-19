@@ -1,0 +1,28 @@
+{
+  "schema": "aurik.train_job/1",
+  "run_id": "kp11-20261112T193144Z-bf23f2",
+  "name": "c4_symphonia",
+  "phase": "kp11",
+  "seed": null,
+  "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_symphonia.py --data data/symphonia_pairs/manifest.jsonl --preset full --epochs 30",
+  "resume_befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_symphonia.py --data data/symphonia_pairs/manifest.jsonl --preset full --epochs 30 --resume models/symphonia/checkpoint_latest.pt",
+  "timeout_s": 43200.0,
+  "retries": 1,
+  "versuche": [
+    {
+      "exit_code": 0,
+      "sekunden": 4047.1,
+      "timed_out": false,
+      "output_tail": "step=620 loss=2.26937 flow=0.00784 mel=1.08174 phase=0.17145 onset=0.00076\nINFO __main__: epoche=24 validierung=1.674984 bestwert=1.464034\nINFO __main__: step=630 loss=0.61179 flow=0.03743 mel=0.24389 phase=0.15749 onset=0.00253\nINFO __main__: step=640 loss=1.48766 flow=0.00935 mel=0.64194 phase=0.34483 onset=0.00064\nINFO __main__: step=650 loss=9.61194 flow=0.02151 mel=4.63296 phase=0.59725 onset=0.00231\nINFO __main__: epoche=25 validierung=1.359543 bestwert=1.359543\nINFO __main__: step=660 loss=1.92955 flow=0.03617 mel=0.81848 phase=0.47619 onset=0.00645\nINFO __main__: step=670 loss=3.97050 flow=0.01245 mel=1.82419 phase=0.50269 onset=0.00170\nINFO __main__: epoche=26 validierung=1.203728 bestwert=1.203728\nINFO __main__: step=680 loss=1.70186 flow=0.02330 mel=0.77018 phase=0.25080 onset=0.00611\nINFO __main__: step=690 loss=2.41741 flow=0.00745 mel=1.09074 phase=0.43055 onset=0.00135\nINFO __main__: step=700 loss=3.09741 flow=0.00773 mel=1.45813 phase=0.30268 onset=0.00117\nINFO __main__: epoche=27 validierung=1.909361 bestwert=1.203728\nINFO __main__: step=710 loss=0.91148 flow=0.04201 mel=0.38309 phase=0.18883 onset=0.00271\nINFO __main__: step=720 loss=7.20922 flow=0.10606 mel=3.50987 phase=0.12543 onset=0.00622\nINFO __main__: epoche=28 validierung=1.716210 bestwert=1.203728\nINFO __main__: step=730 loss=5.53711 flow=0.02474 mel=2.50126 phase=0.83819 onset=0.00236\nINFO __main__: step=740 loss=2.91400 flow=0.00457 mel=1.32645 phase=0.48394 onset=0.00171\nINFO __main__: step=750 loss=1.38173 flow=0.00471 mel=0.67525 phase=0.04402 onset=0.00101\nINFO __main__: epoche=29 validierung=1.737666 bestwert=1.203728\nINFO __main__: step=760 loss=5.34482 flow=0.01572 mel=2.61114 phase=0.20040 onset=0.00037\nINFO __main__: step=770 loss=1.04824 flow=0.00461 mel=0.49410 phase=0.09232 onset=0.00268\nINFO __main__: step=780 loss=1.76502 flow=0.01183 mel=0.81841 phase=0.21095 onset=0.00102\nINFO __main__: epoche=30 validierung=1.370620 bestwert=1.203728\nLoading weights from local directory\n",
+      "versuch": 1,
+      "befehl": "env PYTHONPATH=. /home/michael/.local/share/aurik/venv_rocm72/bin/python -B scripts/train_symphonia.py --data data/symphonia_pairs/manifest.jsonl --preset full --epochs 30"
+    }
+  ],
+  "quelle": "scripts/train_job_runner.py",
+  "checkpoint_hashes": {
+    "checkpoint_best.pt": "aca352f8d6a9fa885de1da1cb9b7c3b4ad560c9892fa22195c139293e75db50f",
+    "checkpoint_latest.pt": "0b6a8f21574d9f4d9b16179137b07d4591c323f85c1e8093a0a96d7cc1268ff1",
+    "symphonia_tiny.onnx": "3c56e737e484663e48ee2a19922c4183d552fa67b0cb2bcee1735f380f62a475"
+  },
+  "ergebnis": "erfolgreich"
+}

@@ -1,0 +1,70 @@
+# Medium-Vinyl Pipeline Konfiguration (YAML)
+# Alle Werte und Reihenfolgen exakt nach Spezifikation
+
+segment:
+  length_sec: 2.0
+  overlap_sec: 0.5
+  smoothing_horizon_sec: 8.0
+  max_trials_per_issue: 3
+  max_total_trials_per_segment: 12
+
+budgets:
+  global:
+    artifact: 0.05
+    identity: 0.10
+    spectral_change: 0.20
+    temporal_change: 0.10
+  segment:
+    artifact: 0.15
+    identity: 0.10
+    spectral_change: 0.25
+    temporal_change: 0.15
+    stereo_change: 0.10
+
+pipeline:
+  - P1_Repair
+  - P2_LF_Cleanup
+  - P3_Harshness
+  - P4_Noise
+  - P5_Finish
+
+gates:
+  G0_DoNoHarm:
+    true_peak_limit_db: -1.0
+    allow_dc_drift: false
+  G1_ProcessingSignature:
+    allow_musical_noise: false
+    allow_pumping: false
+    allow_transient_smear: false
+  G2_Identity:
+    allow_pitch_shift: false
+    allow_vibrato_loss: false
+    allow_formant_shift: false
+  G3_StereoPhase:
+    allow_mono_fold_down_loss: false
+    allow_coherence_loss: false
+    allow_azimuth_phasing: false
+
+trial_profiles:
+  P1_Repair:
+    click_repair_wet: 1.0
+    decrackle_wet: 0.5
+    spectral_repair_wet: 0.4
+  P2_LF_Cleanup:
+    hpf_freq_hz: 25
+    hpf_slope_db_per_oct: 12
+    dehum_depth: 0.5
+  P3_Harshness:
+    azimuth_align: true
+    deesser_wet: 0.2
+    resonance_suppressor_strength: 0.2
+  P4_Noise:
+    denoise_wet: 0.2
+  P5_Finish:
+    tilt_eq_gain_db: 1.0
+    dyn_eq_active: true
+
+utility:
+  lambda_risk: 2.0
+  mu_change: 1.0
+  threshold: 0.05

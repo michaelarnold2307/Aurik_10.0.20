@@ -1,0 +1,741 @@
+{
+  "schema": "aurik.rir_real/1",
+  "zweck": "L146/KP-10/D-K4-10 — echte Raumimpulsantworten (RT60-Regressor)",
+  "lizenznachweis": "je Datensatz: Zenodo-Lizenz-Feld (maschinenlesbar) + DOI",
+  "datensaetze": [
+    {
+      "zenodo_id": 5031335,
+      "titel": "A High-Resolution Spatial Room Impulse Response Database",
+      "doi": "10.5281/zenodo.5031335",
+      "lizenz": "cc-by-4.0",
+      "quelle": "https://zenodo.org/records/5031335"
+    },
+    {
+      "zenodo_id": 12092466,
+      "titel": "SADIE II Database",
+      "doi": "10.5281/zenodo.12092466",
+      "lizenz": "apache2.0",
+      "quelle": "https://zenodo.org/records/12092466"
+    }
+  ],
+  "dateien": [
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Classroom_LSR_P2.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Classroom_LSR_P2.wav",
+      "zenodo_sha256": "472c6f3faf4c026ed855932d917571e0",
+      "sha256": "33c471c85e567e1fd0446e63a10354d901b551daf03f3f335ed7a52129e15105",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.167,
+        "rms": 0.014373,
+        "laenge": 56000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audimax_LSC_P1.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audimax_LSC_P1.wav",
+      "zenodo_sha256": "ca9ce020c18be1126a64f6afef10a605",
+      "sha256": "95f293ac55043c4f37f74e6d2f362bf307b283a5a25ac6123c2106c5ede3936e",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.458,
+        "rms": 0.010148,
+        "laenge": 70000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audiolab_LSL_P2.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audiolab_LSL_P2.wav",
+      "zenodo_sha256": "23a2d672bac31b7c4a253e323c8b8b4f",
+      "sha256": "9e52268e6ed6569aa7ad0d571f14ff5b6f5363dcbde936b487e0ce8d75b1414f",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 0.931,
+        "rms": 0.013273,
+        "laenge": 44683
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audiolab_LSL_P1.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audiolab_LSL_P1.wav",
+      "zenodo_sha256": "d851f03517c04e0204ff6ffb13c83fbb",
+      "sha256": "ad72b9705382652e5653e0858938b7758f8b28564516d95298a8554651af3c6c",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 0.928,
+        "rms": 0.014999,
+        "laenge": 44561
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audimax_LSC_P2.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audimax_LSC_P2.wav",
+      "zenodo_sha256": "79c3c567538ee913a22ee4c5dac4e55b",
+      "sha256": "2dd101757d586a9d44a79a43d00839839323400f0923ad03053a92740e06974a",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.458,
+        "rms": 0.006666,
+        "laenge": 70000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audimax_LSL_P1.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audimax_LSL_P1.wav",
+      "zenodo_sha256": "bb5e3ae7cac168dbe6a0aee0ca3e66b6",
+      "sha256": "94c809c29c8c5b093711dab3de8fef02eb0c2b5c204f8cfa9557d1ec4a852c18",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.458,
+        "rms": 0.010637,
+        "laenge": 70000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audimax_LSL_P2.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audimax_LSL_P2.wav",
+      "zenodo_sha256": "43cc2bdd40698a85e80bc758fbecf63c",
+      "sha256": "5e74f1503134d4ac0f9a0353dcfe9be2e2dbb4115758826dc5d61e170f897f85",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.458,
+        "rms": 0.011494,
+        "laenge": 70000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audimax_LSR_P1.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audimax_LSR_P1.wav",
+      "zenodo_sha256": "9324e1b89e1ac79deda2c7ba47320f18",
+      "sha256": "493b2e5926045e6ba131313a2e16c71517b87748bd0e33ae4da3349d9fb725cc",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.458,
+        "rms": 0.010049,
+        "laenge": 70000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audiolab_LSC_P2.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audiolab_LSC_P2.wav",
+      "zenodo_sha256": "4ca789989b2531c55af6fdabbf7ed7b2",
+      "sha256": "62296a3fd552bff1e4006f32cfdef2aa1e9661780ece015521b4867e614fd287",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 0.93,
+        "rms": 0.014058,
+        "laenge": 44639
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audiolab_LSC_P1.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audiolab_LSC_P1.wav",
+      "zenodo_sha256": "ac6f78ba6c6771b828a442323812518c",
+      "sha256": "f824007328d09a599eb87c81c6249865266d526ac53cfd14969ccdce6ddd2d6d",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 0.929,
+        "rms": 0.012688,
+        "laenge": 44576
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audimax_LSR_P2.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audimax_LSR_P2.wav",
+      "zenodo_sha256": "1441e51b5d012e31ceb9e908d399c7bb",
+      "sha256": "8e24e7a9d69f11bb924c93dce66e5c9555e3deaf515b6622c0c5720a9b56c527",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.458,
+        "rms": 0.008504,
+        "laenge": 70000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Classroom_LSR_P1.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Classroom_LSR_P1.wav",
+      "zenodo_sha256": "130287ded0e698bfe8e7ec0524675ea9",
+      "sha256": "5dc45dc5bae7a44051e1b9466cd248bd99bd2eb44548692701d84433faea141e",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.167,
+        "rms": 0.009361,
+        "laenge": 56000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Classroom_LSL_P2.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Classroom_LSL_P2.wav",
+      "zenodo_sha256": "40fdfef17f8e372ce60bf4fc9f4b4e05",
+      "sha256": "8b4f9e9af0a68e32047f0e524028b50f9e5093d80e461e568574f0b9249f756f",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.167,
+        "rms": 0.020124,
+        "laenge": 56000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Classroom_LSL_P1.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Classroom_LSL_P1.wav",
+      "zenodo_sha256": "e1a0c56278126dd8a4f0726175e75295",
+      "sha256": "3275ae0faff0daa8166268537f38c4eed855364c4e0362fe475dadd55d4218b4",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.167,
+        "rms": 0.009606,
+        "laenge": 56000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Classroom_LSC_P2.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Classroom_LSC_P2.wav",
+      "zenodo_sha256": "94e0752420c860b5359b1f91b2a8c38e",
+      "sha256": "6e48ff7506e5ea2d67c1cb82bb10afb04884c5085ca951d720920bfe89edd9dc",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.167,
+        "rms": 0.020203,
+        "laenge": 56000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Classroom_LSC_P1.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Classroom_LSC_P1.wav",
+      "zenodo_sha256": "315ec14e0712560928d4843e4a7131f9",
+      "sha256": "8fdebf9d7b7ae69257bf4ea1439d0c51edea11d32e7a9a22589d5ef2e8f4395f",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 1.167,
+        "rms": 0.008798,
+        "laenge": 56000
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audiolab_LSR_P2.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audiolab_LSR_P2.wav",
+      "zenodo_sha256": "66dc5da8b17c47d66d4962373063fd02",
+      "sha256": "6d94d77d04b9835851d0992ec83e5a906d9acf548122bcd1ee5b558eb61c0526",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 0.929,
+        "rms": 0.02154,
+        "laenge": 44574
+      }
+    },
+    {
+      "datei": "data/rir_real/Omni_ir_earthworksM30_Audiolab_LSR_P1.wav",
+      "datensatz": 5031335,
+      "dateiname_quelle": "Omni_ir_earthworksM30_Audiolab_LSR_P1.wav",
+      "zenodo_sha256": "2c08d199624f24a7f902df217f070fb8",
+      "sha256": "0ffd2d904b12b8d9f65147aef7acbbede682877be046381a321bebe575ef8a62",
+      "lizenz": "cc-by-4.0",
+      "probe": {
+        "sr": 48000,
+        "ch": 1,
+        "dauer_s": 0.928,
+        "rms": 0.014791,
+        "laenge": 44568
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_0_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_0,0_ele_0,0.wav",
+      "sha256": "09d689384b1a22328367bfed27b2ae28d5fe1a772b72b861499a08bd7c20903a",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.005816,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_45_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_0,0_ele_45,0.wav",
+      "sha256": "e4ab6f706ee8d4ddd892111f31b2992ed6b3f7bb7737306a12415e5c891900bf",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.005864,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_-45_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_0,0_ele_-45,0.wav",
+      "sha256": "94b7ad142f177fdcc37385af3d44065decc0b50df098177aae3d0cf48d04659e",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.002867,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_90_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_0,0_ele_90,0.wav",
+      "sha256": "d936a9d7ecdbff89b5b59219f99b9c17fd1f2d4f1c681c9a9be85c6c3d170e8c",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003817,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_-90_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_0,0_ele_-90,0.wav",
+      "sha256": "27e3a09e241e1a93b153a6aaa474fbd529eaa0e1777ae7e3c9b3d27a58f217f6",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.001302,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_108_4_ele_17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_108,4_ele_17,5.wav",
+      "sha256": "12ce86fe153412ee1e606affb60507de0c79f4ba129d7120ddcb59644ac639ad",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.005853,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_108_4_ele_-17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_108,4_ele_-17,5.wav",
+      "sha256": "15c51a8e951fa54a85dd98a94c9c0247720cdfd3de58fdd1c4438e1c738d6cce",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.005678,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_135_0_ele_0_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_135,0_ele_0,0.wav",
+      "sha256": "f9e52baa097ccebde3d5558da28b2828b6fdbab76fe8c6426ed20895cb9105d1",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003779,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_135_0_ele_35_3.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_135,0_ele_35,3.wav",
+      "sha256": "bb80b4281e296f6b6d3e08eccf17599767e2a0fa0a3bd240b1a6cfdd0a49aa91",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003912,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_135_0_ele_-35_3.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_135,0_ele_-35,3.wav",
+      "sha256": "0240b0af80ffbf6af0ce81f240494e74448906bc1b29db67b2a1b20c14350c7b",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.004039,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_135_0_ele_64_8.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_135,0_ele_64,8.wav",
+      "sha256": "2d9c73ee6cae9ac85d0327e644c6a2a8d8fd2c850a2483b1f976cf97b2458937",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003502,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_135_0_ele_-64_8.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_135,0_ele_-64,8.wav",
+      "sha256": "36bc060e1e19f222121b412b053511dbbbf154354af90a7666776f5e68dec3e7",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.00225,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_161_6_ele_17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_161,6_ele_17,5.wav",
+      "sha256": "e3c3640b820c4f282988b1b930aa60ab97209dbcfc264fe4aad725918eb41080",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.002909,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_161_6_ele_-17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_161,6_ele_-17,5.wav",
+      "sha256": "0f38f602ecce23236b559f50faa81c3ab0239b3867d3aa9361edf3c71960d57f",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003412,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_18_4_ele_17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_18,4_ele_17,5.wav",
+      "sha256": "52c9b6a50cd551855ec7a4c35b18217b162d7aa7dd592db588731de2dc4bb2f2",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.004281,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_18_4_ele_-17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_18,4_ele_-17,5.wav",
+      "sha256": "14b5d7f907126d6d07324ba401e956e1d45075b895ba9588a783c98061707531",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.004811,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_180_0_ele_0_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_180,0_ele_0,0.wav",
+      "sha256": "03a7cd356058576f63ed053c5f250c95c732798f348e0cd023df45de48c253ce",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.004258,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_180_0_ele_45_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_180,0_ele_45,0.wav",
+      "sha256": "1e9a4b186dc54ca4cca96c5146617f52d6b35113f8dee5eab56616d8bbc1c4c0",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003244,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_180_0_ele_-45_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_180,0_ele_-45,0.wav",
+      "sha256": "49f5cd015ac60189f7349874250e7953e58a364ed35ab8083698e7ec6f5e6374",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.004027,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_198_4_ele_17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_198,4_ele_17,5.wav",
+      "sha256": "14aff961639191763c6548ce9fcef1321d463b68fa6644d456f0c3f0c2a859b3",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003038,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_198_4_ele_-17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_198,4_ele_-17,5.wav",
+      "sha256": "1c74603daee06cb3fb9543a48f58c3dc3131f82723505299110a65e271ad949a",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.00347,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_225_0_ele_0_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_225,0_ele_0,0.wav",
+      "sha256": "eaa12100d95d5d620e194ac09a4860d0a407c74920c639e92a411ad6cd528113",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003744,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_225_0_ele_35_3.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_225,0_ele_35,3.wav",
+      "sha256": "ca3d6233391a898b8196d74f03e3cbf1df61c1c0c8bfb55c8eeeb7bcdac51bf9",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.00384,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_225_0_ele_-35_3.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_225,0_ele_-35,3.wav",
+      "sha256": "ba3f7f63a81ea2f73c59646cac950e50d2d74a16251869a1b6e8ca9608e93d52",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003975,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_225_0_ele_64_8.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H8/H8_BRIR_WAV/44K_16bit/azi_225,0_ele_64,8.wav",
+      "sha256": "f0613d08b785e4cf8cd5b887dd79dfc663153d9d4afa33c94e0c88bf99ac4e8f",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.003593,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_0_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H4/H4_BRIR_WAV/44K_16bit/azi_0,0_ele_0,0.wav",
+      "sha256": "471aeb0b356f286161484226f44c02f977a4f77db008888711930e0eb96cf06e",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.007244,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_45_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H4/H4_BRIR_WAV/44K_16bit/azi_0,0_ele_45,0.wav",
+      "sha256": "b48fcbd60fdcbc5f4fb82086cd0003e617dda5f86b1668354e3531c72fb4e9a3",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.008907,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_-45_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H4/H4_BRIR_WAV/44K_16bit/azi_0,0_ele_-45,0.wav",
+      "sha256": "ef05a2881768799bb5c42fe9d4a0dcd4bb0aee54df00c669f7ff1d5889843472",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.002741,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_90_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H4/H4_BRIR_WAV/44K_16bit/azi_0,0_ele_90,0.wav",
+      "sha256": "9ce0e2ef6ca2534faeab6d8d50c1be4f20324c57e1d049c5ad2110b785c65b00",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.005535,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_0_0_ele_-90_0.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H4/H4_BRIR_WAV/44K_16bit/azi_0,0_ele_-90,0.wav",
+      "sha256": "4f32d1f5744fb68c5dd177f202be1cfa98d94dca1de0239250a152180001b3f5",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.00179,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_108_4_ele_17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H4/H4_BRIR_WAV/44K_16bit/azi_108,4_ele_17,5.wav",
+      "sha256": "30e57bed7009e47ff51a125670f67a0be3e3c5e5bfa11a7bfc84e081398430cd",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.007361,
+        "laenge": 13230
+      }
+    },
+    {
+      "datei": "data/rir_real/sadie_azi_108_4_ele_-17_5.wav",
+      "datensatz": 12092466,
+      "dateiname_quelle": "H4/H4_BRIR_WAV/44K_16bit/azi_108,4_ele_-17,5.wav",
+      "sha256": "b6b4fae9cf4165b2c1ed7714773ebce32b3007309ecde83b0d565f1d4fd2aec0",
+      "lizenz": "apache2.0",
+      "probe": {
+        "sr": 44100,
+        "ch": 2,
+        "dauer_s": 0.3,
+        "rms": 0.006207,
+        "laenge": 13230
+      }
+    }
+  ]
+}
