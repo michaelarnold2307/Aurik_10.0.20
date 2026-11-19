@@ -69,3 +69,29 @@ class TestClickRemovalPhase:
         assert result_cf.resolved_defects["CLICKS"] == pytest.approx(
             result_sf.resolved_defects["CLICKS"]
         )
+
+    @pytest.mark.parametrize("mono", [np.zeros((1, 48000), dtype=np.float32), np.zeros((48000, 1), dtype=np.float32)])
+    def test_two_dimensional_mono_uses_mono_path_and_preserves_layout(self, phase, monkeypatch, mono):
+        stats = {"total": 0, "short": 0, "medium": 0, "long": 0, "transients_preserved": 0}
+        processed_shapes = []
+
+        def fake_professional(audio, *_args, **kwargs):
+            processed_shapes.append(audio.shape)
+            return audio.copy(), stats
+
+        def unexpected_linked(*_args, **kwargs):
+            pytest.fail("2D-Mono darf nicht den Linked-Stereo-Pfad verwenden")
+
+        monkeypatch.setattr(phase, "_remove_clicks_professional", fake_professional)
+        monkeypatch.setattr(phase, "_remove_clicks_linked_stereo", unexpected_linked)
+
+        result = phase.process(mono, sample_rate=48000)
+
+        assert processed_shapes == [(48000,)]
+        assert result.audio.shape == mono.shape
+        np.testing.assert_array_equal(result.audio, mono)
+
+    @pytest.mark.parametrize("shape", [(3, 48000), (48000, 3), (2, 48000, 1)])
+    def test_unsupported_channel_layout_raises(self, phase, shape):
+        with pytest.raises(ValueError, match="erwartet Mono oder Stereo"):
+            phase.process(np.zeros(shape, dtype=np.float32), sample_rate=48000)
