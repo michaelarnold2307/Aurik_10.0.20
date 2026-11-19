@@ -2,8 +2,8 @@
   "schema": "aurik.klassen_manifest_anhaengen/1",
   "datum": "2026-11-19",
   "klasse": "vocal_harshness",
-  "quelle": "/tmp/pytest-of-michael/pytest-47/test_anhaengen_nur_eigene_klas0/neu.jsonl",
-  "ziel": "/tmp/pytest-of-michael/pytest-47/test_anhaengen_nur_eigene_klas0/haupt.jsonl",
+  "quelle": "/tmp/pytest-of-michael/pytest-53/test_anhaengen_nur_eigene_klas0/neu.jsonl",
+  "ziel": "/tmp/pytest-of-michael/pytest-53/test_anhaengen_nur_eigene_klas0/haupt.jsonl",
   "quelle_zeilen": 1,
   "neu_angehaengt": 1,
   "uebersprungen_duplikat": 0

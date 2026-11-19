@@ -120,7 +120,7 @@ def _stereo_balance_delta(audio_before: np.ndarray, audio_after: np.ndarray) -> 
             return 0.0
         _l = float(np.sqrt(np.mean(a[:, 0] ** 2)))
         _r = float(np.sqrt(np.mean(a[:, 1] ** 2)))
-        return abs(20.0 * np.log10((_l + 1e-12) / (_r + 1e-12)))
+        return float(abs(20.0 * np.log10((_l + 1e-12) / (_r + 1e-12))))
 
     _d = _imb_abs(audio_before) - _imb_abs(audio_after)
     # 1 dB Balance-Gewinn ≈ 0,05 Delta-Einheiten (STRONG_IMPROVEMENT = 0,08)

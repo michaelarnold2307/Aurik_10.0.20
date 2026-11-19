@@ -92,15 +92,18 @@ def _build_core():
 def get_bsr317_torch_core():
     """Lazy-Singleton: ROCm-Core oder None (fail-closed, §V6 (copilot-instructions.md))."""
     global _core, _core_resolved
+    try:
+        import torch  # pylint: disable=import-outside-toplevel
+
+        from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
+    except ImportError:
+        logger.debug("§BSR-GPU torch-ROCm: torch/Registry nicht importierbar — ONNX-Pfad bleibt")
+        return None
     with _lock:
         if _core_resolved:
             return _core
         _core_resolved = True
         try:
-            import torch  # pylint: disable=import-outside-toplevel
-
-            from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
-
             if not torch.cuda.is_available() or force_cpu_requested():
                 logger.debug("§BSR-GPU torch-ROCm nicht verfügbar — ONNX-Pfad bleibt")
                 return None

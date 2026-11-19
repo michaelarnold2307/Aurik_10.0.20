@@ -160,15 +160,18 @@ def _build_core():
 def get_banquet_torch_core():
     """Lazy-Singleton: ROCm-Kern oder None (fail-closed, §V6 (copilot-instructions.md))."""
     global _core, _core_resolved
+    try:
+        import torch  # pylint: disable=import-outside-toplevel
+
+        from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
+    except ImportError:
+        logger.debug("§SOTA-ML-V5 BANQUET-torch-ROCm: torch/Registry nicht importierbar — ONNX-Pfad bleibt")
+        return None
     with _lock:
         if _core_resolved:
             return _core
         _core_resolved = True
         try:
-            import torch  # pylint: disable=import-outside-toplevel
-
-            from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
-
             if not torch.cuda.is_available() or force_cpu_requested():
                 logger.debug("§SOTA-ML-V5 BANQUET-torch-ROCm nicht verfügbar — ONNX-Pfad bleibt")
                 return None

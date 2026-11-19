@@ -1,4 +1,10 @@
-# Changelog — Aurik 10.12.53
+# Changelog — Aurik 10.13.0
+
+## 10.13.0 (2026-11-19)
+
+* **feat(paritaet): RX/Cedar/Acon-Wettbewerbsmission verankert** — 15 Disziplinen im Paritätsregister, fail-closed Gate und evidenzgebundene Handover-/Spec-Verweise. Das ist ein Prüfrahmen, kein behaupteter Paritätsnachweis.
+* **feat(sinnbeweis): DRT-Messabdeckung erweitert** — 15 Rezeptklassen und Evidenzpfade für Regions-/Ganz-Titel-Bewertung; DRT-7/13/14/15 präzisieren Mess-, Reparatur- und Kompositionsverträge. Offene Nachweise bleiben offen.
+* **fix(dsp): Mono-/Stereo-Layoutfehler in den Phasen 01/02/03/09/68 behoben** — Sample-Metriken und Maskierung verwenden die korrekte Achse; Mono-/Stereo-Ausgaben behalten ihr Eingabelayout, und nicht unterstützte Kanalzahlen werden abgewiesen. Regressionstests decken beide Stereo-Layouts, 2D-Mono und den BANQUET-Fallback ab.
 
 ## 10.12.53 (2026-11-13)
 
