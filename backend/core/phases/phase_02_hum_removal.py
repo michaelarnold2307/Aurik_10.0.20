@@ -69,8 +69,9 @@ from typing import Any
 import numpy as np
 import scipy.signal as signal
 
+from backend.core.audio_layout import normalize_channels_first
 from backend.core.audio_utils import compute_gated_rms_dbfs as _gated_rms_dbfs_02  # §v10.101
-from backend.core.audio_utils import safe_filtfilt, to_channels_last
+from backend.core.audio_utils import restore_layout, safe_filtfilt, to_channels_last
 from backend.core.ml_model_readiness import check_ml_model_ready
 
 from .phase_interface import PhaseCategory, PhaseInterface, PhaseMetadata, PhaseResult, create_phase_result
@@ -290,7 +291,30 @@ class HumRemovalPhase(PhaseInterface):
         _ = auto_detect  # Pflichtparameter PhaseInterface-Vertrag; Funktion erkennt immer auto
         start_time = time.time()
         self.sample_rate = sample_rate
-        audio, _p02_transposed = to_channels_last(audio)
+        if audio.ndim == 1:
+            p02_output_layout = "mono"
+        elif audio.ndim == 2:
+            audio_channels_first, mono_was_transposed = normalize_channels_first(audio)
+            channel_count = audio_channels_first.shape[0]
+            if channel_count == 1:
+                audio = audio_channels_first[0]
+                p02_output_layout = "mono_samples_first" if mono_was_transposed else "mono_channels_first"
+            elif channel_count == 2:
+                audio, stereo_was_transposed = to_channels_last(audio)
+                p02_output_layout = "stereo_channels_first" if stereo_was_transposed else "stereo_samples_first"
+            else:
+                raise ValueError(f"HumRemovalPhase erwartet Mono oder Stereo, erhalten: {audio.shape}")
+        else:
+            raise ValueError(f"HumRemovalPhase erwartet Mono oder Stereo, erhalten: {audio.shape}")
+
+        def _restore_p02_output_layout(output: np.ndarray) -> np.ndarray:
+            if p02_output_layout == "mono_channels_first":
+                return output[None, :]
+            if p02_output_layout == "mono_samples_first":
+                return output[:, None]
+            if p02_output_layout == "stereo_channels_first":
+                return restore_layout(output, was_transposed=True)
+            return output
 
         # §4.6b: Pre-phase eviction — free previous phase models to prevent OOM
         try:
@@ -330,7 +354,7 @@ class HumRemovalPhase(PhaseInterface):
             passthrough = np.nan_to_num(audio.copy(), nan=0.0, posinf=0.0, neginf=0.0)
             passthrough = np.clip(passthrough, -1.0, 1.0)
             return create_phase_result(
-                audio=passthrough,
+                audio=_restore_p02_output_layout(passthrough),
                 modifications={"hum_detected": False, "fundamentals": [], "total_harmonics_removed": 0},
                 warnings=["Hum removal skipped due to zero effective strength"],
                 metadata={
@@ -353,7 +377,7 @@ class HumRemovalPhase(PhaseInterface):
             audio = np.clip(audio, -1.0, 1.0)
 
             return create_phase_result(
-                audio=audio,
+                audio=_restore_p02_output_layout(audio),
                 modifications={"hum_detected": False, "fundamentals": [], "total_harmonics_removed": 0},
                 warnings=[],
                 metadata={
@@ -514,7 +538,7 @@ class HumRemovalPhase(PhaseInterface):
         _makeup_02 = 0.0
 
         return create_phase_result(
-            audio=result_audio,
+            audio=_restore_p02_output_layout(result_audio),
             modifications={
                 "hum_detected": True,
                 "fundamentals": detected_fundamentals,
