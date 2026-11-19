@@ -96,3 +96,18 @@ def test_kind_dispatch_und_modus_marker() -> None:
     assert 'if "--index" in argv or "--einzel" in argv:' in quelle
     assert '"modus": "subprozess-isoliert"' in quelle
     assert "tmp.replace(args.zeile_datei)" in quelle  # atomare Zeilen-Datei
+
+
+def test_numba_bootstrap_vor_denker_thread() -> None:
+    """Exit-139-Fix (2026-11-19): numba/librosa-JIT-Kompilierung wird VOR dem
+    Bridge-Import (Denker-Thread) im Hauptthread erzwungen — lazy njit-Erst-
+    Kompilierung im Worker-Thread segfaultete den Prozess (Faulthandler:
+    <no Python frame> + numba-Module)."""
+    quelle = (ab._ROOT / "scripts" / "erstelle_schadens_proben.py").read_text(encoding="utf-8")
+    i_def = quelle.index("def restauriere_schnipsel")
+    i_bridge = quelle.index("from backend.api.bridge import", i_def)
+    assert "ensure_librosa_ready()" in quelle[i_def:i_bridge]
+    boot = (ab._ROOT / "backend" / "core" / "librosa_bootstrap.py").read_text(encoding="utf-8")
+    assert "_pghi_heap_kernel_nb" in boot
+    assert "_qp_envelope_numba" in boot
+    assert "kalman_smooth_warp" in boot

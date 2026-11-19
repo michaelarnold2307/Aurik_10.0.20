@@ -90,7 +90,7 @@ def test_gewicht_positiv_senkt_mos_proxy_verlust() -> None:
 
 
 def test_proxy_klasse_deterministisch_und_differenzierbar() -> None:
-    """Das Proxy-Netz ist deterministisch (gleicher Seed ⇒ gleiche Werte, §G5)
+    """Das Proxy-Netz ist deterministisch (gleicher Seed ⇒ gleiche Werte, §G5 (GEBOTE.md))
     und differenzierbar in der Mel-Eingabe."""
     torch.manual_seed(42)
     proxy_a = wk.MusikMOSProxy(n_mels=8, frames=16)
@@ -137,6 +137,29 @@ def test_zwei_metrik_auswahl_unbelegte_kandidaten_gewinnen_nicht() -> None:
     k1 = {"ep": 0, "score": 0.05, "mos": None}
     k2 = {"ep": 1, "score": 0.10, "mos": 4.0}
     assert wk._zwei_metrik_auswahl([k1, k2]) is k2
+
+
+def test_auswahl_nw_schutzarm_gewinnt_vor_schlechtem_nw() -> None:
+    """Exit-1-Fix (2026-11-19): mit --nw-min gewinnen NUR Epochen mit
+    Holdout-nw ≥ Schwelle — die Runde 2 wählte eine Epoche mit kollabiertem
+    never-worsen (wow nw 0,06), obwohl eine nw-sichere existierte."""
+    k_gut = {"ep": 1, "score": 0.11, "mos": 4.50, "nw": 0.93}
+    k_schlecht = {"ep": 2, "score": 0.10, "mos": 4.52, "nw": 0.06}
+    assert wk._zwei_metrik_auswahl([k_gut, k_schlecht], nw_min=0.9) is k_gut
+
+
+def test_auswahl_nw_fallback_ohne_genuegende_epoche() -> None:
+    """Keine nw-genügende Epoche ⇒ alte Zwei-Metrik-Auswahl (nie schlechter als bisher)."""
+    k1 = {"ep": 0, "score": 0.10, "mos": 4.48, "nw": 0.5}
+    k2 = {"ep": 1, "score": 0.12, "mos": 4.50, "nw": 0.4}
+    assert wk._zwei_metrik_auswahl([k1, k2], nw_min=0.9) is k1
+
+
+def test_auswahl_nw_default_none_bit_identisch() -> None:
+    """nw_min=None lässt das alte Verhalten unverändert (§G5 (GEBOTE.md))."""
+    k1 = {"ep": 0, "score": 0.10, "mos": 4.48, "nw": 0.2}
+    k2 = {"ep": 1, "score": 0.12, "mos": 4.50, "nw": 0.9}
+    assert wk._zwei_metrik_auswahl([k1, k2]) is wk._zwei_metrik_auswahl([k1, k2], nw_min=None) is k1
 
 
 # ─── Rückwärtskompatibilität / Spec-Referenzen ────────────────────────────────

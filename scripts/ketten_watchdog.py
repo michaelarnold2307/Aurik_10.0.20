@@ -116,7 +116,7 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
     ),
     (
         "witness-runde2",
-        "train_witness_kopf.py --klasse",
+        "dropouts:0.8:0.0:30",
         (
             "cd '" + _REPO + "' && export LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=. AURIK_FORCE_CPU=1 && "
             "PY='" + _REPO + "/.venv_aurik/bin/python' && "
@@ -182,6 +182,25 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
         ),
         "/tmp/vh_expansion.log",
         "VH_END=",
+    ),
+    (
+        "witness-runde3",
+        "--nw-min 0.9",
+        (
+            "cd '"
+            + _REPO
+            + "' && export LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=. AURIK_FORCE_CPU=1 && PY='"
+            + _REPO
+            + "/.venv_aurik/bin/python' && "
+            + _wait_for_success("kanalsatz-voll")
+            + " && "
+            'for SPEC in dropouts:0.8:30 dropout_oxide:0.8:30 tape_splice_artifact:0.8:30 wow:0.5:50 hum:0.5:50; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; REST="${REST#*:}"; EP="${REST##*:}"; '
+            'nice -n 19 "$PY" -B scripts/train_witness_kopf.py --klasse "$K" --epochen "$EP" '
+            '--lambda-mos 0.1 --lambda-id "$LID" --nw-min 0.9 --device cpu && '
+            'nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos; done'
+        ),
+        "/tmp/wq3_summary.txt",
+        "WQ3_END=",
     ),
 ]
 

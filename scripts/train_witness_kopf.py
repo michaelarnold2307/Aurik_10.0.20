@@ -222,7 +222,9 @@ def _mos_teacher_werte(wellen: np.ndarray, sr: int = SR) -> list[float] | None:
     return ergebnisse or None
 
 
-def _zwei_metrik_auswahl(kandidaten: list[dict[str, Any]], mos_jnd: float = MOS_JND) -> dict[str, Any] | None:
+def _zwei_metrik_auswahl(
+    kandidaten: list[dict[str, Any]], mos_jnd: float = MOS_JND, nw_min: float | None = None
+) -> dict[str, Any] | None:
     """Checkpoint-Auswahl nach defektlast UND musik_mos statt nur val_loss (DRT-8/10).
 
     Mindest-Schwelle (Pareto-konform): gewinnen kann nur, wer mit dem Holdout-mos
@@ -231,12 +233,26 @@ def _zwei_metrik_auswahl(kandidaten: list[dict[str, Any]], mos_jnd: float = MOS_
     mos-Verluste 0,06–0,10 > JND 0,05). Unter den Schwellen-Kandidaten gewinnt
     die kleinste defektlast. Ohne messbaren mos gilt der alte Weg (kleinster
     Score, §V6 (VERBOTEN.md) Fallback).
+
+    nw_min (never-worsen-Schutz-Arm, Exit-1-Fix 2026-11-19): mit `--nw-min`
+    (Default None = altes Verhalten, bit-identisch) gewinnen NUR Epochen,
+    deren Holdout-never-worsen-Anteil ≥ nw_min liegt — die Runde 2 scheiterte,
+    weil die Zwei-Metrik-Auswahl Epochen mit kollabiertem never-worsen wählte
+    (wow nw 0,06). Gibt es KEINE nw-genügende Epoche, greift der alte
+    Zwei-Metrik-Fallback (nie schlechter als bisher).
     """
     if not kandidaten:
         return None
     messbar = [k for k in kandidaten if k.get("mos") is not None]
     if not messbar:
         return min(kandidaten, key=lambda k: float(k["score"]))
+    if nw_min is not None:
+        nw_ok = [k for k in messbar if k.get("nw") is not None and float(k["nw"]) >= float(nw_min)]
+        if nw_ok:
+            best_mos_nw = max(float(k["mos"]) for k in nw_ok)
+            schwellen_nw = [k for k in nw_ok if float(k["mos"]) >= best_mos_nw - float(mos_jnd)]
+            if schwellen_nw:
+                return min(schwellen_nw, key=lambda k: float(k["score"]))
     best_mos = max(float(k["mos"]) for k in messbar)
     schwellen_ok = [k for k in messbar if float(k["mos"]) >= best_mos - float(mos_jnd)]
     return min(schwellen_ok, key=lambda k: float(k["score"]))
@@ -380,6 +396,7 @@ def trainiere(
     lam_spec: float = 0.3,
     lam_mos: float = 0.0,
     mos_ziel: float = MOS_ZIEL,
+    nw_min: float | None = None,
 ) -> dict[str, Any]:
     regionen, holdout_titel, n_gesamt = _baue_regionen(klasse)
     xs, xc, xc_id, hs, hc, hc_id = _lade_split(regionen, holdout_titel, max_regionen)
@@ -500,11 +517,24 @@ def trainiere(
             # Auswahl am Ende verlangt die mos-Mindest-Schwelle statt nur val_loss.
             lehrer = _mos_teacher_werte(out_h.detach().cpu().numpy())
             mos_h = float(np.mean(lehrer)) if lehrer else None
+            # never-worsen-Proxy je Epoche (Exit-1-Fix 2026-11-19): Anteil der
+            # Holdout-Regionen, deren Witness-Defekt-Proxy durch den Kopf NICHT
+            # steigt — dieselbe Semantik wie das Gate (NW_TOL 0.0). Der Wert
+            # speist die nw-genügende Modellauswahl (`--nw-min`).
+            nw_h: float | None = None
+            try:
+                _prox_out = torch.sigmoid(witness(mel_h[:, None, :, :])).view(len(out_h), -1).mean(dim=1)
+                _mel_in = _mel_torch(Hs_t.reshape(len(Hs_t), -1))
+                _prox_in = torch.sigmoid(witness(_mel_in[:, None, :, :])).view(len(Hs_t), -1).mean(dim=1)
+                nw_h = float((_prox_out <= _prox_in).float().mean())
+            except Exception as _nw_exc:
+                logger.warning("§V6 (VERBOTEN.md): never-worsen-Proxy nicht messbar (%s) — Epoche ohne nw", _nw_exc)
             kandidaten.append(
                 {
                     "ep": ep,
                     "score": float(score_h),
                     "mos": mos_h,
+                    "nw": nw_h,
                     "state": {k: v.cpu().clone() for k, v in model.state_dict().items()},
                 }
             )
@@ -532,7 +562,7 @@ def trainiere(
         # Kandidaten, deren Holdout-mos höchstens MOS_JND unter dem besten liegt,
         # gewinnt die kleinste defektlast — die reine defektlast-Auswahl opferte
         # den Wohlklang (Ablations-Befund 2026-11-16: mos-Verlust 0,06–0,10 > JND).
-        gewaehlt = _zwei_metrik_auswahl(kandidaten)
+        gewaehlt = _zwei_metrik_auswahl(kandidaten, nw_min=nw_min)
         if gewaehlt is not None:
             best = {
                 "score": float(gewaehlt["score"]),
@@ -651,6 +681,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--mos-ziel", type=float, default=MOS_ZIEL, help="Hinge-Ziel-mos des Proxy-Terms (nur mit --lambda-mos > 0)"
     )
+    ap.add_argument(
+        "--nw-min",
+        type=float,
+        default=None,
+        help="Never-worsen-Schutz-Arm der Modellauswahl (Exit-1-Fix 2026-11-19): nur Epochen mit Holdout-nw ≥ Schwelle gewinnen; None = altes Zwei-Metrik-Verfahren",
+    )
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-regionen", type=int, default=0, help=">0 = Smoke (begrenzte Regionen)")
     args = ap.parse_args(argv)
@@ -667,6 +703,7 @@ def main(argv: list[str] | None = None) -> int:
         args.lambda_spektral,
         args.lambda_mos,
         args.mos_ziel,
+        nw_min=args.nw_min,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
     return 0

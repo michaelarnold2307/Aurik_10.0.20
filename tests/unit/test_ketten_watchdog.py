@@ -174,11 +174,11 @@ def test_prozess_check_fail_safe_bei_pgrep_fehlerstatus(monkeypatch) -> None:
 
 
 def test_konfiguration_komplett_und_marker_konsistent() -> None:
-    """8 Ketten, je mit eigenem Log + eigenem END-Marker (keine Kollision)."""
-    assert len(wd.KETTEN_CONFIG) == 8
+    """9 Ketten, je mit eigenem Log + eigenem END-Marker (keine Kollision)."""
+    assert len(wd.KETTEN_CONFIG) == 9
     marker = {e[4] for e in wd.KETTEN_CONFIG}
     logs = {e[3] for e in wd.KETTEN_CONFIG}
-    assert len(marker) == 8 and len(logs) == 8
+    assert len(marker) == 9 and len(logs) == 9
     for e in wd.KETTEN_CONFIG:
         assert e[4].endswith("END="), e[0]
 

@@ -123,6 +123,48 @@ def ensure_librosa_ready() -> bool:
             except Exception as exc:
                 logger.warning("librosa-Bootstrap: Warmup %s fehlgeschlagen (%s)", getattr(_fn, "__name__", _fn), exc)
 
+        # 3) EIGENE numba-Kerne erzwingen (Exit-139-Fix 2026-11-19): die
+        # njit-Kerne in pghi/warp_kalman/phase_defect_verifier kompilieren
+        # lazy beim Erstaufruf — passiert der im Denker-Thread, segfaultet
+        # der Prozess (Faulthandler: <no Python frame> + numba-Module).
+        _warmup_eigene_numba()
+
         _LIBROSA_READY = True
         logger.debug("librosa-Bootstrap: vollständig aufgelöst (Hauptthread, vor Worker-Start)")
         return True
+
+
+def _warmup_eigene_numba() -> None:
+    """JIT-Kompilierung der eigenen numba-Kerne im Hauptthread erzwingen.
+
+    Jeder Kern wird einzeln mit Mini-Eingaben kompiliert; Fehler degradieren
+    nur diesen Kern (§V6 (copilot-instructions.md)) — die Aufrufer haben jeweils Python-Fallbacks.
+    """
+    try:
+        from backend.core.dsp import pghi as _pghi_mod
+
+        _mag = np.ones((4, 3), dtype=np.float64)
+        _phase = np.zeros((4, 3), dtype=np.float64)
+        _visited = np.zeros((4, 3), dtype=np.bool_)
+        _in_heap = np.zeros((4, 3), dtype=np.bool_)
+        _dpt = np.zeros((4, 3), dtype=np.float64)
+        _dpo = np.zeros((4, 3), dtype=np.float64)
+        _pghi_mod._pghi_heap_kernel_nb(_mag, _phase, _visited, _in_heap, _dpt, _dpo, 0, 0)
+    except Exception as exc:  # pragma: no cover - optional dependency
+        logger.warning("numba-Bootstrap: pghi-Kern nicht warmgelaufen (%s) — Python-Ersatzpfad bleibt", exc)
+
+    try:
+        from backend.core.phase_defect_verifier import _qp_envelope_numba as _qpw
+
+        _env = np.zeros(16, dtype=np.float32)
+        _out = np.zeros(16, dtype=np.float32)
+        _qpw(_env, 0.1, 0.2, _out)
+    except Exception as exc:  # pragma: no cover - optional dependency
+        logger.warning("numba-Bootstrap: QP-Hüllen-Kern nicht warmgelaufen (%s) — Python-Ersatzpfad bleibt", exc)
+
+    try:
+        from backend.core.dsp.warp_kalman import kalman_smooth_warp as _ksw
+
+        _ksw(np.zeros(16, dtype=np.float64), q=1e-2, r=1e-2)
+    except Exception as exc:  # pragma: no cover - optional dependency
+        logger.warning("numba-Bootstrap: warp_kalman-Kern nicht warmgelaufen (%s) — Python-Ersatzpfad bleibt", exc)

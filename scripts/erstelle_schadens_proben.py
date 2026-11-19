@@ -50,6 +50,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -314,6 +315,15 @@ def restauriere_schnipsel(audio: np.ndarray, sr: int, input_path: str, mode: str
     WICHTIG: `AURIK_FORCE_CPU=1` muss VOR dem Import gesetzt sein (main tut das),
     damit die laufende GPU-Kette nicht angefasst wird (ml_device_manager-Vertrag).
     """
+    # Exit-139-Fix (2026-11-19): numba/librosa-JIT-Kompilierung VOR dem
+    # Denker-Thread erzwingen — lazy Erst-Kompilierung im Worker-Thread
+    # segfaultete den Prozess (Faulthandler: <no Python frame> + numba).
+    try:
+        from backend.core.librosa_bootstrap import ensure_librosa_ready
+
+        ensure_librosa_ready()
+    except Exception:  # pragma: no cover - degradiert, nie den Produktionspfad blockieren
+        logging.getLogger(__name__).debug("librosa/numba-Bootstrap nicht verfügbar — Ersatzpfade aktiv")
     from backend.api.bridge import get_aurik_denker_instance, normalize_user_mode, run_pre_analysis
 
     pre = run_pre_analysis(
