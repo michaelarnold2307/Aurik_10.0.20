@@ -125,7 +125,8 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
             'REST="${REST#*:}"; LOK="${REST%%:*}"; EP="${REST##*:}"; '
             'nice -n 19 "$PY" -B scripts/train_witness_kopf.py --klasse "$K" --epochen "$EP" '
             '--lambda-mos 0.1 --lambda-id "$LID" --lambda-lokal "$LOK" --device cpu && '
-            'nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos; done'
+            '( nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos || '
+            'echo "WQ_GATE_FAILED:$K" ); done'
         ),
         "/tmp/wq2_summary.txt",
         "WQ2_END=",
@@ -197,7 +198,8 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
             'for SPEC in dropouts:0.8:30 dropout_oxide:0.8:30 tape_splice_artifact:0.8:30 wow:0.5:50 hum:0.5:50; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; REST="${REST#*:}"; EP="${REST##*:}"; '
             'nice -n 19 "$PY" -B scripts/train_witness_kopf.py --klasse "$K" --epochen "$EP" '
             '--lambda-mos 0.1 --lambda-id "$LID" --nw-min 0.9 --device cpu && '
-            'nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos; done'
+            '( nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos || '
+            'echo "WQ_GATE_FAILED:$K" ); done'
         ),
         "/tmp/wq3_summary.txt",
         "WQ3_END=",
@@ -216,7 +218,8 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
             'for SPEC in dropouts:0.9:30 wow:0.9:50 hum:0.8:50; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; REST="${REST#*:}"; EP="${REST##*:}"; '
             'nice -n 19 "$PY" -B scripts/train_witness_kopf.py --klasse "$K" --epochen "$EP" '
             '--lambda-mos 0.1 --lambda-id "$LID" --nw-min 0.9 --device cpu && '
-            'nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos; done'
+            '( nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos || '
+            'echo "WQ_GATE_FAILED:$K" ); done'
         ),
         "/tmp/wq4_summary.txt",
         "WQ4_END=",

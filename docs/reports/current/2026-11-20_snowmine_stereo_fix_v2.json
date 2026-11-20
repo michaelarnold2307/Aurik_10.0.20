@@ -1,0 +1,15 @@
+{
+  "schema": "aurik.snowmine_stereo_fix/1",
+  "datum": "2026-11-20",
+  "titel": "Snowmine - Curfews (stereo_imbalance)",
+  "rezept": "stereo_imbalance",
+  "dauer_restauration_s": 1183.9,
+  "stereo_balance": {
+    "vorher_db": -4.0943,
+    "nachher_db": 0.0001,
+    "delta_db": 4.0944,
+    "besser": true
+  },
+  "delta_musik_mos": -0.1187,
+  "delta_defektlast": 0.4669
+}

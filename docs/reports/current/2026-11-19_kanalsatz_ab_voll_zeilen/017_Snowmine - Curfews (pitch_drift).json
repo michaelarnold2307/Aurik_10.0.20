@@ -1,0 +1,10 @@
+{
+  "stamm": "Snowmine - Curfews (pitch_drift)",
+  "status": "ok",
+  "kanalsatz_delta_musik_mos": 0.0,
+  "kanalsatz_delta_defektlast": 0.0,
+  "bestand_delta_musik_mos": 0.0002,
+  "bestand_delta_defektlast": 0.0008,
+  "delta_zu_bestand_mos": -0.0002,
+  "delta_zu_bestand_defektlast": -0.0008
+}

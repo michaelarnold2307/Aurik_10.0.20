@@ -645,9 +645,15 @@ def test_bridge_restoration_bericht_defensive():
 def test_results_summary_renders_bericht_section():
     src = _read("Aurik10/ui/results_summary.py")
     assert "restoration_bericht" in src
-    assert "🔍 Gefunden:" in src
-    assert "✅ Aurik hat:" in src
-    assert "🛡️ Sicherheitsnetz:" in src
+    # i18n-Architektur (seit 4fff5318): die deutschen Bericht-Headings leben in
+    # der Übersetzungs-Tabelle und werden über t("results.*")-Keys gerendert —
+    # der Vertrag prüft beides: Keys im UI + exakte Literale in i18n.
+    for _key in ("results.found_follows", "results.aurik_did", "results.safety_net"):
+        assert _key in src
+    i18n = _read("Aurik10/i18n/__init__.py")
+    assert "🔍 Gefunden:" in i18n
+    assert "✅ Aurik hat:" in i18n
+    assert "🛡️ Sicherheitsnetz:" in i18n
 
 
 def test_modern_window_passes_bericht_to_dialog():

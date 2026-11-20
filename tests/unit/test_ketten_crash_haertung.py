@@ -29,11 +29,20 @@ def test_erstelle_resume_ueberspringt_fertige_paare() -> None:
     m = re.search(
         r"_rest_check = ausgang /.*?\n"
         r"\s+if schaden_pfad\.is_file\(\) and _rest_check\.is_file\(\) and schaden_pfad\.stat\(\)\.st_size > 0:\n"
+        r"\s+.*?manifest\[\"songs\"\]\.append\(\n"
+        r"\s+\{\n"
+        r"\s+\"quelle\": str\(stueck\),\n"
+        r"\s+\"stamm\": stamm,\n"
+        r"\s+\"rezept\": rezept,\n"
+        r"\s+\"schaden\": str\(schaden_pfad\),\n"
+        r"\s+\"restauriert\": str\(_rest_check\),\n"
+        r"\s+\}\n"
+        r"\s+\)\n"
         r"\s+continue",
         q,
         re.S,
     )
-    assert m, "Resume-Skip-Block fehlt oder falsch geordnet"
+    assert m, "Resume-Skip-Block fehlt oder falsch geordnet (Manifest-Nachtrag vor continue fehlt)"
 
 
 def test_crackle_resume_ueberspringt_fertige_titel() -> None:

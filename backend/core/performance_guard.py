@@ -175,6 +175,7 @@ class PerformanceGuard:
         "digital_repair": 8,
         # Gruppe 3: MEDIUM (bei > 2.5× RT skippen)
         "stereo_enhancement": 6,
+        "transient_shaper": 6,  # R7-Hör-Impact schützt die Phase bei hörbarem Ziel-Defekt
         # Gruppe 4: LOW (bei > 2.0× RT skippen)
         "final_polish": 3,
         "metadata_embedding": 1,

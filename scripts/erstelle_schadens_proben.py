@@ -422,6 +422,20 @@ def main(argv: list[str] | None = None) -> int:
             # ein abgebrochener Lauf setzt ohne Zeitverlust fort.
             _rest_check = ausgang / f"{stamm} ({rezept})_restauriert.wav"
             if schaden_pfad.is_file() and _rest_check.is_file() and schaden_pfad.stat().st_size > 0:
+                # Manifest-Eintrag trotzdem nachtragen (Befund 2026-11-20):
+                # ein vollstaendiger Resume-Lauf schrieb sonst ein LEERES
+                # songs[]-Manifest -> bewerte_schadens_proben endete mit
+                # "LEER: keine Paare im Manifest" (Exit 2) -> Watchdog-Kette
+                # crashte 5x. Resume darf die Buchfuehrung nie verlieren.
+                manifest["songs"].append(
+                    {
+                        "quelle": str(stueck),
+                        "stamm": stamm,
+                        "rezept": rezept,
+                        "schaden": str(schaden_pfad),
+                        "restauriert": str(_rest_check),
+                    }
+                )
                 continue
             if rezept == "stereo_imbalance":
                 # (C, N) → (Frames, Kanäle) für sf.write — Stereo bleibt Stereo.

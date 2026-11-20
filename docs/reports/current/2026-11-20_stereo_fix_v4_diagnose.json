@@ -1,0 +1,40 @@
+{
+  "schema": "aurik.stereo_fix_diagnose/1",
+  "datum": "2026-11-20",
+  "titel": "Stereo-Fix v4: Phase-Maschinerie OK — End-to-End blockiert der Never-worsen-Arbiter (Spectral-Kollaps)",
+  "lauf": "stereo_fix_v4.log (Snowmine - Curfews, stereo_imbalance)",
+  "frage": "Warum greift phase_15_stereo_balance nicht? (No-Op-Phase oder Benefit-Logik kaputt?)",
+  "antwort_phase_15": "Weder noch. Die Phase-Maschinerie arbeitet korrekt: imbalance_base=0.00 dB, imbalance_work=-0.27 dB — an Position 11/47 ist das Arbeits-Audio bereits kanal-balanced (0.00 dB), die Phase lehnt ihr eigenes minimal verschlechterndes Werk korrekt ab (base_rejected, alpha=0.00).",
+  "wer_balanced_vorher": "GELÖST (2026-11-20): §v10.303 Phase-0 Pre-Processor (ChainedPhase0Preprocessor, plugins/apollo_phase0_integration). Der v6-Log zeigt 'Verarbeitungsschritt-0 angewendet: deepfilternet → ear_vae' — die DeepFilterNet-v3-Enhancement-Stufe gleicht L/R gegen eine gemeinsame Noise-Floor-Schätzung an, BEVOR der Phasen-Loop startet. Deshalb misst phase_02 (erste nummerierte Phase) imbalance_base=0.00 dB. phase_15_stereo_balance ist damit an ihrer DAG-Position redundant (korrekt rejected), bleibt aber Sicherheitsnetz für Fälle ohne Phase-0-Enhancement.",
+  "end_to_end_befund": "Balance -4.09 -> -4.09 dB, DeltaMOS +0.000 — die Ausgabe ist BIT-IDENTISCH zur Eingabe, weil der autonome Never-worsen-Arbiter (resolv._never_worsen) den Erstlauf verworfen hat: 'Erstlauf schlechter als Eingabe (spectral 10.0 < 62.9-8.0)' und auch der Balanced-Retry nicht besser war -> Rücksprung auf die Eingabe.",
+  "spectral_kollaps_analyse": {
+    "metrik": "BlindQualityEstimator._spectral_naturalness = Spektraler Crest-Faktor (peak/geomean der |FFT| in 300-8000 Hz), 'goldene Zone' 15-40 -> 90 Punkte; >40: score=100-(crest-40)*1.5; >=100 -> 10 (Clamp).",
+    "eingabe": "crest ~64.7 (Score 62.9) — Bandmaterial bereits peaky (bandwidth_loss=1.0, dull).",
+    "erstlauf": "Score 10.0 => crest >= 100. Hypothese: Denoise/Spectral-Repair erzeugt tiefe Notches im 300-8000-Hz-Band -> geometrisches Mittel kollabiert -> Crest explodiert (Mess-Artefakt), ODER echter HF-Ueberboost (phase_38/39/16) erzeugt Rasiermesser-Peaks (echte Verschlechterung).",
+    "entscheidung": "Haengt davon ab, welche Ursache stimmt: Mess-Artefakt -> Metrik robustisieren (z.B. 1/3-Oktav-Glaettung vor Crest); echter Ueberboost -> Pipeline-Phaesen daempfen. NICHT raten — Forensik-Lauf entscheidet."
+  },
+  "forensik_ergebnis": {
+    "befund": "NOTCH-MESSARTEFAKT, kein echter HF-Ueberboost. BEIDE Kandidaten (Erstlauf UND Balanced-Retry) sind perfekt balanciert (balance -4.09 -> 0.00 dB) und objektiv besser: hf_presence 77 -> 90, transients 16 -> 85, noise 96; HF-Energieanteil >8 kHz sank sogar (0.018 -> 0.001). Roh-Crest 64.8 -> 110.3 (Erstlauf) / 102.7 (Retry) wird durch schmalbandige Notches verursacht (Notch-Bins 694 -> 1371/1453), die das geometrische Mittel kollabieren lassen; mit 11-Bin-Glaettung liegen alle in der goldenen Zone (input 19.2, first 34.3). Der Stereo-Fix ist also robust ueber beide Betriebsarten — nur die Metrik verwarf ihn.",
+    "fix": "blind_reference_free_quality._spectral_naturalness: 11-Bin-Moving-Average ueber die Magnituden vor der Crest-Bildung (deterministisch, keine Schwelle gelockert). Offline-Verifikation auf dem Dump: spectral 90.0/90.0, overall 56.6 (input) -> 64.3 (first) -> Arbiter wuerde akzeptieren. 82 Tests gruen.",
+    "akzeptanz_lauf": "v6 ABGESCHLOSSEN (V6_END=0): Balance -4.0943 -> +0.0001 dB, besser=true, delta_defektlast +0.4669, delta_musik_mos -0.119 (kleiner Mono-Mix-Trade-off der Neubalancierung), Dauer 1183.9 s, Erstlauf akzeptiert (kein Retry, kein Rücksprung). Beleg: docs/reports/current/2026-11-20_snowmine_stereo_fix_v2.json. STEREO-FIX END-TO-END BEWIESEN."
+  },
+  "forensik_lauf": {
+    "lauf": "stereo_fix_v5.log (laueft, ~60-70 min: Erstlauf + Balanced-Retry)",
+    "instrument": "AURIK_ARBITER_DEBUG_DUMP=/tmp/arbiter_forensics — env-gated Dump in resolve_never_worsen (backend/core/dsp/autonomous_quality_arbiter.py): input.npy, first.npy, retry.npy + scores_first.json/scores_retry.json. Ohne Env: kein I/O, deterministisch.",
+    "tests": "52 passed (test_autonomous_quality_arbiter, test_af_never_worsen_guard, test_no_blind_trust) nach Edit.",
+    "auswertung": "/tmp/forensik_auswerten.py (One-off): Crest-Replika + Notch-Zaehlung + Balance je Kandidat.",
+    "naechster_schritt": "Nach Lauf-Ende: Crest + Spektrogramm + Balance von input/first/retry messen; je nach Befund Metrik- oder Phasen-Fix."
+  },
+  "ketten_status_2026-11-20": {
+    "vinylnet": "Epoche 76, SI-SDR 14.66 -> 19.51 dB (val) — starke Verbesserung",
+    "b2_signal10b": "60/60 fertig",
+    "wq": "trainiert (witness-runde2 lueft, runde3/4 vom Watchdog neu gestartet)",
+    "kanalsatz": "26 Zeilen, 5 Prozesse laufen",
+    "watchdog": "scripts/ketten_watchdog.py aktiv (PID 366285), ueberwacht + Auto-Restart der Ketten"
+  },
+  "ketten_bugfixes_2026-11-20": {
+    "signal10_manifest_bug": "erstelle_schadens_proben.py: Resume-Skip (fertiges Paar) trug den Eintrag NICHT ins Manifest ein -> nach vollstaendigem Resume-Lauf stand 'songs': [] -> bewerte_schadens_proben endete 'LEER: keine Paare im Manifest' (Exit 2) -> Kette crashte 5x (Watchdog GESTOPPT). Fix: Manifest-Eintrag wird im Skip-Zweig nachgetragen (Verifikation: 30 Eintraege nach Regenerierung, EXIT=0).",
+    "wq_gate_abbruch": "witness-runde2-Kette brach nach dem ersten Gate-Fail ab (verify hinter '&&'): hum (q_median 0.644, never_worsen 0.25) scheiterte -> die anderen 4 Klassen wurden nie trainiert -> Watchdog-Neustart-Schleife (5x GESTOPPT). Fix: Verify nicht-fatal ((verify || echo WQ_GATE_FAILED:$K)), alle 5 Klassen trainieren, Train-Erfolg entscheidet ueber Ketten-Exit.",
+    "watchdog_neustart": "Watchdog neu gestartet (PID 366285, Zaehler + konfigurierte Ketten neu geladen); Crash-Historien /tmp/signal10_resume.log + /tmp/wq2_summary.txt gesichert (*.fail_hist) und zurueckgesetzt — die reparierten Ketten werden automatisch wieder aufgenommen."
+  }
+}

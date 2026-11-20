@@ -1,0 +1,421 @@
+{
+  "schema": "aurik.kanalsatz_ab/1",
+  "datum": "2026-11-20",
+  "seed": 42,
+  "modus": "subprozess-isoliert",
+  "verzeichnis": "data/schadens_proben",
+  "kanalsatz_flags": [
+    "use_witness_kopf_groove_echo",
+    "use_witness_kopf_tape_head_level_dip",
+    "use_witness_kopf_clicks",
+    "use_witness_kopf_compression_artifacts",
+    "use_witness_kopf_jitter_artifacts",
+    "use_witness_kopf_tape_head_clog",
+    "use_witness_kopf_phase_rotation",
+    "use_witness_kopf_sibilance",
+    "use_witness_kopf_sticky_shed_residue",
+    "use_witness_kopf_transport_bump",
+    "use_witness_kopf_dynamic_compression_excess",
+    "use_witness_kopf_dropout_head_contact"
+  ],
+  "n_paare": 40,
+  "n_geplant": 45,
+  "bestand_beleg": "data/schadens_proben/bewertung.json",
+  "zeilen": [
+    {
+      "stamm": "Music Delta - Rock (wowflutter)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0845,
+      "kanalsatz_delta_defektlast": -0.0008,
+      "bestand_delta_musik_mos": -0.0325,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": -0.052,
+      "delta_zu_bestand_defektlast": -0.0008
+    },
+    {
+      "stamm": "Snowmine - Curfews (hum)",
+      "status": "abgestuerzt",
+      "returncode": -11
+    },
+    {
+      "stamm": "Snowmine - Curfews (wowflutter)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0962,
+      "kanalsatz_delta_defektlast": 0.3284,
+      "bestand_delta_musik_mos": -0.0034,
+      "bestand_delta_defektlast": 0.001,
+      "delta_zu_bestand_mos": -0.0928,
+      "delta_zu_bestand_defektlast": 0.3274
+    },
+    {
+      "stamm": "Music Delta - Rock (lautheit)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.1044,
+      "kanalsatz_delta_defektlast": 0.0005,
+      "bestand_delta_musik_mos": -0.0364,
+      "bestand_delta_defektlast": -0.0002,
+      "delta_zu_bestand_mos": -0.068,
+      "delta_zu_bestand_defektlast": 0.0007
+    },
+    {
+      "stamm": "Music Delta - Rock (raum)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 1.6836,
+      "kanalsatz_delta_defektlast": -1.1982,
+      "bestand_delta_musik_mos": 0.0449,
+      "bestand_delta_defektlast": -0.4742,
+      "delta_zu_bestand_mos": 1.6387,
+      "delta_zu_bestand_defektlast": -0.724
+    },
+    {
+      "stamm": "Music Delta - Rock (kassette)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0799,
+      "kanalsatz_delta_defektlast": 0.0013,
+      "bestand_delta_musik_mos": -0.0285,
+      "bestand_delta_defektlast": -0.0003,
+      "delta_zu_bestand_mos": -0.0514,
+      "delta_zu_bestand_defektlast": 0.0016
+    },
+    {
+      "stamm": "Snowmine - Curfews (verzerrung)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0,
+      "kanalsatz_delta_defektlast": 0.0,
+      "bestand_delta_musik_mos": -0.0032,
+      "bestand_delta_defektlast": 0.0013,
+      "delta_zu_bestand_mos": 0.0032,
+      "delta_zu_bestand_defektlast": -0.0013
+    },
+    {
+      "stamm": "Snowmine - Curfews (clipping)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0936,
+      "kanalsatz_delta_defektlast": -0.0055,
+      "bestand_delta_musik_mos": 0.0118,
+      "bestand_delta_defektlast": 0.0057,
+      "delta_zu_bestand_mos": 0.0818,
+      "delta_zu_bestand_defektlast": -0.0112
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (hum)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0183,
+      "kanalsatz_delta_defektlast": 0.0014,
+      "bestand_delta_musik_mos": -0.0385,
+      "bestand_delta_defektlast": -0.0002,
+      "delta_zu_bestand_mos": 0.0568,
+      "delta_zu_bestand_defektlast": 0.0016
+    },
+    {
+      "stamm": "Music Delta - Rock (mp3_128)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.119,
+      "kanalsatz_delta_defektlast": -0.4921,
+      "bestand_delta_musik_mos": -0.0205,
+      "bestand_delta_defektlast": 0.0001,
+      "delta_zu_bestand_mos": 0.1395,
+      "delta_zu_bestand_defektlast": -0.4922
+    },
+    {
+      "stamm": "Snowmine - Curfews (kammfilter)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0,
+      "kanalsatz_delta_defektlast": 0.0,
+      "bestand_delta_musik_mos": -0.0037,
+      "bestand_delta_defektlast": 0.0007,
+      "delta_zu_bestand_mos": 0.0037,
+      "delta_zu_bestand_defektlast": -0.0007
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (kompression)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.005,
+      "kanalsatz_delta_defektlast": -0.0002,
+      "bestand_delta_musik_mos": -0.031,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": 0.036,
+      "delta_zu_bestand_defektlast": -0.0002
+    },
+    {
+      "stamm": "Music Delta - Rock (vinyl)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.1237,
+      "kanalsatz_delta_defektlast": 0.0309,
+      "bestand_delta_musik_mos": -0.0193,
+      "bestand_delta_defektlast": -0.0036,
+      "delta_zu_bestand_mos": -0.1044,
+      "delta_zu_bestand_defektlast": 0.0345
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (mp3_128)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0188,
+      "kanalsatz_delta_defektlast": 0.0019,
+      "bestand_delta_musik_mos": -0.0365,
+      "bestand_delta_defektlast": -0.0027,
+      "delta_zu_bestand_mos": 0.0177,
+      "delta_zu_bestand_defektlast": 0.0046
+    },
+    {
+      "stamm": "Music Delta - Rock (kammfilter)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0438,
+      "kanalsatz_delta_defektlast": -0.0001,
+      "bestand_delta_musik_mos": -0.0088,
+      "bestand_delta_defektlast": 0.0001,
+      "delta_zu_bestand_mos": -0.035,
+      "delta_zu_bestand_defektlast": -0.0002
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (kammfilter)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0161,
+      "kanalsatz_delta_defektlast": -0.0003,
+      "bestand_delta_musik_mos": 0.0032,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": 0.0129,
+      "delta_zu_bestand_defektlast": -0.0003
+    },
+    {
+      "stamm": "Music Delta - Rock (dropout)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0896,
+      "kanalsatz_delta_defektlast": 0.0001,
+      "bestand_delta_musik_mos": -0.0362,
+      "bestand_delta_defektlast": -0.0002,
+      "delta_zu_bestand_mos": -0.0534,
+      "delta_zu_bestand_defektlast": 0.0003
+    },
+    {
+      "stamm": "Snowmine - Curfews (pitch_drift)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0,
+      "kanalsatz_delta_defektlast": 0.0,
+      "bestand_delta_musik_mos": 0.0002,
+      "bestand_delta_defektlast": 0.0008,
+      "delta_zu_bestand_mos": -0.0002,
+      "delta_zu_bestand_defektlast": -0.0008
+    },
+    {
+      "stamm": "Music Delta - Rock (clicks)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0982,
+      "kanalsatz_delta_defektlast": 0.0004,
+      "bestand_delta_musik_mos": -0.0371,
+      "bestand_delta_defektlast": -0.0002,
+      "delta_zu_bestand_mos": -0.0611,
+      "delta_zu_bestand_defektlast": 0.0006
+    },
+    {
+      "stamm": "Snowmine - Curfews (kompression)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.079,
+      "kanalsatz_delta_defektlast": 0.2463,
+      "bestand_delta_musik_mos": -0.0028,
+      "bestand_delta_defektlast": 0.0027,
+      "delta_zu_bestand_mos": -0.0762,
+      "delta_zu_bestand_defektlast": 0.2436
+    },
+    {
+      "stamm": "Music Delta - Rock (verzerrung)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.1476,
+      "kanalsatz_delta_defektlast": -0.0186,
+      "bestand_delta_musik_mos": -0.0408,
+      "bestand_delta_defektlast": -0.0002,
+      "delta_zu_bestand_mos": -0.1068,
+      "delta_zu_bestand_defektlast": -0.0184
+    },
+    {
+      "stamm": "Snowmine - Curfews (clicks)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0,
+      "kanalsatz_delta_defektlast": 0.0,
+      "bestand_delta_musik_mos": -0.0035,
+      "bestand_delta_defektlast": 0.0013,
+      "delta_zu_bestand_mos": 0.0035,
+      "delta_zu_bestand_defektlast": -0.0013
+    },
+    {
+      "stamm": "Music Delta - Rock (pitch_drift)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0093,
+      "kanalsatz_delta_defektlast": -0.0019,
+      "bestand_delta_musik_mos": -0.0485,
+      "bestand_delta_defektlast": -0.0005,
+      "delta_zu_bestand_mos": 0.0578,
+      "delta_zu_bestand_defektlast": -0.0014
+    },
+    {
+      "stamm": "Snowmine - Curfews (mp3_128)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0392,
+      "kanalsatz_delta_defektlast": 0.0098,
+      "bestand_delta_musik_mos": 0.0062,
+      "bestand_delta_defektlast": -0.0338,
+      "delta_zu_bestand_mos": -0.0454,
+      "delta_zu_bestand_defektlast": 0.0436
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (pitch_drift)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.003,
+      "kanalsatz_delta_defektlast": -0.0017,
+      "bestand_delta_musik_mos": -0.0359,
+      "bestand_delta_defektlast": -0.0001,
+      "delta_zu_bestand_mos": 0.0329,
+      "delta_zu_bestand_defektlast": -0.0016
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (dropout)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0033,
+      "kanalsatz_delta_defektlast": -0.0004,
+      "bestand_delta_musik_mos": -0.0311,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": 0.0344,
+      "delta_zu_bestand_defektlast": -0.0004
+    },
+    {
+      "stamm": "Snowmine - Curfews (lautheit)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0616,
+      "kanalsatz_delta_defektlast": 0.0452,
+      "bestand_delta_musik_mos": -0.0039,
+      "bestand_delta_defektlast": 0.0013,
+      "delta_zu_bestand_mos": -0.0577,
+      "delta_zu_bestand_defektlast": 0.0439
+    },
+    {
+      "stamm": "Snowmine - Curfews (raum)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.8641,
+      "kanalsatz_delta_defektlast": -0.6292,
+      "bestand_delta_musik_mos": 0.0416,
+      "bestand_delta_defektlast": -0.4955,
+      "delta_zu_bestand_mos": 0.8225,
+      "delta_zu_bestand_defektlast": -0.1337
+    },
+    {
+      "stamm": "Music Delta - Rock (clipping)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.6034,
+      "kanalsatz_delta_defektlast": -0.0009,
+      "bestand_delta_musik_mos": -0.1695,
+      "bestand_delta_defektlast": 0.0064,
+      "delta_zu_bestand_mos": 0.7729,
+      "delta_zu_bestand_defektlast": -0.0073
+    },
+    {
+      "stamm": "Snowmine - Curfews (amp_drift)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.1635,
+      "kanalsatz_delta_defektlast": 0.406,
+      "bestand_delta_musik_mos": -0.0022,
+      "bestand_delta_defektlast": 0.0014,
+      "delta_zu_bestand_mos": -0.1613,
+      "delta_zu_bestand_defektlast": 0.4046
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (kassette)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0237,
+      "kanalsatz_delta_defektlast": 0.0,
+      "bestand_delta_musik_mos": -0.033,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": 0.0093,
+      "delta_zu_bestand_defektlast": 0.0
+    },
+    {
+      "stamm": "Music Delta - Rock (amp_drift)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0942,
+      "kanalsatz_delta_defektlast": -0.0001,
+      "bestand_delta_musik_mos": -0.0323,
+      "bestand_delta_defektlast": -0.0002,
+      "delta_zu_bestand_mos": -0.0619,
+      "delta_zu_bestand_defektlast": 0.0001
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (raum)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 2.4846,
+      "kanalsatz_delta_defektlast": -1.201,
+      "bestand_delta_musik_mos": 0.0309,
+      "bestand_delta_defektlast": -0.2144,
+      "delta_zu_bestand_mos": 2.4537,
+      "delta_zu_bestand_defektlast": -0.9866
+    },
+    {
+      "stamm": "Music Delta - Rock (kompression)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.1502,
+      "kanalsatz_delta_defektlast": -0.469,
+      "bestand_delta_musik_mos": -0.0364,
+      "bestand_delta_defektlast": -0.0001,
+      "delta_zu_bestand_mos": -0.1138,
+      "delta_zu_bestand_defektlast": -0.4689
+    },
+    {
+      "stamm": "Music Delta - Rock (hum)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.1146,
+      "kanalsatz_delta_defektlast": 0.0013,
+      "bestand_delta_musik_mos": -0.0351,
+      "bestand_delta_defektlast": -0.0001,
+      "delta_zu_bestand_mos": -0.0795,
+      "delta_zu_bestand_defektlast": 0.0014
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (amp_drift)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0051,
+      "kanalsatz_delta_defektlast": -0.0004,
+      "bestand_delta_musik_mos": -0.0278,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": 0.0329,
+      "delta_zu_bestand_defektlast": -0.0004
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (verzerrung)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0182,
+      "kanalsatz_delta_defektlast": 0.001,
+      "bestand_delta_musik_mos": -0.0279,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": 0.0461,
+      "delta_zu_bestand_defektlast": 0.001
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (wowflutter)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0243,
+      "kanalsatz_delta_defektlast": -0.0004,
+      "bestand_delta_musik_mos": -0.0369,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": 0.0126,
+      "delta_zu_bestand_defektlast": -0.0004
+    },
+    {
+      "stamm": "Snowmine - Curfews (vinyl)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.076,
+      "kanalsatz_delta_defektlast": -0.0307,
+      "bestand_delta_musik_mos": -0.0057,
+      "bestand_delta_defektlast": -0.0092,
+      "delta_zu_bestand_mos": -0.0703,
+      "delta_zu_bestand_defektlast": -0.0215
+    },
+    {
+      "stamm": "Alexander Ross - Goodbye Bolero (clipping)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.2579,
+      "kanalsatz_delta_defektlast": -0.0127,
+      "bestand_delta_musik_mos": 0.0711,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": 0.1868,
+      "delta_zu_bestand_defektlast": -0.0127
+    }
+  ]
+}

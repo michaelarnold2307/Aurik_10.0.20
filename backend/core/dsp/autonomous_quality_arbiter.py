@@ -29,6 +29,7 @@ Verwendung:
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -184,6 +185,18 @@ def _compare(in_score: Any, out_score: Any, margin: float) -> list[str]:
     return reasons
 
 
+def _score_fields(score: Any) -> dict[str, float | None]:
+    """Serialisiert einen BlindQualityScore in ein kompaktes Dict (Forensik-Dump)."""
+    return {
+        "overall": float(getattr(score, "overall", float("nan"))),
+        "spectral_naturalness": float(getattr(score, "spectral_naturalness", float("nan"))),
+        "hf_presence": float(getattr(score, "hf_presence", float("nan"))),
+        "transient_density": float(getattr(score, "transient_density", float("nan"))),
+        "dynamic_range_health": float(getattr(score, "dynamic_range_health", float("nan"))),
+        "noise_floor_continuity": float(getattr(score, "noise_floor_continuity", float("nan"))),
+    }
+
+
 def resolve_never_worsen(
     input_audio: np.ndarray,
     first_audio: np.ndarray,
@@ -226,6 +239,39 @@ def resolve_never_worsen(
     in_score = scorer(_to_mono(input_audio))
     first_score = scorer(_to_mono(first_audio))
     first_reasons = _compare(in_score, first_score, margin)
+
+    # Forensik-Dump (2026-11-20, Stereo/Spectral-Kollaps-Befund): nur aktiv
+    # mit Env AURIK_ARBITER_DEBUG_DUMP=<ordner>. Schreibt Eingabe/Erstlauf/
+    # Retry + Scores als .npy/.json, damit die Ursache eines Rücksprungs
+    # (Notch-Artefakt vs. echter HF-Überboost) am Material nachmessbar ist.
+    # Ohne Env: keinerlei Wirkung (kein I/O, deterministischer Produktionspfad).
+    _dump_dir = os.environ.get("AURIK_ARBITER_DEBUG_DUMP", "")
+    if _dump_dir:
+        try:
+            from pathlib import Path as _PathDump
+
+            _dp = _PathDump(_dump_dir)
+            _dp.mkdir(parents=True, exist_ok=True)
+            np.save(_dp / "input.npy", np.asarray(input_audio, dtype=np.float32))
+            np.save(_dp / "first.npy", np.asarray(first_audio, dtype=np.float32))
+            import json as _json_dump
+
+            (_dp / "scores_first.json").write_text(
+                _json_dump.dumps(
+                    {
+                        "input": _score_fields(in_score),
+                        "first": _score_fields(first_score),
+                        "reasons_first": first_reasons,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+        except Exception as _dump_exc:  # pragma: no cover - Forensik darf nie blockieren
+            logger.debug("Arbiter-Forensik-Dump fehlgeschlagen (unkritisch): %s", _dump_exc)
+
     if not first_reasons:
         return LadderResolution(
             status="accepted",
@@ -246,6 +292,28 @@ def resolve_never_worsen(
         if _candidate is not None:
             retry_audio = np.asarray(_candidate, dtype=np.float32)
             retry_score = scorer(_to_mono(retry_audio))
+            if _dump_dir:
+                try:
+                    from pathlib import Path as _PathDump2
+
+                    _dp2 = _PathDump2(_dump_dir)
+                    np.save(_dp2 / "retry.npy", retry_audio)
+                    import json as _json_dump2
+
+                    (_dp2 / "scores_retry.json").write_text(
+                        _json_dump2.dumps(
+                            {
+                                "retry": _score_fields(retry_score),
+                                "reasons_retry": _compare(in_score, retry_score, margin),
+                            },
+                            ensure_ascii=False,
+                            indent=2,
+                        )
+                        + "\n",
+                        encoding="utf-8",
+                    )
+                except Exception as _dump_exc2:  # pragma: no cover
+                    logger.debug("Arbiter-Forensik-Dump (Wiederholungslauf) fehlgeschlagen: %s", _dump_exc2)
     except Exception as retry_exc:  # pylint: disable=broad-except — §V6 (copilot-instructions.md): Eingabe bleibt Netz
         logger.warning("§v10.26 Parameter-Wiederholung fehlgeschlagen: %s", retry_exc)
         retry_audio = None

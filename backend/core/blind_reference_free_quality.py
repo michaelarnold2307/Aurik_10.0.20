@@ -170,6 +170,16 @@ class BlindQualityEstimator:
         Natural music has spectral peaks (harmonics, formants).
         Over-smoothed audio has flat spectrum → low crest factor.
         Over-processed audio has razor peaks → too high crest factor.
+
+        Notch-Robustheit (Stereo/Spectral-Kollaps-Befund 2026-11-20):
+        Denoise/Spectral-Repair erzeugt schmalbandige Notches — der rohe
+        Crest-Faktor (peak/geomean) explodiert dann, obwohl das Signal
+        akustisch BESSER ist (Forensik: balance 0.00 dB, HF-Anteil >8 kHz
+        sank 0.018 -> 0.001, hf_presence 77 -> 90, transients 16 -> 85;
+        sm11-Crest 19.2 -> 34.3 = goldene Zone). Vor der Crest-Berechnung
+        wird deshalb mit einem schmalen Kernel (11 Bins ~ 129 Hz @48k/4096)
+        geglaettet: Einzel-Bin-Notches verschwinden, breitbandige
+        Crest-Struktur (echte Haerte oder echte Glaettung) bleibt sichtbar.
         """
         n = len(mono)
         n_fft = 4096
@@ -193,6 +203,13 @@ class BlindQualityEstimator:
             if not np.any(mask):
                 continue
             s_mid = spec[mask]
+            s_mid = np.maximum(s_mid, 1e-15)
+            # Notch-Robustheit: schmaler Moving-Average ueber die Magnituden
+            # (11 Bins), bevor der Crest-Faktor gebildet wird. Deterministisch,
+            # keine Schwelle gelockert — nur Einzel-Bin-Artefakte werden gefiltert.
+            _smooth_k = 11
+            _smooth = np.ones(_smooth_k, dtype=np.float64) / _smooth_k
+            s_mid = np.convolve(s_mid, _smooth, mode="same")
             s_mid = np.maximum(s_mid, 1e-15)
             # Spectral crest = max / geometric mean
             geo_mean = float(np.exp(np.mean(np.log(s_mid))))

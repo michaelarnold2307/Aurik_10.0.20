@@ -1,0 +1,33 @@
+{
+  "schema": "aurik.wq_gate_analyse/1",
+  "datum": "2026-11-20",
+  "quelle": "docs/reports/current/2026-11-20_witness_kopf_gate_*.json (Runde 2, WQ2_END=0)",
+  "befund": {
+    "struktur_fix_bewiesen": "witness-runde2 lief trotz WQ_GATE_FAILED:hum durch alle 5 Klassen (nicht-fataler Verify) und endete mit WQ2_END=0.",
+    "mos_gewinne": {
+      "dropouts": 1.1582,
+      "dropout_oxide": 1.1495,
+      "tape_splice_artifact": 1.5405,
+      "wow": 0.3782,
+      "hum": 0.2685
+    },
+    "q_median_none": {
+      "klassen": ["dropout_oxide", "tape_splice_artifact"],
+      "ursache": "_witness_q liefert None wenn kontrast = p_s - p_c <= 0.05 (scripts/train_witness_kopf.py:324) — der jeweilige Kopf erkennt den Defekt auf den Holdout-Regionen nicht (p_s ≈ p_c).",
+      "konfig_runde2": "Beide Klassen liefen mit lambda-id=0.0 (SPEC 'dropout_oxide:0.8:0.0:30') — keine Identitaets-Pressure im Training.",
+      "bewertung": "Kein Bug der Verify, sondern erwartbare Folge der Runde-2-Konfiguration. Runde 3/4 eskalieren lambda-id auf 0.8 und setzen --nw-min 0.9 als Trainingsziel — Erkennung + Never-worsen-Haertung sind genau deren Auftrag. Erst wenn Runde 3/4 fuer diese Klassen weiterhin q=None liefern, ist die synthetische Defekt-Erzeugung oder die Kopf-Architektur zu pruefen."
+    },
+    "never_worsen": {
+      "werte": {
+        "dropouts": 0.0446,
+        "dropout_oxide": 1.0,
+        "tape_splice_artifact": 1.0,
+        "wow": 0.0645,
+        "hum": 0.25
+      },
+      "schwelle": 0.95,
+      "bewertung": "dropouts/wow/hum brauchen die Runde-3/4-Haertung; dropout_oxide/tape_splice bestehen nur 'leer' (Kopf inaktiv), was mit q=None konsistent ist."
+    }
+  },
+  "naechste_evidenz": "WQ3_END/WQ4_END in /tmp/wq3_summary.txt bzw. /tmp/wq4_summary.txt — Gate-Reports danach gegen diese Analyse pruefen."
+}

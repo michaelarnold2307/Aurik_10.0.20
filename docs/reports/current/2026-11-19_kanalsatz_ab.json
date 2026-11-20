@@ -1,0 +1,66 @@
+{
+  "schema": "aurik.kanalsatz_ab/1",
+  "datum": "2026-11-20",
+  "seed": 42,
+  "modus": "subprozess-isoliert",
+  "verzeichnis": "data/schadens_proben",
+  "kanalsatz_flags": [
+    "use_witness_kopf_groove_echo",
+    "use_witness_kopf_tape_head_level_dip",
+    "use_witness_kopf_clicks",
+    "use_witness_kopf_compression_artifacts",
+    "use_witness_kopf_jitter_artifacts",
+    "use_witness_kopf_tape_head_clog",
+    "use_witness_kopf_phase_rotation",
+    "use_witness_kopf_sibilance",
+    "use_witness_kopf_sticky_shed_residue",
+    "use_witness_kopf_transport_bump",
+    "use_witness_kopf_dynamic_compression_excess",
+    "use_witness_kopf_dropout_head_contact"
+  ],
+  "n_paare": 4,
+  "n_geplant": 4,
+  "bestand_beleg": "data/schadens_proben/bewertung.json",
+  "zeilen": [
+    {
+      "stamm": "Music Delta - Rock (wowflutter)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0107,
+      "kanalsatz_delta_defektlast": 0.0,
+      "bestand_delta_musik_mos": -0.0325,
+      "bestand_delta_defektlast": 0.0,
+      "delta_zu_bestand_mos": 0.0432,
+      "delta_zu_bestand_defektlast": 0.0
+    },
+    {
+      "stamm": "Snowmine - Curfews (hum)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": 0.0,
+      "kanalsatz_delta_defektlast": 0.0,
+      "bestand_delta_musik_mos": -0.0035,
+      "bestand_delta_defektlast": 0.0013,
+      "delta_zu_bestand_mos": 0.0035,
+      "delta_zu_bestand_defektlast": -0.0013
+    },
+    {
+      "stamm": "Snowmine - Curfews (wowflutter)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.0962,
+      "kanalsatz_delta_defektlast": 0.3284,
+      "bestand_delta_musik_mos": -0.0034,
+      "bestand_delta_defektlast": 0.001,
+      "delta_zu_bestand_mos": -0.0928,
+      "delta_zu_bestand_defektlast": 0.3274
+    },
+    {
+      "stamm": "Music Delta - Rock (lautheit)",
+      "status": "ok",
+      "kanalsatz_delta_musik_mos": -0.1044,
+      "kanalsatz_delta_defektlast": 0.0005,
+      "bestand_delta_musik_mos": -0.0364,
+      "bestand_delta_defektlast": -0.0002,
+      "delta_zu_bestand_mos": -0.068,
+      "delta_zu_bestand_defektlast": 0.0007
+    }
+  ]
+}

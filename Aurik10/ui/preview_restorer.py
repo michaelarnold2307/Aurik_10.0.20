@@ -22,6 +22,8 @@ import logging
 import numpy as np
 from PyQt5.QtCore import QThread, pyqtSignal  # type: ignore[attr-defined]
 
+from Aurik10.i18n import t
+
 logger = logging.getLogger(__name__)
 
 PREVIEW_SEGMENT_S = 6.0
@@ -45,12 +47,12 @@ class PreviewRestorerThread(QThread):
         try:
             from backend.api.bridge import restore_segment_preview
 
-            self.progress.emit("Vorschau: Voranalyse läuft …")
+            self.progress.emit(t("preview.analyse_laeuft"))
             ergebnis = restore_segment_preview(self._audio, self._sr, self._input_path, self._mode)
             self.done.emit(np.asarray(ergebnis, dtype=np.float32))
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("Preview-Restaurierung fehlgeschlagen (%s) — §V6-Ersatzpfad an die UI.", exc)
-            self.failed.emit(f"Vorschau fehlgeschlagen: {exc}")
+            self.failed.emit(t("preview.fehlgeschlagen", fehler=str(exc)))
 
 
 def segment_fuer_preview(

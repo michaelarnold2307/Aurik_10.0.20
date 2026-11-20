@@ -1,0 +1,10 @@
+{
+  "stamm": "Music Delta - Rock (pitch_drift)",
+  "status": "ok",
+  "kanalsatz_delta_musik_mos": 0.0093,
+  "kanalsatz_delta_defektlast": -0.0019,
+  "bestand_delta_musik_mos": -0.0485,
+  "bestand_delta_defektlast": -0.0005,
+  "delta_zu_bestand_mos": 0.0578,
+  "delta_zu_bestand_defektlast": -0.0014
+}

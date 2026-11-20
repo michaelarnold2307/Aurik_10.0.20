@@ -326,6 +326,7 @@ def _run(args: argparse.Namespace) -> dict:
     _anchor_v = Path(args.out_dir) / "checkpoint_latest.pt"
     _anchor_v.parent.mkdir(parents=True, exist_ok=True)
     start_epoch = 0
+    _resume_loss: float | None = None
     if _anchor_v.exists():
         import torch as _torch_v
 
@@ -333,6 +334,8 @@ def _run(args: argparse.Namespace) -> dict:
             _ckv = _torch_v.load(_anchor_v, map_location="cpu", weights_only=False)
             model.load_state_dict(_ckv["state_dict"])
             start_epoch = int(_ckv.get("epoch", 0))
+            if _ckv.get("loss") is not None:
+                _resume_loss = float(_ckv["loss"])
             logger.info("Resume ab Epoche %d aus %s", start_epoch, _anchor_v)
         except Exception as _exc:  # fail-closed: nie still bei Epoche 0 neu starten
             logger.error(
@@ -361,6 +364,12 @@ def _run(args: argparse.Namespace) -> dict:
 
     rng = np.random.default_rng(args.seed)
     history: list[float] = []
+    # Resume auf fertigem Stand (start_epoch >= epochs): der letzte Trainings-
+    # verlust steht im Anker. Ohne dieses Seeding schrieb der Lauf sonst
+    # final_train_loss=null + status 'degraded' (Befund 2026-11-20,
+    # test_export_vocos_48khz_finetune), obwohl das Training komplett war.
+    if _resume_loss is not None and start_epoch >= epochs and np.isfinite(_resume_loss):
+        history = [_resume_loss]
     epoch_gate_failed = False
     candidate_validated = False
     candidate_loss = baseline_loss
