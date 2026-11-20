@@ -16,7 +16,6 @@ Phase: 2D.2.1 - Real-World Validation Testing
 """
 
 import logging
-import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -30,7 +29,9 @@ try:
     AUTHENTICITY_AVAILABLE = True
 except ImportError:
     AUTHENTICITY_AVAILABLE = False
-    warnings.warn("AuthenticityMetrics not available. Install with Phase 2D.1 components.", ImportWarning)
+    logger.warning(
+        "AuthenticityMetrics nicht verfügbar; Authentizitätsmetriken deaktiviert. Phase-2D.1-Komponenten installieren."
+    )
 
 
 @dataclass

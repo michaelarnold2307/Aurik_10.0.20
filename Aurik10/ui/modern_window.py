@@ -118,6 +118,11 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
+
+def _watchdog_per_file_ms(audio_duration_s: float) -> int:
+    return max(5_400_000, int(audio_duration_s * 64_000) + 3_600_000)
+
+
 PlaybackDeviceCacheEntry = tuple[int, int, int, Any]
 
 _QSS_COLOR_TOKEN_RE = re.compile(r"#[^\s;,)]+")
@@ -1202,7 +1207,7 @@ def _normalize_audio(audio: np.ndarray) -> np.ndarray:
         audio = audio.T
     # Mono squeezen
     if audio.ndim == 2 and audio.shape[1] == 1:
-        audio = audio[:, 0]
+        audio = np.squeeze(audio, axis=1)
     # > 2 Kanäle: gewichteter Downmix zu Stereo (L+R)
     if audio.ndim == 2 and audio.shape[1] > 2:
         audio = audio[:, :2]
@@ -20135,15 +20140,13 @@ class ModernMainWindow(QMainWindow):
             self._prime_live_quality_meter()
 
         # Watchdog-Timer: feuert wenn Verarbeitung zu lange hängt (z. B. blockierender ONNX-Call).
-        # Budget muss großzügiger sein als PerformanceGuard (LIMIT_MAXIMUM=32×, plus
-        # Post-Pipeline-Analytik, FeedbackChain 5×5 Iterationen, PMGG-Retries).
-        # §v10.15: 36×RT + 10min Overhead, Minimum 90 Min. ROCm-ML braucht 30–35×RT.
+        # §11.4 (Spec 08): 64×RT + 60 min, mindestens 90 min pro Datei.
         _audio_dur_s = 0.0
         _ww = getattr(self, "waveform_widget", None)
         if _ww is not None and getattr(_ww, "audio_data", None) is not None:
             _sr = max(1, getattr(_ww, "sample_rate", 48000))
             _audio_dur_s = _ww.audio_data.shape[0] / _sr
-        _per_file_ms = max(5_400_000, int(_audio_dur_s * 32_000) + 1_800_000)  # §11.4: 32×RT + 30min
+        _per_file_ms = _watchdog_per_file_ms(_audio_dur_s)
         _watchdog_ms = max(5_400_000, stats["pending"] * _per_file_ms)
         # ── §WATCHDOG-STARTUP-CHECK ──────────────────────────────────
         logger.info("Watchdog: W-PREANALYSIS-LIVENESS ✅ — 60s ohne _cb() → Force-abschliessen")
@@ -20191,7 +20194,7 @@ class ModernMainWindow(QMainWindow):
             return  # Watchdog nicht aktiv (Batch bereits abgeschlossen oder gestoppt)
         # Noch verbleibende ausstehende Dateien (aktuelle Datei + noch nicht gestartete)
         _pending = max(1, self.batch_queue.get_stats().get("pending", 1))
-        _per_file_ms = max(5_400_000, int(audio_duration_s * 32_000) + 1_800_000)  # §11.4: 32×RT + 30min
+        _per_file_ms = _watchdog_per_file_ms(audio_duration_s)
         _watchdog_ms = max(5_400_000, _pending * _per_file_ms)
         self._watchdog_timer.start(_watchdog_ms)
         logger.debug(

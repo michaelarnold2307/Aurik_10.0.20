@@ -1,11 +1,12 @@
-# Aurik 10 — GEBOTE & VERBOTE (Normativer Katalog)
+# Aurik 10 — GEBOTE & VERBOTE (Regelkatalog)
 
-> **Status:** Normativ | **Version:** 10.17.3 | **Stand:** November 2026
+> **Status:** Referenzkatalog der Regeln | **Version:** 10.17.3 | **Stand:** November 2026
 >
 > Dieser Katalog definiert alle unverhandelbaren GEBOTE (positiv, was Aurik TUN MUSS)
 > und VERBOTE (negativ, was Aurik NIEMALS tun darf). Jedes Gebot und Verbot ist mit
 > einer eindeutigen ID versehen (§G1, §V1 usw.) und wird im Code per Kommentar
-> referenziert. Bei Widerspruch zwischen Specs und diesem Katalog gilt dieser Katalog.
+> referenziert. Die Vorrang- und Konfliktregeln aus `AGENTS.md` §1 sind maßgeblich;
+> dieser Katalog hebt die dortige normative Kette nicht auf.
 
 ---
 

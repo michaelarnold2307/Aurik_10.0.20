@@ -95,13 +95,24 @@ class TestWatchdogGracefulStopSource:
         )
 
     def test_06_watchdog_per_file_ms_spec_compliant(self):
-        """Watchdog-Formel entspricht Spec §11.4: 32xRT + 30min."""
+        """Watchdog verwendet die Spec-08-Formel an beiden Aufrufstellen."""
         try:
             mw_src = _get_modern_window_source()
         except Exception:
             pytest.skip("modern_window.py nicht lesbar")
-        # Spec: _per_file_ms = max(5_400_000, audio_dur_s * 32_000 + 1_800_000)
-        has_32k = "32_000" in mw_src or "32000" in mw_src
-        has_1_8m = "1_800_000" in mw_src or "1800000" in mw_src
-        assert has_32k, "Watchdog: 32_000 (32xRT Faktor) fehlt — Spec §11.4 verlangt audio_dur_s * 32_000"
-        assert has_1_8m, "Watchdog: 1_800_000 (30min Offset) fehlt — Spec §11.4 verlangt + 1_800_000"
+        assert mw_src.count("_watchdog_per_file_ms(") == 3
+
+    def test_07_watchdog_per_file_budget_matches_spec08_formula(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Prüft Minimum und duration-adaptives Budget gegen Spec 08 §11.4."""
+        monkeypatch.setenv("AURIK_FORCE_CPU", "1")
+        from backend.core import ml_device_manager
+
+        monkeypatch.setattr(
+            ml_device_manager.MLDeviceManager,
+            "_detect_backend",
+            lambda _self: pytest.fail("AURIK_FORCE_CPU must bypass backend detection"),
+        )
+        from Aurik10.ui.modern_window import _watchdog_per_file_ms
+
+        assert _watchdog_per_file_ms(10) == 5_400_000
+        assert _watchdog_per_file_ms(60) == 7_440_000

@@ -10,6 +10,7 @@ Verwendung:
 """
 
 import argparse
+import ast
 import io as _io
 import logging
 import re
@@ -297,6 +298,64 @@ def _should_skip_file(path: Path, allow_in: list[str]) -> bool:
     return any(allowed in path_str for allowed in allow_in)
 
 
+def _scan_r18_warnings(content: str, path_str: str, rule: Rule) -> list[Violation]:
+    """Detect non-deprecation warnings.warn calls, including multiline calls."""
+    try:
+        tree = ast.parse(content)
+    except SyntaxError as exc:
+        lines = content.splitlines()
+        lineno = exc.lineno or 1
+        return [
+            Violation(
+                rule_id=rule.id,
+                severity="error",
+                file=path_str,
+                line=lineno,
+                text=lines[lineno - 1].rstrip() if lineno <= len(lines) else "",
+                description=f"Unable to parse source for R18 warning checks: {exc.msg}",
+            )
+        ]
+
+    lines = content.splitlines()
+    exempt_categories = {"DeprecationWarning", "FutureWarning", "PendingDeprecationWarning"}
+    violations = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if not (
+            isinstance(func, ast.Attribute)
+            and func.attr == "warn"
+            and isinstance(func.value, ast.Name)
+            and func.value.id == "warnings"
+        ):
+            continue
+
+        category = next((keyword.value for keyword in node.keywords if keyword.arg == "category"), None)
+        if category is None and len(node.args) > 1:
+            category = node.args[1]
+        category_name = (
+            category.id
+            if isinstance(category, ast.Name)
+            else (category.attr if isinstance(category, ast.Attribute) else None)
+        )
+        if category_name in exempt_categories:
+            continue
+
+        lineno = node.lineno
+        violations.append(
+            Violation(
+                rule_id=rule.id,
+                severity=rule.severity,
+                file=path_str,
+                line=lineno,
+                text=lines[lineno - 1].rstrip() if lineno <= len(lines) else "",
+                description=rule.description,
+            )
+        )
+    return violations
+
+
 def scan_file(path: Path, rules: list[Rule], check_fstrings: bool = True) -> list[Violation]:
     """Scannt eine einzelne Python-Datei auf VERBOTEN-Regelverstöße und gibt alle Violations zurück."""
     violations: list[Violation] = []
@@ -319,6 +378,10 @@ def scan_file(path: Path, rules: list[Rule], check_fstrings: bool = True) -> lis
 
         # Für R11: nur in backend/ prüfen
         if rule.id == "R11" and "backend/" not in path_str:
+            continue
+
+        if rule.id == "R18":
+            violations.extend(_scan_r18_warnings(content, path_str, rule))
             continue
 
         for lineno, line in enumerate(lines, start=1):

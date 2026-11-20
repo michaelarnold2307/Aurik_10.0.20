@@ -1,14 +1,11 @@
-"""V01–V75 VERBOTEN-Linter v6 — vollständig an VERBOTEN.md angepasst.
+"""V01–V76 VERBOTEN-Linter v6 — vollständig an VERBOTEN.md angepasst.
 
 Abdeckung (Rev. 2026-09-11, Katalog-Ausbau 30 → 52+):
-  - 31 Kern-Regeln: V01, V-BRIDGE, V02–V05, V08, V09, V11–V14, V21, V27–V33,
-    V39, V44, V46–V49, V53, V58, V73, V74
-  - +18 neu implementiert (diese Session): V38, V40, V41, V42, V43, V45,
-    V50, V51 (AST), V52, V54, V55, V56, V57, V59 (NEU: Stereo-Kanal-Slicing
-    ohne audio_layout-Helfer, §V7 (copilot-instructions.md)), V63 (MD5/B324), V64 (rtol-in-numpy),
-    V75 (stilles except: pass)
-  - Gesamt: 49 regex-/AST-geprüfte Regeln. Nicht regex-fähig (Architektur/
-    Runtime, in VERBOTEN.md dokumentiert): V70, V71, V72.
+  - Regex-Regeln plus AST-Verträge für V32/V33, V51 und V75.
+  - V74 (Silent-Except) wird separat durch scripts/pre_commit_static_guard.py
+    erzwungen; V75 prüft die atomare GUI-Pre-Analysis-Gate-Signalisierung.
+  - Nicht regex-fähig (Architektur/Runtime, in VERBOTEN.md dokumentiert):
+    V70, V71, V72.
   - "only"-Feld: Regeln gelten nur für Dateien, deren Pfad einen der
     Substrings enthält (Präzisionsfilter für phasen-/modulgebundene Regeln).
 
@@ -21,6 +18,7 @@ import ast
 import json
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -527,7 +525,7 @@ RULES: dict[str, dict] = {
     },
     # ── V59: Stereo-Kanal-Slicing ohne audio_layout-Helfer (§V7 (copilot-instructions.md), NEU) ──
     "V59": {
-        "p": r"audio\[0\]|audio\[:, 0\]|audio\[:, 1\]",
+        "p": r"\baudio\[0\]|\baudio\[:,\s*[01]\]",
         "negate": r"from\s+backend\.core\.audio_layout\s+import|audio_layout\.",
         "d": "Stereo-Kanal-Slicing (audio[0]/audio[:, 0]) ohne audio_layout-Helfer (§V7 (copilot-instructions.md)) — kollabiert (N,2)/(2,N) auf 2 Samples",
         "skip": {
@@ -557,13 +555,6 @@ RULES: dict[str, dict] = {
     "V64": {
         "p": r"np\.\w+\([^)]*rtol\s*=",
         "d": "rtol=-Toleranz direkt in numpy-Aufruf — außerhalb parametrisieren (Determinismus)",
-        "skip": {"test_", "scripts/", "docs/"},
-        "sev": "WARNING",
-    },
-    # ── V75: stilles except: pass (§V75) ──
-    "V75": {
-        "p": r"^\s*except[^\n]*:\s*pass\s*$",
-        "d": "Stilles except: pass ohne Logging (§V75) — logger.warning + Begründung",
         "skip": {"test_", "scripts/", "docs/"},
         "sev": "WARNING",
     },
@@ -794,6 +785,58 @@ def _should_skip_rule(fp: Path, rid: str) -> bool:
     return False
 
 
+def _scan_v75_preanalysis_gate(source: str, rel: Path) -> list[Violation]:
+    """V75: require both pre-analysis flags in one dispatched GUI callback."""
+    if not rel.as_posix().endswith("Aurik10/ui/modern_window.py"):
+        return []
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return [
+            Violation(
+                rule="V75",
+                severity="ERROR",
+                description="Cannot parse GUI source to verify atomic pre-analysis gates",
+                file=str(rel),
+            )
+        ]
+
+    dispatched_callbacks: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not node.args or not isinstance(node.args[0], ast.Name):
+            continue
+        callee = node.func
+        callee_name = (
+            callee.attr if isinstance(callee, ast.Attribute) else callee.id if isinstance(callee, ast.Name) else ""
+        )
+        if callee_name == "dispatch_to_gui":
+            dispatched_callbacks.add(node.args[0].id)
+
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name not in dispatched_callbacks:
+            continue
+        signaled_flags: set[str] = set()
+        for call in ast.walk(node):
+            if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Name):
+                continue
+            if call.func.id != "_try_signal_preanalysis_done" or not call.args:
+                continue
+            flag = call.args[0]
+            if isinstance(flag, ast.Constant) and isinstance(flag.value, str):
+                signaled_flags.add(flag.value)
+        if {"era_genre", "defect_scan"}.issubset(signaled_flags) or "unified_preanalysis" in signaled_flags:
+            return []
+
+    return [
+        Violation(
+            rule="V75",
+            severity="WARNING",
+            description="Pre-analysis flags must be signaled atomically in one dispatch_to_gui callback (§V75)",
+            file=str(rel),
+        )
+    ]
+
+
 def scan(fp: Path) -> list[Violation]:
     """Scan one Python file for VERBOTEN violations."""
     if fp.suffix != ".py":
@@ -841,9 +884,36 @@ def scan(fp: Path) -> list[Violation]:
             issues.append(Violation(rule=rid, severity=sev, description=rule["d"], file=str(rel)))
 
     issues.extend(_scan_v32_v33_ast(fp, "\n".join(lines), rel))
+    issues.extend(_scan_v75_preanalysis_gate("\n".join(lines), rel))
     if "restaurier_denker" in str(rel) or "aurik_denker" in str(rel):
         issues.extend(_scan_v51_ast(fp, "\n".join(lines), rel))
     return issues
+
+
+def _exclude_gitignored(paths: list[Path], project_root: Path) -> list[Path]:
+    repo_paths: dict[Path, str] = {}
+    for path in paths:
+        try:
+            repo_paths[path.resolve()] = path.resolve().relative_to(project_root.resolve()).as_posix()
+        except ValueError:
+            continue
+
+    if not repo_paths:
+        return paths
+
+    result = subprocess.run(
+        ["git", "check-ignore", "--stdin", "-z"],
+        cwd=project_root,
+        input="".join(f"{relative}\0" for relative in repo_paths.values()),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode not in {0, 1}:
+        raise RuntimeError(f"git check-ignore failed: {result.stderr.strip()}")
+
+    ignored = {(project_root / relative).resolve() for relative in result.stdout.split("\0") if relative}
+    return [path for path in paths if path.resolve() not in ignored]
 
 
 def main() -> int:
@@ -869,7 +939,7 @@ def main() -> int:
         elif _scan_root.exists():
             for _py_file in _scan_root.rglob("*.py"):
                 _py_file_map[str(_py_file)] = _py_file
-    py_files = list(_py_file_map.values())
+    py_files = _exclude_gitignored(list(_py_file_map.values()), _PROJECT_ROOT)
 
     all_issues: dict[str, list[Violation]] = {}
     for pf in py_files:

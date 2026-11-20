@@ -1,4 +1,8 @@
-# Changelog — Aurik 10.13.0
+# Changelog — Aurik 10.14.0
+
+## 10.14.0 (2026-11-20)
+
+* **fix(compliance): normative watchdog and linter alignment** — GUI-Watchdog an Spec 08 angepasst; VERBOTEN-Gates prüfen atomare Pre-Analysis-Signale, Git-ignore-Dateien werden nicht als Produktionscode gescannt, und mehrzeilige DeprecationWarnings lösen keine R18-Fehlalarme mehr aus. Optionale Metrik-Ausfälle werden sichtbar protokolliert.
 
 ## 10.13.0 (2026-11-19)
 

@@ -15,7 +15,7 @@
   "tests/normative/test_material_priority_phases_gate.py": "c736b1b575b2e7cdefa449c8683b7f10b1db8280e7d600e29229796a1e69b1bd",
   "tests/normative/test_weltklasse_kette.py": "7ca8bf32c368e315f8f99bef227a11c6c19e3513b023389e0f321a88d613cc58",
   "scripts/release_must_coverage_check.py": "d81acc70c2dae8351e7602d20cc8a06e94f8e0a3e60fb954a90b912972c5ae40",
-  "scripts/compliance_check.py": "a09c59af4a829c0d1a4a42d125f1d5389936de84b14c31eacf7de68ebf7ed206",
+  "scripts/compliance_check.py": "db37afbb38754f2e404eda5c0966de7bb5dbb04d36f30ef4f33330585d97df06",
   "scripts/check_musical_goals.py": "2a2665955188401c25d457cd5e1a40255c28d92b8a2f510ebf1a3e1689b3241b",
   ".github/ID_REGISTRY.md": "12411b8e0bb822cd6f00c9ef9c507df70925a57d2a4ac171e6616b7287064f3e",
   ".github/FILE_REGISTRY.md": "5067a0477e293c92e0ca69ed4fe43c54d227ab406db6498f1701c84cce6fef3d",

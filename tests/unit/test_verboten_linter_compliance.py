@@ -1052,3 +1052,126 @@ class TestV14SeparationMetricBoundary:
             file_path.write_text(f"score = {token}(a, b)\n", encoding="utf-8")
             violations = _linter.scan(file_path)  # type: ignore[attr-defined]
             assert any(v.rule == "V14" for v in violations), f"{token} muss weiterhin V14 auslösen"
+
+
+class TestV75AtomicPreanalysisGate:
+    def test_production_gui_gate_passes(self) -> None:
+        import scripts.aurik_verboten_linter as _linter
+
+        violations = _linter.scan(_ROOT / "Aurik10" / "ui" / "modern_window.py")
+        assert not any(v.rule == "V75" for v in violations)
+
+    def test_split_dispatches_fail_v75(self, tmp_path: Path) -> None:
+        import scripts.aurik_verboten_linter as _linter
+
+        file_path = tmp_path / "Aurik10" / "ui" / "modern_window.py"
+        file_path.parent.mkdir(parents=True)
+        file_path.write_text(
+            textwrap.dedent(
+                """
+                def signal_era():
+                    _try_signal_preanalysis_done("era_genre")
+                def signal_defects():
+                    _try_signal_preanalysis_done("defect_scan")
+                self.dispatch_to_gui(signal_era)
+                self.dispatch_to_gui(signal_defects)
+                """
+            ),
+            encoding="utf-8",
+        )
+
+        violations = _linter.scan(file_path)  # type: ignore[attr-defined]
+        assert any(v.rule == "V75" for v in violations)
+
+    def test_unified_flag_passes_v75(self, tmp_path: Path) -> None:
+        import scripts.aurik_verboten_linter as _linter
+
+        file_path = tmp_path / "Aurik10" / "ui" / "modern_window.py"
+        file_path.parent.mkdir(parents=True)
+        file_path.write_text(
+            textwrap.dedent(
+                """
+                def update_all():
+                    _try_signal_preanalysis_done("unified_preanalysis")
+                self.dispatch_to_gui(update_all)
+                """
+            ),
+            encoding="utf-8",
+        )
+
+        violations = _linter.scan(file_path)  # type: ignore[attr-defined]
+        assert not any(v.rule == "V75" for v in violations)
+
+
+class TestV59StereoSliceIdentifier:
+    def test_v59_matches_the_audio_identifier_not_a_suffix(self, tmp_path: Path) -> None:
+        import scripts.aurik_verboten_linter as _linter
+
+        exact_audio = tmp_path / "exact_audio.py"
+        exact_audio.write_text("mono = audio[:, 0]\n", encoding="utf-8")
+        suffixed_audio = tmp_path / "suffixed_audio.py"
+        suffixed_audio.write_text("left = write_audio[:, 0]\n", encoding="utf-8")
+
+        assert any(v.rule == "V59" for v in _linter.scan(exact_audio))  # type: ignore[attr-defined]
+        assert not any(v.rule == "V59" for v in _linter.scan(suffixed_audio))  # type: ignore[attr-defined]
+
+
+class TestComplianceR18MultilineWarnings:
+    def test_multiline_deprecation_warning_is_exempt_but_user_warning_is_reported(self, tmp_path: Path) -> None:
+        import scripts.compliance_check as compliance
+
+        file_path = tmp_path / "warnings.py"
+        file_path.write_text(
+            textwrap.dedent(
+                """
+                import warnings
+                warnings.warn(
+                    "deprecated API",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                warnings.warn(
+                    "runtime issue",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                """
+            ),
+            encoding="utf-8",
+        )
+
+        violations = [
+            violation for violation in compliance.scan_file(file_path, compliance.RULES) if violation.rule_id == "R18"
+        ]
+        assert len(violations) == 1
+        assert violations[0].line == 8
+
+    def test_unparseable_source_fails_closed_for_r18(self, tmp_path: Path) -> None:
+        import scripts.compliance_check as compliance
+
+        file_path = tmp_path / "invalid.py"
+        file_path.write_text("import warnings\nwarnings.warn(\n", encoding="utf-8")
+
+        violations = [
+            violation for violation in compliance.scan_file(file_path, compliance.RULES) if violation.rule_id == "R18"
+        ]
+        assert len(violations) == 1
+        assert violations[0].severity == "error"
+
+
+class TestVerbotenLinterGitignore:
+    def test_default_scan_excludes_gitignored_python_but_keeps_untracked_source(self, tmp_path: Path) -> None:
+        import scripts.aurik_verboten_linter as _linter
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+        (repo / ".gitignore").write_text("scratch.py\n", encoding="utf-8")
+        ignored = repo / "scratch.py"
+        source = repo / "new_source.py"
+        ignored.write_text("print('ignored')\n", encoding="utf-8")
+        source.write_text("print('checked')\n", encoding="utf-8")
+
+        scanned = _linter._exclude_gitignored([ignored, source], repo)
+
+        assert scanned == [source]

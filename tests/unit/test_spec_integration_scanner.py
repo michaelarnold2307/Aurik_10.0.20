@@ -170,3 +170,10 @@ def test_verboten_linter_coverage(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert check_verboten_linter_coverage(ws) == []
+
+
+def test_gebote_declares_agents_as_conflict_authority() -> None:
+    root = Path(__file__).resolve().parents[2]
+    gebote = (root / ".github" / "GEBOTE.md").read_text(encoding="utf-8")
+    assert "Bei Widerspruch zwischen Specs und diesem Katalog gilt dieser Katalog." not in gebote
+    assert "`AGENTS.md` §1" in gebote
