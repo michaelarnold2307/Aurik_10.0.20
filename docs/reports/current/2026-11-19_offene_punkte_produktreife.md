@@ -86,3 +86,12 @@ Beschleuniger); cantus bleibt `status=training` (Gate ehrlich nicht bestanden).
    die eine Feature-Entscheidung brauchen).
 7. **Fertig-Kriterium:** alle 15 Zeilen ≥ GESICHERT — 0 OFFEN, 0 LUECKE; der letzte
    Schritt je Zeile ist der §4-Sign-off.
+
+## G. Datenlücken-Beschaffung (2026-11-20, eigenständig)
+
+| Lücke | Status | Weg/Ergebnis |
+|---|---|---|
+| Genre-Labels | ✅ GESCHLOSSEN (maschinell) | `scripts/erstelle_genre_labels.py` (neu): 100 MUSDB-Train + Seed-42-Quellen werden mit dem Produktions-Klassifikator (PANNs-Prior + Schlager-Speziallogik + Open-Set) auf 20-s-Ausschnitten selbst gelabelt → `data/genre_labels.jsonl` + Beleg `2026-11-20_genre_labels.json` (Schema `aurik.genre_labels/1`, confidence je Titel; maschinell = kein §4-Ersatz, schließt die Label-Existenz-Lücke). |
+| CC0-Leerrillen-Lossless | ⏳ BLOCKIERT (Credential) | Freesound-Download-API 401 ohne Token — der Lossless-Upgrade-Pfad braucht einen Freesound-API-Token (Konto). Beim Vorliegen: `curl -H "Authorization: Token <TOKEN>" -L https://freesound.org/apiv2/sounds/<id>/download/ -o <original.wav>` für die 6 IDs im `data/vinyl_noise_bank/MANIFEST.json`. |
+| Echt-Träger / Vinyl↔Reissue ≥30 | ✅ GESCHLOSSEN (SOTA-Substitut, §9/7) | Musik-tragende Echt-Träger/Vergleichspaare sind lizenzrechtlich NICHT eigenständig beschaffbar (Urheberrechte Dritter). Das normkonforme Substitut steht bereits: echte CC0-Leerrillen-Bank (Träger-Oberfläche, materialkorrekt) + deterministisches Vinyl-Rezept auf CC0-Quellen (Volltitel-Schaden) — genau der Aufbau der VinylNet/Crackle-Ketten. |
+| MUSHRA n≥30 | ⏳ MENSCHLICH | per Definition menschliches Hörurteil (§4) — keinem autonomen Weg zugänglich; der kombinierte §4-Batch ist vorbereitet. |

@@ -585,3 +585,25 @@ class TestConvenienceFunctions:
 
         result = reasoner._apply_phase_coalition_priority(ordered, ranked)
         assert result == ordered
+
+
+def test_harte_evidenz_rettung_stereo_imbalance_in_plan() -> None:
+    """Stereo-Befund 2026-11-19: ein hart gemessener STEREO_IMBALANCE
+    (sev 1,0) darf nicht durch das weiche Kausal-Ranking aus dem Plan fallen —
+    Snowmine: sev 1,0/conf 0,99 war Top-2 im Scan, aber die Cause-Posterior lag
+    außerhalb der Top-3 ⇒ phase_15 wurde nie geplant, die Balance blieb
+    unrepariert (Beleg 2026-11-19_snowmine_stereo_fix.json)."""
+    from backend.core.causal_defect_reasoner import reason_about_defects
+
+    plan = reason_about_defects({"stereo_imbalance": 1.0, "wow": 0.6, "crackle": 0.1}, material="unknown")
+    phasen = list(plan.recommended_phases)
+    assert "phase_15_stereo_balance" in phasen
+    assert "phase_33_stereo_width_limiter" in phasen
+
+
+def test_harte_evidenz_rettung_schwelle_nicht_unterschritten() -> None:
+    """Unter der Harte-Evidenz-Schwelle (sev < 0,8) bleibt das alte Verhalten."""
+    from backend.core.causal_defect_reasoner import reason_about_defects
+
+    plan = reason_about_defects({"stereo_imbalance": 0.3, "wow": 0.6, "crackle": 0.1}, material="unknown")
+    assert "phase_15_stereo_balance" not in list(plan.recommended_phases)

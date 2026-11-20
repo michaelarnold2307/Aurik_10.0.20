@@ -39713,6 +39713,26 @@ class UnifiedRestorerV3:
 
             _cost_base = _intervention_cost(_ref_arr, _base, _prof)
 
+            # Stereo-Integritäts-Benefit (Snowmine-Befund 2026-11-20): die
+            # MONO-basierten Wohlklang-Targets sehen Balance-Korrekturen nicht
+            # (PMGG-delta +0,0004 ⇒ ActiveIntervention REJECTED, Beleg
+            # 2026-11-20_snowmine_stereo_fix_v2.json — Balance unrepariert
+            # trotz geplanter phase_15). Für phase_15/25 zählt zusätzlich die
+            # Annäherung der Inter-Kanal-Balance an die Mitte (JND 0,5 dB —
+            # gleiche Schwelle wie closed_loop._stereo_balance_delta).
+            def _stereo_imbalance_db(_x: np.ndarray) -> float:
+                _xa = np.asarray(_x, dtype=np.float64)
+                if _xa.ndim != 2 or 2 not in _xa.shape:
+                    return 0.0
+                _l = _xa[0] if _xa.shape[0] == 2 else _xa[:, 0]
+                _r = _xa[1] if _xa.shape[0] == 2 else _xa[:, 1]
+                return float(20.0 * np.log10((np.sqrt(np.mean(_l**2)) + 1e-12) / (np.sqrt(np.mean(_r**2)) + 1e-12)))
+
+            def _stereo_balance_benefit(_base_x: np.ndarray, _cand_x: np.ndarray) -> float:
+                _before = abs(_stereo_imbalance_db(_base_x))
+                _after = abs(_stereo_imbalance_db(_cand_x))
+                return float(np.clip((_before - _after) / 0.5, 0.0, 4.0) * 0.08)
+
             # Intelligent forwarding: choose best candidate (work or blend), not binary reject.
             _candidates: list[tuple[str, np.ndarray, float]] = [("base", _base, 0.0), ("work", _work, 1.0)]
             for _alpha in (0.15, 0.30, 0.45, 0.60, 0.75, 0.85):
@@ -39733,6 +39753,8 @@ class UnifiedRestorerV3:
                 # Keep intervention close to phase output unless needed for target recovery.
                 _fidelity_drift = float(np.sqrt(np.mean((_sig - _base) ** 2) + 1e-12))
                 _score = _cost_sig + _target_penalty + (0.06 * _fidelity_drift)
+                if str(phase_id) in ("phase_15_stereo_balance", "phase_25_azimuth_correction"):
+                    _score -= _stereo_balance_benefit(_base, _sig)
                 if _score < _best_score:
                     _best_score = _score
                     _best_sig = _sig

@@ -3773,6 +3773,20 @@ class CausalDefectReasoner:
                 if param not in merged_params:
                     merged_params[param] = val
 
+        # Harte-Evidenz-Rettung (Stereo-Befund 2026-11-19): ein vom Scanner hart
+        # gemessener Stereo-Integritäts-Defekt (sev ≥ 0,8) darf nicht durch das
+        # weiche Kausal-Ranking aus dem Plan fallen — Snowmine: STEREO_IMBALANCE
+        # sev 1,0/conf 0,99 war Top-2 im Scan, aber die Cause-Posterior lag
+        # außerhalb der Top-3 ⇒ phase_15 wurde nie geplant und die Balance
+        # blieb unrepariert (Beleg 2026-11-19_snowmine_stereo_fix.json).
+        _HARD_EVIDENCE_SEV = 0.8
+        for _cause in ("stereo_imbalance", "phase_issues"):
+            if float(defect_scores.get(_cause, 0.0)) >= _HARD_EVIDENCE_SEV:
+                for _phase in CAUSE_TO_PHASES.get(_cause, []):
+                    if _phase not in seen_phases:
+                        ordered_phases.append(_phase)
+                        seen_phases.add(_phase)
+
         # §v10 SNR-adaptive param scaling — Gate §D-K3-21 (Default AUS).
         # Bis 10.12.9 wurde das Attribut nirgends gesetzt; der Zweig lief in
         # jedem Lauf ins Leere. Jetzt: explizites Gate ``_SNR_ADAPTIVE_ENABLED``
