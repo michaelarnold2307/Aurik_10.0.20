@@ -185,7 +185,7 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
     ),
     (
         "witness-runde3",
-        "--nw-min 0.9",
+        "dropouts:0.8:30",
         (
             "cd '"
             + _REPO
@@ -201,6 +201,41 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
         ),
         "/tmp/wq3_summary.txt",
         "WQ3_END=",
+    ),
+    (
+        "witness-runde4",
+        "dropouts:0.9:30",
+        (
+            "cd '"
+            + _REPO
+            + "' && export LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=. AURIK_FORCE_CPU=1 && PY='"
+            + _REPO
+            + "/.venv_aurik/bin/python' && "
+            + _wait_for_success("witness-runde3")
+            + " && "
+            'for SPEC in dropouts:0.9:30 wow:0.9:50 hum:0.8:50; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; REST="${REST#*:}"; EP="${REST##*:}"; '
+            'nice -n 19 "$PY" -B scripts/train_witness_kopf.py --klasse "$K" --epochen "$EP" '
+            '--lambda-mos 0.1 --lambda-id "$LID" --nw-min 0.9 --device cpu && '
+            'nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos; done'
+        ),
+        "/tmp/wq4_summary.txt",
+        "WQ4_END=",
+    ),
+    (
+        "genre-labels",
+        "erstelle_genre_labels.py",
+        (
+            "cd '"
+            + _REPO
+            + "' && export LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=. AURIK_FORCE_CPU=1 && PY='"
+            + _REPO
+            + "/.venv_aurik/bin/python' && "
+            + _wait_for_success("kanalsatz-voll")
+            + " && "
+            'nice -n 19 "$PY" -B scripts/erstelle_genre_labels.py'
+        ),
+        "/tmp/genre_labels.log",
+        "GENRE_LABELS_END=",
     ),
 ]
 
