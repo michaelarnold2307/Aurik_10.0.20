@@ -266,6 +266,10 @@ Priorität C→B→A→D→E/F:
 
 43. **Ketten-Iteration 2 (2026-11-20):** (a) **Kanalsatz-A/B-Zwischenstand (17/45, 16 ok/1 abgestürzt — die Subprozess-Isolation fängt den Crash und der Lauf geht weiter):** frühe Gewinne **raum ΔzuBestand-MOS +1,639 / Δdefekt −0,724** und **mp3_128 +0,140 / −0,492** (Kanalsatz AN schlägt Bestand klar), kleine Positive bei clipping/hum/kompression/kammfilter; kleine Negative bei wowflutter/vinyl/lautheit/dropout — das 45-Paar-Verdikt entscheidet die DRT-12-Norm. (b) **WQ3 ehrlich geerntet:** der nw-Schutz-Arm wirkte bei dropouts (q 0,88→1,06, nw 0,58→0,68), aber alle 5 Klassen bleiben unterm Gate — wow nw 0,06 zeigt: das Identitäts-Gewicht 0,5 ist zu schwach, der Kopf überrestauriert; dropout_oxide/tape_splice scheitern am Detektor (q n/a). **Iteration 2 eingeplant:** WQ4 (dropouts/wow mit lambda-id 0,9, hum 0,8, --nw-min 0,9, gated auf WQ3) — dropout_oxide/tape_splice bewusst ausgelassen (Detektor-AUC-Problem, kein Trainings-Problem). (c) **Genre-Labeling** hing im ML-Memory-Guard (LAION-CLAP 2,2 GB blockiert unter Last) → als gated Kette (nach kanalsatz-voll, wenn der Speicher frei ist) neu verdrahtet. Watchdog jetzt 11 Ketten, 22/22 Tests.
 
+
+
+44. **Stereo-Diagnose vertieft (2026-11-20):** v3 zeigte: auch mit dem ActiveIntervention-Benefit blieb die Balance unrepariert — die Ablehnung ist identisch (Δ=0). Die Ablehnungs-Logzeile trägt jetzt `imbalance_base/imbalance_work/shapes` (v4 läuft damit) — Ziel: klären, ob `_work` am Interventionspunkt überhaupt die korrigierte Stereo-Fassung ist (Layout/No-Op-Frage). Erkenntnis aus v2/v3: Plan ✓, phase_15 läuft ✓ (kein mono-skip), PMGG passt ✓ — offen ist nur die letzte Veto-Schicht. Gleichzeitig laufen: Kanalsatz-A/B 21/45, WQ3 (hum), Stereo-v4, B2-Bewertung.
+
 - **GPU-Trainingsketten** (dauerhaft im Repo, jederzeit neu startbar):
   - Kette 1 (Welle C + M8/M9): `nohup bash scripts/gpu_kette1_welle_c.sh > /tmp/k1.log 2>&1 &`
   - Kette 2 (Matrix D.3, startet nach Kette 1): `nohup bash scripts/gpu_kette2_matrix_d3.sh > /tmp/k2.log 2>&1 &`

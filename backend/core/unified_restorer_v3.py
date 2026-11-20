@@ -39796,10 +39796,15 @@ class UnifiedRestorerV3:
                     _best_alpha = 0.0
                     _best_cost = float(_cost_base)
                     logger.info(
-                        "ActiveIntervention %s REJECTED: no beneficial Wert delta (Betriebsart=%s, alpha=%.2f)",
+                        "ActiveIntervention %s REJECTED: no beneficial Wert delta (Betriebsart=%s, alpha=%.2f, "
+                        "imbalance_base=%.2f dB, imbalance_work=%.2f dB, shapes=%s/%s)",
                         phase_id,
                         _best_mode,
                         _best_alpha,
+                        _stereo_imbalance_db(_base),
+                        _stereo_imbalance_db(_work),
+                        getattr(_base, "shape", None),
+                        getattr(_work, "shape", None),
                     )
             elif "quiet_zone" in _best_targets and not bool(_best_targets.get("quiet_zone", {}).get("met", False)):
                 logger.info(
