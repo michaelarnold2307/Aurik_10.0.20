@@ -28,6 +28,10 @@ def test_flag_default_aus() -> None:
     assert music_model_flags.use_witness_kopf_dynamic_compression_excess is False
     assert music_model_flags.use_witness_kopf_dropout_head_contact is False
     assert music_model_flags.use_witness_kopf_hum is False
+    assert music_model_flags.use_witness_kopf_dropouts is False
+    assert music_model_flags.use_witness_kopf_dropout_oxide is False
+    assert music_model_flags.use_witness_kopf_tape_splice_artifact is False
+    assert music_model_flags.use_witness_kopf_wow is False
 
 
 def test_drt11_kontext_sperre_in_allen_modulen() -> None:

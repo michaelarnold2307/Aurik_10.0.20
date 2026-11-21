@@ -69,6 +69,13 @@ PRODUKTIONS_SEMANTIK: dict[str, tuple[str, str]] = {
     ),
     "dropout_head_contact": ("witness_kopf_dropout_head", "witness_kopf_dropout_head_contact"),
     "hum": ("witness_kopf_hum", "witness_kopf_hum"),
+    "dropouts": ("witness_kopf_dropouts", "witness_kopf_dropouts"),
+    "dropout_oxide": ("witness_kopf_dropout_oxide", "witness_kopf_dropout_oxide"),
+    "tape_splice_artifact": (
+        "witness_kopf_tape_splice_artifact",
+        "witness_kopf_tape_splice_artifact",
+    ),
+    "wow": ("witness_kopf_wow", "witness_kopf_wow"),
 }
 
 

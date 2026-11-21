@@ -139,6 +139,15 @@ use_witness_kopf_dropout_head_contact: bool = False
 # q_median 1,0475, never_worsen 1,0, musik_mos-Delta-Mittel +0,2686 (Anteil ≥ −JND 1,0).
 # Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
 use_witness_kopf_hum: bool = False
+# Witness-Köpfe der WQ-Erweiterung (dropouts/dropout_oxide/tape_splice_artifact/wow,
+# D-K3-95-Nacharbeit 2026-11-21): DRT-7-Verdrahtung — die Aktivierungs-Gates werden über den
+# PRODUKTIONS-Pfad gemessen (Trigger-Maske + Never-worsen-Guard); die rohen Regionen-Gates
+# allein sind für Kurz-Regionen (0,06–0,15 s) nicht hinreichend (Pad-Artefakt im
+# Raw-Head-Fallback, Befund 2026-11-21). Default AUS; Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_dropouts: bool = False
+use_witness_kopf_dropout_oxide: bool = False
+use_witness_kopf_tape_splice_artifact: bool = False
+use_witness_kopf_wow: bool = False
 # (MediumDetector.detect, Roh-Aufruf) statt 9 handgebaute Skalar-Features/Gauss-Mixture. Default AUS =
 # bisheriges Verhalten. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen). Flag-Flip
 # offen — nur nach §4-Verfahren (scripts/flag_freigabe.py: Verdikt → Register-Buchung → Flag-Flip → Commit).

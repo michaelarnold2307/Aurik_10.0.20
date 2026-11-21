@@ -149,10 +149,11 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
             "cd '" + _REPO + "' && export LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=. AURIK_FORCE_CPU=1 && "
             "PY='" + _REPO + "/.venv_aurik/bin/python' && "
             "for SPEC in dropouts:0.8:0.0:30 dropout_oxide:0.8:0.0:30 tape_splice_artifact:0.8:0.0:30 "
-            'wow:0.5:0.0:50 hum:0.8:0.0:50; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; '
-            'REST="${REST#*:}"; LOK="${REST%%:*}"; EP="${REST##*:}"; '
+            'wow:0.5:0.0:50 hum:0.8:0.0:50:0.95; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; '
+            'REST="${REST#*:}"; LOK="${REST%%:*}"; REST="${REST#*:}"; EP="${REST%%:*}"; NW="${REST#*:}"; '
+            '[ "$NW" = "$EP" ] && NW=""; NWARG=""; [ -n "$NW" ] && NWARG="--nw-min $NW"; '
             'nice -n 19 "$PY" -B scripts/train_witness_kopf.py --klasse "$K" --epochen "$EP" '
-            '--lambda-mos 0.1 --lambda-id "$LID" --lambda-lokal "$LOK" --nw-min 0.95 --device cpu && '
+            '--lambda-mos 0.1 --lambda-id "$LID" --lambda-lokal "$LOK" $NWARG --device cpu && '
             '( nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos || '
             'echo "WQ_GATE_FAILED:$K" ); done'
         ),
@@ -223,9 +224,10 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
             + "/.venv_aurik/bin/python' && "
             + _wait_for_success("kanalsatz-voll")
             + " && "
-            'for SPEC in dropouts:0.8:30 dropout_oxide:0.8:30 tape_splice_artifact:0.8:30 wow:0.5:50 hum:0.5:50; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; REST="${REST#*:}"; EP="${REST##*:}"; '
+            'for SPEC in dropouts:0.8:30 dropout_oxide:0.8:30 tape_splice_artifact:0.8:30 wow:0.5:50 hum:0.5:50:0.95; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; REST="${REST#*:}"; EP="${REST%%:*}"; NW="${REST#*:}"; '
+            '[ "$NW" = "$EP" ] && NW=""; NWARG=""; [ -n "$NW" ] && NWARG="--nw-min $NW"; '
             'nice -n 19 "$PY" -B scripts/train_witness_kopf.py --klasse "$K" --epochen "$EP" '
-            '--lambda-mos 0.1 --lambda-id "$LID" --nw-min 0.95 --device cpu && '
+            '--lambda-mos 0.1 --lambda-id "$LID" $NWARG --device cpu && '
             '( nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos || '
             'echo "WQ_GATE_FAILED:$K" ); done'
         ),
@@ -243,9 +245,10 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
             + "/.venv_aurik/bin/python' && "
             + _wait_for_success("witness-runde3")
             + " && "
-            'for SPEC in dropouts:0.9:30 wow:0.9:50 hum:0.8:50; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; REST="${REST#*:}"; EP="${REST##*:}"; '
+            'for SPEC in dropouts:0.9:30 wow:0.9:50 hum:0.8:50:0.95; do K="${SPEC%%:*}"; REST="${SPEC#*:}"; LID="${REST%%:*}"; REST="${REST#*:}"; EP="${REST%%:*}"; NW="${REST#*:}"; '
+            '[ "$NW" = "$EP" ] && NW=""; NWARG=""; [ -n "$NW" ] && NWARG="--nw-min $NW"; '
             'nice -n 19 "$PY" -B scripts/train_witness_kopf.py --klasse "$K" --epochen "$EP" '
-            '--lambda-mos 0.1 --lambda-id "$LID" --nw-min 0.95 --device cpu && '
+            '--lambda-mos 0.1 --lambda-id "$LID" $NWARG --device cpu && '
             '( nice -n 19 "$PY" -B scripts/verify_witness_kopf_gate.py --klasse "$K" --mos || '
             'echo "WQ_GATE_FAILED:$K" ); done'
         ),

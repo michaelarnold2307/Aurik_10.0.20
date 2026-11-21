@@ -618,6 +618,8 @@ class DeclipperPhase(PhaseInterface):
             use_witness_kopf_clicks,
             use_witness_kopf_compression_artifacts,
             use_witness_kopf_dropout_head_contact,
+            use_witness_kopf_dropout_oxide,
+            use_witness_kopf_dropouts,
             use_witness_kopf_dynamic_compression_excess,
             use_witness_kopf_hum,
             use_witness_kopf_jitter_artifacts,
@@ -625,7 +627,9 @@ class DeclipperPhase(PhaseInterface):
             use_witness_kopf_sibilance,
             use_witness_kopf_sticky_shed_residue,
             use_witness_kopf_tape_head_clog,
+            use_witness_kopf_tape_splice_artifact,
             use_witness_kopf_transport_bump,
+            use_witness_kopf_wow,
         )
 
         for _wk_name, _wk_flag, _wk_modul, _wk_funktion in (
@@ -680,6 +684,20 @@ class DeclipperPhase(PhaseInterface):
                 "witness_kopf_dropout_head_contact",
             ),
             ("hum", use_witness_kopf_hum, "witness_kopf_hum", "witness_kopf_hum"),
+            ("dropouts", use_witness_kopf_dropouts, "witness_kopf_dropouts", "witness_kopf_dropouts"),
+            (
+                "dropout_oxide",
+                use_witness_kopf_dropout_oxide,
+                "witness_kopf_dropout_oxide",
+                "witness_kopf_dropout_oxide",
+            ),
+            (
+                "tape_splice_artifact",
+                use_witness_kopf_tape_splice_artifact,
+                "witness_kopf_tape_splice_artifact",
+                "witness_kopf_tape_splice_artifact",
+            ),
+            ("wow", use_witness_kopf_wow, "witness_kopf_wow", "witness_kopf_wow"),
         ):
             _witness_kopf_rest_used[_wk_name] = False
             if not _wk_flag:
@@ -911,6 +929,16 @@ class DeclipperPhase(PhaseInterface):
             _metrics07["witness_kopf_transport_used"] = bool(_witness_kopf_rest_used.get("transport_bump", False))
         if use_witness_kopf_hum:
             _metrics07["witness_kopf_hum_used"] = bool(_witness_kopf_rest_used.get("hum", False))
+        if use_witness_kopf_dropouts:
+            _metrics07["witness_kopf_dropouts_used"] = bool(_witness_kopf_rest_used.get("dropouts", False))
+        if use_witness_kopf_dropout_oxide:
+            _metrics07["witness_kopf_dropout_oxide_used"] = bool(_witness_kopf_rest_used.get("dropout_oxide", False))
+        if use_witness_kopf_tape_splice_artifact:
+            _metrics07["witness_kopf_tape_splice_used"] = bool(
+                _witness_kopf_rest_used.get("tape_splice_artifact", False)
+            )
+        if use_witness_kopf_wow:
+            _metrics07["witness_kopf_wow_used"] = bool(_witness_kopf_rest_used.get("wow", False))
 
         return PhaseResult(
             success=True,
