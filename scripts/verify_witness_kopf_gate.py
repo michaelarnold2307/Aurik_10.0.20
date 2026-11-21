@@ -68,6 +68,7 @@ PRODUKTIONS_SEMANTIK: dict[str, tuple[str, str]] = {
         "witness_kopf_dynamic_compression_excess",
     ),
     "dropout_head_contact": ("witness_kopf_dropout_head", "witness_kopf_dropout_head_contact"),
+    "hum": ("witness_kopf_hum", "witness_kopf_hum"),
 }
 
 
@@ -189,9 +190,21 @@ def messe(
                 if out_c_prod is None:
                     out_c_prod = c_w
                 p_out_c = _p(witness, torch.from_numpy(np.asarray(out_c_prod, np.float32)[None]))
+                p_c_ref = p_c
             else:
-                p_out_c = _p(witness, kopf(c_t))
-            never_worsen.append(p_out_c <= p_c + NW_TOL)
+                # DRT-4-Parität (Spec 26): ohne Produktions-DSP misst der
+                # Schutz-Arm den rohen Kopf auf clean mit CLEAN-EIGENER RMS —
+                # exakt die Konvention des Identitäts-Ankers im Trainer
+                # (_lade_split: xc_id/hc_id mit clean-eigener RMS) und der
+                # Produktions-Inferenz (_kopf_out: jedes Fenster eigene RMS).
+                # Die Schaden-RMS-Normalisierung (c_n/p_c) bleibt nur die
+                # Witness-Referenz des Q-Arms (Trainer-Parität des Gewinn-Arms).
+                rms_c = float(np.sqrt(np.mean(c_w**2)) + 1e-8)
+                c_own = (c_w / rms_c * RMS_ZIEL).astype(np.float32)
+                c_own_t = torch.from_numpy(c_own[None, None])
+                p_c_ref = _p(witness, c_own_t)
+                p_out_c = _p(witness, kopf(c_own_t))
+            never_worsen.append(p_out_c <= p_c_ref + NW_TOL)
     ergebnis = {
         "n_regionen": len(regionen),
         "n_uebersprungen": uebersprungen,

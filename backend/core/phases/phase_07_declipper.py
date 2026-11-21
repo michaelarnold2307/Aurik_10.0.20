@@ -619,6 +619,7 @@ class DeclipperPhase(PhaseInterface):
             use_witness_kopf_compression_artifacts,
             use_witness_kopf_dropout_head_contact,
             use_witness_kopf_dynamic_compression_excess,
+            use_witness_kopf_hum,
             use_witness_kopf_jitter_artifacts,
             use_witness_kopf_phase_rotation,
             use_witness_kopf_sibilance,
@@ -678,6 +679,7 @@ class DeclipperPhase(PhaseInterface):
                 "witness_kopf_dropout_head",
                 "witness_kopf_dropout_head_contact",
             ),
+            ("hum", use_witness_kopf_hum, "witness_kopf_hum", "witness_kopf_hum"),
         ):
             _witness_kopf_rest_used[_wk_name] = False
             if not _wk_flag:
@@ -907,6 +909,8 @@ class DeclipperPhase(PhaseInterface):
             _metrics07["witness_kopf_jitter_used"] = bool(_witness_kopf_rest_used.get("jitter_artifacts", False))
         if use_witness_kopf_transport_bump:
             _metrics07["witness_kopf_transport_used"] = bool(_witness_kopf_rest_used.get("transport_bump", False))
+        if use_witness_kopf_hum:
+            _metrics07["witness_kopf_hum_used"] = bool(_witness_kopf_rest_used.get("hum", False))
 
         return PhaseResult(
             success=True,

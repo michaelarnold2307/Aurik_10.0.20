@@ -133,6 +133,12 @@ use_witness_kopf_transport_bump: bool = False
 # Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
 use_witness_kopf_dynamic_compression_excess: bool = False
 use_witness_kopf_dropout_head_contact: bool = False
+# Witness-Kopf hum (D-K3-95-Nacharbeit, 2026-11-21): gate-bestanden mit harter
+# Never-worsen-Modellauswahl (--nw-min 0.95, Spec 26 DRT-5) und DRT-4-Paritäts-Fix
+# des Schutz-Arms (clean-eigene RMS im Gate-Fallback = Trainer-Identitäts-Anker):
+# q_median 1,0475, never_worsen 1,0, musik_mos-Delta-Mittel +0,2686 (Anteil ≥ −JND 1,0).
+# Konsum in phase_07. Default AUS; Flag-Flip NUR nach §4-Hör-Sign-off.
+use_witness_kopf_hum: bool = False
 # (MediumDetector.detect, Roh-Aufruf) statt 9 handgebaute Skalar-Features/Gauss-Mixture. Default AUS =
 # bisheriges Verhalten. Gelernte Spektrogramm-Repraesentation: 95.3% vs. 59-63% (gemessen). Flag-Flip
 # offen — nur nach §4-Verfahren (scripts/flag_freigabe.py: Verdikt → Register-Buchung → Flag-Flip → Commit).

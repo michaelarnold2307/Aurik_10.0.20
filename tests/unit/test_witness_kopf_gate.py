@@ -32,7 +32,9 @@ def test_gate_logik_beide_arme() -> None:
 
 def test_messe_berichtet_rohwerte_fuer_reproduzierbare_aggregate(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gate, "_lade_mono", lambda pfad: np.ones(600, dtype=np.float32))
-    messwerte = iter([0.9, 0.1, 0.4, 0.1])
+    # Reihenfolge der _p-Aufrufe: p_s, p_c, p_out_s, p_c_ref (clean-eigene RMS),
+    # p_out_c (Kopf auf clean-eigener RMS) — DRT-4-Parität des Schutz-Arms.
+    messwerte = iter([0.9, 0.1, 0.4, 0.1, 0.1])
     monkeypatch.setattr(gate, "_p", lambda _witness, _signal: next(messwerte))
     result = gate.messe(
         lambda audio: audio,

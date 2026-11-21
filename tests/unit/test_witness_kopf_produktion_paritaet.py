@@ -56,3 +56,56 @@ def test_pad_und_laengen_schnitt_im_quelltext() -> None:
     assert "np.pad(x, (0, _FENSTER - len(x)))" in quelltext
     assert "laenge_in = len(x)" in quelltext
     assert "kandidat[:laenge_in]" in quelltext
+
+
+# ── hum (2026-11-21): gate-bestanden mit harter Never-worsen-Modellauswahl ──
+import backend.core.dsp.witness_kopf_hum as hum
+
+_HAT_HUM_CHECKPOINTS = hum._KOPF_CKPT.is_file() and hum._WITNESS_CKPT.is_file()
+
+
+def _region_01s_hum() -> np.ndarray:
+    import json
+
+    import librosa
+
+    manifest = Path(__file__).resolve().parents[2] / "data" / "klassen_paare" / "manifest.jsonl"
+    eintraege = [json.loads(l) for l in manifest.open(encoding="utf-8") if json.loads(l)["klasse"] == "hum"]
+    e = eintraege[0]
+    sr, d = wavfile.read(e["schaden"])
+    x = np.asarray(d, np.float32) / 32768.0
+    x = x.mean(axis=1) if x.ndim == 2 else x
+    x = librosa.resample(x, orig_sr=sr, target_sr=hum._TARGET_SR).astype(np.float32)
+    # hum-Regionen sind laenger als 1 s (Manifest-Intervalle 3-4 s) — das 1-s-
+    # Mittelfenster ist exakt die Trainer-/Gate-Konvention (FENSTER-Mitte).
+    start = (len(x) - hum._FENSTER) // 2
+    return x[start : start + hum._FENSTER]
+
+
+@pytest.mark.skipif(not _HAT_HUM_CHECKPOINTS, reason="hum-Checkpoints lokal nicht vorhanden")
+def test_hum_kurze_region_triggert_und_laenge_bleibt() -> None:
+    """hum: 1-s-Region triggert und Ausgabe-Länge = Eingangs-Länge."""
+    x = _region_01s_hum()
+    assert len(x) == hum._FENSTER, f"Test erwartet 1-s-Region, bekam {len(x)} Samples"
+    out = hum.witness_kopf_hum(x, hum._TARGET_SR)
+    assert out is not None, "Trigger muss auf der hum-Region feuern"
+    assert len(out) == len(x), f"Längen-Vertrag verletzt: {len(out)} != {len(x)}"
+    assert np.isfinite(out).all()
+
+
+@pytest.mark.skipif(not _HAT_HUM_CHECKPOINTS, reason="hum-Checkpoints lokal nicht vorhanden")
+def test_hum_pad_pfad_unter_einer_sekunde_kein_crash() -> None:
+    """hum: 0,1-s-Schnipsel (Pad-Pfad) — kein Crash; bei Trigger Längen-Vertrag."""
+    x = _region_01s_hum()[: hum._FENSTER // 10]
+    out = hum.witness_kopf_hum(x, hum._TARGET_SR)
+    if out is not None:
+        assert len(out) == len(x)
+        assert np.isfinite(out).all()
+
+
+@pytest.mark.skipif(not _HAT_HUM_CHECKPOINTS, reason="hum-Checkpoints lokal nicht vorhanden")
+def test_hum_pad_und_laengen_schnitt_im_quelltext() -> None:
+    quelltext = Path(hum.__file__).read_text(encoding="utf-8")
+    assert "np.pad(x, (0, _FENSTER - len(x)))" in quelltext
+    assert "laenge_in = len(x)" in quelltext
+    assert "kandidat[:laenge_in]" in quelltext

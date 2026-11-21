@@ -10,19 +10,17 @@
   "n_q_bewertbar": 16,
   "n_never_worsen_bewertbar": 16,
   "q_values": [
-    0.8198312707359633, 0.8169674395323158, 0.985929816078145,
-    0.8680868921648118, 0.7491768516576072, 0.985929816078145,
-    1.2533426131464742, 0.8169674395323158, 0.8752734325211599,
-    1.0533792950775605, 0.8680868921648118, 0.8752734325211599,
-    0.8198312707359633, 0.7491768516576072, 1.0533792950775605,
-    1.2533426131464742
+    1.0620387148349146, 0.9192626688685, 0.9962144406253748, 1.0444501843419398,
+    0.807409790880131, 0.9962144406253748, 1.6362579447566348, 0.9192626688685,
+    1.0506149929659443, 1.2227067883177052, 1.0444501843419398,
+    1.0506149929659443, 1.0620387148349146, 0.807409790880131,
+    1.2227067883177052, 1.6362579447566348
   ],
   "never_worsen_flags": [
     true,
     true,
     true,
     true,
-    false,
     true,
     true,
     true,
@@ -31,15 +29,21 @@
     true,
     true,
     true,
-    false,
+    true,
+    true,
     true,
     true
   ],
-  "q_median": 0.8717,
+  "q_median": 1.0475,
   "q_anteil_ge_0_5": 1.0,
-  "never_worsen_anteil": 0.875,
-  "gate_bestanden": false,
-  "musik_mos_delta_mittel": 0.2725,
+  "never_worsen_anteil": 1.0,
+  "gate_bestanden": true,
+  "musik_mos_delta_mittel": 0.2686,
   "musik_mos_delta_anteil_ge_minus_jnd": 1.0,
-  "drt_8_10": "Report-only Zwei-Metrik-Messung (defektlast UND musik_mos); Gate-Urteil unverändert"
+  "drt_8_10": "Report-only Zwei-Metrik-Messung (defektlast UND musik_mos); Gate-Urteil unverändert",
+  "gate_qualitaet_bestanden": true,
+  "produktions_semantik_verifiziert": true,
+  "schutz_arm_modul": "witness_kopf_hum",
+  "schutz_arm_semantik": "produktions_dsp",
+  "schutz_arm_status": "verifiziert"
 }
