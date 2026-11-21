@@ -1,0 +1,155 @@
+{
+  "manifest": "benchmarks/competitive/manifest_machinery_proof.json",
+  "items_evaluated": 3,
+  "matrix": {
+    "required_materials": ["tape", "vinyl", "shellac", "digital", "vocal"],
+    "required_defect_classes": [
+      "hiss",
+      "crackle",
+      "dropout",
+      "reverb",
+      "hum",
+      "codec"
+    ],
+    "required_cells": 30,
+    "present_cells": 3,
+    "missing_cells": [
+      "digital::codec",
+      "digital::crackle",
+      "digital::hiss",
+      "digital::reverb",
+      "shellac::codec",
+      "shellac::crackle",
+      "shellac::dropout",
+      "shellac::hiss",
+      "shellac::hum",
+      "shellac::reverb",
+      "tape::codec",
+      "tape::crackle",
+      "tape::dropout",
+      "tape::hiss",
+      "tape::hum",
+      "tape::reverb",
+      "vinyl::codec",
+      "vinyl::dropout",
+      "vinyl::hiss",
+      "vinyl::hum",
+      "vinyl::reverb",
+      "vocal::codec",
+      "vocal::crackle",
+      "vocal::dropout",
+      "vocal::hiss",
+      "vocal::hum",
+      "vocal::reverb"
+    ],
+    "full_matrix_covered": false
+  },
+  "summary": {
+    "aurik_mean_oqs": 64.433,
+    "rx11_mean_oqs": 66.833,
+    "cedar_mean_oqs": 68.467,
+    "aurik_vs_rx11_wins": 1,
+    "aurik_vs_rx11_total": 3,
+    "aurik_vs_cedar_wins": 0,
+    "aurik_vs_cedar_total": 3
+  },
+  "gates": {
+    "aurik_vs_rx11_majority_win": false,
+    "aurik_vs_rx11_no_stratified_regressions": false,
+    "aurik_vs_cedar_majority_win": false,
+    "aurik_vs_cedar_no_stratified_regressions": false,
+    "release_competitive_ready": false
+  },
+  "regressions": {
+    "vs_rx11_cells": ["digital::dropout", "digital::hum"],
+    "vs_cedar_cells": ["digital::dropout", "digital::hum", "vinyl::crackle"]
+  },
+  "cell_summary": {
+    "digital::dropout": {
+      "aurik_mean_oqs": 58.1,
+      "rx11_mean_oqs": 66.1,
+      "cedar_mean_oqs": 65.4,
+      "aurik_minus_rx11": -8.0,
+      "aurik_minus_cedar": -7.3,
+      "n_items": 1
+    },
+    "digital::hum": {
+      "aurik_mean_oqs": 62.1,
+      "rx11_mean_oqs": 65.9,
+      "cedar_mean_oqs": 65.2,
+      "aurik_minus_rx11": -3.8,
+      "aurik_minus_cedar": -3.1,
+      "n_items": 1
+    },
+    "vinyl::crackle": {
+      "aurik_mean_oqs": 73.1,
+      "rx11_mean_oqs": 68.5,
+      "cedar_mean_oqs": 74.8,
+      "aurik_minus_rx11": 4.6,
+      "aurik_minus_cedar": -1.7,
+      "n_items": 1
+    }
+  },
+  "items": [
+    {
+      "scenario_id": "S01-HUM-DIGITAL-A",
+      "material": "digital",
+      "defect_class": "hum",
+      "aurik_oqs": 62.1,
+      "rx11_oqs": 65.9,
+      "cedar_oqs": 65.2,
+      "aurik_grade": "Fair",
+      "rx11_grade": "Fair",
+      "cedar_grade": "Fair",
+      "aurik_minus_rx11": -3.8000000000000043,
+      "aurik_minus_cedar": -3.1000000000000014,
+      "paths": {
+        "reference": "benchmarks/competitive/../fixtures/reference/s01_ref.wav",
+        "input": "benchmarks/competitive/../fixtures/input/s01_hum.wav",
+        "aurik": "benchmarks/competitive/../fixtures/aurik/s01_hum.wav",
+        "rx11": "benchmarks/competitive/../fixtures/rx11/s01_hum.wav",
+        "cedar": "benchmarks/competitive/../fixtures/cedar/s01_hum.wav"
+      }
+    },
+    {
+      "scenario_id": "S02-DROPOUT-DIGITAL-A",
+      "material": "digital",
+      "defect_class": "dropout",
+      "aurik_oqs": 58.1,
+      "rx11_oqs": 66.1,
+      "cedar_oqs": 65.4,
+      "aurik_grade": "Poor",
+      "rx11_grade": "Fair",
+      "cedar_grade": "Fair",
+      "aurik_minus_rx11": -7.999999999999993,
+      "aurik_minus_cedar": -7.300000000000004,
+      "paths": {
+        "reference": "benchmarks/competitive/../fixtures/reference/s02_ref.wav",
+        "input": "benchmarks/competitive/../fixtures/input/s02_dropout.wav",
+        "aurik": "benchmarks/competitive/../fixtures/aurik/s02_dropout.wav",
+        "rx11": "benchmarks/competitive/../fixtures/rx11/s02_dropout.wav",
+        "cedar": "benchmarks/competitive/../fixtures/cedar/s02_dropout.wav"
+      }
+    },
+    {
+      "scenario_id": "S03-CRACKLE-VINYL-A",
+      "material": "vinyl",
+      "defect_class": "crackle",
+      "aurik_oqs": 73.1,
+      "rx11_oqs": 68.5,
+      "cedar_oqs": 74.8,
+      "aurik_grade": "Fair",
+      "rx11_grade": "Fair",
+      "cedar_grade": "Fair",
+      "aurik_minus_rx11": 4.599999999999994,
+      "aurik_minus_cedar": -1.7000000000000028,
+      "paths": {
+        "reference": "benchmarks/competitive/../fixtures/reference/s03_ref.wav",
+        "input": "benchmarks/competitive/../fixtures/input/s03_crackle.wav",
+        "aurik": "benchmarks/competitive/../fixtures/aurik/s03_crackle.wav",
+        "rx11": "benchmarks/competitive/../fixtures/rx11/s03_crackle.wav",
+        "cedar": "benchmarks/competitive/../fixtures/cedar/s03_crackle.wav"
+      }
+    }
+  ]
+}

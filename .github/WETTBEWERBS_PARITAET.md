@@ -19,6 +19,12 @@
 > `LUECKE` (bekannte Lücke mit laufendem/geplantem Schritt),
 > `OFFEN` (noch ohne Messung — Rezept/Messweg fehlt oder steht aus),
 > `NICHT_MESSBAR` (kein lokaler Messweg — nur Hörtest/Beschaffung).
+>
+> **Beschaffung autonom geklärt (2026-11-21):** Der RX-Vergleichs-Weg ist bis
+> auf den minimalen menschlichen Akt vorbereitet — DRT-16-Harness verifiziert,
+> Paar-Materialien liegen bereit, Steckbrief: `docs/guides/RX12_BESCHAFFUNG.md`.
+> RX läuft nur auf Windows/macOS (Linux-Host) — deshalb bleibt der letzte
+> Schritt extern; danach läuft Bericht + Register-Beleg automatisch.
 
 ## Realistische Ziel- und Fortschrittsstufen
 

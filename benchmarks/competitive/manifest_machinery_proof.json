@@ -1,0 +1,36 @@
+{
+  "items": [
+    {
+      "scenario_id": "S01-HUM-DIGITAL-A",
+      "material": "digital",
+      "defect_class": "hum",
+      "reference_path": "../fixtures/reference/s01_ref.wav",
+      "input_path": "../fixtures/input/s01_hum.wav",
+      "aurik_path": "../fixtures/aurik/s01_hum.wav",
+      "rx11_path": "../fixtures/rx11/s01_hum.wav",
+      "cedar_path": "../fixtures/cedar/s01_hum.wav"
+    },
+    {
+      "scenario_id": "S02-DROPOUT-DIGITAL-A",
+      "material": "digital",
+      "defect_class": "dropout",
+      "reference_path": "../fixtures/reference/s02_ref.wav",
+      "input_path": "../fixtures/input/s02_dropout.wav",
+      "aurik_path": "../fixtures/aurik/s02_dropout.wav",
+      "rx11_path": "../fixtures/rx11/s02_dropout.wav",
+      "cedar_path": "../fixtures/cedar/s02_dropout.wav"
+    },
+    {
+      "scenario_id": "S03-CRACKLE-VINYL-A",
+      "material": "vinyl",
+      "defect_class": "crackle",
+      "reference_path": "../fixtures/reference/s03_ref.wav",
+      "input_path": "../fixtures/input/s03_crackle.wav",
+      "aurik_path": "../fixtures/aurik/s03_crackle.wav",
+      "rx11_path": "../fixtures/rx11/s03_crackle.wav",
+      "cedar_path": "../fixtures/cedar/s03_crackle.wav"
+    }
+  ],
+  "notes": "Maschinerie-Beweis 2026-11-21 (Beschaffungs-Klärung): rx11_path/cedar_path sind FFMPEG-Platzhalter (afftdn/highpass) — KEINE echten RX/CEDAR-Ausgaben. Sobald RX-12-prozessierte Dateien vorliegen (siehe docs/guides/RX12_BESCHAFFUNG.md), werden nur diese Pfade ersetzt.",
+  "run_id": "procurement_machinery_proof_2026_11_21"
+}
