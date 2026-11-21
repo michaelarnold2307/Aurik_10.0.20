@@ -52,8 +52,8 @@ Verwendung im Frontend::
     get_lyrics_guided_enhancement_fn   # LyricsGuidedEnhancement (§2.36)
     get_cleanup_after_file_fn          # PLM.cleanup_after_file
 
-    # NaN/Inf-Guard + Export-Absicherung
-    export_guard
+    # NaN/Inf-Guard + Frontend-/Export-Normalisierung
+    normalize_frontend_audio, export_guard
 
     # Hintergrund-Vorwärmung
     warmup_models_background
@@ -1208,6 +1208,20 @@ def get_ml_memory_budget_import_status() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Export-Guard  (PFLICHT vor jedem sf.write / AudioExporter.export)
 # ---------------------------------------------------------------------------
+
+
+def normalize_frontend_audio(audio: np.ndarray) -> np.ndarray:
+    """GUI-/CLI-Layout und 0,98-Headroom gemeinsam normalisieren (§G9 (copilot-instructions.md))."""
+    audio = np.asarray(audio, dtype=np.float32)
+    if audio.ndim == 2 and audio.shape[0] <= 2 and audio.shape[1] > audio.shape[0]:
+        audio = audio.T
+    if audio.ndim == 2 and audio.shape[1] == 1:
+        audio = np.squeeze(audio, axis=1)
+    if audio.ndim == 2 and audio.shape[1] > 2:
+        audio = audio[:, :2]
+    audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
+    begrenzt: np.ndarray = np.clip(audio, -0.98, 0.98)
+    return begrenzt
 
 
 def export_guard(audio: np.ndarray) -> np.ndarray:

@@ -13,10 +13,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from backend.core.training_artifacts import acquire_run_lock
 from scripts.train_job_runner import JOB_LOCK_NAME, run_job
 
-PY_OK = [sys.executable, "-c", "print('ok')"]
-PY_FAIL = [sys.executable, "-c", "raise SystemExit(3)"]
-PY_ZEITBUDGET = [sys.executable, "-c", "raise SystemExit(75)"]
-PY_SLEEP = [sys.executable, "-c", "import time; time.sleep(60)"]
+PY_OK = [sys.executable, str(PROJECT_ROOT / "tests" / "fixtures" / "_exitcode_helper.py")]
+PY_FAIL = [sys.executable, str(PROJECT_ROOT / "tests" / "fixtures" / "_exitcode_helper.py"), "--code", "3"]
+PY_ZEITBUDGET = [sys.executable, str(PROJECT_ROOT / "tests" / "fixtures" / "_exitcode_helper.py"), "--code", "75"]
+PY_SLEEP = [sys.executable, str(PROJECT_ROOT / "tests" / "fixtures" / "_exitcode_helper.py"), "--sleep", "60"]
 
 
 def test_manifest_traegt_befehl_seed_phase_checkpoint_hash(tmp_path: Path) -> None:
@@ -118,12 +118,12 @@ def test_zeitbudget_stopp_ist_kein_fehlschlag(tmp_path: Path) -> None:
 
 def _zaehl_befehl(counter: Path, zeichen: str = "x") -> list[str]:
     """Kommando, das bei jeder echten Ausfuehrung ein Zeichen anhaengt."""
-    code = (
-        "from pathlib import Path; "
-        f"p = Path(r'{counter}'); "
-        f"p.write_text((p.read_text() if p.exists() else '') + '{zeichen}')"
-    )
-    return [sys.executable, "-c", code]
+    return [
+        sys.executable,
+        str(PROJECT_ROOT / "tests" / "fixtures" / "_exitcode_helper.py"),
+        "--append",
+        f"{counter}:{zeichen}",
+    ]
 
 
 def test_erfolgreicher_job_wird_uebersprungen(tmp_path: Path) -> None:

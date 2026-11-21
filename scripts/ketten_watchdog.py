@@ -57,6 +57,22 @@ def _wait_for_success(name: str) -> str:
     return f"{python} -B {script} --wait-for {shlex.quote(name)}"
 
 
+def _is_watchdog_manager_cmdline(argv: list[str]) -> bool:
+    """Unterscheidet den Manager von Waiter-Prozessen und wiederverwendeten PIDs."""
+    return str(Path(__file__).resolve()) in argv and "--wait-for" not in argv
+
+
+def _watchdog_manager_alive() -> bool:
+    """Prüft, ob der Lock-PID wirklich diesen Manager ausführt."""
+    try:
+        pid = int(LOCKFILE.read_text(encoding="utf-8").strip())
+        raw_cmdline = Path(f"/proc/{pid}/cmdline").read_bytes()
+    except (OSError, ValueError):
+        return False
+    argv = [os.fsdecode(arg) for arg in raw_cmdline.split(b"\0") if arg]
+    return _is_watchdog_manager_cmdline(argv)
+
+
 # (name, pgrep-muster, start-kommando (bash -lc-String), log-pfad, end-marker)
 KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
     (
@@ -143,7 +159,7 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
             + " && "
             'nice -n 19 "$PY" -B scripts/messe_kanalsatz_ab.py --verzeichnis data/schadens_proben '
             "--paare 45 --seed 42 --bestand data/schadens_proben/bewertung.json "
-            "--beleg docs/reports/current/$(date +%F)_kanalsatz_ab_voll.json"
+            "--resume"
         ),
         "/tmp/kanalsatz_ab_voll.log",
         "KANALSATZ_VOLL_END=",
@@ -343,6 +359,23 @@ def _warte_auf_vorgaenger(name: str) -> None:
             and (abschluesse_bei_laufbeginn is None or abschluesse > abschluesse_bei_laufbeginn)
         ):
             return
+        if not laeuft and status is not None and status != 0:
+            versuche = _anzahl_abgestuerzter_versuche(log_pfad, marker)
+            if versuche >= MAX_CRASH_RESTARTS:
+                logger.error(
+                    "Vorgängerkette %s nach %d Fehlversuchen endgültig fehlgeschlagen; "
+                    "abhängige Kette wird nicht endlos blockiert.",
+                    name,
+                    versuche,
+                )
+                raise SystemExit(1)
+        if not laeuft and not _watchdog_manager_alive():
+            logger.error(
+                "Vorgängerkette %s läuft nicht und der Watchdog-Manager ist nicht aktiv; "
+                "abhängige Kette wird abgebrochen.",
+                name,
+            )
+            raise SystemExit(1)
         time.sleep(120)
 
 
@@ -365,14 +398,9 @@ def _anzahl_abgestuerzter_versuche(log_pfad: str, marker: str) -> int:
 
 def main() -> int:
     # Idempotenz: nur EIN Watchdog.
-    if LOCKFILE.is_file():
-        try:
-            pid = int(LOCKFILE.read_text(encoding="utf-8").strip())
-            if Path(f"/proc/{pid}").is_dir():
-                _log(f"Watchdog läuft bereits (PID {pid}) — zweiter Start endet.")
-                return 0
-        except ValueError:
-            pass
+    if LOCKFILE.is_file() and _watchdog_manager_alive():
+        _log(f"Watchdog läuft bereits (PID {LOCKFILE.read_text(encoding='utf-8').strip()}) — zweiter Start endet.")
+        return 0
     LOCKFILE.write_text(str(os.getpid()), encoding="utf-8")
 
     _log(f"Watchdog gestartet (PID {os.getpid()}, Intervall {INTERVALL_S}s, {len(KETTEN_CONFIG)} Ketten).")
@@ -423,8 +451,8 @@ def main() -> int:
     finally:
         try:
             LOCKFILE.unlink()
-        except FileNotFoundError:
-            pass
+        except FileNotFoundError as exc:
+            logger.debug("Lock-Datei war beim Aufräumen bereits entfernt: %s", exc)
     return 0
 
 

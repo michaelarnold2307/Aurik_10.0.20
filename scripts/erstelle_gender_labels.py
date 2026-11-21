@@ -35,12 +35,16 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import csv
 import logging
 import sys
 from pathlib import Path
 
 import numpy as np
+
+if __package__:
+    from .csv_export_safety import render_spreadsheet_safe_csv
+else:
+    from csv_export_safety import render_spreadsheet_safe_csv
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
@@ -150,11 +154,14 @@ def main(argv: list[str] | None = None) -> int:
         return 3
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        csv_content = render_spreadsheet_safe_csv(["file", "gender"], _rows)
+    except ValueError as exc:
+        logger.error("CSV-Ausgabe wurde aus Sicherheitsgruenden abgelehnt: %s", exc)
+        return 4
+
     with args.out.open("w", newline="", encoding="utf-8") as _fh:
-        _w = csv.writer(_fh)
-        _w.writerow(["file", "gender"])
-        for _rel, _label in _rows:
-            _w.writerow([_rel, _label])
+        _fh.write(csv_content)
 
     logger.info(
         "geschrieben %s: %d Zeilen (male=%d, female=%d, child=%d, uebersprungen=%d)",

@@ -224,10 +224,35 @@ def _run_step(step: Step) -> int:
     print("-" * 96)
     print(f"Starte Schritt {step.id}: {step.title}")
     print("-" * 96)
-    proc = subprocess.run(
-        step.command,
+    # Nur feste, vom Skript definierte Befehle ausführen (keine CLI-Eingaben).
+    if not step.command or step.command[0] != str(PY):
+        raise ValueError(f"Unerlaubter Interpreter in Schritt {step.id}")
+    allowed_literals = {
+        "--deep": "--deep",
+        "--only": "--only",
+        "--apply": "--apply",
+        "--json-out": "--json-out",
+        "utmosv2": "utmosv2",
+        "laion_clap": "laion_clap",
+        "reports/core_profile_status.json": "reports/core_profile_status.json",
+    }
+    safe_command: list[str] = [str(PY)]
+    for part in step.command[1:]:
+        if part in allowed_literals:
+            safe_command.append(allowed_literals[part])
+            continue
+        if part.startswith("-"):
+            raise ValueError(f"Unerlaubtes Argument in Schritt {step.id}: {part}")
+        script = Path(part).resolve()
+        if ROOT not in script.parents or not script.is_file():
+            raise ValueError(f"Skript außerhalb des Projekts in Schritt {step.id}: {part}")
+        safe_command.append(str(script))
+    proc = subprocess.run(  # nosec B603
+        safe_command,
         cwd=str(ROOT),
         text=True,
+        shell=False,
+        check=False,
     )
     return int(proc.returncode)
 
@@ -262,7 +287,7 @@ def main() -> int:
         print(f"Fehler: Python-Umgebung fehlt: {PY}", file=sys.stderr)
         return 2
 
-    steps = _build_steps(args.deep)
+    steps = _build_steps(bool(args.deep))
 
     if args.profile is not None and args.step is not None:
         print("Fehler: --profile und --step können nicht zusammen verwendet werden.", file=sys.stderr)
@@ -274,7 +299,9 @@ def main() -> int:
         steps.sort(key=lambda s: chain.index(s.id))
 
     if args.step is not None:
-        steps = [s for s in steps if s.id == args.step]
+        known = {s.id: s for s in steps}
+        selected = known.get(int(args.step))
+        steps = [selected] if selected is not None else []
 
     _print_plan(steps)
 

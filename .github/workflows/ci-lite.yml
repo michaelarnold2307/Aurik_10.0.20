@@ -178,6 +178,16 @@ jobs:
             --disable-warnings \
             --no-header
 
+      - name: Run focused CLI export regressions
+        env:
+          AURIK_FORCE_CPU: "1"
+        run: |
+          python -m pytest tests/unit/test_aurik_cli_export_gate.py \
+            tests/test_optimization_integration.py::test_cli_export_helper_uses_audio_exporter_and_quality_payload \
+            -p no:xdist \
+            --override-ini="addopts=--strict-markers --import-mode=importlib" \
+            --timeout=30 --tb=short -q
+
       - name: VERBOTEN-Regeln Compliance-Check
         run: |
           python scripts/compliance_check.py --errors-only

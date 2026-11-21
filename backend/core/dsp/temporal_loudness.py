@@ -132,11 +132,9 @@ def temporal_loudness(audio: np.ndarray, sr: int) -> TemporalLoudnessResult:
 
     # Long-Term-Loudness
     a_ltl = float(np.exp(-1.0 / max(_LTL_RELEASE_S * sr, 1.0)))
-    ltl = np.empty_like(stl)
-    prev = 0.0
-    for i in range(len(stl)):
-        prev = a_ltl * prev + (1.0 - a_ltl) * stl[i]
-        ltl[i] = prev
+    # Zero-State-Filter entspricht der Rekursion bit-identisch und vermeidet den Python-GIL-Loop
+    # (§G5 (copilot-instructions.md)).
+    ltl = _spsig.lfilter([1.0 - a_ltl], [1.0, -a_ltl], stl)
 
     return TemporalLoudnessResult(
         stl_sone=stl.astype(np.float64),

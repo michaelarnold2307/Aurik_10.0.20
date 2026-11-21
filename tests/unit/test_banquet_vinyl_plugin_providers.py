@@ -124,6 +124,70 @@ def test_reset_for_song_thread_smoke(monkeypatch, tmp_path):
     assert plugin._chunk_failures >= 0
 
 
+def test_infer_window_keeps_session_snapshot_during_quarantine():
+    """Ein bereits gestartetes Fenster darf die Session-Quarantäne nicht racerieren."""
+    import threading
+
+    import numpy as np
+
+    from plugins.banquet_vinyl_plugin import BanquetVinylPlugin
+
+    plugin = object.__new__(BanquetVinylPlugin)
+    plugin._state_lock = threading.Lock()
+    plugin._runtime_quarantined = False
+    plugin._chunk_failures = 0
+    plugin._input_name = "input"
+    plugin._output_name = "output"
+    entered_prepare = threading.Event()
+    resume_prepare = threading.Event()
+
+    class _Session:
+        calls = 0
+
+        def run(self, output_names, feed):
+            self.calls += 1
+            return [np.zeros((1, 1, 1), dtype=np.float32)]
+
+    session = _Session()
+    plugin._session = session
+    fallback_calls: list[bool] = []
+
+    def _prepare(chunk, channels):
+        del chunk, channels
+        entered_prepare.set()
+        assert resume_prepare.wait(timeout=2)
+        return np.zeros((1, 1, 1), dtype=np.float32), np.zeros((1, 1), dtype=np.complex64)
+
+    plugin._prepare_input = _prepare
+    plugin._extract_output = lambda raw, channels, chunk_len, ctx: np.full(
+        (channels, chunk_len), 0.25, dtype=np.float32
+    )
+    plugin._process_dsp = lambda chunk, sr, strength: fallback_calls.append(True) or np.zeros_like(chunk)
+    result: list[np.ndarray] = []
+    errors: list[Exception] = []
+
+    def _infer():
+        try:
+            result.append(plugin._infer_window(np.zeros((1, 4), dtype=np.float32), 1, 4, 1.0))
+        except Exception as exc:  # pragma: no cover - captured for the worker assertion
+            errors.append(exc)
+
+    worker = threading.Thread(target=_infer)
+    worker.start()
+    assert entered_prepare.wait(timeout=2)
+    with plugin._state_lock:
+        plugin._runtime_quarantined = True
+        plugin._session = None
+    resume_prepare.set()
+    worker.join(timeout=2)
+
+    assert not worker.is_alive()
+    assert not errors
+    assert session.calls == 1
+    assert fallback_calls == []
+    np.testing.assert_array_equal(result[0], np.full((1, 4), 0.25, dtype=np.float32))
+
+
 def test_infer_parallel_bit_identical_to_sequential(monkeypatch):
     """INFER_PARALLEL > 1: parallele Fenster-Inferenz ist bit-identisch zum Einzelpfad (OLA-Reihenfolge fix)."""
     import numpy as _np
@@ -185,6 +249,66 @@ def test_ensure_model_loaded_reloads_once_after_eviction(monkeypatch):
     assert len(calls) == _init_calls + 1, "Reload muss genau EINMAL erfolgen"
     assert p.ensure_model_loaded() is True
     assert len(calls) == _init_calls + 1, "Kein Retry-Schleifen nach erfolgreichem Reload"
+
+
+def test_ensure_model_loaded_shares_reload_without_locking_import(monkeypatch):
+    import threading
+
+    import plugins.banquet_vinyl_plugin as _bp
+
+    plugin = object.__new__(_bp.BanquetVinylPlugin)
+    plugin._state_lock = threading.Lock()
+    plugin._load_condition = threading.Condition(plugin._state_lock)
+    plugin._load_in_progress = False
+    plugin._runtime_quarantined = False
+    plugin._session = None
+    plugin._model_ok = False
+    plugin._load_attempted = False
+
+    load_started = threading.Event()
+    allow_load = threading.Event()
+    waiter_started = threading.Event()
+    calls: list[int] = []
+    results: list[bool] = []
+    errors: list[Exception] = []
+
+    def _fake_load(self):
+        assert not self._state_lock.locked()
+        calls.append(1)
+        load_started.set()
+        assert allow_load.wait(timeout=2)
+        self._session = object()
+        self._model_ok = True
+
+    def _ensure_loaded():
+        try:
+            results.append(plugin.ensure_model_loaded())
+        except Exception as exc:  # pragma: no cover - captured for the worker assertion
+            errors.append(exc)
+
+    monkeypatch.setattr(_bp.BanquetVinylPlugin, "_try_load_model", _fake_load)
+    original_wait = plugin._load_condition.wait
+
+    def _tracked_wait(timeout=None):
+        waiter_started.set()
+        return original_wait(timeout)
+
+    monkeypatch.setattr(plugin._load_condition, "wait", _tracked_wait)
+    first = threading.Thread(target=_ensure_loaded)
+    second = threading.Thread(target=_ensure_loaded)
+    first.start()
+    assert load_started.wait(timeout=2)
+    second.start()
+    assert waiter_started.wait(timeout=2)
+    allow_load.set()
+    first.join(timeout=2)
+    second.join(timeout=2)
+
+    assert not first.is_alive()
+    assert not second.is_alive()
+    assert not errors
+    assert results == [True, True]
+    assert len(calls) == 1
 
 
 def test_ensure_model_loaded_no_retry_after_failed_load(monkeypatch):

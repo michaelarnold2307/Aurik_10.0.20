@@ -286,6 +286,9 @@ try:
         get_unified_restorer_v3_instance as _bridge_get_unified_restorer_v3_instance,
     )
     from backend.api.bridge import (
+        normalize_frontend_audio as _bridge_normalize_frontend_audio,
+    )
+    from backend.api.bridge import (
         normalize_pipeline_health_state as _bridge_normalize_pipeline_health_state,  # type: ignore[assignment]
     )
     from backend.api.bridge import (
@@ -1201,6 +1204,8 @@ _SF_UNSUPPORTED_EXT = frozenset(
 
 def _normalize_audio(audio: np.ndarray) -> np.ndarray:
     """Stellt sicher: float32, shape=(samples,) mono oder (samples, 2) stereo, kein NaN/Inf."""
+    if _BRIDGE_AVAILABLE:
+        return _bridge_normalize_frontend_audio(audio)
     audio = np.asarray(audio, dtype=np.float32)
     # (channels, samples) → (samples, channels)
     if audio.ndim == 2 and audio.shape[0] <= 2 and audio.shape[1] > audio.shape[0]:

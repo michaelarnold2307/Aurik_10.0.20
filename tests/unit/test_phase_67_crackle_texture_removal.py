@@ -9,9 +9,14 @@ Vertrag geprueft:
 
 from __future__ import annotations
 
+import sys
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
+import backend.core.ml_device_manager as device_manager
+import backend.core.phases.phase_67_crackle_texture_removal as phase_module
 from backend.core.phases.phase_67_crackle_texture_removal import CrackleTextureRemovalPhase
 from backend.core.phases.phase_interface import PhaseCategory, PhaseMode
 
@@ -55,6 +60,48 @@ def test_sample_rate_guard() -> None:
     res = p.process(x, sample_rate=44100)
     assert "sample_rate" in res.warnings
     assert np.array_equal(res.audio, x)
+
+
+def test_force_cpu_prevents_crackle_rocm_initialization(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    class _FakeNet:
+        devices: list[str] = []
+
+        def load_state_dict(self, _state, strict: bool = True) -> None:
+            assert strict
+
+        def to(self, device: str) -> _FakeNet:
+            self.devices.append(device)
+            return self
+
+        def eval(self) -> None:
+            pass
+
+    pt_path = tmp_path / "crackle.pt"
+    onnx_path = tmp_path / "crackle.onnx"
+    monkeypatch.setattr(phase_module, "_BASE_PT", str(pt_path))
+    monkeypatch.setattr(phase_module, "_BASE_ONNX", str(onnx_path))
+    monkeypatch.setattr(phase_module.os.path, "exists", lambda path: path == str(pt_path))
+    monkeypatch.setattr(phase_module, "_CrackleNet", lambda _torch: _FakeNet())
+    map_locations: list[str] = []
+    fake_torch = SimpleNamespace(
+        cuda=SimpleNamespace(is_available=lambda: pytest.fail("forced CPU must not probe CUDA")),
+        load=lambda _path, map_location, weights_only: map_locations.append(map_location) or {"state": {}},
+    )
+    monkeypatch.setenv("AURIK_FORCE_CPU", "1")
+    monkeypatch.setattr(
+        device_manager.MLDeviceManager,
+        "_detect_backend",
+        lambda _self: pytest.fail("AURIK_FORCE_CPU must bypass backend detection"),
+    )
+    monkeypatch.setattr(device_manager, "_instance", None)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+
+    phase = CrackleTextureRemovalPhase()
+
+    assert phase._load_model()
+    assert phase._device == "cpu"
+    assert map_locations == ["cpu"]
+    assert phase._net.devices == ["cpu"]
 
 
 def test_verarbeitung_mit_modell_falls_vorhanden() -> None:

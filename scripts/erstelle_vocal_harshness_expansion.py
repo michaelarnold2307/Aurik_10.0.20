@@ -91,7 +91,10 @@ def main(argv: list[str] | None = None) -> int:
     for k, v in {"AURIK_FORCE_CPU": "1", "AURIK_NO_RT_LIMIT": "1"}.items():
         os.environ.setdefault(k, v)
 
-    from scripts.erstelle_schadens_proben import restauriere_schnipsel, schaden_rezept  # pylint: disable=import-outside-toplevel
+    from scripts.erstelle_schadens_proben import (  # pylint: disable=import-outside-toplevel
+        restauriere_schnipsel,
+        schaden_rezept,
+    )
 
     quellen = sorted(args.quellen.glob("*/mixture.wav")) if args.quellen.is_dir() else []
     if not quellen:
@@ -118,7 +121,20 @@ def main(argv: list[str] | None = None) -> int:
             lauf += 1
             schaden_pfad = args.ausgang / f"{stamm} ({rezept}).wav"
             restauriert_pfad = args.ausgang / f"{stamm} ({rezept})_restauriert.wav"
-            if schaden_pfad.is_file() and restauriert_pfad.is_file() and schaden_pfad.stat().st_size > 0:
+            eintrag = {
+                "titel": stamm,
+                "quelle": str(quelle.relative_to(_ROOT)),
+                "rezept": rezept,
+                "schaden": str(schaden_pfad.relative_to(_ROOT)),
+                "restauriert": str(restauriert_pfad.relative_to(_ROOT)),
+            }
+            if (
+                schaden_pfad.is_file()
+                and restauriert_pfad.is_file()
+                and schaden_pfad.stat().st_size > 0
+                and restauriert_pfad.stat().st_size > 0
+            ):
+                zeilen.append(eintrag)
                 print(f"[{lauf}/{gesamt}] {stamm} ({rezept}) — bereits fertig, übersprungen (Resume)")
                 continue
             if clean is None:
@@ -128,15 +144,7 @@ def main(argv: list[str] | None = None) -> int:
             sf.write(str(schaden_pfad), np.asarray(schaden, dtype=np.float32), SR)
             restauriert = restauriere_schnipsel(np.asarray(schaden, dtype=np.float32), SR, str(schaden_pfad))
             sf.write(str(restauriert_pfad), np.asarray(restauriert, dtype=np.float32), SR)
-            zeilen.append(
-                {
-                    "titel": stamm,
-                    "quelle": str(quelle.relative_to(_ROOT)),
-                    "rezept": rezept,
-                    "schaden": str(schaden_pfad.relative_to(_ROOT)),
-                    "restauriert": str(restauriert_pfad.relative_to(_ROOT)),
-                }
-            )
+            zeilen.append(eintrag)
             print(f"[{lauf}/{gesamt}] {stamm} ({rezept}) — Schaden + Produktions-Restaurierung fertig")
         # Clean-Symlink mit „original“ im Namen (erstelle_klassen_paare-Konvention).
         link = args.clean_links / f"{stamm} original.wav"

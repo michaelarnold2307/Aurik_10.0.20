@@ -31,6 +31,18 @@ jedes Genre, jede Sprache, jede Ära, Mono+Stereo, beliebige Abtastrate und Län
 ohne manuelle Eingriffe als Voraussetzung. Verfahren sind generisch; Kalibrierungen
 leitet der Song selbst ab (§G1). Chunked- und Voll-Pfad sind identisch (§G5, §G9).
 
+### §13.0.3 Wettbewerbsparität ist ein separater Nachweis
+
+Die Weltklasse-Abnahme dieses Specs belegt Auriks interne Qualitätsziele; sie
+behauptet für sich allein keine Gleichwertigkeit mit RX 12. `GESICHERT` im
+Wettbewerbsregister bedeutet internen Aurik-Nachweis, nicht externe Parität.
+Eine akustische RX-12-Paritätsaussage erfordert den gepaarten
+Nichtunterlegenheitsvergleich, den Holdout-Beleg und den verblindeten
+§4-Hör-Sign-off nach Spec 26 DRT-16. Eine simulierte Panelbewertung oder ein
+interner MOS-Wert darf diesen Vergleich nicht ersetzen. Bedienungs- und
+Echtzeitparität ist separat von der akustischen Restaurierungsqualität zu
+bewerten.
+
 ## §13.1 Das menschliche Ohr als ultimatives Messinstrument
 
 ### §13.1.1 Frequenzabhängige Wahrnehmung (ISO 226:2003)

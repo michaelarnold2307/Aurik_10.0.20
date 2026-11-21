@@ -32,6 +32,7 @@ export_guard = _bridge.export_guard
 get_audio_exporter_class = _bridge.get_audio_exporter_class
 get_aurik_denker_instance = _bridge.get_aurik_denker_instance
 get_load_audio_fn = _bridge.get_load_audio_fn
+normalize_frontend_audio = _bridge.normalize_frontend_audio
 normalize_user_mode = _bridge.normalize_user_mode
 run_pre_analysis = _bridge.run_pre_analysis
 validate_export_quality = _bridge.validate_export_quality
@@ -58,12 +59,7 @@ def _load_audio(path: str) -> tuple[np.ndarray, int]:
         raise RuntimeError(f"Audio konnte nicht geladen werden: {_last_exc}") from _last_exc
     if not isinstance(loaded, dict) or loaded.get("audio") is None or loaded.get("sr") is None:
         raise RuntimeError(str((loaded or {}).get("error") or "Unbekannter Ladefehler"))
-    audio = np.asarray(loaded["audio"], dtype=np.float32)
-    if audio.ndim == 1:
-        audio = audio[:, np.newaxis]
-    elif audio.ndim == 2 and audio.shape[0] < audio.shape[1]:
-        audio = audio.T
-    return np.clip(np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0), int(loaded["sr"])
+    return normalize_frontend_audio(loaded["audio"]), int(loaded["sr"])
 
 
 def _normalize_mode(mode: str) -> str:
@@ -284,26 +280,13 @@ def _as_samples_channels(audio: np.ndarray) -> np.ndarray:
 
 
 def _resample_audio(audio: np.ndarray, src_sr: int, dst_sr: int) -> np.ndarray:
-    """Resampelt Audio von src_sr auf dst_sr mit soxr HQ (Fallback: scipy)."""
+    """Resampelt für den Export wie der GUI-Pfad polyphasig."""
     if src_sr == dst_sr:
         return audio
-    if _soxr_rs is not None:
-        try:
-            _out: np.ndarray = np.asarray(_soxr_rs.resample(audio, src_sr, dst_sr, quality="HQ"), dtype=np.float32)
-            return _out
-        except Exception:
-            logger.warning("aurik_cli.py::_resample_audio Ersatzpfad", exc_info=True)
     if _sig is not None:
-        n_out = int(round(audio.shape[0] * dst_sr / src_sr))
-        if audio.ndim == 1:
-            _out1: np.ndarray = np.asarray(_sig.resample(audio, n_out), dtype=np.float32)
-            return _out1
-        _out2: np.ndarray = np.stack(
-            [np.asarray(_sig.resample(audio[:, ch], n_out), dtype=np.float32) for ch in range(audio.shape[1])],
-            axis=1,
-        ).astype(np.float32)
-        return _out2
-    raise RuntimeError("soxr und scipy nicht verfügbar — Output-Resampling nicht möglich.")
+        umgesetzt: np.ndarray = np.asarray(_sig.resample_poly(audio, dst_sr, src_sr, axis=0), dtype=np.float32)
+        return umgesetzt
+    raise RuntimeError("scipy.signal.resample_poly nicht verfügbar — Output-Resampling nicht möglich.")
 
 
 def _export_audio_frontend_parity(
@@ -314,10 +297,11 @@ def _export_audio_frontend_parity(
     logger: logging.Logger,
     bit_depth: int = 24,
     output_sr: int = _TARGET_SR,
+    reference_sr: int = _TARGET_SR,
 ) -> tuple[bool, list[str], dict[str, object]]:
     """Exportiert mit demselben Guard-/Gate-Vertrag wie das Frontend."""
-    write_audio = export_guard(_as_samples_channels(restored_audio))
-    reference_for_export = export_guard(_as_samples_channels(reference_audio))
+    write_audio = export_guard(normalize_frontend_audio(restored_audio))
+    reference_for_export = normalize_frontend_audio(reference_audio)
 
     eq_passed, eq_warnings = validate_export_quality(result)
     eq_payload = build_export_quality_gate_payload(result)
@@ -352,6 +336,33 @@ def _export_audio_frontend_parity(
         else {}
     )
     _ml_mono_softened = False
+
+    # §G9 (copilot-instructions.md): GUI-Resampling und Schutz vor dem Mono-Guard.
+    write_sr = _TARGET_SR
+    _ml_vqi = float(_ml_vocal.get("vqi", 1.0) or 1.0)
+    _ml_hotspots = int(_ml_temporal.get("hotspot_count", 0) or 0)
+    if output_sr < write_sr and (_ml_vqi < 0.85 or _ml_hotspots > 0):
+        logger.info(
+            "Ausgabe-SR-Guard: Downsampling %d->%d übersprungen (vqi=%.3f hotspots=%d)",
+            write_sr,
+            output_sr,
+            _ml_vqi,
+            _ml_hotspots,
+        )
+        output_sr = write_sr
+    if output_sr != write_sr:
+        try:
+            write_audio = normalize_frontend_audio(_resample_audio(write_audio, write_sr, output_sr))
+            write_sr = output_sr
+            logger.info("Ausgabe-Resampling: %d Hz → %d Hz (polyphasig)", _TARGET_SR, write_sr)
+        except Exception as _rs_exc:
+            logger.warning("Ausgabe-Resampling fehlgeschlagen, exportiere mit %d Hz: %s", write_sr, _rs_exc)
+
+    if reference_sr != write_sr:
+        try:
+            reference_for_export = _resample_audio(reference_for_export, reference_sr, write_sr)
+        except Exception as _ref_exc:
+            logger.warning("Ausgabe-Referenz konnte nicht resampelt werden: %s", _ref_exc)
 
     # Music-Lover Exportschutz: leichte Mid/Side-Softening-Korrektur bei Mono-Risikoflag.
     if (
@@ -462,18 +473,6 @@ def _export_audio_frontend_parity(
         out_path = out_path.with_suffix(".wav")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Output-Resampling wenn abweichende Ziel-Sample-Rate gewünscht (z.B. 44100 Hz für CD)
-    write_sr = _TARGET_SR
-    if output_sr != _TARGET_SR:
-        try:
-            write_audio = _resample_audio(write_audio, _TARGET_SR, output_sr)
-            if reference_for_export is not None:
-                reference_for_export = _resample_audio(reference_for_export, _TARGET_SR, output_sr)
-            write_sr = output_sr
-            logger.info("Ausgabe-Resampling: %d Hz → %d Hz (soxr HQ)", _TARGET_SR, output_sr)
-        except Exception as _rs_exc:
-            logger.warning("Ausgabe-Resampling fehlgeschlagen, exportiere mit %d Hz: %s", _TARGET_SR, _rs_exc)
-
     _SUBTYPE_MAP = {16: "PCM_16", 24: "PCM_24", 32: "FLOAT"}
     _sf_subtype = _SUBTYPE_MAP.get(bit_depth, "PCM_24")
 
@@ -504,7 +503,7 @@ def _export_audio_frontend_parity(
 
     if str(out_path) != output_path:
         logger.info("Ausgabepfad ohne Dateiendung wurde als WAV geschrieben: %s", out_path)
-    return True, [str(w) for w in eq_warnings], eq_payload
+    return bool(eq_passed), [str(w) for w in eq_warnings], eq_payload
 
 
 def process_audio(
@@ -553,7 +552,8 @@ def process_audio(
 
     file_mb = os.path.getsize(input_path) / 1024 / 1024
     if verbose:
-        logger.info("Datei: %s  (%.2f MB, %d Hz, %d Kanäle)", input_path, file_mb, sr_raw, audio_raw.shape[1])
+        channels = audio_raw.shape[1] if audio_raw.ndim == 2 else 1
+        logger.info("Datei: %s  (%.2f MB, %d Hz, %d Kanäle)", input_path, file_mb, sr_raw, channels)
 
     # ── 2. Auf 48 kHz resamplen (Aurik-kanonische SR) ─────────────────────────
     try:
@@ -650,15 +650,6 @@ def process_audio(
             result.goals_passed,
             len(result.phases_executed),
         )
-        # §G63: CD-Rauschprofil für Vorschau — Preview klingt jetzt wie Export
-        try:
-            from backend.api.bridge import inject_cd_noise_profile
-
-            result.audio = inject_cd_noise_profile(result.audio, _TARGET_SR, bit_depth=bit_depth)
-            logger.info("💿 CD-Rauschprofil für Vorschau angewendet — Vorschau = Ausgabe")
-        except Exception:
-            logger.debug("CD-Rauschprofil für Vorschau übersprungen")
-
     # ── 4. Export-Quality-Gate (§8.1 + §0c RELEASE_MUST) ───────────────────────
     # §0c: Bei fehlgeschlagenem End-Gate MUSS Aurik das bestmögliche sichere Ergebnis
     # exportieren. Hardstop ohne Ausgabedatei ist normativ unzulässig.
@@ -796,10 +787,11 @@ def process_audio(
             result,
             output_path,
             restored,
-            audio_48k,
+            audio_raw,
             logger,
             bit_depth=bit_depth,
             output_sr=output_sr,
+            reference_sr=sr_raw,
         )
     except Exception as exc:
         logger.error("Fehler beim Speichern der Audiodatei: %s", exc)

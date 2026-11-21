@@ -75,6 +75,7 @@ RMS_ZIEL = 0.2
 SCHEMA = "aurik.witness_kopf_training/1"
 MOS_JND = 0.05  # DRT-8/10: musik_mos-JND (defekt_delta; Ablations-Befund 2026-11-16)
 MOS_ZIEL = 4.0  # Hinge-Ziel-mos des musik_mos-Proxy-Terms (Regularisierer-Richtwert)
+NW_TOL = 0.02
 
 logger = logging.getLogger(__name__)
 
@@ -234,25 +235,22 @@ def _zwei_metrik_auswahl(
     die kleinste defektlast. Ohne messbaren mos gilt der alte Weg (kleinster
     Score, §V6 (VERBOTEN.md) Fallback).
 
-    nw_min (never-worsen-Schutz-Arm, Exit-1-Fix 2026-11-19): mit `--nw-min`
+    nw_min (Never-worsen-Schutz-Arm, Exit-1-Fix 2026-11-19): mit `--nw-min`
     (Default None = altes Verhalten, bit-identisch) gewinnen NUR Epochen,
-    deren Holdout-never-worsen-Anteil ≥ nw_min liegt — die Runde 2 scheiterte,
-    weil die Zwei-Metrik-Auswahl Epochen mit kollabiertem never-worsen wählte
-    (wow nw 0,06). Gibt es KEINE nw-genügende Epoche, greift der alte
-    Zwei-Metrik-Fallback (nie schlechter als bisher).
+    deren Holdout-never-worsen-Anteil ≥ nw_min liegt. Gibt es keine solche
+    Epoche, wird kein Checkpoint ausgewählt; ein Fallback würde die gesetzte
+    Schutzbedingung umgehen.
     """
     if not kandidaten:
         return None
-    messbar = [k for k in kandidaten if k.get("mos") is not None]
-    if not messbar:
-        return min(kandidaten, key=lambda k: float(k["score"]))
+    nw_kandidaten = kandidaten
     if nw_min is not None:
-        nw_ok = [k for k in messbar if k.get("nw") is not None and float(k["nw"]) >= float(nw_min)]
-        if nw_ok:
-            best_mos_nw = max(float(k["mos"]) for k in nw_ok)
-            schwellen_nw = [k for k in nw_ok if float(k["mos"]) >= best_mos_nw - float(mos_jnd)]
-            if schwellen_nw:
-                return min(schwellen_nw, key=lambda k: float(k["score"]))
+        nw_kandidaten = [k for k in kandidaten if k.get("nw") is not None and float(k["nw"]) >= float(nw_min)]
+        if not nw_kandidaten:
+            return None
+    messbar = [k for k in nw_kandidaten if k.get("mos") is not None]
+    if not messbar:
+        return min(nw_kandidaten, key=lambda k: float(k["score"]))
     best_mos = max(float(k["mos"]) for k in messbar)
     schwellen_ok = [k for k in messbar if float(k["mos"]) >= best_mos - float(mos_jnd)]
     return min(schwellen_ok, key=lambda k: float(k["score"]))
@@ -383,6 +381,24 @@ def _witness_p_mittel(witness: nn.Module, mel: torch.Tensor, device: str) -> flo
         return float(torch.sigmoid(logit).mean())
 
 
+def _never_worsen_anteil(
+    witness: nn.Module,
+    clean_output: torch.Tensor,
+    clean_reference: torch.Tensor,
+    device: str,
+) -> float | None:
+    if len(clean_output) == 0 or len(clean_output) != len(clean_reference):
+        return None
+    with torch.no_grad():
+        mel_out = _mel_torch(clean_output.reshape(len(clean_output), -1))
+        mel_reference = _mel_torch(clean_reference.reshape(len(clean_reference), -1))
+        p_out = torch.sigmoid(witness(mel_out.to(device)[:, None, :, :])).view(len(clean_output), -1).mean(dim=1)
+        p_reference = (
+            torch.sigmoid(witness(mel_reference.to(device)[:, None, :, :])).view(len(clean_reference), -1).mean(dim=1)
+        )
+    return float((p_out <= p_reference + NW_TOL).float().mean())
+
+
 def trainiere(
     klasse: str,
     epochen: int,
@@ -502,7 +518,7 @@ def trainiere(
             )
         score_h = l1_h + lam * pen_h + lam_id * l1_id_h + lam_spec * spec_h
         mos_h: float | None = None
-        if mos_proxy is None:
+        if mos_proxy is None and nw_min is None:
             # Unveränderter Default-Auswahlpfad: kleinster Holdout-Score
             # (bit-identisch ohne Flag, §G5 (GEBOTE.md)).
             if score_h < best["score"]:
@@ -512,23 +528,13 @@ def trainiere(
                     "state": {k: v.cpu().clone() for k, v in model.state_dict().items()},
                 }
         else:
-            # Zwei-Metrik-Modellauswahl (DRT-8/10): defektlast (score_h) UND
-            # musik_mos (Teacher, detached) werden je Epoche festgehalten — die
-            # Auswahl am Ende verlangt die mos-Mindest-Schwelle statt nur val_loss.
-            lehrer = _mos_teacher_werte(out_h.detach().cpu().numpy())
+            # --nw-min erfasst Epochen auch dann als Kandidaten, wenn der
+            # optionale musik_mos-Proxy ausgeschaltet ist.
+            lehrer = _mos_teacher_werte(out_h.detach().cpu().numpy()) if mos_proxy is not None else None
             mos_h = float(np.mean(lehrer)) if lehrer else None
-            # never-worsen-Proxy je Epoche (Exit-1-Fix 2026-11-19): Anteil der
-            # Holdout-Regionen, deren Witness-Defekt-Proxy durch den Kopf NICHT
-            # steigt — dieselbe Semantik wie das Gate (NW_TOL 0.0). Der Wert
-            # speist die nw-genügende Modellauswahl (`--nw-min`).
-            nw_h: float | None = None
-            try:
-                _prox_out = torch.sigmoid(witness(mel_h[:, None, :, :])).view(len(out_h), -1).mean(dim=1)
-                _mel_in = _mel_torch(Hs_t.reshape(len(Hs_t), -1))
-                _prox_in = torch.sigmoid(witness(_mel_in[:, None, :, :])).view(len(Hs_t), -1).mean(dim=1)
-                nw_h = float((_prox_out <= _prox_in).float().mean())
-            except Exception as _nw_exc:
-                logger.warning("§V6 (VERBOTEN.md): never-worsen-Proxy nicht messbar (%s) — Epoche ohne nw", _nw_exc)
+            # NW-Schutzarm (DRT-2/5): nur Clean→Clean am Holdout zählt; der
+            # beschädigte Eingang gehört zum Gewinn-Arm und darf NW nicht vortäuschen.
+            nw_h = _never_worsen_anteil(witness, out_h_id, Hc_id_t, device)
             kandidaten.append(
                 {
                     "ep": ep,
@@ -542,7 +548,7 @@ def trainiere(
             # MSE(mos_proxy(mel_h), teacher(out_h)) hält das Proxy am zertifizierten
             # Zeugen — ohne Teacher bleibt es Regularisierer (§V6 (VERBOTEN.md):
             # Warnung in _mos_teacher_werte, kein Stillfehler).
-            if lehrer and mos_opt is not None:
+            if lehrer and mos_opt is not None and mos_proxy is not None:
                 ziel_mos_t = torch.tensor(lehrer, dtype=torch.float32, device=device)
                 mos_pred_h = mos_proxy(mel_h[:, None, :, :])
                 kal = nn.functional.mse_loss(mos_pred_h, ziel_mos_t)
@@ -557,11 +563,8 @@ def trainiere(
             if mos_proxy is not None:
                 print(f"    mos-hold {mos_h:.3f}" if mos_h is not None else "    mos-hold n/a", flush=True)
 
-    if mos_proxy is not None:
-        # Zwei-Metrik-Modellauswahl am Epochen-Ende (DRT-8/10): unter allen
-        # Kandidaten, deren Holdout-mos höchstens MOS_JND unter dem besten liegt,
-        # gewinnt die kleinste defektlast — die reine defektlast-Auswahl opferte
-        # den Wohlklang (Ablations-Befund 2026-11-16: mos-Verlust 0,06–0,10 > JND).
+    if mos_proxy is not None or nw_min is not None:
+        # Auswahl am Epochen-Ende: NW-Minimum zuerst, dann ggf. MOS-JND und Score.
         gewaehlt = _zwei_metrik_auswahl(kandidaten, nw_min=nw_min)
         if gewaehlt is not None:
             best = {
@@ -569,7 +572,18 @@ def trainiere(
                 "ep": int(gewaehlt["ep"]),
                 "state": gewaehlt["state"],
                 "mos": gewaehlt["mos"],
+                "nw": gewaehlt["nw"],
             }
+        elif nw_min is not None:
+            nw_werte = [float(k["nw"]) for k in kandidaten if k.get("nw") is not None]
+            nw_max = max(nw_werte) if nw_werte else None
+            nw_max_text = f"{nw_max:.4f}" if nw_max is not None else "nicht messbar"
+            raise RuntimeError(
+                f"Kein Witness-Kopf-Checkpoint für {klasse} erfüllt --nw-min={nw_min}; "
+                f"bestes nw={nw_max_text}, "
+                f"geeignete Epochen={sum(value >= nw_min for value in nw_werte)}/{len(kandidaten)}; "
+                "der vorhandene Checkpoint bleibt unverändert."
+            )
         else:
             logger.warning("§V6 (VERBOTEN.md): Zwei-Metrik-Auswahl ohne Kandidaten — kein Checkpoint gewählt")
     model.load_state_dict(best["state"])
@@ -611,24 +625,30 @@ def trainiere(
         "preflight_q_ge_0_5": bool(q_in is not None and q_in >= 0.5),
         "hinweis": "Report-only: Aktivierung erst nach Never-worsen-Gate (verify_witness_kopf_gate.py) + §4",
     }
-    if mos_proxy is not None:
-        # DRT-8/10-Dokumentation nur im Flag-Lauf — ohne Flag bleibt der Report
-        # bit-identisch zum Vorgänger (§G5 (GEBOTE.md) Rückwärtskompatibilität).
-        report["lambda_mos"] = lam_mos
-        report["mos_ziel"] = mos_ziel
-        report["mos_jnd"] = MOS_JND
-        report["auswahl_modus"] = "zwei_metrik_drt_8_10"
-        report["holdout_mos"] = round(float(best["mos"]), 4) if best.get("mos") is not None else None
-        report["drt_8_10"] = (
-            "Zwei-Metrik-Modellauswahl (defektlast UND musik_mos, Mindest-Schwelle JND) — "
-            "D-K3-95-Folge; Aktivierung bleibt dem Never-worsen-Gate + §4 vorbehalten"
-        )
+    if mos_proxy is not None or nw_min is not None:
+        if mos_proxy is not None:
+            report["lambda_mos"] = lam_mos
+            report["mos_ziel"] = mos_ziel
+            report["mos_jnd"] = MOS_JND
+            report["auswahl_modus"] = "zwei_metrik_drt_8_10"
+            report["holdout_mos"] = round(float(best["mos"]), 4) if best.get("mos") is not None else None
+            report["drt_8_10"] = (
+                "Zwei-Metrik-Modellauswahl (defektlast UND musik_mos, Mindest-Schwelle JND) — "
+                "D-K3-95-Folge; Aktivierung bleibt dem Never-worsen-Gate + §4 vorbehalten"
+            )
+        else:
+            report["auswahl_modus"] = "defektlast_unter_nw_min"
+        report["nw_min"] = nw_min
+        report["holdout_never_worsen"] = round(float(best["nw"]), 4) if best.get("nw") is not None else None
+        if nw_min is not None:
+            report["nw_auswahl_erfuellt"] = bool(best.get("nw") is not None and float(best["nw"]) >= float(nw_min))
         if kandidaten:
             report["kandidaten_zwischenstaende"] = [
                 {
                     "ep": int(k["ep"]) + 1,
                     "score": round(float(k["score"]), 4),
                     "mos": round(float(k["mos"]), 4) if k["mos"] is not None else None,
+                    "nw": round(float(k["nw"]), 4) if k["nw"] is not None else None,
                 }
                 for k in kandidaten
             ]
@@ -685,11 +705,16 @@ def main(argv: list[str] | None = None) -> int:
         "--nw-min",
         type=float,
         default=None,
-        help="Never-worsen-Schutz-Arm der Modellauswahl (Exit-1-Fix 2026-11-19): nur Epochen mit Holdout-nw ≥ Schwelle gewinnen; None = altes Zwei-Metrik-Verfahren",
+        help=(
+            "Harte Never-worsen-Schranke der Modellauswahl: nur Epochen mit Holdout-nw ≥ Schwelle gewinnen; "
+            "ohne passende Epoche Abbruch ohne Checkpoint-Überschreibung. Funktioniert auch ohne --lambda-mos."
+        ),
     )
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-regionen", type=int, default=0, help=">0 = Smoke (begrenzte Regionen)")
     args = ap.parse_args(argv)
+    if args.nw_min is not None and not 0.0 <= args.nw_min <= 1.0:
+        ap.error("--nw-min muss zwischen 0 und 1 liegen")
     report = trainiere(
         args.klasse,
         args.epochen,

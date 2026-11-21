@@ -107,7 +107,9 @@ class VinylNetDeCracklePlugin:
         try:
             import torch
 
-            self._device = "cuda" if torch.cuda.is_available() else "cpu"
+            from backend.core.ml_device_manager import get_torch_device
+
+            self._device = get_torch_device("VinylNet")
             model_mod = self._import_dc("model")
             # Bringt dsp/simulate/datenpfad nach sys.path; der Modulkopf wird in process()
             # über sys.modules["aurik_dc_infer"] referenziert (keine lokale Variable nötig).

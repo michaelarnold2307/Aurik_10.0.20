@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import multiprocessing as mp
 import sys
 import tempfile
@@ -42,6 +43,8 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+logger = logging.getLogger(__name__)
 
 SR_DEFAULT = 48_000
 
@@ -120,8 +123,8 @@ def _restore_child(audio: np.ndarray, sr: int, flag_name: str, payload_path: str
         os.environ.setdefault("MKL_NUM_THREADS", str(_threads))
         try:
             os.nice(10)
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.debug("os.nice(10) im Kindprozess nicht anwendbar: %s", exc)
         import backend.core.music_model_flags as mmf
 
         setattr(mmf, flag_name, True)  # Kandidaten-Flag für den gesamten Import

@@ -444,6 +444,24 @@ Folgende Phasen sind im Restoration-Modus normativ VERBOTEN (§0a/UV3-Forbidden-
 | RestorabilityEstimator | <= **5 s** |
 | Export (FLAC 24-bit) | <= 10 s |
 
+**Ressourcennutzung (synchron zu Spec 07 §9):** Für den gewählten
+Qualitätsmodus werden alle verfügbaren, produktionsverdrahteten und
+numerisch/deterministisch qualifizierten Pfade genutzt; bestehende Modelle,
+Phasen und Caches werden vor einer parallelen Neuentwicklung auf ihre
+Wiederverwendbarkeit geprüft. CPU/GPU-Parallelität wird innerhalb der
+verfügbaren Hardware-, Speicher-, Temperatur- und System-Headroom-Grenzen
+ausgeschöpft, aber nicht künstlich bis zur Überlast erzwungen. Ein bloß hoher
+CPU-Auslastungswert ist kein Grund, eine qualitätsstärkere Phase oder einen
+validierten ML-Pfad zu überspringen; ressourcenbedingte Fallbacks sind auf
+konkrete Sicherheits-/Kapazitätsgründe zu begrenzen, zu protokollieren und als
+solche im Laufbericht kenntlich zu machen. Es gelten weiterhin GPU-Parität,
+Determinismus, Song-Isolation, Hör-Invarianten und Never-worsen — Ressourcen-
+Auslastung ist kein Qualitätsnachweis und darf diese Grenzen nicht überstimmen.
+Jeder Performance- oder Parallelitätsgewinn wird mit reproduzierbarer Messung
+gegen den bisherigen Pfad belegt; Klangänderungen benötigen die geltenden
+Hör-Gates. Budgetüberschreitungen werden gemessen und als offene Schuld
+ausgewiesen, nicht durch unbelegte Zeitversprechen kaschiert.
+
 Die Budget-Tabelle wird maschinell je Zelle von
 `scripts/benchmark_effizienz_matrix.py --ci --enforce-budget` geprüft;
 Verletzungen werden im Ergebnis-JSON unter dem Schlüssel `budget_violations`

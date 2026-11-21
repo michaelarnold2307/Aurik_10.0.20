@@ -32,6 +32,166 @@ def _dataclass_field_names(mod: object) -> list[str]:
     return [f.name for f in dataclasses.fields(cls)]
 
 
+@pytest.mark.parametrize("channels_first", [False, True])
+@pytest.mark.parametrize("channels", [1, 2])
+def test_cli_and_gui_import_identical_audio(monkeypatch, channels_first, channels):
+    import numpy as np
+
+    pytest.importorskip("PyQt5")
+    from Aurik10.ui import modern_window
+    from cli import aurik_cli
+
+    audio = np.linspace(-1.1, 1.1, 256 * channels, dtype=np.float32).reshape(256, channels)
+    if channels_first:
+        audio = audio.T
+
+    def loader(*_args, **_kwargs):
+        return {"audio": audio.copy(), "sr": 44100}
+
+    monkeypatch.setattr(aurik_cli, "get_load_audio_fn", lambda: loader)
+    monkeypatch.setattr(modern_window, "_bridge_get_load_audio_fn", lambda: loader)
+
+    cli_audio, cli_sr = aurik_cli._load_audio("test.wav")
+    gui_audio, gui_sr = modern_window._load_audio_robust("test.wav")
+    assert cli_sr == gui_sr == 44100
+    np.testing.assert_array_equal(cli_audio, gui_audio)
+
+
+def test_cli_export_uses_gui_native_reference_and_export_normalization(monkeypatch, tmp_path):
+    import logging
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    pytest.importorskip("PyQt5")
+    from Aurik10.ui import modern_window
+    from cli import aurik_cli
+
+    rng = np.random.default_rng(42)
+    native = rng.uniform(-0.95, 0.95, (500, 2)).astype(np.float32)
+    restored = np.full((600, 2), 1.0, dtype=np.float32)
+    captured = {}
+
+    class FakeExporter:
+        FORMATS = {".wav": {}}
+
+        def export(self, audio, sr, _path, **kwargs):
+            captured.update(audio=audio.copy(), sr=sr, reference=kwargs["reference_audio"].copy())
+
+    monkeypatch.setattr(aurik_cli, "get_audio_exporter_class", lambda: FakeExporter)
+    monkeypatch.setattr(aurik_cli, "validate_export_quality", lambda _result: (True, []))
+    monkeypatch.setattr(aurik_cli, "build_export_quality_gate_payload", lambda _result: {})
+    aurik_cli._export_audio_frontend_parity(
+        SimpleNamespace(metadata={}),
+        str(tmp_path / "out.wav"),
+        restored,
+        native,
+        logging.getLogger(__name__),
+        output_sr=48000,
+        reference_sr=44100,
+    )
+
+    assert captured["sr"] == 48000
+    np.testing.assert_array_equal(captured["audio"], modern_window._normalize_audio(restored))
+    np.testing.assert_array_equal(
+        captured["reference"], modern_window._resample_audio_poly(native, 44100, 48000, axis=0)
+    )
+
+
+@pytest.mark.parametrize(
+    "channels,input_sr,output_sr,risky",
+    [
+        (1, 48000, 48000, False),
+        (2, 44100, 48000, False),
+        (2, 48000, 44100, False),
+        (2, 44100, 44100, False),
+        (2, 44100, 44100, True),
+    ],
+)
+def test_real_gui_batch_and_cli_export_same_pcm_with_controlled_denker(
+    monkeypatch, tmp_path, channels, input_sr, output_sr, risky
+):
+    from types import SimpleNamespace
+
+    import numpy as np
+    import soundfile as sf
+
+    pytest.importorskip("PyQt5")
+    from Aurik10.ui import modern_window
+    from cli import aurik_cli
+
+    rng = np.random.default_rng(42)
+    audio = rng.uniform(-0.2, 0.2, (input_sr // 10, channels)).astype(np.float32)
+    input_path = tmp_path / "input.wav"
+    sf.write(input_path, audio, input_sr, subtype="PCM_24")
+    scan = SimpleNamespace(scores={})
+    pre = SimpleNamespace(defects=scan)
+    denker_inputs = []
+
+    class ControlledDenker:
+        def denke(self, audio, sr, **kwargs):
+            denker_inputs.append(np.asarray(audio).copy())
+            return SimpleNamespace(
+                audio=np.asarray(audio).copy(),
+                material="vinyl",
+                quality_estimate=1.0,
+                rt_factor=1.0,
+                warnings=[],
+                processing_note="",
+                goals_passed=14,
+                phases_executed=[],
+                musical_goals_scores={},
+                stage_notes={},
+                metadata={},
+                defect_scores={},
+            )
+
+    denker = ControlledDenker()
+    monkeypatch.setattr(aurik_cli, "get_aurik_denker_instance", lambda: denker)
+    monkeypatch.setattr(aurik_cli, "run_pre_analysis", lambda **_kwargs: pre)
+    monkeypatch.setattr(modern_window, "_bridge_get_aurik_denker_instance", lambda: denker)
+    monkeypatch.setattr(modern_window, "_bridge_warmup_rocm", None)
+    monkeypatch.setattr(modern_window, "_bridge_get_cleanup_after_file_fn", lambda: None)
+    monkeypatch.setattr(modern_window, "get_cached_defect_result", lambda _path: scan)
+    monkeypatch.setattr(modern_window, "get_cached_medium_result", lambda _path: SimpleNamespace())
+    monkeypatch.setattr(modern_window, "get_cached_era_genre_result", lambda _path: {})
+    monkeypatch.setattr(aurik_cli, "validate_export_quality", lambda _result: (True, []))
+    monkeypatch.setattr(modern_window, "_validate_export_quality", lambda _result: (True, []))
+    payload = {
+        "musiclover": {
+            "vocal_integrity": {"vqi": 0.8 if risky else 1.0},
+            "temporal_risk": {"hotspot_count": int(risky)},
+            "stereo_integrity": {"mono_compatibility_warning": risky},
+        }
+    }
+    monkeypatch.setattr(aurik_cli, "build_export_quality_gate_payload", lambda _result: payload)
+    monkeypatch.setattr(modern_window, "_build_export_quality_gate_payload", lambda _result: payload)
+
+    gui_path = tmp_path / "gui.wav"
+    cli_path = tmp_path / "cli.wav"
+    queue = modern_window.SimpleBatchQueue()
+    item = queue.add_item(
+        str(input_path),
+        str(gui_path),
+        {
+            "mode": "RESTORATION",
+            "format_key": "wav24",
+            "export_sample_rate": output_sr,
+            "pre_analysis_result": pre,
+            "cached_defect_result": scan,
+        },
+    )
+    modern_window.BatchProcessingThread(queue).run()
+    assert item.status == "completed" and item.error is None, item.error
+    aurik_cli.process_audio(str(input_path), str(cli_path), verbose=False, output_sr=output_sr)
+
+    np.testing.assert_array_equal(denker_inputs[0], denker_inputs[1])
+    gui_audio, gui_sr = sf.read(gui_path, dtype="int32")
+    cli_audio, cli_sr = sf.read(cli_path, dtype="int32")
+    assert gui_sr == cli_sr == (48000 if risky else output_sr)
+    np.testing.assert_array_equal(gui_audio, cli_audio)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. Drift-Gate: BridgeCalibrationData (Frontend-Kopie vs Backend-Kopie)
 # ═══════════════════════════════════════════════════════════════════════════════

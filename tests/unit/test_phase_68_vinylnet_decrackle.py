@@ -10,9 +10,14 @@ Vertrag geprüft:
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
+import backend.core.ml_device_manager as device_manager
 from backend.core.phases.phase_68_vinylnet_decrackle import VinylNetDeCracklePhase, get_phase
 from backend.core.phases.phase_interface import PhaseCategory, PhaseMode
 
@@ -36,6 +41,57 @@ def test_metadata_contract() -> None:
     assert md.category == PhaseCategory.DEFECT_REMOVAL
     assert md.phase_mode == PhaseMode.RESTORATION_ONLY
     assert set(md.defect_types) >= {"clicks", "crackle"}
+
+
+def test_force_cpu_prevents_vinylnet_rocm_initialization(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import plugins.vinylnet_decrackle_plugin as plugin_module
+
+    class _FakeModel:
+        devices: list[str] = []
+
+        def __init__(self, **_config) -> None:
+            pass
+
+        def to(self, device: str) -> _FakeModel:
+            self.devices.append(device)
+            return self
+
+        def load_state_dict(self, _state, strict: bool = True) -> None:
+            assert strict
+
+        def eval(self) -> None:
+            pass
+
+    fake_model_module = SimpleNamespace(PRESETS={}, VinylNet=_FakeModel, ClickNet=_FakeModel)
+    map_locations: list[str] = []
+    fake_torch = SimpleNamespace(
+        cuda=SimpleNamespace(is_available=lambda: pytest.fail("forced CPU must not probe CUDA")),
+        load=lambda _path, map_location: map_locations.append(map_location) or {"config": {}, "ema": {}},
+    )
+    monkeypatch.setenv("AURIK_FORCE_CPU", "1")
+    monkeypatch.setattr(
+        device_manager.MLDeviceManager,
+        "_detect_backend",
+        lambda _self: pytest.fail("AURIK_FORCE_CPU must bypass backend detection"),
+    )
+    monkeypatch.setattr(device_manager, "_instance", None)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setattr(plugin_module, "_dc_dir", lambda: tmp_path)
+    monkeypatch.setattr(
+        plugin_module,
+        "_first_existing",
+        lambda _directory, candidates: (
+            tmp_path / "model.pt" if candidates == plugin_module._VINYLNET_CANDIDATES else None
+        ),
+    )
+
+    plugin = plugin_module.VinylNetDeCracklePlugin()
+    monkeypatch.setattr(plugin, "_import_dc", lambda name: fake_model_module if name == "model" else object())
+
+    assert plugin._load()
+    assert plugin._device == "cpu"
+    assert map_locations == ["cpu"]
+    assert _FakeModel.devices == ["cpu"]
 
 
 def test_passthrough_ohne_modell_bit_identisch(monkeypatch: pytest.MonkeyPatch) -> None:

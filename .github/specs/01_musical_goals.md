@@ -13,6 +13,8 @@
 > `.github/WETTBEWERBS_PARITAET.md` registerpflichtig (Status + Evidenz +
 > nächster Schritt); das Pre-Commit-Gate `aurik-wettbewerbs-paritaet` pinnt
 > die Verankerung dieser Mission in Handover, AGENTS und dieser Spec.
+> `GESICHERT` ist ein interner Qualitätsstatus. Externe RX-12-Parität darf nur
+> nach Spec 26 DRT-16 und einem verblindeten §4-Sign-off behauptet werden.
 > Diese Spec bleibt für die **Berechnung** der Größen normativ.
 >
 > **Zweck**: Die 15 Ziele operationalisieren §0 — sie messen, ob Aurik bei jeder Importdatei

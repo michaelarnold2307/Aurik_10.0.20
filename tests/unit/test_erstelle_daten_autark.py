@@ -22,16 +22,20 @@ keine Modelle, kein GPU, keine Netzwerk-Zugriffe. Determinismus: Seed 42
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 import soundfile as sf
 
 import scripts.erstelle_cantus_real_paare as cantus_real
 import scripts.erstelle_corpus_vinyl as corpus_vinyl
 import scripts.erstelle_gender_labels as gender_labels
+from scripts.csv_export_safety import render_spreadsheet_safe_csv
 
 _SR = 48000
 
@@ -173,6 +177,15 @@ class TestGenderLabels:
             assert _label in ("male", "female", "child")
             # Pfade sind relativ zum MUSDB-Root auflösbar
             assert (_musdb / _name).is_file()
+
+    def test_csv_export_quotes_values_and_rejects_formula_cells(self) -> None:
+        rendered = render_spreadsheet_safe_csv(["file", "gender"], [["track.wav", "female"]])
+        assert list(csv.reader(io.StringIO(rendered))) == [["file", "gender"], ["track.wav", "female"]]
+        assert '"track.wav"' in rendered
+
+        for value in ("=1+1", "  =1+1", "\t=1+1", "\v=1+1", "+SUM(A1:A2)", "-1+2", "@SUM(A1:A2)"):
+            with pytest.raises(ValueError, match="formula-like cell"):
+                render_spreadsheet_safe_csv(["file", "gender"], [[value, "female"]])
 
 
 class TestCorpusVinyl:

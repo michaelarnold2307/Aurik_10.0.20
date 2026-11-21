@@ -34,6 +34,7 @@ from scripts.train_witness_detektor import WitnessCRNN
 from scripts.train_witness_kopf import (
     FENSTER,
     MANIFEST,
+    NW_TOL,
     RMS_ZIEL,
     WitnessKopf,
     _baue_regionen,
@@ -46,12 +47,67 @@ from scripts.train_witness_kopf import (
     SR as _TARGET_SR,
 )
 
-SCHEMA = "aurik.witness_kopf_gate/1"
+SCHEMA = "aurik.witness_kopf_gate/2"
 Q_MIN = 0.5
-NW_TOL = 0.02
 NW_ANTEIL_MIN = 0.95
 MOS_JND = 0.05  # DRT-8/10: musik_mos-JND (defekt_delta; Ablations-Befund 2026-11-16)
 MAX_REGIONEN = 200
+PRODUKTIONS_SEMANTIK: dict[str, tuple[str, str]] = {
+    "groove_echo": ("witness_kopf_groove_echo", "witness_kopf_groove_echo"),
+    "tape_head_level_dip": ("witness_kopf_tape_head", "witness_kopf_tape_head_level_dip"),
+    "clicks": ("witness_kopf_clicks", "witness_kopf_clicks"),
+    "compression_artifacts": ("witness_kopf_compression", "witness_kopf_compression_artifacts"),
+    "tape_head_clog": ("witness_kopf_tape_head_clog", "witness_kopf_tape_head_clog"),
+    "phase_rotation": ("witness_kopf_phase_rotation", "witness_kopf_phase_rotation"),
+    "sibilance": ("witness_kopf_sibilance", "witness_kopf_sibilance"),
+    "sticky_shed_residue": ("witness_kopf_sticky_shed", "witness_kopf_sticky_shed_residue"),
+    "jitter_artifacts": ("witness_kopf_jitter", "witness_kopf_jitter_artifacts"),
+    "transport_bump": ("witness_kopf_transport_bump", "witness_kopf_transport_bump"),
+    "dynamic_compression_excess": (
+        "witness_kopf_dynamic_compression",
+        "witness_kopf_dynamic_compression_excess",
+    ),
+    "dropout_head_contact": ("witness_kopf_dropout_head", "witness_kopf_dropout_head_contact"),
+}
+
+
+def _lade_produktions_semantik(
+    klasse: str,
+    checkpoint: Path,
+    witness_checkpoint: Path,
+) -> tuple[str | None, Any, str]:
+    eintrag = PRODUKTIONS_SEMANTIK.get(klasse)
+    if eintrag is None:
+        return None, None, "nicht_zugeordnet"
+
+    import importlib
+
+    modul_name, funktions_name = eintrag
+    modul = importlib.import_module(f"backend.core.dsp.{modul_name}")
+    if Path(modul._KOPF_CKPT).resolve() != checkpoint.resolve():
+        return modul_name, None, "kopf_checkpoint_abweichend"
+    if Path(modul._WITNESS_CKPT).resolve() != witness_checkpoint.resolve():
+        return modul_name, None, "witness_checkpoint_abweichend"
+    modul_fn = getattr(modul, funktions_name)
+    if not callable(modul_fn):
+        raise TypeError(f"{modul_name}.{funktions_name} ist nicht aufrufbar")
+    return modul_name, modul_fn, "verifiziert"
+
+
+def _belege_produktions_semantik(
+    ergebnis: dict[str, Any],
+    modul_name: str | None,
+    modul_fn: Any,
+    status: str,
+) -> dict[str, Any]:
+    qualitaets_gate_bestanden = bool(ergebnis["gate_bestanden"])
+    ergebnis["gate_qualitaet_bestanden"] = qualitaets_gate_bestanden
+    ergebnis["produktions_semantik_verifiziert"] = modul_fn is not None
+    ergebnis["schutz_arm_modul"] = modul_name
+    ergebnis["schutz_arm_semantik"] = "produktions_dsp" if modul_fn is not None else "roher_kopf_diagnostisch"
+    ergebnis["schutz_arm_status"] = status
+    ergebnis["gate_bestanden"] = qualitaets_gate_bestanden and modul_fn is not None
+    return ergebnis
 
 
 def _lade(checkpoint: Path, klasse: str) -> tuple[Any, Any]:
@@ -88,7 +144,7 @@ def _fenster(x: np.ndarray) -> np.ndarray:
 def messe(
     kopf: Any,
     witness: Any,
-    regionen: list[tuple[Path, Path]],
+    regionen: list[tuple[str, Path, Path]],
     modul_fn: Any = None,
     mos_messen: bool = False,
 ) -> dict[str, Any]:
@@ -139,6 +195,10 @@ def messe(
     ergebnis = {
         "n_regionen": len(regionen),
         "n_uebersprungen": uebersprungen,
+        "n_q_bewertbar": len(quoten),
+        "n_never_worsen_bewertbar": len(never_worsen),
+        "q_values": [float(q) for q in quoten],
+        "never_worsen_flags": [bool(value) for value in never_worsen],
         "q_median": round(float(np.median(quoten)), 4) if quoten else None,
         "q_anteil_ge_0_5": round(float(np.mean([q >= Q_MIN for q in quoten])), 4) if quoten else None,
         "never_worsen_anteil": round(float(np.mean(never_worsen)), 4) if never_worsen else None,
@@ -183,33 +243,19 @@ def main(argv: list[str] | None = None) -> int:
     hold = [r for r in alle if r[0] == holdout_titel]
     rng = np.random.default_rng(args.seed)
     hold = [hold[i] for i in rng.permutation(len(hold))][: args.max_regionen]
-    # Produktions-Semantik für den Schutz-Arm: das DSP-Modul der Klasse (Trigger +
-    # Never-worsen-Guard). Fehlt das Modul, fällt das Gate auf die rohe Kopf-Messung
-    # zurück (strenger) — Fail-safe statt Silent-Drift (DRT-4).
-    modul_fn = None
-    try:
-        import importlib
-
-        modul_name = {
-            "groove_echo": "witness_kopf_groove_echo",
-            "tape_head_level_dip": "witness_kopf_tape_head",
-            "clicks": "witness_kopf_clicks",
-            "compression_artifacts": "witness_kopf_compression",
-            "tape_head_clog": "witness_kopf_tape_head_clog",
-            "phase_rotation": "witness_kopf_phase_rotation",
-            "sibilance": "witness_kopf_sibilance",
-            "sticky_shed_residue": "witness_kopf_sticky_shed",
-            "jitter_artifacts": "witness_kopf_jitter",
-            "transport_bump": "witness_kopf_transport_bump",
-        }.get(args.klasse)
-        if modul_name:
-            modul = importlib.import_module(f"backend.core.dsp.{modul_name}")
-            kandidaten = [n for n in dir(modul) if n.startswith("witness_kopf_")]
-            if kandidaten:
-                modul_fn = getattr(modul, kandidaten[0])
-    except Exception as exc:  # §V6 (copilot-instructions.md): Warnung statt Silent-Fallback
-        print(f"WARNUNG: Produktions-Modul nicht ladbar ({exc}) — Schutz-Arm roh (strenger)")
+    witness_checkpoint = _ROOT / "models" / f"witness_{args.klasse}" / "witness.pt"
+    modul_name, modul_fn, semantik_status = _lade_produktions_semantik(
+        args.klasse,
+        checkpoint,
+        witness_checkpoint,
+    )
+    if modul_fn is None:
+        print(
+            "WARNUNG: Schutz-Arm nicht produktionsparitätsverifiziert "
+            f"({semantik_status}); Rohkopf-Messung ist diagnostisch und kann das Gate nicht bestehen."
+        )
     ergebnis = messe(kopf, witness, hold, modul_fn, mos_messen=args.mos)
+    ergebnis = _belege_produktions_semantik(ergebnis, modul_name, modul_fn, semantik_status)
     beleg = {
         "schema": SCHEMA,
         "datum": date.today().isoformat(),

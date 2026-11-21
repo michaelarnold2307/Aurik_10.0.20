@@ -15,16 +15,19 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import ipaddress
 import json
 import logging
 import os
+import socket
 import subprocess
 import sys
 import tempfile
 import time
+from functools import partial
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import yaml
 
@@ -808,6 +811,149 @@ def download_file(url: str, dest: Path, timeout: int = 120) -> bool:
         return False
 
 
+def _validate_public_http_url(url: str) -> tuple[str, int, tuple[str, ...]]:
+    """Validate a URL and return only globally routable addresses for a pinned connection."""
+    parsed = urlparse(url)
+    if (
+        not url
+        or url != url.strip()
+        or any(ord(character) < 32 for character in url)
+        or parsed.scheme not in {"http", "https"}
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        raise ValueError("Nur absolute HTTP(S)-URLs ohne Zugangsdaten sind erlaubt.")
+
+    host = parsed.hostname
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    try:
+        addresses = [ipaddress.ip_address(host.split("%", maxsplit=1)[0])]
+    except ValueError:
+        addresses = [
+            ipaddress.ip_address(result[4][0].split("%", maxsplit=1)[0])
+            for result in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        ]
+    if not addresses or any(not address.is_global for address in addresses):
+        raise ValueError("URLs zu lokalen oder nicht-öffentlichen Netzen sind nicht erlaubt.")
+    return host, port, tuple(dict.fromkeys(str(address) for address in addresses))
+
+
+def _pinned_address_adapter(host: str, port: int, addresses: tuple[str, ...], scheme: str):
+    """Create a requests adapter that connects to validated IPs but keeps host TLS validation."""
+    from requests.adapters import HTTPAdapter
+    from urllib3.connection import HTTPConnection, HTTPSConnection
+    from urllib3.util.connection import create_connection
+
+    class _PinnedConnection:
+        _pinned_addresses: tuple[str, ...]
+
+        def __init__(self, *args, pinned_addresses: tuple[str, ...], **kwargs):
+            self._pinned_addresses = pinned_addresses
+            super().__init__(*args, **kwargs)
+
+        def _new_conn(self):
+            _last_error: OSError | None = None
+            for _address in self._pinned_addresses:
+                try:
+                    return create_connection(
+                        (_address, self.port),
+                        self.timeout,
+                        source_address=self.source_address,
+                        socket_options=self.socket_options,
+                    )
+                except OSError as exc:
+                    _last_error = exc
+            if _last_error is not None:
+                raise _last_error
+            raise OSError("Keine geprüfte öffentliche Zieladresse verfügbar.")
+
+    class _PinnedHTTPConnection(_PinnedConnection, HTTPConnection):
+        pass
+
+    class _PinnedHTTPSConnection(_PinnedConnection, HTTPSConnection):
+        pass
+
+    _connection_type = _PinnedHTTPSConnection if scheme == "https" else _PinnedHTTPConnection
+
+    class _PinnedAddressAdapter(HTTPAdapter):
+        def _pin_pool(self, pool):
+            if pool.host.lower().rstrip(".") != host.lower().rstrip(".") or pool.port != port:
+                raise ValueError("HTTP-Verbindung weicht vom geprüften Zielhost ab.")
+            pool.ConnectionCls = partial(_connection_type, pinned_addresses=addresses)
+            return pool
+
+        def get_connection_with_tls_context(self, request, verify, proxies=None, cert=None):
+            if proxies:
+                raise ValueError("Proxy-Verbindungen sind beim sicheren URL-Import deaktiviert.")
+            return self._pin_pool(super().get_connection_with_tls_context(request, verify, proxies=proxies, cert=cert))
+
+    _adapter = _PinnedAddressAdapter()
+    _adapter.pinned_addresses = addresses
+    return _adapter
+
+
+def download_user_url_file(url: str, dest: Path, timeout: int = 120) -> bool:
+    """Download each redirect hop through an adapter pinned to its validated public IPs."""
+    import requests
+
+    if dest.exists():
+        logger.info("Already exists: %s", dest)
+        return True
+
+    temporary_path: Path | None = None
+    try:
+        current_url = url
+        with requests.Session() as session:
+            session.trust_env = False
+            session.proxies.clear()
+            for redirect_count in range(6):
+                _host, _port, _addresses = _validate_public_http_url(current_url)
+                _scheme = urlparse(current_url).scheme
+                session.mount(
+                    f"{_scheme}://",
+                    _pinned_address_adapter(_host, _port, _addresses, _scheme),
+                )
+                with session.get(current_url, timeout=timeout, stream=True, allow_redirects=False) as response:
+                    if response.status_code in {301, 302, 303, 307, 308}:
+                        location = response.headers.get("Location")
+                        if not location:
+                            raise ValueError("Redirect ohne Ziel-URL abgelehnt.")
+                        if redirect_count == 5:
+                            raise ValueError("Zu viele Redirects abgelehnt.")
+                        current_url = urljoin(current_url, location)
+                        continue
+
+                    response.raise_for_status()
+                    _ensure_dir(dest.parent)
+                    with tempfile.NamedTemporaryFile(
+                        mode="wb",
+                        dir=dest.parent,
+                        prefix=f".{dest.name}.",
+                        suffix=".part",
+                        delete=False,
+                    ) as output:
+                        temporary_path = Path(output.name)
+                        for chunk in response.iter_content(chunk_size=65536):
+                            if chunk:
+                                output.write(chunk)
+                    if temporary_path.stat().st_size == 0:
+                        return False
+                    os.replace(temporary_path, dest)
+                    temporary_path = None
+                    return True
+        raise ValueError("Download wurde ohne finales HTTP-Ergebnis beendet.")
+    except (OSError, requests.RequestException, ValueError) as exc:
+        logger.error("Sicherer URL-Import fehlgeschlagen fuer %r: %s", url, exc)
+        return False
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink(missing_ok=True)
+            except OSError as exc:
+                logger.warning("Temporäre Download-Datei konnte nicht entfernt werden (%s): %s", temporary_path, exc)
+
+
 def generate_from_sources(
     material: str | None = None,
     count: int = 5,
@@ -987,7 +1133,7 @@ def import_from_urls_file(urls_file: Path, material: str, dry_run: bool = False)
         if dry_run:
             logger.info("DRY-Ausfuehrung would download: %s → %s", url, dest)
             downloaded.append((dest, meta))
-        elif download_file(url, dest):
+        elif download_user_url_file(url, dest):
             downloaded.append((dest, meta))
 
     return downloaded

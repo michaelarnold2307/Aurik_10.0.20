@@ -16,10 +16,24 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
 import numpy as np
+
+from backend.core.dsp.witness_kopf_clicks import witness_kopf_clicks
+from backend.core.dsp.witness_kopf_compression import witness_kopf_compression_artifacts
+from backend.core.dsp.witness_kopf_dropout_head import witness_kopf_dropout_head_contact
+from backend.core.dsp.witness_kopf_dynamic_compression import witness_kopf_dynamic_compression_excess
+from backend.core.dsp.witness_kopf_groove_echo import witness_kopf_groove_echo
+from backend.core.dsp.witness_kopf_jitter import witness_kopf_jitter_artifacts
+from backend.core.dsp.witness_kopf_phase_rotation import witness_kopf_phase_rotation
+from backend.core.dsp.witness_kopf_sibilance import witness_kopf_sibilance
+from backend.core.dsp.witness_kopf_sticky_shed import witness_kopf_sticky_shed_residue
+from backend.core.dsp.witness_kopf_tape_head import witness_kopf_tape_head_level_dip
+from backend.core.dsp.witness_kopf_tape_head_clog import witness_kopf_tape_head_clog
+from backend.core.dsp.witness_kopf_transport_bump import witness_kopf_transport_bump
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
@@ -31,23 +45,53 @@ SR = 44100
 SEED = 42
 SCHEMA = "aurik.hoerproben_witness_kopf/1"
 
-KANAELE = {
-    "groove_echo": ("witness_kopf_groove_echo", "witness_kopf_groove_echo"),
-    "tape_head_level_dip": ("witness_kopf_tape_head", "witness_kopf_tape_head_level_dip"),
-    "clicks": ("witness_kopf_clicks", "witness_kopf_clicks"),
-    "compression_artifacts": ("witness_kopf_compression", "witness_kopf_compression_artifacts"),
-    "tape_head_clog": ("witness_kopf_tape_head_clog", "witness_kopf_tape_head_clog"),
-    "phase_rotation": ("witness_kopf_phase_rotation", "witness_kopf_phase_rotation"),
-    "sibilance": ("witness_kopf_sibilance", "witness_kopf_sibilance"),
-    "sticky_shed_residue": ("witness_kopf_sticky_shed", "witness_kopf_sticky_shed_residue"),
-    "jitter_artifacts": ("witness_kopf_jitter", "witness_kopf_jitter_artifacts"),
-    "transport_bump": ("witness_kopf_transport_bump", "witness_kopf_transport_bump"),
-    "dynamic_compression_excess": (
-        "witness_kopf_dynamic_compression",
-        "witness_kopf_dynamic_compression_excess",
-    ),
-    "dropout_head_contact": ("witness_kopf_dropout_head", "witness_kopf_dropout_head_contact"),
-}
+KANAELE = frozenset(
+    {
+        "groove_echo",
+        "tape_head_level_dip",
+        "clicks",
+        "compression_artifacts",
+        "tape_head_clog",
+        "phase_rotation",
+        "sibilance",
+        "sticky_shed_residue",
+        "jitter_artifacts",
+        "transport_bump",
+        "dynamic_compression_excess",
+        "dropout_head_contact",
+    }
+)
+
+
+def _parse_klassen(value: str) -> list[str]:
+    classes = [name.strip() for name in value.split(",") if name.strip()]
+    unknown = [name for name in classes if name not in KANAELE]
+    if not classes or unknown or len(set(classes)) != len(classes):
+        raise argparse.ArgumentTypeError(f"Ungueltige oder doppelte Klassen: {', '.join(unknown or classes)}")
+    return classes
+
+
+def _lade_funktion(klasse: str) -> Callable[..., np.ndarray | None]:
+    # Statische Allowlist: CLI-Eingaben werden niemals als Modulnamen importiert.
+    funktionen: dict[str, Callable[..., np.ndarray | None]] = {
+        "groove_echo": witness_kopf_groove_echo,
+        "tape_head_level_dip": witness_kopf_tape_head_level_dip,
+        "clicks": witness_kopf_clicks,
+        "compression_artifacts": witness_kopf_compression_artifacts,
+        "tape_head_clog": witness_kopf_tape_head_clog,
+        "phase_rotation": witness_kopf_phase_rotation,
+        "sibilance": witness_kopf_sibilance,
+        "sticky_shed_residue": witness_kopf_sticky_shed_residue,
+        "jitter_artifacts": witness_kopf_jitter_artifacts,
+        "transport_bump": witness_kopf_transport_bump,
+        "dynamic_compression_excess": witness_kopf_dynamic_compression_excess,
+        "dropout_head_contact": witness_kopf_dropout_head_contact,
+    }
+    # Resolve only through this fixed mapping; never import or look up an
+    # attribute using the CLI value.
+    if klasse not in funktionen:
+        raise ValueError("Unbekannte Witness-Klasse")
+    return funktionen[klasse]
 
 
 def _lade_mono(pfad: str) -> np.ndarray:
@@ -74,7 +118,12 @@ def _schreibe_wav(pfad: Path, x: np.ndarray) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--klassen", default="groove_echo,tape_head_level_dip", help="Komma-Liste")
+    ap.add_argument(
+        "--klassen",
+        type=_parse_klassen,
+        default=["groove_echo", "tape_head_level_dip"],
+        help="Komma-Liste",
+    )
     ap.add_argument("--paare", type=int, default=6, help="A/B-Paare je Klasse")
     ap.add_argument("--seed", type=int, default=SEED)
     args = ap.parse_args(argv)
@@ -85,12 +134,8 @@ def main(argv: list[str] | None = None) -> int:
         eintraege.setdefault(d["klasse"], []).append(d)
 
     gesamt = {"schema": SCHEMA, "datum": date.today().isoformat(), "seed": args.seed, "klassen": {}}
-    for klasse in args.klassen.split(","):
-        modul, funktion = KANAELE[klasse]
-        import importlib
-
-        dsp = importlib.import_module(f"backend.core.dsp.{modul}")
-        f = getattr(dsp, funktion)
+    for klasse in args.klassen:
+        f = _lade_funktion(klasse)
         regionen = [e for e in eintraege.get(klasse, []) if Path(e["schaden"]).is_file()]
         rng = np.random.default_rng(args.seed)
         kandidaten = [regionen[i] for i in rng.permutation(len(regionen))]

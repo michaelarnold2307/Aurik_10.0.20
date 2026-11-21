@@ -5,9 +5,10 @@ Werkzeug fuer DefectType.CRACKLE (kontinuierliches Vinyl-Knistern, Bailey et al.
 Der DefectPhaseMapper routet CRACKLE-Textur auf diese Phase, waehrend CLICKS auf
 phase_27 und spaerliches Knistern auf phase_09 laeuft (Either-Or, Spec 06).
 
-Modell: models/crackle_texture_removal/crackle_texture_removal_base.pt (Torch-ROCm
-primaer, ONNX-CPU-Fallback crackle_texture_removal_base.onnx — Paritaet 1,67e-06
-nachgewiesen, §III.9 (copilot-instructions.md)). Abgrenzung: kein Bezug zu
+Modell: models/crackle_texture_removal/crackle_texture_removal_base.pt (Torch mit
+Device-Wahl über den MLDeviceManager; ONNX-CPU-Fallback
+crackle_texture_removal_base.onnx — Paritaet 1,67e-06 nachgewiesen, §III.9
+(copilot-instructions.md)). Abgrenzung: kein Bezug zu
 "harmonic_inpainting" (Oberton-Rekonstruktion) oder phase_55 (Diffusion-Inpainting);
 diese Phase ENTFERNT Knistern-Textur, sie rekonstruiert nichts.
 
@@ -148,7 +149,9 @@ class CrackleTextureRemovalPhase(PhaseInterface):
         try:
             import torch
 
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            from backend.core.ml_device_manager import get_torch_device
+
+            device = get_torch_device("CrackleTextureRemoval")
             if os.path.exists(pt_path):
                 net = _CrackleNet(torch)
                 state = torch.load(pt_path, map_location=device, weights_only=True)

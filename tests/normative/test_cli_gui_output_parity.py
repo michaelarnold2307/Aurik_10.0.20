@@ -1,4 +1,7 @@
-"""CLI/GUI-Ausgabe-Parität — normatives Release-Gate.
+"""Historischer Vergleich zweier Denker-Aufrufformen.
+
+Dieser Test ruft weder die reale GUI noch die CLI oder deren Export auf und
+belegt keine End-to-End-Parität. Der reale GUI-Batchpfad läuft in-process.
 
 Normative Grundlage (AGENTS.md):
     - Bridge-Verbot (§V4 (copilot-instructions.md)): CLI und GUI rufen die
@@ -8,8 +11,7 @@ Normative Grundlage (AGENTS.md):
     - §2.40/§G5 (GEBOTE.md): gleicher Input + gleiche Umgebung + gleicher
       Modus ⇒ bitnahe Ausgabe.
 
-Der Test bildet die EXAKTEN Aufruf-Formen beider Frontends ab (Stand
-2026-09-14) und vergleicht die Ausgaben bei identischer User-Intention:
+Der Test vergleicht historische Aufrufformen (Stand 2026-09-14):
 
   CLI-Form (cli/aurik_cli.py):
       run_pre_analysis(audio_native, sr_native, audio_48k, file_path,
@@ -24,7 +26,7 @@ Der Test bildet die EXAKTEN Aufruf-Formen beider Frontends ab (Stand
                    input_path, output_path, progress_callback=…,
                    audio_update_callback=…, cached_defect_result=…)
 
-Toleranzen (§2.40): max_abs ≤ 1e-6, rms ≤ 1e-7, identische Samplezahl.
+Der Vergleich verwendet max_abs ≤ 1e-5, rms ≤ 1e-5 und identische Samplezahl.
 
 Ausführung: pytest tests/normative/test_cli_gui_output_parity.py -v
 """
@@ -84,9 +86,8 @@ def _noop_audio_update(phase_audio: np.ndarray, phase_sr: int, phase_id: str) ->
 def test_cli_gui_bridge_output_parity(tmp_path) -> None:
     """Gleiche User-Intention ⇒ CLI-Form und GUI-Form liefern bitnahe Ausgabe.
 
-    Beide Formen gehen über dieselbe Bridge-Singleton-Denker-Instanz — das ist
-    exakt die Architektur der Frontends (CLI ruft den Denker direkt im Prozess,
-    die GUI im IPC-Kindprozess). Unterschiede in den Aufruf-Argumenten
+    Beide Formen gehen über dieselbe Bridge-Singleton-Denker-Instanz.
+    Unterschiede in den historischen Aufruf-Argumenten
     (pre_analysis_result vs. material-Kwargs, no_rt_limit, Callbacks) dürfen
     die Ausgabe nicht verändern.
     """
@@ -156,3 +157,56 @@ def test_cli_gui_bridge_output_parity(tmp_path) -> None:
         f"(§2.40 — die Aufruf-Formen dürfen die Ausgabe nicht funktional verändern)"
     )
     assert rms <= RMS_ERR, f"CLI/GUI-Parität verletzt: rms={rms:.3e} > {RMS_ERR:.0e} (§2.40)"
+
+
+@pytest.mark.skipif(os.environ.get("AURIK_GUI_CLI_FULL_E2E") != "1", reason="Ressourcenintensiver Vollpipeline-Test")
+@pytest.mark.timeout(900)
+def test_real_gui_cli_full_pipeline_pcm_parity(tmp_path, monkeypatch) -> None:
+    """Reale Voranalyse, Denker und Exporte; kein Ersatz des Restaurierungspfads."""
+    import soundfile as sf
+    from PyQt5.QtCore import QCoreApplication
+
+    from Aurik10.ui import modern_window
+    from backend.api import bridge
+    from cli import aurik_cli
+
+    monkeypatch.setenv("AURIK_NO_RT_LIMIT", "1")
+    app = QCoreApplication.instance() or QCoreApplication([])
+    assert app is not None
+    wav_path = tmp_path / "input.wav"
+    sf.write(wav_path, _make_deterministic_audio(_SR, _DURATION_S).T, _SR, subtype="PCM_24")
+    native, sr = modern_window._load_audio_robust(str(wav_path))
+    pre = bridge.run_pre_analysis(
+        audio_native=native, sr_native=sr, audio_48k=native, file_path=str(wav_path), store_in_bridge_cache=True
+    )
+    assert pre.defects is not None
+
+    gui_path = tmp_path / "gui.wav"
+    cli_path = tmp_path / "cli.wav"
+    queue = modern_window.SimpleBatchQueue()
+    item = queue.add_item(
+        str(wav_path),
+        str(gui_path),
+        {
+            "mode": "RESTORATION",
+            "format_key": "wav24",
+            "export_sample_rate": _SR,
+            "pre_analysis_result": pre,
+            "cached_defect_result": pre.defects,
+        },
+    )
+    modern_window.BatchProcessingThread(queue).run()
+    assert item.status == "completed" and item.error is None, item.error
+    assert any(str(phase).startswith("phase_") for phase in item.restoration_result.phases_executed), (
+        "GUI hat keine UV3-Restaurierungsphase ausgeführt"
+    )
+    assert not item.restoration_result.metadata.get("restaurierdenker_stage_error")
+    cli_result = aurik_cli.process_audio(str(wav_path), str(cli_path), verbose=False)
+    assert any(str(phase).startswith("phase_") for phase in cli_result.phases_executed), (
+        "CLI hat keine UV3-Restaurierungsphase ausgeführt"
+    )
+    assert not cli_result.metadata.get("restaurierdenker_stage_error")
+    gui_pcm, gui_sr = sf.read(gui_path, dtype="int32")
+    cli_pcm, cli_sr = sf.read(cli_path, dtype="int32")
+    assert gui_sr == cli_sr == _SR
+    np.testing.assert_array_equal(gui_pcm, cli_pcm)

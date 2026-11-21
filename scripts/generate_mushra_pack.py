@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import csv
 from pathlib import Path
+
+if __package__:
+    from .csv_export_safety import render_spreadsheet_safe_csv
+else:
+    from csv_export_safety import render_spreadsheet_safe_csv
 
 
 def _find_wav_files(folder: Path) -> list[Path]:
@@ -44,11 +48,18 @@ def main() -> int:
         print("Keine passenden Referenz/Kandidaten-Paare gefunden.")
         return 3
 
+    try:
+        csv_content = render_spreadsheet_safe_csv(
+            ["item_id", "reference_wav", "candidate_wav"],
+            rows,
+        )
+    except ValueError as exc:
+        print(f"MUSHRA-CSV konnte nicht sicher erstellt werden: {exc}")
+        return 4
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["item_id", "reference_wav", "candidate_wav"])
-        writer.writerows(rows)
+        f.write(csv_content)
 
     print(f"MUSHRA-Paket erstellt: {out_path} ({len(rows)} Paare)")
     print("Hinweis: Bewertung mit randomisiertem Blind-Test und mindestens 10 Hoerern durchfuehren.")

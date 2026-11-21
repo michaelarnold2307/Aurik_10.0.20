@@ -67,8 +67,8 @@ jobs:
   normative-guard:
     name: Normative Guard
     runs-on: ubuntu-22.04
-    # Befund 2026-09-14: der CLI/GUI-Paritätstest führt die ECHTE Vollpipeline
-    # zweimal aus (CLI-Form + GUI-Form) — 12 min reichen dafür nicht mehr.
+    # Der historische Denker-Aufrufvergleich führt die Pipeline zweimal aus;
+    # er ist kein E2E-Nachweis der realen GUI- und CLI-Exportpfade.
     timeout-minutes: 60
 
     steps:

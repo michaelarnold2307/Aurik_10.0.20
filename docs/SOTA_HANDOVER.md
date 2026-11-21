@@ -3,7 +3,7 @@
 > **Zweck:** Dieses Dokument macht den Zustand von Aurik session-unabhängig
 > lesbar. Jede KI (Kun, Claude Code, Copilot, Codex, Cursor …) soll nach dem
 > Lesen **sofort** wissen, was zu tun ist — auch nach Abbruch, Reboot oder
-> Wochen Pause. Stand: 2026-11-11.
+> Wochen Pause. Stand: 2026-11-21.
 
 ## 0. Mission
 
@@ -12,21 +12,25 @@ Wohlklang für das menschliche Gehör**. Normative Kette: `AGENTS.md` §1
 (Pfeil: `AGENTS.md` liest zuerst, dann `.github/copilot-instructions.md`,
 `.github/VERBOTEN.md`, Hörordnung, Domain-Regeln, Specs).
 
-**Wettbewerbs-Parität (2026-11-17, normativ):** Aurik muss in **jeder**
-Restaurierungs-Disziplin (Declick, Decrackle, Denoise, Declip, Dehum,
-Wow/Flutter, HF, Stereo/Azimuth, Dereverb, Pitch/Speed, Dynamik-Rückbau,
-Phasen-Artefakte, Dropouts, Master-Finish, Bedienung) mindestens die Stufe
-von **iZotope RX, Cedar und Acon** erreichen. Das
-`.github/WETTBEWERBS_PARITAET.md`-Register ist **Pflichtlektüre** für jede
-Programmier-KI; Statusänderungen verlangen Mess-Evidenz, `GESICHERT` verlangt
-den §4-Hör-Pfad, `LUECKE` verlangt einen konkreten nächsten Schritt — das
-Pre-Commit-Gate `aurik-wettbewerbs-paritaet` pinnt all das fail-closed.
+**Wettbewerbs-Parität (Zielbild, normativ/stufenweise):** Aurik schließt messbare
+Wohlklang-Lücken systematisch und strebt langfristig Wettbewerbsniveau in
+jeder Restaurierungs-Disziplin an. Das ist keine Behauptung bereits erreichter
+Gesamtparität und kein pauschales Release-Gate. Interner Fortschritt
+(`GESICHERT`) ist von externer Ergebnisparität (`PARITAET`) getrennt. Für eine
+RX-12-Paritätsaussage gilt Spec 26 DRT-16: gepaarter Referenzlauf,
+Nichtunterlegenheit und §4-Sign-off. Ziel ist perzeptuelle Qualität, nicht
+sample-identische Bearbeitung oder eine Kopie der RX-Bedienung.
+Nicht erreichbare bzw. nicht messbare Belege bleiben offen und werden mit
+konkretem nächsten Schritt geführt. Das
+`.github/WETTBEWERBS_PARITAET.md`-Register ist Pflichtlektüre; sein
+Pre-Commit-Gate prüft die Status- und Evidenzregeln fail-closed.
 
 ## 1. Sofort-Start (3 Minuten)
 
 1. `AGENTS.md` lesen (Repo-Regeln — Write-Gate, Zitierdisziplin §5,
    Determinismus §G5, deutsche Logs).
-2. **Dieses Dokument** + `docs/reports/current/2026-10-28_vollstaendigkeit_tiefenanalyse.md`
+2. **Dieses Dokument** + `.github/WETTBEWERBS_PARITAET.md` +
+   `docs/reports/current/2026-10-28_vollstaendigkeit_tiefenanalyse.md`
    (das Lückenbild) + `docs/TODOS_SOTA_ROADMAP.md` (Bestand).
 3. Zustand prüfen (siehe §3) und die nächste offene Lücke aus §2 schließen.
 
@@ -269,6 +273,63 @@ Priorität C→B→A→D→E/F:
 
 
 44. **Stereo-Diagnose vertieft (2026-11-20):** v3 zeigte: auch mit dem ActiveIntervention-Benefit blieb die Balance unrepariert — die Ablehnung ist identisch (Δ=0). Die Ablehnungs-Logzeile trägt jetzt `imbalance_base/imbalance_work/shapes` (v4 läuft damit) — Ziel: klären, ob `_work` am Interventionspunkt überhaupt die korrigierte Stereo-Fassung ist (Layout/No-Op-Frage). Erkenntnis aus v2/v3: Plan ✓, phase_15 läuft ✓ (kein mono-skip), PMGG passt ✓ — offen ist nur die letzte Veto-Schicht. Gleichzeitig laufen: Kanalsatz-A/B 21/45, WQ3 (hum), Stereo-v4, B2-Bewertung.
+
+45. **Ketten-Blockade und Resume-Root-Cause behoben (2026-11-20):** Der
+    Voll-Kanalsatz-Beleg stand bei 40/45; `Snowmine - Curfews (hum)` war mit
+    Returncode −11 markiert. Der Resume-Pfad übersprang zuvor JEDE vorhandene
+    Zeile (auch `abgestuerzt`) und der Elternprozess meldete trotz Abstürzen
+    Exit 0 — ein erneuter Lauf konnte den Beleg daher weder heilen noch den
+    Watchdog blockieren. Jetzt werden nur `ok`-Zeilen wiederverwendet,
+    Abstürze erneut gerechnet, und unvollständige Messungen liefern Exit 1.
+    `--resume` findet über Tageswechsel hinweg den jüngsten Beleg nur bei
+    passendem Schema, Seed, Quellordner, Baseline, Paarzahl und Zeilenpräfix.
+    Zusätzlich war der Manager-Lock verwaist (PID 448230 existierte nicht);
+    abhängige `--wait-for`-Prozesse warteten ohne Manager bzw. nach
+    ausgeschöpften Neustarts endlos. Lock-Besitz wird jetzt anhand der
+    Prozess-Kommandozeile validiert und Waiter brechen in diesen Endzuständen
+    fail-closed ab. **37 fokussierte Tests bestanden.** Der Watchdog wurde am
+    20.11.2026 um 21:54 neu gestartet und hat den Voll-Beleg mit `--resume`
+    begonnen; erfolgreiche Zeilen werden übernommen, die abgestürzte Zeile
+    wird neu gemessen. Der native Faulthandler-Befund zeigt zusätzlich
+    `scipy.signal.sosfiltfilt` in `temporal_loudness.py` während
+    `phase_10_compression`; die Extension-Modulliste enthält u. a. SciPy,
+    Numba und pyFFTW, aber der Trace beweist weder einen konkreten Race noch
+    OOM. Ursache und A/B-Ergebnis bleiben offen, bis der Wiederholungslauf
+    endet. WQ3/WQ4 bleiben bis zum erfolgreichen Ganz-Titel-A/B blockiert.
+    Kein Status-/Flag-Flip ohne vollständige Evidenz.
+
+46. **CPU-only-Vertrag in Crackle-Modellen durchgesetzt (2026-11-20):** Ursache
+    des Policy-Bypasses war die lokale `torch.cuda.is_available()`-Wahl in
+    VinylNet und Phase 67 sowie ein separater ROCm-Fallback in PANNs. Alle
+    drei Wege verwenden jetzt `MLDeviceManager.get_torch_device`; bei
+    `AURIK_FORCE_CPU=1` ergibt die reale Policy für PANNs, VinylNet und
+    CrackleTextureRemoval `cpu`. Beim Resume wurden außerdem vorhandene
+    Einzelzeilen nicht laufend in den Aggregat-Beleg übernommen — während
+    eines aktiven Kindes konnte dessen `n_paare` deshalb hinter den
+    persistierten Einzeldateien zurückliegen. Cache-Treffer und offene
+    Zeilen schreiben den Aggregat-Beleg jetzt sofort; ein Regressionstest
+    pinnt den Fortschritt vor dem Start des nächsten Kindes. **60 fokussierte
+    Tests bestanden**, Ruff und `git diff --check` bestanden; der
+    Pre-Commit-Snyk-Guard war ebenfalls grün. Der unabhängige
+    `sosfiltfilt`-Absturz in Phase 10 bleibt unbewiesen und ist nicht als
+    Folge des GPU-Bypasses belegt. Der seit 21:54 laufende Voll-Beleg war bei
+    der letzten Prüfung bei Paarindex 40; seine dauerhaften Zeilen-Dateien
+    zeigten 40/45 Paare `ok`, darunter den wiederholten Snowmine-Absturz.
+    Dieser bereits laufende Parent hat den Aggregat-Fix nicht geladen; der
+    nächste Start wird den Aggregat-Fortschritt sofort nachführen.
+    E2E-Device-Nachweis und vollständiges 45-Paar-Ergebnis sind noch offen.
+    Kein Klangvorteil oder RX-12-Parität belegt.
+
+47. **Lokale Snyk-Befunde gehärtet (2026-11-21):** B3-/Witness-CLIs verwenden
+    validierte Allow-Lists und feste Importpfade; URL-Downloads binden jede
+    Redirect-Verbindung an die zuvor geprüften öffentlichen IPs und behalten
+    Hostname-/TLS-Prüfung bei. Der Bridge-Analyse-Cache nutzt jetzt begrenztes
+    JSON mit fester Datentyp-Allowlist statt Pickle; alte `.pkl`-Einträge
+    werden verworfen. **77 fokussierte Tests bestanden**, Ruff und
+    `git diff --check` bestanden. Ein Snyk-Code-Rescan wurde mangels
+    autorisiertem Zugang nicht ausgeführt; Dashboard-Abschluss ist daher
+    unbestätigt. Command-Injection-Befunde in den geprüften Trainings-/Export-
+    CLIs bleiben lokale argv-Aufrufe ohne Shell; `"PASS"` ist ein Statuswert.
 
 - **GPU-Trainingsketten** (dauerhaft im Repo, jederzeit neu startbar):
   - Kette 1 (Welle C + M8/M9): `nohup bash scripts/gpu_kette1_welle_c.sh > /tmp/k1.log 2>&1 &`

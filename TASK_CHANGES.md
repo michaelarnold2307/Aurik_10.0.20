@@ -1,108 +1,26 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-19 14:30 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-20 22:15 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
-| M | `.github/SOTA_DEFICIT_REGISTER.md` | modifiziert |
-| M | `.github/WETTBEWERBS_PARITAET.md` | modifiziert |
-| M | `.github/copilot-instructions.md` | modifiziert |
-| M | `.github/instructions/dsp.instructions.md` | modifiziert |
-| M | `.github/specs/26_defekt_reparatur_trainingsvertrag.md` | modifiziert |
-| M | `Aurik10/i18n/__init__.py` | modifiziert |
-| M | `Aurik10/main.py` | modifiziert |
-| M | `Aurik10/ui/modern_window.py` | modifiziert |
 | M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/api/bridge.py` | modifiziert |
-| M | `backend/core/closed_loop_calibrator.py` | modifiziert |
-| M | `backend/core/coordinated_repair.py` | modifiziert |
-| M | `backend/core/defect_scanner.py` | modifiziert |
-| M | `backend/core/dsp/banquet_torch_rocm.py` | modifiziert |
-| M | `backend/core/dsp/bsr317_torch_rocm.py` | modifiziert |
-| M | `backend/core/dsp/fcpe_torch_rocm.py` | modifiziert |
-| M | `backend/core/dsp/muq_mulan_torch_rocm.py` | modifiziert |
-| M | `backend/core/dsp/whisper_torch_rocm.py` | modifiziert |
-| M | `backend/core/gpu_model_registry.py` | modifiziert |
-| M | `backend/core/lyrics_guided_enhancement.py` | modifiziert |
-| M | `backend/core/ml_device_manager.py` | modifiziert |
-| M | `backend/core/music_model_flags.py` | modifiziert |
-| M | `backend/core/phases/phase_07_declipper.py` | modifiziert |
-| M | `backend/core/phases/phase_15_stereo_balance.py` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
+| M | `backend/core/phases/phase_67_crackle_texture_removal.py` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/TODOS_SOTA_ROADMAP.md` | modifiziert |
-| M | `docs/guides/HOERBATCH_DECLIP_MUSHRA_W1.md` | modifiziert |
-| M | `plugins/cantus_plugin.py` | modifiziert |
-| M | `plugins/htdemucs_plugin.py` | modifiziert |
-| M | `plugins/miipher_dit_plugin.py` | modifiziert |
-| M | `plugins/muq_plugin.py` | modifiziert |
+| M | `docs/reports/current/2026-11-19_kanalsatz_ab_voll.json` | modifiziert |
+| M | `docs/reports/current/2026-11-19_kanalsatz_ab_voll_zeilen/001_Snowmine - Curfews (hum).json` | modifiziert |
 | M | `plugins/panns_plugin.py` | modifiziert |
-| M | `plugins/symphonia_plugin.py` | modifiziert |
-| M | `reports/spec_drift_baseline.json` | modifiziert |
-| M | `scripts/bewerte_schadens_proben.py` | modifiziert |
-| M | `scripts/compliance/drt_contract_gate.py` | modifiziert |
-| M | `scripts/erstelle_cantus_real_paare.py` | modifiziert |
-| M | `scripts/erstelle_corpus_vinyl.py` | modifiziert |
-| M | `scripts/erstelle_schadens_proben.py` | modifiziert |
-| M | `scripts/erstelle_witness_kopf_hoerproben.py` | modifiziert |
-| M | `scripts/gpu_kette1_welle_c.sh` | modifiziert |
-| M | `scripts/quality_metric_direction_gate.py` | modifiziert |
-| M | `scripts/train_witness_kopf.py` | modifiziert |
-| M | `scripts/verify_witness_kopf_gate.py` | modifiziert |
-| A | `tests/unit/test_stereo_imbalance_rezept.py` | neu |
-| M | `tests/unit/test_witness_kopf_wiring.py` | modifiziert |
-| ?? | `Aurik10/ui/preview_restorer.py` | ungetrackt |
-| ?? | `backend/core/dsp/witness_kopf_dropout_head.py` | ungetrackt |
-| ?? | `backend/core/dsp/witness_kopf_dynamic_compression.py` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-17_cantus_real_manifest_alt_schellack.jsonl` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-17_kp6_noise_bank_vinyl_materialkorrektur.md` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-18_m9_gate.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-18_m9_gate.md` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-18_sinn_beweis_15_rezepte.md` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-18_sinn_beweis_15_rezepte_bewertung.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_cantus_gate.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_cantus_gate.md` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_hoerproben_witness_kopf.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_klassen_manifest_anhaengen_vocal_harshness.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_offene_punkte_produktreife.md` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_witness_gate_groove_echo_mos.md` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_witness_kopf_gate_dropout_head_contact.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_witness_kopf_gate_dropout_oxide.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_witness_kopf_gate_dropouts.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_witness_kopf_gate_dynamic_compression_excess.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_witness_kopf_gate_groove_echo.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_witness_kopf_gate_hum.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_witness_kopf_gate_tape_splice_artifact.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-19_witness_kopf_gate_wow.json` | ungetrackt |
-| ?? | `docs/reports/current/train_job_c2_cantus_domain_vinylv2.json` | ungetrackt |
-| ?? | `docs/reports/current/train_job_c2_cantus_domain_vinylv3.json` | ungetrackt |
-| ?? | `docs/reports/current/train_job_c2_cantus_finetune_v2.json` | ungetrackt |
-| ?? | `docs/reports/current/train_job_c2_cantus_pretrain_v2.json` | ungetrackt |
-| ?? | `scripts/erstelle_crackle_expansion.py` | ungetrackt |
-| ?? | `scripts/erstelle_sinnbeweis_hoerpaare.py` | ungetrackt |
-| ?? | `scripts/erstelle_vocal_harshness_expansion.py` | ungetrackt |
-| ?? | `scripts/haenge_klassen_manifest_an.py` | ungetrackt |
-| ?? | `scripts/ketten_watchdog.py` | ungetrackt |
-| ?? | `scripts/messe_kanalsatz_ab.py` | ungetrackt |
-| ?? | `scripts/verify_cantus_gate.py` | ungetrackt |
-| ?? | `tests/unit/test_cantus_gate.py` | ungetrackt |
-| ?? | `tests/unit/test_closed_loop_stereo_balance.py` | ungetrackt |
-| ?? | `tests/unit/test_defect_scanner_stereo_imbalance_layout.py` | ungetrackt |
-| ?? | `tests/unit/test_erstelle_sinnbeweis_hoerpaare.py` | ungetrackt |
-| ?? | `tests/unit/test_ketten_crash_haertung.py` | ungetrackt |
-| ?? | `tests/unit/test_ketten_watchdog.py` | ungetrackt |
-| ?? | `tests/unit/test_main_cli_oberflaeche.py` | ungetrackt |
-| ?? | `tests/unit/test_messe_kanalsatz_ab.py` | ungetrackt |
-| ?? | `tests/unit/test_modern_window_geometry_guard.py` | ungetrackt |
-| ?? | `tests/unit/test_phase_15_stereo_balance_direction.py` | ungetrackt |
-| ?? | `tests/unit/test_preview_restorer.py` | ungetrackt |
-| ?? | `tests/unit/test_vocal_harshness_expansion.py` | ungetrackt |
-| ?? | `tests/unit/test_witness_mos_loss.py` | ungetrackt |
-| ?? | `tmp_bewertung_test.json` | ungetrackt |
+| M | `plugins/vinylnet_decrackle_plugin.py` | modifiziert |
+| M | `scripts/ketten_watchdog.py` | modifiziert |
+| M | `scripts/messe_kanalsatz_ab.py` | modifiziert |
+| M | `tests/unit/test_ketten_watchdog.py` | modifiziert |
+| M | `tests/unit/test_messe_kanalsatz_ab.py` | modifiziert |
+| M | `tests/unit/test_panns_rocm_provider_filter.py` | modifiziert |
+| M | `tests/unit/test_phase_67_crackle_texture_removal.py` | modifiziert |
+| M | `tests/unit/test_phase_68_vinylnet_decrackle.py` | modifiziert |
 
 ## Entscheidungen
 

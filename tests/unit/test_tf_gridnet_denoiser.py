@@ -359,11 +359,13 @@ def _trainer_lauf(tmp_path, monkeypatch, *, batch_size: int, grad_accum: int, st
 
     from scripts import train_tf_gridnet_denoiser as trainer
 
-    latest = tmp_path / f"latest_b{batch_size}_a{grad_accum}.pt"
-    best = tmp_path / f"best_b{batch_size}_a{grad_accum}.pt"
-    monkeypatch.setattr(trainer, "LATEST_PT", latest)
-    monkeypatch.setattr(trainer, "BEST_PT", best)
-    monkeypatch.setattr(trainer, "CHECKPOINT_DIR", tmp_path)
+    # train() baut latest/best intern aus checkpoint_dir mit FESTEN Dateinamen
+    # (checkpoint_latest.pt / tf_gridnet_best.pt) — der Monkeypatch der Modul-
+    # Konstanten LATEST_PT/BEST_PT war wirkungslos (Befund 2026-11-21: der
+    # Checkpoint landete unter checkpoint_latest.pt, der Test lud den gepatchten
+    # Namen -> FileNotFoundError). Der checkpoint_dir-Parameter ist die EINE Quelle.
+    ckpt_dir = tmp_path / f"run_b{batch_size}_a{grad_accum}"
+    latest = ckpt_dir / "checkpoint_latest.pt"
 
     trainer.train(
         epochs=1,
@@ -380,6 +382,7 @@ def _trainer_lauf(tmp_path, monkeypatch, *, batch_size: int, grad_accum: int, st
         blocks=1,
         skip_onnx=True,
         grad_accum=grad_accum,
+        checkpoint_dir=ckpt_dir,
     )
     return torch.load(latest, map_location="cpu", weights_only=False)["model_state_dict"]
 

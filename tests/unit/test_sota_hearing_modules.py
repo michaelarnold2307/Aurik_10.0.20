@@ -46,6 +46,13 @@ def test_temporal_loudness_dynamics() -> None:
     assert res.stl_sone.shape == (n,)
     assert res.peak_stl_sone > 0.0
     assert np.mean(res.stl_sone[: n // 4]) > np.mean(res.stl_sone[3 * n // 4 :])
+    expected_ltl = np.empty_like(res.stl_sone)
+    a_ltl = float(np.exp(-1.0 / (2.0 * SR)))
+    prev = 0.0
+    for i, value in enumerate(res.stl_sone):
+        prev = a_ltl * prev + (1.0 - a_ltl) * value
+        expected_ltl[i] = prev
+    assert np.array_equal(res.ltl_sone, expected_ltl)
 
 
 def test_stl_adaptive_smoothing_bounded() -> None:

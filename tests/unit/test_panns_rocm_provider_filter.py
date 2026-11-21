@@ -8,9 +8,12 @@ dauerhaft CPU-only. Dieser Test friert das korrigierte Verhalten ein.
 
 from __future__ import annotations
 
+import sys
 from unittest import mock
 
 import pytest
+
+import backend.core.ml_device_manager as device_manager
 
 
 def _make_panns() -> object:
@@ -28,6 +31,23 @@ def _make_panns() -> object:
 
 @pytest.mark.unit
 class TestPannsRocmProviderFilter:
+    def test_force_cpu_overrides_rocm_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import plugins.panns_plugin as panns_mod
+
+        fake_torch = mock.MagicMock()
+        fake_torch.cuda.is_available.return_value = True
+        fake_torch.hip.is_available.return_value = True
+        monkeypatch.setenv("AURIK_FORCE_CPU", "1")
+        monkeypatch.setattr(
+            device_manager.MLDeviceManager,
+            "_detect_backend",
+            lambda _self: pytest.fail("AURIK_FORCE_CPU must bypass backend detection"),
+        )
+        monkeypatch.setattr(device_manager, "_instance", None)
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+
+        assert panns_mod.PANNsPlugin._detect_gpu() == ("cpu", False)
+
     def test_tuple_providers_survive_filter_when_available(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import plugins.panns_plugin as panns_mod
 

@@ -109,16 +109,39 @@ BESCHLUSS_FLAGS: dict[str, str] = {
 
 def _schalter_lesen(name: str) -> tuple[object, str, object]:
     """Liefert (Modul, Attribut, aktueller Wert) je Stufen-Schalter."""
-    import importlib
+    if name not in SCHALTER_MAPPING:
+        raise ValueError(f"Unbekannte B3-Stufe: {name}")
 
-    modul_name, attr = SCHALTER_MAPPING[name]
-    modul = importlib.import_module(modul_name)
+    # Imports bleiben statisch: CLI-Eingaben werden ausschliesslich als
+    # Schlüssel in der Stufen-Whitelist verwendet und nie als Importziel.
+    # Die Whitelist muss zudem exakt zu beiden Tabellen passen.
+    from backend.core import music_model_flags
+    from plugins import bigvgan_v2_plugin
+
+    mapping_modul, attr = SCHALTER_MAPPING[name]
+    if BESCHLUSS_FLAGS.get(name) != attr:
+        raise ValueError(f"Nicht freigegebenes B3-Attribut: {attr}")
+
+    if name == "W-1" and mapping_modul == "plugins.bigvgan_v2_plugin":
+        modul = bigvgan_v2_plugin
+    elif name != "W-1" and mapping_modul == "backend.core.music_model_flags":
+        modul = music_model_flags
+    else:
+        raise ValueError(f"Nicht freigegebenes B3-Modul fuer: {name}")
     return modul, attr, getattr(modul, attr)
 
 
 def _schalter_setzen(name: str, wert: object) -> None:
     modul, attr, _ = _schalter_lesen(name)
     setattr(modul, attr, wert)
+
+
+def _parse_stages(value: str) -> list[str]:
+    stages = [name.strip() for name in value.split(",") if name.strip()]
+    unknown = [name for name in stages if name not in SCHALTER_MAPPING]
+    if not stages or unknown or len(set(stages)) != len(stages):
+        raise argparse.ArgumentTypeError(f"Ungueltige oder doppelte B3-Stufen: {', '.join(unknown or stages)}")
+    return stages
 
 
 def _restore_fenster(audio: np.ndarray, sr: int) -> tuple[np.ndarray, dict, dict]:
@@ -182,10 +205,10 @@ def stufe_messen(name: str, fenster: list[tuple[str, np.ndarray, int]], seed: in
 
     for i, (clip, audio, sr) in enumerate(fenster):
         _schalter_setzen(name, False)
-        _modul, _attr, _gelesen_aus = _schalter_lesen(name)
+        _, _, _gelesen_aus = _schalter_lesen(name)
         aus_audio, snap_aus, meta_aus = _restore_fenster(audio, sr)
         _schalter_setzen(name, True)
-        _modul, _attr, _gelesen_an = _schalter_lesen(name)
+        _, _, _gelesen_an = _schalter_lesen(name)
         an_audio, snap_an, meta_an = _restore_fenster(audio, sr)
         defekt_gesamt += int(snap_aus["by_art"].get("defekt", 0)) + int(snap_an["by_art"].get("defekt", 0))
 
@@ -302,7 +325,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--windows", type=int, default=2)
     ap.add_argument("--seconds", type=float, default=2.5)
     ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--stages", default="W-1,W-4,W-5,W-6,W-7")
+    ap.add_argument("--stages", type=_parse_stages, default=["W-1", "W-4", "W-5", "W-6", "W-7"])
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -325,8 +348,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     out_dir = PROJECT_ROOT / "docs" / "reports" / "current"
-    for name in args.stages.split(","):
-        name = name.strip()
+    for name in args.stages:
         log.info("Stufe %s messen (%d Fenster)...", name, len(fenster))
         try:
             messung = stufe_messen(name, fenster, args.seed)

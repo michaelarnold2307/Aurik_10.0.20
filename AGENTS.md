@@ -4,10 +4,14 @@ Projekt: **Aurik 10 — Audio-Restaurierung** — psychoakustisch präzise
 Musikwiederherstellung mit deterministischer Reproduzierbarkeit und natürlichem Wohlklang für das menschliche Gehör.
 
 > **Wettbewerbs-Parität (2026-11-17):** Aurik muss für das menschliche Gehör
-> in **jeder** Disziplin mindestens die Stufe von iZotope RX, Cedar und Acon
-> erreichen. Pflichtlektüre: `.github/WETTBEWERBS_PARITAET.md` (Status je
+> in jeder Disziplin messbare Lücken systematisch schließen. Langfristiges
+> Ziel ist ein belegtes Wettbewerbsniveau; dies ist keine
+> Behauptung erreichter Gesamtparität und kein
+> pauschales Release-Gate. Pflichtlektüre: `.github/WETTBEWERBS_PARITAET.md` (Status je
 > Disziplin, Evidenz-Pflicht, Schritt-Pflicht) — gepinnt durch das
-> Pre-Commit-Gate `aurik-wettbewerbs-paritaet`.
+> Pre-Commit-Gate `aurik-wettbewerbs-paritaet`. Für echte RX-12-
+> Ergebnisparität sind die externe Vergleichs- und Belegpflicht aus
+> Spec 26 DRT-16 sowie die Statusgrenze `GESICHERT` ≠ `PARITAET` maßgeblich.
 >
 > Diese Datei ist der verbindliche Einstieg für jeden Agenten (Kun, Claude Code, GPT,
 > Codex, GitHub Copilot, Cursor, …). Sie definiert keine eigenen Regeln, sondern
@@ -42,9 +46,9 @@ Musikwiederherstellung mit deterministischer Reproduzierbarkeit und natürlichem
    (92 Dateien). Änderungen hier lösen den CI-Evidenzblock-Zwang aus (§4).
 6. **`.github/GEBOTE.md`** — Katalog §G1–§G187 (Kategorien I–XXIV und XI-b). Hat
    Referenzcharakter: Der Pre-Commit-Verifier prüft nur eine hartkodierte
-   Teilmenge. Der Dateikopf beansprucht Vorrang vor Specs — das erzwingt CI
-   aber nicht. Bei Konflikten: nicht stillschweigend entscheiden, sondern im
-   PR-Evidenzblock dokumentieren.
+   Teilmenge. Der Katalog hebt die Vorrangregel aus §1 nicht auf. Bei
+   Konflikten: nicht stillschweigend entscheiden, sondern im PR-Evidenzblock
+   dokumentieren.
 
 ## 2. Maschinen-Wahrheit — was tatsächlich enforced wird
 
@@ -203,6 +207,13 @@ Kollisions-Karte und Bereinigungsplan `docs/ID_COLLISION_MAP.md`.
 
 - Hör-Entscheidungen & Zielkonflikte: `.github/instructions/hoerordnung.instructions.md`
   (Rollen-Spitze über den Goal-Regeln)
+- RX-12-Wettbewerbsparität: `.github/WETTBEWERBS_PARITAET.md` +
+  `.github/specs/26_defekt_reparatur_trainingsvertrag.md` (DRT-16: gepaarter
+  Referenzvergleich, Holdout, Nichtunterlegenheit, Panel und Belegvertrag)
+- Ressourcennutzung und realistische Laufzeitziele:
+  `.github/specs/07_quality_and_tests.md` §9 +
+  `.github/copilot-instructions.md` (qualifizierte Pfade, sichere Auslastung,
+  reproduzierbare Budgetmessung)
 - UV3-Pipeline: `.github/instructions/pipeline.instructions.md` +
   `.github/specs/02_pipeline_architecture.md`
 - Phasen: `phases.instructions.md` + `06_phases_system.md`

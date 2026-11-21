@@ -5,7 +5,9 @@
 > unnötige Trainingsläufe, indem jede Verlustrunde der Vergangenheit
 > (M9-V1/V2 2026-11-14, Witness-Kopf-V1 2026-11-15, Schutz-Arm-Versager
 > 2026-11-15, Produktions-Paritäts-No-Op 2026-11-15) strukturell
-> ausgeschlossen wird. Maschinell erzwungen durch den Pre-Commit-Hook
+> ausgeschlossen wird. Die externe RX-12-Abnahme ist in DRT-16 normiert und
+> wird zusätzlich durch `aurik-wettbewerbs-paritaet` gepinnt.
+> Maschinell erzwungen durch den Pre-Commit-Hook
 > `aurik-drt-vertrag` (`scripts/compliance/drt_contract_gate.py`, fail-closed).
 > Arbeitssprache: Deutsch. Regeländerung ⇒ Gate-Skript nachziehen (AGENTS.md §2).
 
@@ -146,17 +148,6 @@ Bestands-Pipeline OHNE Kanäle 4/4 besser; MIT Kanälen 0/4. Vor jeder Aktivieru
 braucht der Kanal eine Kontext-Sperre (nur auf detektiertem k398-Material feuern,
 sonst Bypass) — die Sperre ist Teil der Verdrahtung, nicht des Trainings.
 
-## DRT-12 — Kontroll-Bedingung (Ablation ohne Kanal) im Ganz-Titel-Beleg
-
-Der DRT-8-Ganz-Titel-Beleg MUSS die Kontroll-Bedingung enthalten: dieselben
-Paare einmal MIT und einmal OHNE den Kandidaten (Bestands-Pipeline), sonst ist
-„besser/schlechter" nicht zurechenbar. Ablations-Befund 2026-11-15: Der
-12-Paare-Lauf MIT den 10 Kanälen zeigte 0/12 — erst die Kontrolle OHNE Kanäle
-(4/4 + 2/4 besser) offenbarte, dass die Kanäle die Bestands-Reparatur
-blockieren. Ohne Kontrolle wäre die Verschlechterung unsichtbar geblieben.
-Kontroll-Delta-Pflicht: Kandidat aktiviert nur, wenn MIT-Kanal ≥ OHNE-Kanal
-(kein Paar darf durch den Kanal netto schlechter werden als die Bestands-Pipeline).
-
 ## DRT-13 — Phasen-Attribution & Teil-Rollback statt Ganz-Titel-Vernichtung
 
 DRT-10/M1 schreibt bei Überrestauration den Identitäts-Rollback des ganzen
@@ -229,28 +220,107 @@ Diese Spec konkretisiert für das Reparatur-Training: §G5 (copilot-instructions
 (copilot-instructions.md) (Ursache statt Symptom), §V25 (copilot-instructions.md)
 (kein hartcodierter Schwellwert), §III (copilot-instructions.md) (Soft-Knee
 6 dB/200 ms), Hörordnung §4 (Sign-off für klangwirksame Aktivierungen).
+DRT-16 konkretisiert zusätzlich den externen Wettbewerbsvergleich; die
+interne Trainings- und Aktivierungsevidenz aus DRT-1…15 ersetzt ihn nicht.
 
-## DRT-12 — Kanalsatz-A/B-Pflicht vor dem §4-Sign-off (2026-11-19)
+## DRT-12 — Kontroll- und Kanalsatz-A/B vor dem §4-Sign-off (2026-11-19)
 
 Befund: Die Ganz-Titel-Sinn-Beweise (2026-11-15: 0/12 besser; 2026-11-18:
 6/45) wurden mit **deaktivierten** Witness-Kanälen gemessen (alle Flags
-Default AUS) — sie belegen den Bestand, nicht den Kandidaten-Zustand. Ein
-§4-Sign-off ohne A/B auf identischen Paaren würde Kanäle freigeben, deren
-Ganz-Titel-Wirkung nie gemessen wurde („0/12“-Muster).
+Default AUS) — sie belegen den Bestand, nicht den Kandidaten-Zustand. Der
+12-Paare-Lauf MIT den 10 Kanälen zeigte 0/12; erst die Kontrolle OHNE Kanäle
+(4/4 + 2/4 besser) offenbarte, dass Kanäle die Bestands-Reparatur blockieren.
+Ohne identische Kontrolle wäre die Verschlechterung unsichtbar geblieben.
 
-1. **A/B-Pflicht:** Vor dem §4-Sign-off eines Witness-Kanals MUSS der
-   Ganz-Titel-A/B auf IDENTISCHEN Paaren belegt sein — Kanalsatz AN vs.
-   Bestand AUS (gleiche Schadensdateien, gleiche Metriken defektlast/
-   musik_mos, deterministische Auswahl Seed 42). Werkzeug:
-   `scripts/messe_kanalsatz_ab.py` (mess-only: setzt die Kanal-Flags
-   prozess-lokal, schreibt KEINE Flag-Datei, kein Produktions-Flip).
-2. **Aufnahme-Kriterium:** Nur Kanäle, deren Kanalsatz-Konfiguration den
-   A/B auf den zugehörigen Rezept-Paaren gewinnt (nie schlechter als der
-   Bestand um mehr als JND UND mindestens ein Paar messbar besser), kommen
-   in den kombinierten §4-Batch.
-3. **Kombinierter §4-Batch:** Die aufgenommenen Kanäle werden als EIN Satz
-   gehört (eine Sitzung, ein Verdikt über die Menge) — der menschliche
-   Aufwand skaliert nicht mit der Kanalzahl.
-4. **Kein Schaden am Bestand:** Der A/B-Vergleich ist mess-only; die
-   Produktions-Defaults bleiben AUS, bis der §4-Batch bucht (§G1
-   (copilot-instructions.md)-Bit-Identität).
+1. **Gepaarte Kontrolle:** DRT-8 MUSS dieselben Schadensdateien einmal mit
+   Kandidat/Kanalsatz AN und einmal mit der Bestands-Pipeline AUS messen
+   (gleiche Metriken, deterministische Auswahl, Seed 42). Das Delta ist nur
+   zwischen diesen beiden Läufen zurechenbar.
+2. **Aufnahme-Kriterium:** Nur Kandidaten, deren A/B auf den zugehörigen
+   Rezept-Paaren nie schlechter als der Bestand um mehr als JND sind und
+   mindestens ein Paar messbar verbessern, kommen in den §4-Batch. Ein
+   verbleibendes Überrestaurations-Gate ist weiterhin ein Ausschlussgrund.
+3. **Mess-only und Produktionsschutz:** `scripts/messe_kanalsatz_ab.py`
+   setzt Flags nur prozess-lokal, schreibt keine Flag-Datei und löst keinen
+   Produktions-Flip aus. Produktions-Defaults bleiben AUS, bis der §4-Batch
+   freigegeben ist (§G1 (copilot-instructions.md)-Bit-Identität).
+4. **Kombinierter §4-Batch:** Alle aufgenommenen Kanäle werden als EIN Satz
+   gehört (eine Sitzung, ein Verdikt über die Menge).
+
+## DRT-16 — Externer RX-12-Paritätsvergleich
+
+DRT-1…15 belegen Trainingsqualität, interne Wirksamkeit, Schutz und
+Aktivierungsfähigkeit. Diese Belege allein beweisen keine Wettbewerbsparität.
+`PARITAET` im `.github/WETTBEWERBS_PARITAET.md` erfordert den folgenden
+externen Vergleich; `GESICHERT` bleibt ein interner Status.
+
+Der Vergleich ist ein perzeptueller Ergebnisvergleich, keine Forderung nach
+sample-identischem Output, identischen Algorithmen oder gleicher Bedienung.
+Der Holdout- und Panel-Aufwand ist die Nachweisschwelle für genau die
+beanspruchte Disziplin, kein kurzfristiges Gesamtprodukt-Ziel. Der realistische
+Fortschritt läuft stufenweise: internen Produktionspfad und Never-worsen
+belegen, Verbesserungen pro Disziplin messen, dann externe RX-12-
+Nichtunterlegenheit samt Hör-Sign-off nachweisen. Nicht belegte Disziplinen
+bleiben offen; Erfolge werden nicht auf andere Defekte oder Referenzen
+extrapoliert.
+
+1. **Vergleichsidentität:** Für jede Disziplin und jede dort genannte
+   Referenz wird ein eigener Beleg erzeugt. Er nennt Produkt, exakte Version
+   und Build, verwendetes Modul, alle relevanten Einstellungen und deren Hash.
+   Für RX ist die Referenz ausdrücklich **iZotope RX 12**; ein Vergleich mit
+   einer anderen RX-Version wird nicht auf RX 12 übertragen.
+2. **Gepaarter Produktionspfad:** Aurik und die Referenz verarbeiten denselben
+   bit-identischen Schadens-Input. Der Aurik-Commit, die Version, der
+   tatsächlich erreichte Produktionspfad und alle aktiven Flags werden
+   aufgezeichnet. No-Op, nicht erreichte Phase, fehlender Kanal oder
+   simulierte Referenzausgabe disqualifizieren den Lauf. DRT-12s interne
+   Kandidat-AN/Bestand-AUS-Ablation bleibt zusätzlich erforderlich; sie ist
+   nicht der RX-Vergleich.
+3. **Holdout und Stichprobe:** Der objektive Ganz-Titel-Screen umfasst
+   mindestens 10 unabhängige Holdout-Titel je Disziplin. Keine Quelle oder
+   Titel-Identität darf zwischen Training/Kalibrierung und Holdout geteilt
+   werden. Ein gehashter Manifest-Beleg weist Umfang und Split nach. Weniger
+   Titel, Korpus-Leakage oder fehlende Titelzuordnung ergibt `OFFEN`, nicht
+   `PARITAET`.
+4. **Nichtunterlegenheits-Grenzen:** Pro Titel werden die gepaarten Deltas
+   Aurik minus Referenz berechnet. Mit der kanonischen
+   `wohlklang_zeuge.JND_TOLERANZ` muss die untere Grenze des zweiseitigen
+   Student-t-95-%-Konfidenzintervalls (df = `n_titles - 1`) für `musik_mos`
+   mindestens `-JND_TOLERANZ` und die obere Grenze für `defektlast` höchstens
+   `+JND_TOLERANZ` sein. Das Gate berechnet beide Intervalle aus den
+   veröffentlichten Einzeltitel-Deltas neu; die JSON-CI-Werte müssen bis auf
+   1e-6 übereinstimmen. Jede Paar-Zeile bindet ihre beiden Metrik-Deltas an
+   `source_id` und die bit-identischen PCM-Hashes; die Objective-Arrays müssen
+   in derselben Reihenfolge mit diesen Paarwerten übereinstimmen. Ein bloß
+   behauptetes `noninferiority_passed`, ein vom Datensatz abweichendes CI oder
+   eine nicht gebundene Delta-Liste ist ungültig. Beide Grenzen müssen
+   bestehen; Mittelwert, Einzelmetrik oder interne Aurik-Baseline genügt nicht.
+   Überrestaurationen und Verletzungen der Hör-Invarianten sind unabhängig
+   davon Ausschlussgründe.
+5. **Menschliches Urteil:** Für `PARITAET` ist zusätzlich ein verblindeter,
+   randomisierter, pegelgematchter MUSHRA-/§4-Vergleich mit mindestens
+   30 Hörer:innen und dokumentiertem Sign-off erforderlich. Das Panel muss
+   explizit `nicht_unterlegen` urteilen; ein uneindeutiges oder fehlendes
+   Verdikt bleibt `OFFEN`. Die Hörordnung
+   bleibt entscheidend; widersprechende Metriken werden nach Hörordnung §7
+   behandelt, niemals still als bestanden gewertet.
+6. **Kanonischer Beleg:** Das JSON-Schema `aurik.rx12_parity/1` enthält
+   mindestens:
+   `discipline`, `schema`,    `reference` (product/version/build/module/
+   settings_sha256), `aurik` (version/commit/production_path/active_flags/
+   settings_sha256),    `dataset` (paired_input_manifest_sha256/holdout/
+   n_titles/pairs; each pair records source_id, identical
+   input_pcm_sha256_aurik/input_pcm_sha256_reference, musik_mos_delta and
+   defektlast_delta),
+   `objective` (jnd/jnd_source/per-title musik_mos and defektlast deltas/
+   musik_mos_delta_ci95/defektlast_delta_ci95/noninferiority_passed),
+   `panel` (design/n_listeners/blind/randomized/level_matched/verdict/signoff) und
+   `decision`. Der Bericht liegt unter `docs/reports/current/`; die
+   Registerzelle `Evidenz` enthält den repo-relativen JSON-Pfad in Backticks.
+   Das Wettbewerbs-Paritäts-Gate prüft Schema, Referenz, Disziplin,
+   Holdout-Umfang, Konfidenzgrenzen und Panel-Felder, bevor `PARITAET`
+   zulässig ist.
+7. **Keine Extrapolation:** Ein bestandener Beleg gilt nur für die berichtete
+   Disziplin, Referenz, Version, Konfiguration und Holdout-Abdeckung.
+   `NICHT_MESSBAR`, fehlender lizenzierter Zugriff, ein synthetischer
+   RX-Ersatz oder ein bloß geplanter Hörtest zählt nie als Parität.

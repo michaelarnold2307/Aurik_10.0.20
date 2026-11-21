@@ -178,36 +178,22 @@ class PANNsPlugin(MLPluginBase):  # §A2
             (device_name, fp16_supported)
         """
         try:
+            from backend.core.ml_device_manager import get_torch_device  # pylint: disable=import-outside-toplevel
+
+            device = get_torch_device("PANNs")
+            if device != "cuda":
+                logger.info("PANNs GPU: CPU-Inferenz (MLDeviceManager: %s)", device)
+                return "cpu", False
+
             import torch  # pylint: disable=import-outside-toplevel
 
-            from backend.core.gpu_model_registry import force_cpu_requested  # pylint: disable=import-outside-toplevel
-
-            if torch.cuda.is_available() and not force_cpu_requested():
-                device = "cuda"
-                # Prüfe auf fp16-Unterstützung (ab Compute Capability 5.3 bzw. Volta+)
-                fp16_ok = torch.cuda.get_device_capability(0)[0] >= 7
-                logger.info(
-                    "PANNs GPU: CUDA/ROCm erkannt (capability=%s), fp16=%s",
-                    torch.cuda.get_device_capability(0),
-                    fp16_ok,
-                )
-                return device, fp16_ok
+            capability = torch.cuda.get_device_capability(0)
+            fp16_ok = capability[0] >= 7
+            logger.info("PANNs GPU: CUDA/ROCm erkannt (capability=%s), fp16=%s", capability, fp16_ok)
+            return device, fp16_ok
         except Exception:
             logger.warning("panns_plugin.py::_erkennen_gpu Ersatzpfad", exc_info=True)
-
-        try:
-            import torch  # pylint: disable=import-outside-toplevel
-
-            # ROCm: torch.cuda.is_available() returns True for AMD GPUs too
-            # but we also check for MIOpen/ROCm via HIP
-            if hasattr(torch, "hip") and torch.hip.is_available():
-                logger.info("PANNs GPU: ROCm/HIP erkannt")
-                return "cuda", True  # ROCm GPUs support fp16 well
-        except Exception:
-            logger.warning("panns_plugin.py::_erkennen_gpu Ersatzpfad", exc_info=True)
-
-        logger.info("PANNs GPU: Keine GPU erkannt — CPU-Inferenz")
-        return "cpu", False
+            return "cpu", False
 
     # ------------------------------------------------------------------
     # ONNX-Laden

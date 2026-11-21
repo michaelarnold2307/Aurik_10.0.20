@@ -7,9 +7,12 @@ die Exporte liegen nach dem Kette-Lauf vor).
 
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -92,6 +95,16 @@ def test_trial_id_stabil_aus_stamm_und_position() -> None:
     assert tid == "elke_best_sing_ein_neues_lied_1975__1"
     assert _trial_id("Elke Best - Sing ein neues Lied (1975)", 1) == tid
     assert _trial_id("Elke Best - Sing ein neues Lied (1975)", 2) != tid
+
+
+def test_witness_class_parser_accepts_only_unique_mapped_classes() -> None:
+    from scripts.erstelle_witness_kopf_hoerproben import _parse_klassen
+
+    assert _parse_klassen("clicks, sibilance") == ["clicks", "sibilance"]
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_klassen("clicks,backend.core.dsp.unknown")
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_klassen("clicks,clicks")
 
 
 def test_aggregiere_akkumuliert_und_nicht_signifikant() -> None:

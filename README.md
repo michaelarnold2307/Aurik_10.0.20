@@ -334,6 +334,22 @@ PYTHONPATH=. ./.venv_aurik/bin/python cli/aurik_cli.py \
 
 > Der Endnutzervertrag bleibt identisch: Modus waehlen, starten, Export automatisch pruefen.
 > Intern mappt die Laufzeit den Modus auf den kanonischen Verarbeitungspfad.
+> `--quiet` aendert nur die Ausgabe, nicht das Audiosignal. Bei kritischer
+> Gesangs- oder Zeitstruktur kann der Export wie in der GUI auf 48 kHz bleiben,
+> auch wenn 44,1 kHz angefordert wurden; dies wird protokolliert.
+
+Der ressourcenintensive GUI-/CLI-Vollpipeline-Vergleich kann lokal gestartet
+werden; er prueft ausgefuehrte Restaurierung und bitidentische PCM-Daten:
+
+```bash
+QT_QPA_PLATFORM=offscreen AURIK_FORCE_CPU=1 AURIK_GUI_CLI_FULL_E2E=1 \
+  ./.venv_aurik/bin/python -m pytest \
+  tests/normative/test_cli_gui_output_parity.py::test_real_gui_cli_full_pipeline_pcm_parity \
+  --run-heavy-tests --run-gui-tests
+```
+
+Der Test deaktiviert fuer beide Laeufe das RT-Limit und benoetigt entsprechend
+Zeit und eine vollstaendige lokale Modellumgebung.
 
 **Exit-Codes (CLI):**
 0 = Erfolg · 1 = Argumentfehler · 2 = Input fehlt · 3 = Importfehler · 4 = Pipelinefehler ·

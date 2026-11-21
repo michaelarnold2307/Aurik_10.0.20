@@ -138,8 +138,8 @@ def main(argv: list[str] | None = None) -> int:
             data = json.loads(_REGISTRY.read_text(encoding="utf-8"))
             gaps = sum(1 for e in data.get("paths", []) if e.get("e2e_gap"))
             phantoms = sum(1 for e in data.get("paths", []) if e.get("status") == "phantom_transition")
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as exc:
+            logger.debug("Pfad-Registry nicht lesbar — Zählung ohne Registry-Werte: %s", exc)
 
     summary = {
         "errors": errors,

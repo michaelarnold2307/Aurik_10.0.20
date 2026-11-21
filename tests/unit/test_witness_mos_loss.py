@@ -148,11 +148,27 @@ def test_auswahl_nw_schutzarm_gewinnt_vor_schlechtem_nw() -> None:
     assert wk._zwei_metrik_auswahl([k_gut, k_schlecht], nw_min=0.9) is k_gut
 
 
-def test_auswahl_nw_fallback_ohne_genuegende_epoche() -> None:
-    """Keine nw-genügende Epoche ⇒ alte Zwei-Metrik-Auswahl (nie schlechter als bisher)."""
+def test_auswahl_nw_min_ohne_genuegende_epoche_waehlt_nichts() -> None:
+    """Keine nw-genügende Epoche ⇒ harter Abbruch statt Fallback unter der Schutzschwelle."""
     k1 = {"ep": 0, "score": 0.10, "mos": 4.48, "nw": 0.5}
     k2 = {"ep": 1, "score": 0.12, "mos": 4.50, "nw": 0.4}
-    assert wk._zwei_metrik_auswahl([k1, k2], nw_min=0.9) is k1
+    assert wk._zwei_metrik_auswahl([k1, k2], nw_min=0.9) is None
+
+
+def test_auswahl_nw_min_gilt_auch_ohne_mos_beleg() -> None:
+    """--nw-min muss auch im Default ohne MOS-Proxy als harte Schranke gelten."""
+    unter_schwelle = {"ep": 0, "score": 0.05, "mos": None, "nw": 0.4}
+    ueber_schwelle = {"ep": 1, "score": 0.2, "mos": None, "nw": 0.95}
+    assert wk._zwei_metrik_auswahl([unter_schwelle, ueber_schwelle], nw_min=0.9) is ueber_schwelle
+
+
+def test_never_worsen_proxy_vergleicht_clean_gegen_clean(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Der Auswahl-Proxy muss denselben Clean-Schutzarm wie das Gate und dieselbe Toleranz nutzen."""
+    monkeypatch.setattr(wk, "_mel_torch", lambda audio: audio[:, :, None])
+    clean = torch.zeros((2, 1))
+    candidate = torch.tensor([[0.05], [2.0]])
+    assert gate.NW_TOL == wk.NW_TOL == 0.02
+    assert wk._never_worsen_anteil(torch.nn.Identity(), candidate, clean, "cpu") == pytest.approx(0.5)
 
 
 def test_auswahl_nw_default_none_bit_identisch() -> None:
@@ -171,7 +187,7 @@ def test_backward_compat_default_aus() -> None:
     assert '"--lambda-mos"' in _SRC_TRAIN
     assert "default=0.0" in _SRC_TRAIN
     assert "if lam_mos > 0.0" in _SRC_TRAIN
-    assert "if mos_proxy is None:" in _SRC_TRAIN
+    assert "if mos_proxy is None and nw_min is None:" in _SRC_TRAIN
     assert "_zwei_metrik_auswahl" in _SRC_TRAIN
     assert "MOS_JND" in _SRC_TRAIN
 

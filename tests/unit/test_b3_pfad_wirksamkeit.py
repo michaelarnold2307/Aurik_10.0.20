@@ -8,11 +8,13 @@ Tests duerfen nicht umgebungsabhaengig kippen). Zitierdisziplin AGENTS.md §5.
 
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import sys
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 
@@ -56,6 +58,16 @@ def test_fussabdruck_differenz_positiv() -> None:
 
 def test_fussabdruck_shape_mismatch_ist_inf() -> None:
     assert fussabdruck(np.zeros(10), np.zeros(9)) == float("inf")
+
+
+def test_b3_stage_parser_accepts_only_unique_mapped_stages() -> None:
+    from scripts.b3_stufenmessung import _parse_stages
+
+    assert _parse_stages("W-1, M5-vocos") == ["W-1", "M5-vocos"]
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_stages("W-1,backend.core.malicious")
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_stages("W-1,W-1")
 
 
 def test_zeugnis_ohne_konfiguration_traegt_fussabdruck() -> None:

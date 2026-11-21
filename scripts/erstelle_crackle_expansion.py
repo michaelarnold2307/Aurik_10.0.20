@@ -116,32 +116,38 @@ def main(argv: list[str] | None = None) -> int:
         # nicht neu gerechnet — ein abgebrochener Lauf setzt ohne Zeitverlust fort.
         schaden_pfad = args.ausgang / f"{stamm} (vinyl).wav"
         restauriert_pfad = args.ausgang / f"{stamm} (vinyl)_restauriert.wav"
-        if schaden_pfad.is_file() and restauriert_pfad.is_file() and schaden_pfad.stat().st_size > 0:
-            print(f"[{i + 1}/{len(auswahl)}] {stamm} — bereits fertig, übersprungen (Resume)")
-            continue
-
+        fertig = (
+            schaden_pfad.is_file()
+            and restauriert_pfad.is_file()
+            and schaden_pfad.stat().st_size > 0
+            and restauriert_pfad.stat().st_size > 0
+        )
+        # Der Rezeptlauf rekonstruiert auch beim Resume die Parameter für den Abschlussbeleg.
         clean, _ = _lade_mono_48k(quelle)
         rng_titel = np.random.default_rng(args.seed + i)
         schaden, params = _vinyl_rezept(clean, bank, rng_titel)
-        sf.write(str(schaden_pfad), np.asarray(schaden, dtype=np.float32), SR)
-        restauriert = restauriere_schnipsel(np.asarray(schaden, dtype=np.float32), SR, str(schaden_pfad))
-        sf.write(str(restauriert_pfad), np.asarray(restauriert, dtype=np.float32), SR)
-        # Clean-Symlink mit „original“ im Namen (erstelle_klassen_paare-Konvention).
         link = args.clean_links / f"{stamm} original.wav"
         if link.exists() or link.is_symlink():
             link.unlink()
         link.symlink_to(quelle.resolve())
-        zeilen.append(
-            {
-                "titel": stamm,
-                "quelle": str(quelle.relative_to(_ROOT)),
-                "schaden": str(schaden_pfad.relative_to(_ROOT)),
-                "restauriert": str(restauriert_pfad.relative_to(_ROOT)),
-                "rezept_params": {
-                    k: (float(v) if isinstance(v, (int, float, np.floating)) else v) for k, v in params.items()
-                },
-            }
-        )
+        eintrag = {
+            "titel": stamm,
+            "quelle": str(quelle.relative_to(_ROOT)),
+            "schaden": str(schaden_pfad.relative_to(_ROOT)),
+            "restauriert": str(restauriert_pfad.relative_to(_ROOT)),
+            "rezept_params": {
+                k: (float(v) if isinstance(v, (int, float, np.floating)) else v) for k, v in params.items()
+            },
+        }
+        if fertig:
+            zeilen.append(eintrag)
+            print(f"[{i + 1}/{len(auswahl)}] {stamm} — bereits fertig, übersprungen (Resume)")
+            continue
+
+        sf.write(str(schaden_pfad), np.asarray(schaden, dtype=np.float32), SR)
+        restauriert = restauriere_schnipsel(np.asarray(schaden, dtype=np.float32), SR, str(schaden_pfad))
+        sf.write(str(restauriert_pfad), np.asarray(restauriert, dtype=np.float32), SR)
+        zeilen.append(eintrag)
         print(f"[{i + 1}/{len(auswahl)}] {stamm} — Schaden + Produktions-Restaurierung fertig")
 
     beleg = {

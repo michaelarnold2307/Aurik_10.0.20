@@ -183,7 +183,7 @@ def _estimate_delay_subsample(ref: np.ndarray, target: np.ndarray, sr: int) -> f
 
     Returns 0.0 when:
       - Signal too short (< 250 ms) for reliable estimation
-      - SNR < 5.0 (uncorrelated or noisy signals, §G13 threshold)
+      - SNR < 5.0 (uncorrelated or noisy signals, §G13 (GEBOTE.md) threshold)
 
     Algorithm (SOTA §v10.13):
       Normalized time-domain cross-correlation via scipy.signal.correlate
@@ -232,7 +232,7 @@ def _estimate_delay_subsample(ref: np.ndarray, target: np.ndarray, sr: int) -> f
     _hi = min(len(_corr), _center + _max_lag + 1)
     _search = _corr[_lo:_hi]
 
-    # Confidence gate (§G13 v10.13): Normalized XCorr peak is Pearson's r
+    # Confidence gate (§G13 (GEBOTE.md) v10.13): Normalized XCorr peak is Pearson's r
     # coefficient [0,1].  Correlated L/R signals (music, speech, noise) give
     # peak ≥ 0.9; uncorrelated signals peak at ~0.005.  Threshold of 0.1
     # leaves a >10× safety margin against false positives while accepting
@@ -406,7 +406,7 @@ class StereoTemporalCoherenceGuard:
         if len(ch_l) < sr // 4:
             return audio  # < 250 ms — too short to measure
 
-        # §G13/F2 + §v10.14: Multi-point measurement is the primary lag source.
+        # §G13 (GEBOTE.md)/F2 + §v10.14: Multi-point measurement is the primary lag source.
         # Single mid-window can miss temporally varying lags — multi-point median
         # captures the dominant characteristic. All corrections are gated by
         # _GLOBAL_MAX_MS (20 ms) regardless of caller; any measured delay
@@ -443,7 +443,7 @@ class StereoTemporalCoherenceGuard:
                     else 0.0
                 )
                 _single_corr = _single_corr if np.isfinite(_single_corr) else 0.0
-                # §G13/F2: Globales Limit = 20 ms — der Ersatzpfad darf echte
+                # §G13 (GEBOTE.md)/F2: Globales Limit = 20 ms — der Ersatzpfad darf echte
                 # Lags ≤ 20 ms nicht verwerfen (vorher 10 ms → echte 15-ms-Lags
                 # wurden unkorrigiert durchgereicht).
                 _sp_max_lag = int(sr * _GLOBAL_MAX_MS / 1000.0)
@@ -578,7 +578,7 @@ class StereoTemporalCoherenceGuard:
         )
 
         # §v10.16 Cumulative correction: track total applied shift.
-        # §G13/F2: Das kumulative Budget entspricht dem globalen Limit
+        # §G13 (GEBOTE.md)/F2: Das kumulative Budget entspricht dem globalen Limit
         # (_GLOBAL_MAX_MS = 20 ms) — echte Lags ≤ 20 ms müssen korrigiert
         # werden; erst darüber hinaus greift der Kombfilter-Schutz.
         self._cumulative_correction_samples += abs(delay)

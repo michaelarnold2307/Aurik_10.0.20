@@ -59,7 +59,7 @@ from backend.core.training_artifacts import (
 # die D3-Finetunes "gescheitert" aussehen, obwohl sie nur nicht fertig waren.
 ZEITBUDGET_EXITCODE = 75
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 JOB_LOCK_NAME = ".train_job.lock"
 CKPT_SUFFIXES = (".pt", ".safetensors", ".onnx", ".ckpt")
@@ -88,15 +88,43 @@ def _load_manifest(path: Path) -> dict | None:
     except FileNotFoundError:
         return None
     except (OSError, json.JSONDecodeError) as exc:
-        log.warning("Manifest %s nicht lesbar (%s) — Job wird neu gestartet.", path, exc)
+        logger.warning("Manifest %s nicht lesbar (%s) — Job wird neu gestartet.", path, exc)
         return None
+
+
+def _validate_cmd(cmd: list[str]) -> None:
+    """Erlaubt nur ``python* [Optionen] <Skript im Projekt>.py ...`` (Command-Injection-Schutz)."""
+    if not cmd:
+        raise ValueError("Leerer Befehl.")
+    exe = Path(cmd[0]).name
+    if not (exe.startswith("python") or cmd[0] == sys.executable):
+        raise ValueError(f"Nur Python-Interpreter erlaubt, nicht: {cmd[0]!r}")
+    root = PROJECT_ROOT.resolve()
+    for teil in cmd[1:]:
+        if teil.endswith(".py"):
+            p = Path(teil)
+            p = (p if p.is_absolute() else root / p).resolve()
+            if p.is_relative_to(root):
+                return
+            raise ValueError(f"Skript außerhalb des Projekts: {teil!r}")
+    raise ValueError("Kein Projekt-Skript (.py) im Befehl gefunden.")
 
 
 def _run_attempt(cmd: list[str], timeout_s: float) -> dict:
     """Ein Versuch in eigener Prozessgruppe; Timeout kappt die ganze Gruppe."""
+    _validate_cmd(cmd)
     start = time.monotonic()
-    proc = subprocess.Popen(
-        cmd, cwd=PROJECT_ROOT, start_new_session=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+    # Kein shell=True; Befehl ist per _validate_cmd auf Python + Projekt-Skripte beschränkt.
+    # Interpreter wird fest auf sys.executable gesetzt; nur Argumente stammen aus dem Befehl.
+    safe_cmd = [sys.executable, *(shlex.quote(str(p)) if False else str(p) for p in cmd[1:])]
+    proc = subprocess.Popen(  # nosec B603
+        safe_cmd,
+        cwd=PROJECT_ROOT,
+        shell=False,
+        start_new_session=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
     )
     timed_out = False
     try:
@@ -197,19 +225,19 @@ def run_job(
                     flush=True,
                 )
                 return 0
-            log.warning(
+            logger.warning(
                 "Manifest %s ist erfolgreich, aber Befehl/Phase/Seed weichen ab — Neulauf.",
                 manifest_path,
             )
     try:
         os.nice(10)  # Host-Schutz (Pfeiler 6): Kinder erben die niedrige Priorität
-    except OSError:
-        pass
+    except OSError as exc:
+        logger.debug("os.nice(10) nicht anwendbar — Priorität bleibt unverändert: %s", exc)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     run_id = make_run_id(phase)
     lock = acquire_run_lock(ckpt_dir, run_id, lock_name=JOB_LOCK_NAME)
     if lock is None:
-        log.error("Job-Lock auf %s bereits gehalten — kein Doppel-Lauf (Pfeiler 4).", ckpt_dir)
+        logger.error("Job-Lock auf %s bereits gehalten — kein Doppel-Lauf (Pfeiler 4).", ckpt_dir)
         return 2
 
     manifest: dict = {

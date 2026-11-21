@@ -238,8 +238,8 @@ def test_rezepte_reihenfolge_pinnt_mono_idx_seeds() -> None:
         "amp_drift",
         "stereo_imbalance",
     )
-    assert E_REZEPTE == erwartet
-    assert B_REZEPTE == erwartet
+    assert erwartet == E_REZEPTE
+    assert erwartet == B_REZEPTE
 
 
 def test_bestands_rezepte_bleiben_mono_und_deterministisch() -> None:

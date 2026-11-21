@@ -1,5 +1,15 @@
 # Resource-Aware Fallback System - Aurik 10.0.0
 
+> **Aktuelle normative Einordnung:** Diese Datei ist ein historischer
+> Implementierungsentwurf. CPU-Auslastung >80 %, RAM >85 %, die genannten
+> Phasen-Fallbacks und Leistungswerte sind keine aktuellen Produktions-
+> Freigabekriterien. Maßgeblich sind `.github/specs/07_quality_and_tests.md`
+> §9 und `.github/copilot-instructions.md` §Performance-Budget: Ein hoher
+> CPU-Wert allein darf keinen qualitätsstärkeren Pfad deaktivieren. Fallbacks
+> sind auf konkrete Kapazitäts-/Sicherheitsgründe zu beschränken, zu loggen und
+> im Laufbericht auszuweisen; alle tatsächlich qualifizierten Pfade sind im
+> gewählten Qualitätsmodus innerhalb sicherer Systemgrenzen zu nutzen.
+
 ## Überblick
 
 Das Resource-Aware Fallback System überwacht kontinuierlich CPU- und Speicher-Auslastung und schaltet automatisch auf leichtere Algorithmen um, wenn Ressourcen knapp werden.

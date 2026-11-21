@@ -1,5 +1,10 @@
 {
   "stamm": "Snowmine - Curfews (hum)",
-  "status": "abgestuerzt",
-  "returncode": -11
+  "status": "ok",
+  "kanalsatz_delta_musik_mos": -0.0105,
+  "kanalsatz_delta_defektlast": 0.0,
+  "bestand_delta_musik_mos": -0.0035,
+  "bestand_delta_defektlast": 0.0013,
+  "delta_zu_bestand_mos": -0.007,
+  "delta_zu_bestand_defektlast": -0.0013
 }

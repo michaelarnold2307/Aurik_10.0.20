@@ -48,7 +48,7 @@ Stand: 95 Specs.
 | 23_zero_touch_orchestration_contract.md | Spec 23: Zero-Touch-Orchestrierungsvertrag — Der eine Dirigent, additiv verdrahtet |
 | 24_ml_fallback_architektur.md | Spec 24: ML-Fallback-Architektur — Kein stiller Ausfall mehr |
 | 25_ambience_match_plugin.md | Spec 25: Ambience-Match — Natürliche Raumhülle für restauriertes Material · §v10 Pleasantness-First |
-| 26_defekt_reparatur_trainingsvertrag.md | Spec 26: Defekt-Reparatur-Trainingsvertrag (DRT-1..DRT-12) — Leitplanken gegen unnötige Trainings + Ganz-Titel-Sinn-Beweis + No-Op-Erkennung + Überrestaurations-Sperre — Leitplanken gegen unnötige Trainings + Ganz-Titel-Sinn-Beweis + No-Op-Erkennung, maschinell erzwungen via aurik-drt-vertrag |
+| 26_defekt_reparatur_trainingsvertrag.md | Spec 26: Defekt-Reparatur-Trainingsvertrag (DRT-1..DRT-16) — Trainings-/Aktivierungs-Leitplanken, Ganz-Titel-Never-worsen, RX-12-Nichtunterlegenheitsvertrag und maschinelle Paritäts-Belegpflicht |
 | CHANGELOG_2026-08-12.md | Changelog — 2026-08-11/12 |
 | XX_measure_template.md | Spec XX: [TITEL] — [KURZBESCHREIBUNG] |
 | aurik_gesamtoekosystem_v10_17.md | §v10.17 Aurik Gesamtökosystem — Spezifikation |

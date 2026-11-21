@@ -36,6 +36,58 @@ def test_vh_schema_und_härtung() -> None:
     assert "bereits fertig, übersprungen (Resume)" in quelle  # Resume-Sicherheit
 
 
+def test_vh_resume_report_enthaelt_bereits_fertige_paare(tmp_path, monkeypatch) -> None:
+    import numpy as np
+
+    from scripts import erstelle_schadens_proben as schadens_proben
+
+    root = tmp_path
+    quellen = root / "quellen"
+    ausgang = root / "ausgang"
+    clean_links = root / "clean"
+    report_dir = root / "reports"
+    paare = {(f"Titel {idx}", rezept) for idx in range(3) for rezept in vh.REZEPTE}
+    for titel in {t for t, _ in paare}:
+        quelle = quellen / titel / "mixture.wav"
+        quelle.parent.mkdir(parents=True, exist_ok=True)
+        quelle.write_bytes(b"source")
+        for rezept in vh.REZEPTE:
+            (ausgang / f"{titel} ({rezept}).wav").parent.mkdir(parents=True, exist_ok=True)
+            (ausgang / f"{titel} ({rezept}).wav").write_bytes(b"degraded")
+            restauriert = ausgang / f"{titel} ({rezept})_restauriert.wav"
+            restauriert.write_bytes(b"" if (titel, rezept) == ("Titel 0", "clipping") else b"restored")
+
+    monkeypatch.setattr(vh, "_ROOT", root)
+    monkeypatch.setattr(vh, "REPORT_DIR", report_dir)
+    monkeypatch.setattr(vh, "_lade_mono_48k", lambda _quelle: (np.ones(8, dtype=np.float32), vh.SR))
+    monkeypatch.setattr(schadens_proben, "schaden_rezept", lambda snippet, _rezept, _rng: snippet.copy())
+    monkeypatch.setattr(schadens_proben, "restauriere_schnipsel", lambda audio, *_args: audio)
+    report_dir.mkdir()
+    assert (
+        vh.main(
+            [
+                "--titel",
+                "3",
+                "--seed",
+                "42",
+                "--quellen",
+                str(quellen),
+                "--ausgang",
+                str(ausgang),
+                "--clean-links",
+                str(clean_links),
+            ]
+        )
+        == 0
+    )
+
+    reports = list(report_dir.glob("*_vocal_harshness_expansion.json"))
+    assert len(reports) == 1
+    report = json.loads(reports[0].read_text(encoding="utf-8"))
+    assert {(entry["titel"], entry["rezept"]) for entry in report["eintraege"]} == paare
+    assert (ausgang / "Titel 0 (clipping)_restauriert.wav").stat().st_size > 0
+
+
 def test_anhaengen_dedupliziert_idempotent(tmp_path) -> None:
     quelle = tmp_path / "neu.jsonl"
     quelle.write_text(

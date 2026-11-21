@@ -500,6 +500,23 @@ automatisch geprüft werden.
 | RestorabilityEstimator | ≤ **5 s** |
 | Export (FLAC 24-bit) | ≤ 10 s |
 
+**Ressourcen-Nutzung und Qualitätspriorität:** Im gewählten Qualitätsmodus
+werden alle verfügbaren, produktionsverdrahteten und numerisch sowie
+deterministisch qualifizierten CPU-/GPU-Pfade genutzt. Vor einer parallelen
+Implementierung sind vorhandene Modelle, Phasen und Caches auf Wiederverwendung
+zu prüfen. Parallelität wird bis zur sicheren Hardware- und Systemgrenze
+ausgeschöpft; OOM-, Temperatur-, Stabilitäts- und OS-Headroom-Schutz haben
+Vorrang vor maximaler Auslastung um ihrer selbst willen. Ein hoher CPU-Wert
+allein rechtfertigt weder das Überspringen einer qualitätsstärkeren Phase noch
+einen ML→DSP-Fallback. Fallbacks sind auf konkrete Kapazitäts-/Sicherheitsgründe
+zu begrenzen, nach §V6 (copilot-instructions.md) zu protokollieren und im
+Laufbericht auszuweisen. Unqualifizierte Beschleuniger, nichtdeterministische
+Pfade und Ressourcen-Auslastung als Ersatz für Qualitätsbelege sind unzulässig.
+Leistungsänderungen müssen reproduzierbar gegen den bisherigen Produktionspfad
+gemessen werden; Klangänderungen benötigen die geltenden Hör-Gates.
+Budgetabweichungen bleiben offene, gemessene Arbeit und werden nicht durch
+unbelegte Zielzeiten verdeckt.
+
 **Absolutes Zeitlimit Stufe 1:** `_MAX_TOTAL_SECONDS = 14400.0` (240 Minuten, §K 64×RT-aligned)
 Nach Überschreitung: KMV Stufe 2 (`MLRefinementThread`) übernimmt automatisch.
 

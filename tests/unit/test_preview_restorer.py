@@ -61,7 +61,7 @@ def test_gui_verdrahtung_button_und_thread() -> None:
 
 
 def test_thread_fehler_signal_statt_stillem_fallback() -> None:
-    """§V6: Fehler werden als failed-Signal gemeldet, nicht verschluckt."""
+    """§V6 (copilot-instructions.md): Fehler werden als failed-Signal gemeldet, nicht verschluckt."""
     quelle = (_ROOT / "Aurik10" / "ui" / "preview_restorer.py").read_text(encoding="utf-8")
     assert "failed = pyqtSignal(str)" in quelle
     assert "self.failed.emit" in quelle

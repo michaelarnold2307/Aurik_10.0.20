@@ -8,8 +8,11 @@ CUDA (CPU-only-Vertrag, stört die GPU-Kette nicht).
 
 from __future__ import annotations
 
+import json
+import subprocess
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from scripts import messe_kanalsatz_ab as ab
@@ -42,6 +45,36 @@ def test_flag_aktivierung_nur_prozess_lokal() -> None:
     )
 
 
+def test_aktivierung_eines_kanals_deaktiviert_die_restlichen(monkeypatch) -> None:
+    import backend.core.music_model_flags as flags
+
+    for name in ab.KANALSAETZ_FLAGS:
+        monkeypatch.setattr(flags, name, False)
+
+    ausgewaehlt = ab.KANALSAETZ_FLAGS[2]
+    ab._aktiviere_kanalsatz(ausgewaehlt)
+
+    assert getattr(flags, ausgewaehlt) is True
+    assert all(not getattr(flags, name) for name in ab.KANALSAETZ_FLAGS if name != ausgewaehlt)
+
+
+def test_zeugen_traegt_kanonische_ueberrestauration(monkeypatch) -> None:
+    from backend.core.dsp import wohlklang_zeuge
+
+    monkeypatch.setattr(
+        wohlklang_zeuge,
+        "messe_wohlklang_zeuge",
+        lambda *_args: {
+            "delta": {"musik_mos": -0.1, "defektlast": -0.2},
+            "ueberrestauration": True,
+        },
+    )
+
+    result = ab._zeugen(np.zeros(4, dtype=np.float32), np.zeros(4, dtype=np.float32), 48000)
+
+    assert result["ueberrestauration"] is True
+
+
 def test_paar_auswahl_deterministisch(monkeypatch, tmp_path) -> None:
     for i in range(8):
         (tmp_path / f"song{i} (vinyl).wav").write_bytes(b"x")
@@ -51,15 +84,25 @@ def test_paar_auswahl_deterministisch(monkeypatch, tmp_path) -> None:
     assert all("_restauriert" not in p.name for _, p in a)
 
 
-def test_bestand_key_song_plus_rezept() -> None:
+def test_bestand_key_song_plus_rezept(tmp_path) -> None:
     """A-Seite: bewertung.json-Schlüssel = 'song (rezept)' — deckungsgleich mit den Paar-Stems."""
-    import json
+    roh = {
+        "zeilen": [
+            {
+                "song": "Titel A",
+                "rezept": "vinyl",
+                "delta_musik_mos": 0.1,
+                "delta_defektlast": -0.2,
+                "ueberrestauration": True,
+            }
+        ]
+    }
+    beleg = tmp_path / "bewertung.json"
+    beleg.write_text(json.dumps(roh), encoding="utf-8")
 
-    roh = {"zeilen": [{"song": "Titel A", "rezept": "vinyl", "delta_musik_mos": 0.1, "delta_defektlast": -0.2}]}
-    (Path(ab._ROOT) / "tmp_bewertung_test.json").write_text(json.dumps(roh), encoding="utf-8")
-    # Der Schlüssel wird in main() gebaut — hier als Quelltext-Pin:
-    quelle = (ab._ROOT / "scripts" / "messe_kanalsatz_ab.py").read_text(encoding="utf-8")
-    assert 'key = f"{song} ({rezept})" if rezept else song' in quelle
+    bestand = ab._bestand_laden(beleg)
+
+    assert bestand["Titel A (vinyl)"]["ueberrestauration"] is True
 
 
 def test_schema_pin_und_cpu_only() -> None:
@@ -78,15 +121,218 @@ def test_subprozess_isolation_pro_paar() -> None:
     assert "subprocess.run(kind_argv, check=False" in quelle
     assert '"status": "abgestuerzt"' in quelle
     assert '"returncode": abgeschlossen.returncode' in quelle
-    assert "_beleg_schreiben(ziel, paare, verzeichnis, args.seed, args.bestand, zeilen)" in quelle
+    assert "_beleg_schreiben(ziel, paare, verzeichnis, args.seed, args.bestand, zeilen, kanal_flags)" in quelle
     assert "_fh_mod.enable(" in quelle  # Kind trägt den Crash ins Faulthandler-Log
 
 
 def test_resume_pro_zeilen_datei() -> None:
-    """Fertige Paare werden über ihre Zeilen-Datei übersprungen (Resume-sicher)."""
+    """Erfolgreiche Paar-Zeilen werden beim Resume übersprungen."""
     quelle = (ab._ROOT / "scripts" / "messe_kanalsatz_ab.py").read_text(encoding="utf-8")
     assert "vorhanden (Resume)" in quelle
     assert "if zeile_pfad.is_file():" in quelle
+
+
+def test_resume_wiederholt_abgestuerzte_zeile(monkeypatch, tmp_path) -> None:
+    quelle = tmp_path / "quelle"
+    quelle.mkdir()
+    (quelle / "Titel (hum).wav").write_bytes(b"fixture")
+    beleg = tmp_path / "kanalsatz.json"
+    zeile = ab._zeilen_dir(beleg) / "000_Titel (hum).json"
+    zeile.parent.mkdir()
+    zeile.write_text(json.dumps({"stamm": "Titel (hum)", "status": "abgestuerzt", "returncode": -11}))
+    aufrufe: list[list[str]] = []
+
+    def run(argv: list[str], check: bool, cwd: str) -> subprocess.CompletedProcess:
+        assert check is False
+        aufrufe.append(argv)
+        zeilen_index = argv.index("--zeile-datei") + 1
+        zeile_pfad = Path(argv[zeilen_index])
+        assert json.loads(zeile_pfad.read_text())["status"] == "abgestuerzt"
+        zeile_pfad.write_text(json.dumps({"stamm": "Titel (hum)", "status": "ok"}))
+        return subprocess.CompletedProcess(argv, 0)
+
+    monkeypatch.setattr(ab.subprocess, "run", run)
+
+    assert ab.main(["--verzeichnis", str(quelle), "--paare", "1", "--beleg", str(beleg)]) == 0
+    assert len(aufrufe) == 1
+    assert json.loads(zeile.read_text())["status"] == "ok"
+
+
+def test_resume_aktualisiert_aggregat_aus_vorhandenen_zeilen(monkeypatch, tmp_path) -> None:
+    quelle = tmp_path / "quelle"
+    quelle.mkdir()
+    (quelle / "A.wav").write_bytes(b"fixture")
+    (quelle / "B.wav").write_bytes(b"fixture")
+    paare = ab._paare_auswaehlen(quelle, 2, 42)
+    beleg = tmp_path / "kanalsatz.json"
+    zdir = ab._zeilen_dir(beleg)
+    zdir.mkdir()
+    first_stamm = paare[0][0]
+    (zdir / f"000_{first_stamm[:40]}.json").write_text(
+        json.dumps({"stamm": first_stamm, "status": "ok"}), encoding="utf-8"
+    )
+
+    def run(argv: list[str], check: bool, cwd: str) -> subprocess.CompletedProcess:
+        aggregate = json.loads(beleg.read_text(encoding="utf-8"))
+        assert aggregate["n_paare"] == 1
+        assert aggregate["zeilen"][0]["stamm"] == first_stamm
+        zeilen_index = argv.index("--zeile-datei") + 1
+        zeile_pfad = Path(argv[zeilen_index])
+        zeile_pfad.write_text(json.dumps({"stamm": paare[1][0], "status": "ok"}), encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0)
+
+    monkeypatch.setattr(ab.subprocess, "run", run)
+
+    assert ab.main(["--verzeichnis", str(quelle), "--paare", "2", "--beleg", str(beleg)]) == 0
+    report = json.loads(beleg.read_text(encoding="utf-8"))
+    assert report["kanalsatz_flags"] == ab.KANALSAETZ_FLAGS
+    assert report["n_paare"] == 2
+    assert [row["stamm"] for row in report["zeilen"]] == [stamm for stamm, _ in paare]
+
+
+def test_resume_findet_passenden_unvollstaendigen_voll_beleg(tmp_path) -> None:
+    quelle = Path("data/schadens_proben")
+    beleg = tmp_path / "2026-11-19_kanalsatz_ab_voll.json"
+    beleg.write_text(
+        json.dumps(
+            {
+                "schema": ab.SCHEMA,
+                "seed": 42,
+                "verzeichnis": str(quelle),
+                "bestand_beleg": "data/schadens_proben/bewertung.json",
+                "n_geplant": 2,
+                "zeilen": [{"stamm": "Titel (hum)", "status": "abgestuerzt"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    resumed = ab._unvollstaendigen_beleg_finden(
+        [("Titel (hum)", quelle / "Titel (hum).wav"), ("Titel (vinyl)", quelle / "Titel (vinyl).wav")],
+        quelle,
+        42,
+        Path("data/schadens_proben/bewertung.json"),
+        tmp_path,
+    )
+
+    assert resumed == beleg
+
+
+def test_resume_ignoriert_beleg_mit_anderen_kanal_flags(tmp_path) -> None:
+    quelle = Path("data/schadens_proben")
+    beleg = tmp_path / "2026-11-19_kanalsatz_ab_voll.json"
+    beleg.write_text(
+        json.dumps(
+            {
+                "schema": ab.SCHEMA,
+                "seed": 42,
+                "verzeichnis": str(quelle),
+                "bestand_beleg": "data/schadens_proben/bewertung.json",
+                "n_geplant": 2,
+                "kanalsatz_flags": ab.KANALSAETZ_FLAGS,
+                "zeilen": [{"stamm": "Titel (hum)", "status": "abgestuerzt"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    resumed = ab._unvollstaendigen_beleg_finden(
+        [("Titel (hum)", quelle / "Titel (hum).wav"), ("Titel (vinyl)", quelle / "Titel (vinyl).wav")],
+        quelle,
+        42,
+        Path("data/schadens_proben/bewertung.json"),
+        tmp_path,
+        kanalsatz_flags=[ab.KANALSAETZ_FLAGS[0]],
+    )
+
+    assert resumed is None
+
+
+def test_einzelkanal_lauf_persistiert_flags_und_reicht_sie_weiter(monkeypatch, tmp_path) -> None:
+    quelle = tmp_path / "quelle"
+    quelle.mkdir()
+    (quelle / "Titel (hum).wav").write_bytes(b"fixture")
+    beleg = tmp_path / "einzelkanal.json"
+    kanal = ab.KANALSAETZ_FLAGS[0]
+    aufrufe: list[list[str]] = []
+
+    def run(argv: list[str], check: bool, cwd: str) -> subprocess.CompletedProcess:
+        assert check is False
+        aufrufe.append(argv)
+        zeilen_index = argv.index("--zeile-datei") + 1
+        zeile_pfad = Path(argv[zeilen_index])
+        zeile_pfad.write_text(
+            json.dumps({"stamm": "Titel (hum)", "status": "ok", "kanalsatz_flags": [kanal]}),
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(argv, 0)
+
+    monkeypatch.setattr(ab.subprocess, "run", run)
+
+    assert ab.main(["--verzeichnis", str(quelle), "--paare", "1", "--beleg", str(beleg), "--kanal", kanal]) == 0
+    report = json.loads(beleg.read_text(encoding="utf-8"))
+    assert report["kanalsatz_flags"] == [kanal]
+    assert report["zeilen"][0]["kanalsatz_flags"] == [kanal]
+    assert aufrufe[0][aufrufe[0].index("--kanal") + 1] == kanal
+
+
+def test_resume_kanalmodus_weist_unpassende_zeile_ab(monkeypatch, tmp_path) -> None:
+    quelle = tmp_path / "quelle"
+    quelle.mkdir()
+    (quelle / "Titel (hum).wav").write_bytes(b"fixture")
+    beleg = tmp_path / "einzelkanal.json"
+    kanal = ab.KANALSAETZ_FLAGS[0]
+    stamm = ab._paare_auswaehlen(quelle, 1, 42)[0][0]
+    zdir = ab._zeilen_dir(beleg)
+    zdir.mkdir()
+    (zdir / f"000_{stamm[:40]}.json").write_text(
+        json.dumps({"stamm": stamm, "status": "ok", "kanalsatz_flags": ab.KANALSAETZ_FLAGS}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ab.subprocess, "run", lambda *_args, **_kwargs: pytest.fail("must not reuse another flag set"))
+
+    assert ab.main(["--verzeichnis", str(quelle), "--paare", "1", "--beleg", str(beleg), "--kanal", kanal]) == 2
+
+
+def test_beleg_mit_anderen_messparametern_wird_abgewiesen(monkeypatch, tmp_path) -> None:
+    quelle = tmp_path / "quelle"
+    quelle.mkdir()
+    (quelle / "Titel (hum).wav").write_bytes(b"fixture")
+    beleg = tmp_path / "bestand.json"
+    beleg.write_text(
+        json.dumps(
+            {
+                "schema": ab.SCHEMA,
+                "seed": 7,
+                "verzeichnis": str(quelle),
+                "n_geplant": 1,
+                "bestand_beleg": None,
+                "kanalsatz_flags": ab.KANALSAETZ_FLAGS,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ab.subprocess, "run", lambda *_args, **_kwargs: pytest.fail("must not mix evidence"))
+
+    assert ab.main(["--verzeichnis", str(quelle), "--paare", "1", "--beleg", str(beleg)]) == 2
+
+
+def test_unvollstaendige_kanalsatzmessung_liefert_fehlerstatus(monkeypatch, tmp_path) -> None:
+    quelle = tmp_path / "quelle"
+    quelle.mkdir()
+    (quelle / "Titel (hum).wav").write_bytes(b"fixture")
+    beleg = tmp_path / "kanalsatz.json"
+
+    def run(argv: list[str], check: bool, cwd: str) -> subprocess.CompletedProcess:
+        assert check is False
+        return subprocess.CompletedProcess(argv, -11)
+
+    monkeypatch.setattr(ab.subprocess, "run", run)
+
+    assert ab.main(["--verzeichnis", str(quelle), "--paare", "1", "--beleg", str(beleg)]) == 1
+    report = json.loads(beleg.read_text())
+    assert report["n_paare"] == report["n_geplant"] == 1
+    assert report["zeilen"][0]["status"] == "abgestuerzt"
 
 
 def test_kind_dispatch_und_modus_marker() -> None:

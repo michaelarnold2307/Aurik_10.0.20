@@ -65,6 +65,7 @@ def test_warten_ignoriert_alten_erfolg_waehrend_neuem_lauf(tmp_path, monkeypatch
     log = tmp_path / "kette.log"
     log.write_text("KETTE_END=0\n", encoding="utf-8")
     monkeypatch.setattr(wd, "KETTEN_CONFIG", [("kette", "prozess", "", str(log), "KETTE_END=")])
+    monkeypatch.setattr(wd, "_watchdog_manager_alive", lambda: True)
     wartezyklen = []
     monkeypatch.setattr(wd, "_prozess_laeuft", lambda muster: not wartezyklen)
 
@@ -84,6 +85,39 @@ def test_warten_ignoriert_alten_erfolg_waehrend_neuem_lauf(tmp_path, monkeypatch
 def test_unbekannter_vorgaenger_wird_abgewiesen() -> None:
     with pytest.raises(ValueError, match="Unbekannte Vorgängerkette"):
         wd._warte_auf_vorgaenger("nicht-vorhanden")
+
+
+def test_waiter_bricht_ab_wenn_watchdog_manager_fehlt(tmp_path, monkeypatch) -> None:
+    log = tmp_path / "kette.log"
+    monkeypatch.setattr(wd, "KETTEN_CONFIG", [("kette", "prozess", "", str(log), "KETTE_END=")])
+    monkeypatch.setattr(wd, "_prozess_laeuft", lambda _muster: False)
+    monkeypatch.setattr(wd, "_watchdog_manager_alive", lambda: False)
+    monkeypatch.setattr(wd.time, "sleep", lambda _sekunden: pytest.fail("Waiter darf nicht endlos schlafen"))
+
+    with pytest.raises(SystemExit) as exc:
+        wd._warte_auf_vorgaenger("kette")
+    assert exc.value.code == 1
+
+
+def test_waiter_bricht_nach_erschoepftem_restart_budget_ab(tmp_path, monkeypatch) -> None:
+    log = tmp_path / "kette.log"
+    log.write_text("KETTE_END=139\n", encoding="utf-8")
+    monkeypatch.setattr(wd, "KETTEN_CONFIG", [("kette", "prozess", "", str(log), "KETTE_END=")])
+    monkeypatch.setattr(wd, "_prozess_laeuft", lambda _muster: False)
+    monkeypatch.setattr(wd, "_anzahl_abgestuerzter_versuche", lambda _log, _marker: wd.MAX_CRASH_RESTARTS)
+    monkeypatch.setattr(wd, "_watchdog_manager_alive", lambda: True)
+    monkeypatch.setattr(wd.time, "sleep", lambda _sekunden: pytest.fail("Exhausted waiter must fail fast"))
+
+    with pytest.raises(SystemExit) as exc:
+        wd._warte_auf_vorgaenger("kette")
+    assert exc.value.code == 1
+
+
+def test_watchdog_manager_cmdline_excludes_waiter() -> None:
+    script = str(Path(wd.__file__).resolve())
+    assert wd._is_watchdog_manager_cmdline(["python", "-B", script])
+    assert not wd._is_watchdog_manager_cmdline(["python", "-B", script, "--wait-for", "kette"])
+    assert not wd._is_watchdog_manager_cmdline(["python", "-B", "/other/ketten_watchdog.py"])
 
 
 def test_neustart_markiert_versuch_vor_dem_prozessstart(tmp_path, monkeypatch) -> None:
@@ -197,7 +231,7 @@ def test_gegatete_ketten_warten_auf_vorgaenger() -> None:
         assert wait in command
     # Beleg-Kollisionsschutz: voll schreibt in eine eigene Datei (nicht den
     # datumskanonischen Pfad des Smoke).
-    assert "_kanalsatz_ab_voll.json" in voll[2]
+    assert "--resume" in voll[2]
 
 
 def test_manifest_nachbehandlung_propagiert_vorgaengerfehler() -> None:

@@ -1,0 +1,779 @@
+{
+  "schema": "aurik.genre_labels/1",
+  "datum": "2026-11-21",
+  "n_titel": 110,
+  "sekunden_ausschnitt": 20.0,
+  "methode": "maschinell (genre_classifier, PANNs-Prior + Schlager-Speziallogik, Seed-deterministisch)",
+  "eintraege": [
+    {
+      "titel": "A Classic Education - NightOwl",
+      "pfad": "data/musdb18hq/train/A Classic Education - NightOwl/mixture.wav",
+      "genre": "Internationaler Walzer",
+      "confidence": 0.8,
+      "familie": "electronic"
+    },
+    {
+      "titel": "ANiMAL - Clinic A",
+      "pfad": "data/musdb18hq/train/ANiMAL - Clinic A/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 1.0,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "ANiMAL - Easy Tiger",
+      "pfad": "data/musdb18hq/train/ANiMAL - Easy Tiger/mixture.wav",
+      "genre": "Pop",
+      "confidence": 1.0,
+      "familie": "pop"
+    },
+    {
+      "titel": "ANiMAL - Rockshow",
+      "pfad": "data/musdb18hq/train/ANiMAL - Rockshow/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.9,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Actions - Devil's Words",
+      "pfad": "data/musdb18hq/train/Actions - Devil's Words/mixture.wav",
+      "genre": "Disco-Schlager",
+      "confidence": 1.0,
+      "familie": "schlager_folk"
+    },
+    {
+      "titel": "Actions - One Minute Smile",
+      "pfad": "data/musdb18hq/train/Actions - One Minute Smile/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.75,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Actions - South Of The Water",
+      "pfad": "data/musdb18hq/train/Actions - South Of The Water/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Aimee Norwich - Child",
+      "pfad": "data/musdb18hq/train/Aimee Norwich - Child/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.75,
+      "familie": "pop"
+    },
+    {
+      "titel": "Alexander Ross - Goodbye Bolero",
+      "pfad": "data/musdb18hq/train/Alexander Ross - Goodbye Bolero/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Alexander Ross - Velvet Curtain",
+      "pfad": "data/musdb18hq/train/Alexander Ross - Velvet Curtain/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Angela Thomas Wade - Milk Cow Blues",
+      "pfad": "data/musdb18hq/train/Angela Thomas Wade - Milk Cow Blues/mixture.wav",
+      "genre": "Blues",
+      "confidence": 0.68,
+      "familie": "jazz"
+    },
+    {
+      "titel": "Atlantis Bound - It Was My Fault For Waiting",
+      "pfad": "data/musdb18hq/train/Atlantis Bound - It Was My Fault For Waiting/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Auctioneer - Our Future Faces",
+      "pfad": "data/musdb18hq/train/Auctioneer - Our Future Faces/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "AvaLuna - Waterduct",
+      "pfad": "data/musdb18hq/train/AvaLuna - Waterduct/mixture.wav",
+      "genre": "Folk",
+      "confidence": 0.85,
+      "familie": "schlager_folk"
+    },
+    {
+      "titel": "BigTroubles - Phantom",
+      "pfad": "data/musdb18hq/train/BigTroubles - Phantom/mixture.wav",
+      "genre": "Disco-Schlager",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Bill Chudziak - Children Of No-one",
+      "pfad": "data/musdb18hq/train/Bill Chudziak - Children Of No-one/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.722,
+      "familie": "schlager_folk"
+    },
+    {
+      "titel": "Black Bloc - If You Want Success",
+      "pfad": "data/musdb18hq/train/Black Bloc - If You Want Success/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Celestial Shore - Die For Us",
+      "pfad": "data/musdb18hq/train/Celestial Shore - Die For Us/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Chris Durban - Celebrate",
+      "pfad": "data/musdb18hq/train/Chris Durban - Celebrate/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Clara Berry And Wooldog - Air Traffic",
+      "pfad": "data/musdb18hq/train/Clara Berry And Wooldog - Air Traffic/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.75,
+      "familie": "pop"
+    },
+    {
+      "titel": "Clara Berry And Wooldog - Stella",
+      "pfad": "data/musdb18hq/train/Clara Berry And Wooldog - Stella/mixture.wav",
+      "genre": "Pop",
+      "confidence": 0.75,
+      "familie": "pop"
+    },
+    {
+      "titel": "Clara Berry And Wooldog - Waltz For My Victims",
+      "pfad": "data/musdb18hq/train/Clara Berry And Wooldog - Waltz For My Victims/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.68,
+      "familie": "jazz"
+    },
+    {
+      "titel": "Cnoc An Tursa - Bannockburn",
+      "pfad": "data/musdb18hq/train/Cnoc An Tursa - Bannockburn/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Creepoid - OldTree",
+      "pfad": "data/musdb18hq/train/Creepoid - OldTree/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Dark Ride - Burning Bridges",
+      "pfad": "data/musdb18hq/train/Dark Ride - Burning Bridges/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "schlager_folk"
+    },
+    {
+      "titel": "Dreamers Of The Ghetto - Heavy Love",
+      "pfad": "data/musdb18hq/train/Dreamers Of The Ghetto - Heavy Love/mixture.wav",
+      "genre": "Disco-Schlager",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Drumtracks - Ghost Bitch",
+      "pfad": "data/musdb18hq/train/Drumtracks - Ghost Bitch/mixture.wav",
+      "genre": "Funk",
+      "confidence": 0.88,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Faces On Film - Waiting For Ga",
+      "pfad": "data/musdb18hq/train/Faces On Film - Waiting For Ga/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Fergessen - Back From The Start",
+      "pfad": "data/musdb18hq/train/Fergessen - Back From The Start/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Fergessen - Nos Palpitants",
+      "pfad": "data/musdb18hq/train/Fergessen - Nos Palpitants/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.75,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Fergessen - The Wind",
+      "pfad": "data/musdb18hq/train/Fergessen - The Wind/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Flags - 54",
+      "pfad": "data/musdb18hq/train/Flags - 54/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Giselle - Moss",
+      "pfad": "data/musdb18hq/train/Giselle - Moss/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Grants - PunchDrunk",
+      "pfad": "data/musdb18hq/train/Grants - PunchDrunk/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Helado Negro - Mitad Del Mundo",
+      "pfad": "data/musdb18hq/train/Helado Negro - Mitad Del Mundo/mixture.wav",
+      "genre": "Funk",
+      "confidence": 0.88,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Hezekiah Jones - Borrowed Heart",
+      "pfad": "data/musdb18hq/train/Hezekiah Jones - Borrowed Heart/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Hollow Ground - Left Blind",
+      "pfad": "data/musdb18hq/train/Hollow Ground - Left Blind/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Hop Along - Sister Cities",
+      "pfad": "data/musdb18hq/train/Hop Along - Sister Cities/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Invisible Familiars - Disturbing Wildlife",
+      "pfad": "data/musdb18hq/train/Invisible Familiars - Disturbing Wildlife/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "James May - All Souls Moon",
+      "pfad": "data/musdb18hq/train/James May - All Souls Moon/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "James May - Dont Let Go",
+      "pfad": "data/musdb18hq/train/James May - Dont Let Go/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "James May - If You Say",
+      "pfad": "data/musdb18hq/train/James May - If You Say/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.73,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "James May - On The Line",
+      "pfad": "data/musdb18hq/train/James May - On The Line/mixture.wav",
+      "genre": "Pop",
+      "confidence": 0.65,
+      "familie": "pop"
+    },
+    {
+      "titel": "Jay Menon - Through My Eyes",
+      "pfad": "data/musdb18hq/train/Jay Menon - Through My Eyes/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.85,
+      "familie": "latin"
+    },
+    {
+      "titel": "Johnny Lokke - Promises & Lies",
+      "pfad": "data/musdb18hq/train/Johnny Lokke - Promises & Lies/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Johnny Lokke - Whisper To A Scream",
+      "pfad": "data/musdb18hq/train/Johnny Lokke - Whisper To A Scream/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.8,
+      "familie": "latin"
+    },
+    {
+      "titel": "Jokers, Jacks & Kings - Sea Of Leaves",
+      "pfad": "data/musdb18hq/train/Jokers, Jacks & Kings - Sea Of Leaves/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Leaf - Come Around",
+      "pfad": "data/musdb18hq/train/Leaf - Come Around/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Leaf - Summerghost",
+      "pfad": "data/musdb18hq/train/Leaf - Summerghost/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.75,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Leaf - Wicked",
+      "pfad": "data/musdb18hq/train/Leaf - Wicked/mixture.wav",
+      "genre": "Disco-Schlager",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Lushlife - Toynbee Suite",
+      "pfad": "data/musdb18hq/train/Lushlife - Toynbee Suite/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 1.0,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Matthew Entwistle - Dont You Ever",
+      "pfad": "data/musdb18hq/train/Matthew Entwistle - Dont You Ever/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.75,
+      "familie": "jazz"
+    },
+    {
+      "titel": "Meaxic - Take A Step",
+      "pfad": "data/musdb18hq/train/Meaxic - Take A Step/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Meaxic - You Listen",
+      "pfad": "data/musdb18hq/train/Meaxic - You Listen/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.75,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Music Delta - 80s Rock",
+      "pfad": "data/musdb18hq/train/Music Delta - 80s Rock/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Music Delta - Beatles",
+      "pfad": "data/musdb18hq/train/Music Delta - Beatles/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.75,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Music Delta - Britpop",
+      "pfad": "data/musdb18hq/train/Music Delta - Britpop/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Music Delta - Country1",
+      "pfad": "data/musdb18hq/train/Music Delta - Country1/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Music Delta - Country2",
+      "pfad": "data/musdb18hq/train/Music Delta - Country2/mixture.wav",
+      "genre": "Funk",
+      "confidence": 1.0,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Music Delta - Disco",
+      "pfad": "data/musdb18hq/train/Music Delta - Disco/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.77,
+      "familie": "pop"
+    },
+    {
+      "titel": "Music Delta - Gospel",
+      "pfad": "data/musdb18hq/train/Music Delta - Gospel/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.75,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Music Delta - Grunge",
+      "pfad": "data/musdb18hq/train/Music Delta - Grunge/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Music Delta - Hendrix",
+      "pfad": "data/musdb18hq/train/Music Delta - Hendrix/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Music Delta - Punk",
+      "pfad": "data/musdb18hq/train/Music Delta - Punk/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Music Delta - Reggae",
+      "pfad": "data/musdb18hq/train/Music Delta - Reggae/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Music Delta - Rock",
+      "pfad": "data/musdb18hq/train/Music Delta - Rock/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.75,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Music Delta - Rockabilly",
+      "pfad": "data/musdb18hq/train/Music Delta - Rockabilly/mixture.wav",
+      "genre": "Funk",
+      "confidence": 1.0,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Night Panther - Fire",
+      "pfad": "data/musdb18hq/train/Night Panther - Fire/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "North To Alaska - All The Same",
+      "pfad": "data/musdb18hq/train/North To Alaska - All The Same/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Patrick Talbot - A Reason To Leave",
+      "pfad": "data/musdb18hq/train/Patrick Talbot - A Reason To Leave/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.7,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Patrick Talbot - Set Me Free",
+      "pfad": "data/musdb18hq/train/Patrick Talbot - Set Me Free/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.7141,
+      "familie": "schlager_folk"
+    },
+    {
+      "titel": "Phre The Eon - Everybody's Falling Apart",
+      "pfad": "data/musdb18hq/train/Phre The Eon - Everybody's Falling Apart/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Port St Willow - Stay Even",
+      "pfad": "data/musdb18hq/train/Port St Willow - Stay Even/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.75,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Remember December - C U Next Time",
+      "pfad": "data/musdb18hq/train/Remember December - C U Next Time/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Secret Mountains - High Horse",
+      "pfad": "data/musdb18hq/train/Secret Mountains - High Horse/mixture.wav",
+      "genre": "Disco-Schlager",
+      "confidence": 0.75,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Skelpolu - Human Mistakes",
+      "pfad": "data/musdb18hq/train/Skelpolu - Human Mistakes/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 0.75,
+      "familie": "schlager_folk"
+    },
+    {
+      "titel": "Skelpolu - Together Alone",
+      "pfad": "data/musdb18hq/train/Skelpolu - Together Alone/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Snowmine - Curfews",
+      "pfad": "data/musdb18hq/train/Snowmine - Curfews/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Spike Mullings - Mike's Sulking",
+      "pfad": "data/musdb18hq/train/Spike Mullings - Mike's Sulking/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "St Vitus - Word Gets Around",
+      "pfad": "data/musdb18hq/train/St Vitus - Word Gets Around/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.8,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Steven Clark - Bounty",
+      "pfad": "data/musdb18hq/train/Steven Clark - Bounty/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Strand Of Oaks - Spacestation",
+      "pfad": "data/musdb18hq/train/Strand Of Oaks - Spacestation/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.75,
+      "familie": "pop"
+    },
+    {
+      "titel": "Sweet Lights - You Let Me Down",
+      "pfad": "data/musdb18hq/train/Sweet Lights - You Let Me Down/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "pop"
+    },
+    {
+      "titel": "Swinging Steaks - Lost My Way",
+      "pfad": "data/musdb18hq/train/Swinging Steaks - Lost My Way/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "The Districts - Vermont",
+      "pfad": "data/musdb18hq/train/The Districts - Vermont/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.9,
+      "familie": "pop"
+    },
+    {
+      "titel": "The Long Wait - Back Home To Blue",
+      "pfad": "data/musdb18hq/train/The Long Wait - Back Home To Blue/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "The Scarlet Brand - Les Fleurs Du Mal",
+      "pfad": "data/musdb18hq/train/The Scarlet Brand - Les Fleurs Du Mal/mixture.wav",
+      "genre": "Folk",
+      "confidence": 1.0,
+      "familie": "schlager_folk"
+    },
+    {
+      "titel": "The So So Glos - Emergency",
+      "pfad": "data/musdb18hq/train/The So So Glos - Emergency/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.9,
+      "familie": "rock"
+    },
+    {
+      "titel": "The Wrong'Uns - Rothko",
+      "pfad": "data/musdb18hq/train/The Wrong'Uns - Rothko/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Tim Taler - Stalker",
+      "pfad": "data/musdb18hq/train/Tim Taler - Stalker/mixture.wav",
+      "genre": "Pop",
+      "confidence": 0.87,
+      "familie": "pop"
+    },
+    {
+      "titel": "Titanium - Haunted Age",
+      "pfad": "data/musdb18hq/train/Titanium - Haunted Age/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.9,
+      "familie": "rock"
+    },
+    {
+      "titel": "Traffic Experiment - Once More (With Feeling)",
+      "pfad": "data/musdb18hq/train/Traffic Experiment - Once More (With Feeling)/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.65,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Traffic Experiment - Sirens",
+      "pfad": "data/musdb18hq/train/Traffic Experiment - Sirens/mixture.wav",
+      "genre": "Disco-Schlager",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Triviul - Angelsaint",
+      "pfad": "data/musdb18hq/train/Triviul - Angelsaint/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.9,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Triviul - Dorothy",
+      "pfad": "data/musdb18hq/train/Triviul - Dorothy/mixture.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.9,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Voelund - Comfort Lives In Belief",
+      "pfad": "data/musdb18hq/train/Voelund - Comfort Lives In Belief/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 1.0,
+      "familie": "latin"
+    },
+    {
+      "titel": "Wall Of Death - Femme",
+      "pfad": "data/musdb18hq/train/Wall Of Death - Femme/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Young Griffo - Blood To Bone",
+      "pfad": "data/musdb18hq/train/Young Griffo - Blood To Bone/mixture.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Young Griffo - Facade",
+      "pfad": "data/musdb18hq/train/Young Griffo - Facade/mixture.wav",
+      "genre": "Marsch",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Young Griffo - Pennies",
+      "pfad": "data/musdb18hq/train/Young Griffo - Pennies/mixture.wav",
+      "genre": "Walzer",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "ANiMAL - Clinic A",
+      "pfad": "data/schadens_quellen/ANiMAL - Clinic A.wav",
+      "genre": "Unbekannt",
+      "confidence": 1.0,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "ANiMAL - Easy Tiger",
+      "pfad": "data/schadens_quellen/ANiMAL - Easy Tiger.wav",
+      "genre": "Pop",
+      "confidence": 1.0,
+      "familie": "pop"
+    },
+    {
+      "titel": "ANiMAL - Rockshow",
+      "pfad": "data/schadens_quellen/ANiMAL - Rockshow.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.9,
+      "familie": "funk_soul"
+    },
+    {
+      "titel": "Actions - South Of The Water",
+      "pfad": "data/schadens_quellen/Actions - South Of The Water.wav",
+      "genre": "Deutscher Schlager",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Aimee Norwich - Child",
+      "pfad": "data/schadens_quellen/Aimee Norwich - Child.wav",
+      "genre": "Unbekannt",
+      "confidence": 0.75,
+      "familie": "pop"
+    },
+    {
+      "titel": "Alexander Ross - Goodbye Bolero",
+      "pfad": "data/schadens_quellen/Alexander Ross - Goodbye Bolero.wav",
+      "genre": "Walzer",
+      "confidence": 1.0,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Alexander Ross - Velvet Curtain",
+      "pfad": "data/schadens_quellen/Alexander Ross - Velvet Curtain.wav",
+      "genre": "Walzer",
+      "confidence": 0.85,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Angela Thomas Wade - Milk Cow Blues",
+      "pfad": "data/schadens_quellen/Angela Thomas Wade - Milk Cow Blues.wav",
+      "genre": "Blues",
+      "confidence": 0.68,
+      "familie": "jazz"
+    },
+    {
+      "titel": "Music Delta - Rock",
+      "pfad": "data/schadens_quellen/Music Delta - Rock.wav",
+      "genre": "Marsch",
+      "confidence": 0.75,
+      "familie": "electronic"
+    },
+    {
+      "titel": "Snowmine - Curfews",
+      "pfad": "data/schadens_quellen/Snowmine - Curfews.wav",
+      "genre": "Walzer",
+      "confidence": 0.9,
+      "familie": "electronic"
+    }
+  ]
+}

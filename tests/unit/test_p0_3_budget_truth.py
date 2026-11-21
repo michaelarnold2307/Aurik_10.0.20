@@ -78,9 +78,7 @@ def test_plan_budget_capped_to_hard_guard_despite_chain_depth_and_restorability(
 
     # Extremfall: tiefe Kette (9) + minimale Restaurierbarkeit (0) =>
     # Budget-Wunsch = 32 x 2.0 x 1.5 = 96x RT, also weit ueber dem Ausstieg.
-    plan = denker.plan(
-        audio, 48000, mode="quality", chain_depth=9, restorability_score=0.0
-    )
+    plan = denker.plan(audio, 48000, mode="quality", chain_depth=9, restorability_score=0.0)
 
     assert plan.audio_duration_s == audio_dur
     # Deckel: nie mehr als die harte Guard-Grenze (32x) * Audiodauer.

@@ -157,7 +157,8 @@ def test_cli_export_helper_uses_audio_exporter_and_quality_payload(monkeypatch, 
     )
 
     assert (tmp_path / "out.wav").read_bytes() == b"fake-wav"  # Datei existiert — kein Hardstop
-    assert calls["guard_count"] == 2
+    assert ok is False
+    assert calls["guard_count"] == 1
     assert result.metadata["export_quality_gate_failed"] is True
     assert result.metadata["export_quality_gate_warnings"] == ["gate-warning"]
     assert result.metadata["export_degraded_by_quality_gate"] is True
@@ -259,9 +260,9 @@ def test_cli_export_helper_applies_mono_guard_and_forwards_musiclover_metadata(m
     assert warnings == []
     assert payload["passed"] is True
     out_audio = calls["audio"]
-    # Side wurde um 8 % reduziert: ±1.0 → ±0.92
-    assert float(out_audio[:, 0].mean()) == pytest.approx(0.92, abs=1e-5)
-    assert float(out_audio[:, 1].mean()) == pytest.approx(-0.92, abs=1e-5)
+    # GUI-Headroom vor dem Side-Guard: ±1.0 → ±0.98 → ±0.9016
+    assert float(out_audio[:, 0].mean()) == pytest.approx(0.9016, abs=1e-5)
+    assert float(out_audio[:, 1].mean()) == pytest.approx(-0.9016, abs=1e-5)
     md = calls["kwargs"]["metadata"]
     assert md["quality_gate_musiclover_vqi"] == "0.87"
     assert md["quality_gate_musiclover_temporal_hotspots"] == "2"

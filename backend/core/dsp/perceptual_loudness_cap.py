@@ -82,6 +82,10 @@ def perceptual_loudness_cap(
         meta["loudness_cap_wet"] = round(_cap_wet, 3)
         meta["loudness_cap_headroom_lin"] = round(max(1.0, float(headroom_lin)), 4)
         return capped.astype(np.float32), meta
-    except Exception as _plc_exc:  # §V6 (copilot-instructions.md): nie blockierend
-        logger.debug("%s §SOTA-PSY-A7 Loudness-Cap nicht anwendbar: %s", phase_label, _plc_exc)
+    except (ImportError, TypeError, ValueError, FloatingPointError) as _plc_exc:
+        logger.warning(
+            "%s §SOTA-PSY-A7 Loudness-Cap nicht anwendbar; verarbeiteten Output unverändert durchgelassen: %s",
+            phase_label,
+            _plc_exc,
+        )
         return processed, meta

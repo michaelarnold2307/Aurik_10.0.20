@@ -11,6 +11,7 @@ Autor: Aurik Testing Team
 """
 
 import numpy as np
+import pytest
 
 from backend.core.dsp.perceptual_loudness_cap import perceptual_loudness_cap
 
@@ -21,6 +22,34 @@ def _audio(n: int = 48000, amp: float = 0.2) -> np.ndarray:
 
 
 class TestPerceptualLoudnessCap:
+    def test_measurement_failure_warns_and_passes_through(self, monkeypatch, caplog):
+        from backend.core.dsp import temporal_loudness as temporal_loudness_module
+
+        def fail_measurement(*_args, **_kwargs):
+            raise ValueError("invalid measurement input")
+
+        monkeypatch.setattr(temporal_loudness_module, "temporal_loudness", fail_measurement)
+        original = _audio()
+        processed = original * 0.8
+
+        with caplog.at_level("WARNING", logger="backend.core.dsp.perceptual_loudness_cap"):
+            out, meta = perceptual_loudness_cap(original, processed, 48000, phase_label="test")
+
+        assert out is processed
+        assert meta["loudness_cap_applied"] is False
+        assert "unverändert durchgelassen" in caplog.text
+
+    def test_unexpected_measurement_error_is_not_swallowed(self, monkeypatch):
+        from backend.core.dsp import temporal_loudness as temporal_loudness_module
+
+        def fail_measurement(*_args, **_kwargs):
+            raise RuntimeError("unexpected measurement defect")
+
+        monkeypatch.setattr(temporal_loudness_module, "temporal_loudness", fail_measurement)
+
+        with pytest.raises(RuntimeError, match="unexpected measurement defect"):
+            perceptual_loudness_cap(_audio(), _audio() * 0.8, 48000, phase_label="test")
+
     def test_no_cap_when_not_raised(self):
         x = _audio()
         y = x * 0.8

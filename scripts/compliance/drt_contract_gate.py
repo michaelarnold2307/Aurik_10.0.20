@@ -197,7 +197,7 @@ def _pruefe_drt_131415(fehler: list[str]) -> None:
 
 
 def _pruefe_drt_12(fehler: list[str]) -> None:
-    """DRT-12 (2026-11-19): Kanalsatz-A/B-Pflicht vor dem §4-Sign-off."""
+    """DRT-12 (2026-11-19): identische Kontrolle und Kanalsatz-A/B."""
     skript = _ROOT / "scripts" / "messe_kanalsatz_ab.py"
     if not skript.is_file():
         _fehler("DRT-12: scripts/messe_kanalsatz_ab.py fehlt (Kanalsatz-A/B-Infrastruktur)", fehler)
@@ -210,8 +210,51 @@ def _pruefe_drt_12(fehler: list[str]) -> None:
     if 'os.environ.setdefault("AURIK_FORCE_CPU", "1")' not in q:
         _fehler("DRT-12: A/B-Skript ohne CPU-only-Vertrag (stört die GPU-Kette)", fehler)
     spec26 = (_ROOT / ".github" / "specs" / "26_defekt_reparatur_trainingsvertrag.md").read_text(encoding="utf-8")
-    if "## DRT-12 — Kanalsatz-A/B-Pflicht" not in spec26:
+    if "## DRT-12 — Kontroll- und Kanalsatz-A/B" not in spec26:
         _fehler("DRT-12: Spec-26-Abschnitt fehlt", fehler)
+
+
+def _pruefe_drt_16(fehler: list[str]) -> None:
+    """DRT-16: externe RX-12-Parität darf nicht aus internen Scores folgen."""
+    spec26 = _ROOT / ".github" / "specs" / "26_defekt_reparatur_trainingsvertrag.md"
+    register = _ROOT / ".github" / "WETTBEWERBS_PARITAET.md"
+    if not spec26.is_file():
+        _fehler("DRT-16: Spec 26 fehlt", fehler)
+        return
+    spec_text = spec26.read_text(encoding="utf-8")
+    for begriff in (
+        "## DRT-16 — Externer RX-12-Paritätsvergleich",
+        "aurik.rx12_parity/1",
+        "musik_mos_delta_ci95",
+        "defektlast_delta_ci95",
+        "source_id",
+        "musik_mos_delta",
+        "defektlast_delta",
+        "Student-t-95-%-Konfidenzintervalls",
+        "1e-6",
+        "mindestens",
+        "30 Hörer:innen",
+        "Holdout",
+    ):
+        if begriff not in spec_text:
+            _fehler(f"DRT-16: verpflichtender Belegbestandteil fehlt: {begriff}", fehler)
+    parity_gate = _ROOT / "scripts" / "compliance" / "wettbewerbs_paritaet_gate.py"
+    if not parity_gate.is_file():
+        _fehler("DRT-16: Wettbewerbs-Paritäts-Gate fehlt", fehler)
+    else:
+        parity_code = parity_gate.read_text(encoding="utf-8")
+        if "_ci95_aus_deltas" not in parity_code:
+            _fehler("DRT-16: Wettbewerbs-Paritäts-Gate berechnet CI nicht aus Einzeltitel-Deltas neu", fehler)
+        if "_paar_deltas_gebunden" not in parity_code:
+            _fehler("DRT-16: Einzeltitel-Deltas sind nicht an gehashte Quellenpaare gebunden", fehler)
+    if not register.is_file():
+        _fehler("DRT-16: Wettbewerbs-Paritätsregister fehlt", fehler)
+        return
+    register_text = register.read_text(encoding="utf-8")
+    if "## RX-12-Paritätsvertrag" not in register_text:
+        _fehler("DRT-16: Register ohne RX-12-Paritätsvertrag", fehler)
+    if "`GESICHERT`" not in register_text or "`PARITAET`" not in register_text:
+        _fehler("DRT-16: Register ohne getrennte interne/externe Statusgrenze", fehler)
 
 
 def main() -> int:
@@ -222,6 +265,7 @@ def main() -> int:
     _pruefe_drt_789(fehler)
     _pruefe_drt_131415(fehler)
     _pruefe_drt_12(fehler)
+    _pruefe_drt_16(fehler)
     if fehler:
         print("🔌 DRT-VERTRAG (Spec 26) — VERSTOSS:")
         for f in fehler:

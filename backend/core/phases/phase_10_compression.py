@@ -74,7 +74,7 @@ class CompressionPhase(PhaseInterface):
     CROSSOVER_FREQS = [400, 2000, 6400]  # §v10.101: Bark-Crossover  # Bass | Low-Mid | Mid-High | High
 
     # Material-adaptive compression parameters per band [threshold_db, ratio, attack_ms, release_ms, knee_db, makeup_db]
-    COMPRESSION_PARAMS = {
+    COMPRESSION_PARAMS: dict[MaterialType, dict[str, list[int | float]] | None] = {
         MaterialType.SHELLAC: {
             "bass": [-20, 3.0, 30, 200, 6, 3.0],  # Gentle bass compression
             "low_mid": [-18, 3.5, 20, 150, 8, 4.0],  # More compression for body
@@ -105,12 +105,26 @@ class CompressionPhase(PhaseInterface):
             "mid_high": [-20, 3.0, 10, 100, 8, 3.0],
             "high": [-22, 1.8, 5, 80, 4, 2.0],
         },
+        MaterialType.MP3_HIGH: {
+            "bass": [-25.0, 1.75, 30, 200, 3.5, 1.75],
+            "low_mid": [-23.0, 2.25, 20, 150, 5.0, 2.25],
+            "mid_high": [-21.0, 2.75, 10, 100, 7.0, 2.75],
+            "high": [-23.0, 1.65, 5, 80, 3.5, 1.75],
+        },  # MP3 >=128 kbit/s: unvalidierter Kandidat zwischen CD und Streaming (§6.1, Spec 05)
         MaterialType.STREAMING: {
             "bass": [-26, 1.5, 30, 200, 3, 1.5],  # Minimal compression
             "low_mid": [-24, 2.0, 20, 150, 4, 2.0],
             "mid_high": [-22, 2.5, 10, 100, 6, 2.5],
             "high": [-24, 1.5, 5, 80, 3, 1.5],
         },
+        MaterialType.REEL_TAPE: None,
+        MaterialType.DAT: None,
+        MaterialType.MP3_LOW: None,
+        MaterialType.AAC: None,
+        MaterialType.MINIDISC: None,
+        MaterialType.WAX_CYLINDER: None,
+        MaterialType.WIRE_RECORDING: None,
+        MaterialType.LACQUER_DISC: None,
         MaterialType.UNKNOWN: {  # Vinyl-ähnliche Defaults (konservativ)
             "bass": [-22, 2.5, 30, 200, 6, 2.5],
             "low_mid": [-20, 3.0, 20, 150, 8, 3.5],
@@ -120,24 +134,42 @@ class CompressionPhase(PhaseInterface):
     }
 
     # Parallel compression blend (wet %)
-    PARALLEL_BLEND = {
+    PARALLEL_BLEND: dict[MaterialType, float | None] = {
         MaterialType.SHELLAC: 0.50,  # 50% parallel compression
         MaterialType.VINYL: 0.40,  # 40%
         MaterialType.TAPE: 0.45,  # 45%
         MaterialType.CASSETTE: 0.45,  # v10.0.0: IEC 60094-1 — gleiche Capstan-Physik wie TAPE
         MaterialType.CD_DIGITAL: 0.30,  # 30% (light)
+        MaterialType.MP3_HIGH: 0.25,
         MaterialType.STREAMING: 0.20,  # 20% (minimal)
+        MaterialType.REEL_TAPE: None,
+        MaterialType.DAT: None,
+        MaterialType.MP3_LOW: None,
+        MaterialType.AAC: None,
+        MaterialType.MINIDISC: None,
+        MaterialType.WAX_CYLINDER: None,
+        MaterialType.WIRE_RECORDING: None,
+        MaterialType.LACQUER_DISC: None,
         MaterialType.UNKNOWN: 0.30,  # Vinyl-ähnlich
     }
 
     # Detection mode: 'rms' or 'peak'
-    DETECTION_MODE = {
+    DETECTION_MODE: dict[MaterialType, str | None] = {
         MaterialType.SHELLAC: "rms",  # RMS for natural sound
         MaterialType.VINYL: "rms",
         MaterialType.TAPE: "rms",
         MaterialType.CASSETTE: "rms",  # v10.0.0: IEC 60094-1 — gleiche Capstan-Physik wie TAPE
         MaterialType.CD_DIGITAL: "peak",  # Peak for precision
+        MaterialType.MP3_HIGH: "peak",
         MaterialType.STREAMING: "peak",
+        MaterialType.REEL_TAPE: None,
+        MaterialType.DAT: None,
+        MaterialType.MP3_LOW: None,
+        MaterialType.AAC: None,
+        MaterialType.MINIDISC: None,
+        MaterialType.WAX_CYLINDER: None,
+        MaterialType.WIRE_RECORDING: None,
+        MaterialType.LACQUER_DISC: None,
         MaterialType.UNKNOWN: "rms",  # Vinyl-ähnlich
     }
 
@@ -290,18 +322,47 @@ class CompressionPhase(PhaseInterface):
                 },
             )
 
+        base_comp_params = self.COMPRESSION_PARAMS[phase_material]
+        base_parallel_blend = self.PARALLEL_BLEND[phase_material]
+        detection_mode = self.DETECTION_MODE[phase_material]
+        if base_comp_params is None or base_parallel_blend is None or detection_mode is None:
+            logger.warning(
+                "Verarbeitungsschritt_10 für Material %s übersprungen: kein freigegebenes Materialprofil vorhanden "
+                "(§G8 (copilot-instructions.md))",
+                phase_material.value,
+            )
+            passthrough = np.clip(np.nan_to_num(audio.copy(), nan=0.0, posinf=0.0, neginf=0.0), -1.0, 1.0)
+            return PhaseResult(
+                success=True,
+                audio=passthrough.astype(audio.dtype),
+                execution_time_seconds=time.time() - start_time,
+                metadata={
+                    "phase": "10_compression_v2_professional",
+                    "material": phase_material.value,
+                    "sample_rate": sample_rate,
+                    "version": "2.0.0",
+                    "processing": "skipped_uncalibrated_material",
+                    "unrepaired_reason": "kein freigegebenes Phase-10-Materialprofil",
+                    "phase_locality_factor": phase_locality_factor,
+                    "effective_strength": _effective_strength,
+                },
+                metrics={"rms_change_db": 0.0, "dynamic_range_reduction_db": 0.0},
+            )
+
         metadata: dict[str, Any] = {
             "phase": "10_compression_v2_professional",
             "material": phase_material.value,
             "sample_rate": sample_rate,
             "version": "2.0.0",
         }
+        if phase_material is MaterialType.MP3_HIGH:
+            metadata["material_profile_status"] = "interpolated_candidate_not_ab_tested"
 
         # Split into bands
         bands = self._split_bands(audio, sample_rate)
 
         # Get material-specific parameters
-        comp_params = self.COMPRESSION_PARAMS[phase_material]
+        comp_params = {band: values.copy() for band, values in base_comp_params.items()}
         # §v10.70 Modus-Trennung: Restoration → max Ratio 2:1, min Attack 20ms.
         # Mikrodynamik ist der "Atem" der Musik. Aggressive Kompression zerstört ihn.
         _mode_10 = str(kwargs.get("mode", kwargs.get("processing_mode", "restoration"))).lower()
@@ -327,8 +388,7 @@ class CompressionPhase(PhaseInterface):
                     comp_params[_b10] = (_t10, _r10, _a10, _rel10, _k10, _m10)  # type: ignore[assignment]
             except Exception as _bts_exc_10:
                 logger.debug("§2.69c Beat-Sync Verarbeitungsschritt_10 nicht blockierend: %s", _bts_exc_10)
-        parallel_blend = float(self.PARALLEL_BLEND[phase_material] * _effective_strength)
-        detection_mode = self.DETECTION_MODE[phase_material]
+        parallel_blend = float(base_parallel_blend * _effective_strength)
 
         # Process each band
         processed_bands = []
