@@ -92,6 +92,18 @@ KETTEN_CONFIG: list[tuple[str, str, str, str, str]] = [
         "SIGNAL10_RESUME_END=",
     ),
     (
+        "stereo-n10",
+        "ausgang data/schadens_proben_stereo10",
+        (
+            "cd '" + _REPO + "' && export LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=. "
+            "AURIK_FORCE_CPU=1 AURIK_NO_RT_LIMIT=1 && PY='" + _REPO + "/.venv_aurik/bin/python' && "
+            '"$PY" -B scripts/erstelle_schadens_proben.py --verzeichnis data/schadens_quellen '
+            "--ausgang data/schadens_proben_stereo10 --rezepte stereo_imbalance --songs 10 --seed 43"
+        ),
+        "/tmp/stereo_n10.log",
+        "STEREO_N10_END=",
+    ),
+    (
         "crackle-kette",
         "erstelle_crackle_expansion.py",
         (
