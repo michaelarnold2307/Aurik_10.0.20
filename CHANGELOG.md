@@ -1,4 +1,8 @@
-# Changelog — Aurik 10.14.0
+# Changelog — Aurik 10.14.1
+
+## 10.14.1 (2026-11-21)
+
+* **fix(banquet): Session-Reload außerhalb des Zustands-Locks** — parallele Reload-Aufrufer teilen einen einzelnen Ladeversuch; ONNX-Imports und -Initialisierung blockieren den Plugin-Lock nicht.
 
 ## 10.14.0 (2026-11-20)
 

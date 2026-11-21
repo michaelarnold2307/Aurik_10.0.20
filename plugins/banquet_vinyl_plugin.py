@@ -105,6 +105,8 @@ class BanquetVinylPlugin:
         # (ThreadPool) von mehreren Songs parallel genutzt — Zähler/Quarantäne
         # dürfen nicht racerieren (§V8/§G1 (copilot-instructions.md)).
         self._state_lock = threading.Lock()
+        self._load_condition = threading.Condition(self._state_lock)
+        self._load_in_progress: bool = False
 
         if model_dir is not None:
             model_path = Path(model_dir) / "banquet_vinyl_final.onnx"
@@ -139,6 +141,8 @@ class BanquetVinylPlugin:
     def ensure_model_loaded(self) -> bool:
         """Stellt die Modell-Session wieder her (nach PLM-Eviction) — §PERF-R.
 
+        Parallele Aufrufer teilen einen Ladeversuch, ohne Imports unter dem
+        Zustands-Lock auszuführen (§VI (copilot-instructions.md)).
         Der PLM kann das Singleton nach Datei-/Song-Ende evakuieren
         (unload_fn setzt Session/`_model_ok` zurück und gibt diesen Flag
         frei). Der nächste Aufruf lädt das Modell dann EINMAL nach —
@@ -147,13 +151,29 @@ class BanquetVinylPlugin:
         Kein Retry-Schleifen: nach einem fehlgeschlagenen Load-Versuch
         bleibt der Flag gesetzt, bis die nächste Eviction ihn zurücksetzt.
         """
-        if self._runtime_quarantined:
-            return False
+        with self._load_condition:
+            if self._runtime_quarantined:
+                return False
+            while self._load_in_progress:
+                self._load_condition.wait()
+                if self._runtime_quarantined:
+                    return False
+            if self._session is not None:
+                return bool(self._model_ok)
+            if self._load_attempted:
+                return False
+            self._load_attempted = True
+            self._load_in_progress = True
+
+        try:
+            self._try_load_model()
+        finally:
+            with self._load_condition:
+                self._load_in_progress = False
+                self._load_condition.notify_all()
+
         with self._state_lock:
-            if self._session is None and not self._load_attempted:
-                self._load_attempted = True
-                self._try_load_model()
-        return bool(self._model_ok and self._session is not None)
+            return bool(self._model_ok and self._session is not None)
 
     # ------------------------------------------------------------------
     # Name of the patched ONNX whose 0-D Slice tensors (val_21/val_22) have
@@ -250,9 +270,10 @@ class BanquetVinylPlugin:
                     # §PERF-R (2026-09-18): Eviction setzt auch den Reload-Flag
                     # zurück, damit ensure_model_loaded() beim nächsten Song
                     # EINMAL nachladen darf (kein stiller DSP-Dauerverbleib).
-                    self._session = None
-                    self._model_ok = False
-                    self._load_attempted = False
+                    with self._state_lock:
+                        self._session = None
+                        self._model_ok = False
+                        self._load_attempted = False
 
                 _reg_plm(
                     "BanquetVinyl",
@@ -562,11 +583,16 @@ class BanquetVinylPlugin:
         alle Zustandsänderungen über `_state_lock` geschützt
         (§V8/§G1 (copilot-instructions.md)).
         """
-        if self._runtime_quarantined or self._session is None:
+        with self._state_lock:
+            quarantined = self._runtime_quarantined
+            session = self._session
+            input_name = self._input_name
+            output_name = self._output_name
+        if quarantined or session is None:
             return self._process_dsp(chunk, self.TARGET_SR, strength)
         try:
             inp_tensor, stft_ctx = self._prepare_input(chunk, channels)
-            raw_out = self._session.run([self._output_name], {self._input_name: inp_tensor})[0]
+            raw_out = session.run([output_name], {input_name: inp_tensor})[0]
             raw_out_arr = np.asarray(raw_out, dtype=np.float32)
             raw_out = np.nan_to_num(raw_out_arr, nan=0.0, posinf=0.0, neginf=0.0)
             chunk_out = self._extract_output(raw_out, channels, chunk_len, stft_ctx)
