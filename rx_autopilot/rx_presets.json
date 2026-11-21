@@ -1,0 +1,62 @@
+{
+  "schema": "aurik.rx_autopilot_presets/1",
+  "hinweis": "Deterministische RX-Modul-Ketten je Defektklasse. Es werden ausschließlich die von iZotope dokumentierten Standard-Einstellungen verwendet — die faire Referenz-Baseline für den DRT-16-Vergleich, ohne Experten-Tweaks. Kein Mensch bedient RX; der Windows-Agent (windows_agent.py) setzt diese Ketten headless über rxconnect um.",
+  "presets": {
+    "crackle": [
+      {
+        "module": "Decrackle",
+        "params": {
+          "quality": "standard",
+          "strength": 5.0,
+          "amplitude_skew": 0.0
+        }
+      }
+    ],
+    "hiss": [
+      {
+        "module": "Spectral De-noise",
+        "params": {
+          "mode": "standard",
+          "threshold": "adaptive",
+          "reduction": 6.0
+        }
+      }
+    ],
+    "denoise": [
+      {
+        "module": "Spectral De-noise",
+        "params": {
+          "mode": "standard",
+          "threshold": "adaptive",
+          "reduction": 6.0
+        }
+      }
+    ],
+    "hum": [
+      {
+        "module": "De-hum",
+        "params": {
+          "fundamental": "auto",
+          "harmonics": 8,
+          "filter_q": "default"
+        }
+      }
+    ],
+    "clicks": [
+      {
+        "module": "De-click",
+        "params": { "sensitivity": "default", "width": "default" }
+      }
+    ],
+    "dropout": [
+      {
+        "module": "De-click",
+        "params": { "sensitivity": "default", "width": "wide" }
+      }
+    ],
+    "reverb": [{ "module": "De-reverb", "params": { "reduction": "default" } }],
+    "bandwidth": [
+      { "module": "Spectral Recovery", "params": { "strength": "default" } }
+    ]
+  }
+}

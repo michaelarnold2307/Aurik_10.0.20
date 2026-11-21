@@ -9,27 +9,32 @@ weiteren menschlichen Eingriff automatisch abläuft.
 
 ## 1. Warum RX hier nicht autonom installierbar ist
 
-- iZotope RX 11/12 läuft **nur auf Windows und macOS** — dieses System ist
-  Linux (kein nativer Installer, kein CLI-Paket, kein winget/apt).
-- Die Trial erfordert einen iZotope-Account (E-Mail-Registrierung) und eine
-  GUI-Installation mit Lizenz-Aktivierung — beides sind Identitäts- und
-  Lizenzakte, die nur der Mensch ausführen kann und darf.
-- Damit ist die Beschaffung korrekt als `NICHT_MESSBAR`-Anteil klassifiziert:
-  **kein lokaler Messweg ohne externe Beschaffung** — das ist keine Lücke in
-  unserer Maschinerie, sondern eine Eigenschaft des Konkurrenzprodukts.
+- iZotope RX 11/12 läuft **nur auf Windows und macOS** — dieser Host ist
+  Linux. Die Lizenz hängt am iZotope-Portal (einmaliger Rechts-/Identitätsakt).
+- Für die **Bedienung** von RX ist menschliches Know-how nicht mehr nötig:
+  Sie ist durch den RX-Autopiloten vollständig automatisiert (Abschnitt 2).
 
-## 2. Der minimale menschliche Akt (3 Schritte, einmalig, ~1 h)
+## 2. Die Lösung ohne menschliches RX-Know-how: der RX-Autopilot
 
-1. **RX 12 Standard** (oder die 10-Tage-Trial, kostenlos) auf einem
-   Windows-/macOS-Rechner installieren: https://www.izotope.com/en/products/rx.html
-2. Die bereitgestellten Paar-Listen aus `benchmarks/competitive/paar_liste/`
-   batch-verarbeiten — pro Disziplin die `*_input.wav` durch das passende
-   RX-Modul (De-crackle, Spectral De-noise, De-hum, De-click, De-reverb,
-   Spectral Recovery) und als `*_rx12.wav` ablegen.
-3. Die Ausgaben nach `benchmarks/fixtures/rx12/` ins Repo kopieren
-   (Namensschema = Eingabenamen, Endung `_rx12.wav`).
+`rx_autopilot/` automatisiert die komplette Bearbeitungskette:
 
-Fertig. Alles Weitere läuft automatisch (Abschnitt 4).
+1. **`vm_setup.sh`** baut eine Windows-11-Evaluation-VM auf diesem Host
+   (QEMU/KVM, `/dev/kvm` vorhanden; ISO ohne Konto herunterladbar) mit
+   unbeaufsichtigter Installation (`autounattend.xml`) und QEMU-SMB-Share.
+2. **`windows_agent.py`** läuft in der VM als Watch-Queue: jede
+   `<name>__<defektklasse>.wav` im Share wird deterministisch mit der
+   Preset-Kette aus **`rx_presets.json`** (nur dokumentierte
+   iZotope-Standard-Einstellungen) headless über rxconnect verarbeitet und
+   als `<name>_rx12.wav` ausgegeben. Kein GUI, kein Experten-Tweaking.
+3. **`sync.py`** (Linux-Seite) legt die Paare in den Share, wartet auf die
+   Ausgaben, baut das DRT-16-Manifest und stößt den Vergleichs-Harness an
+   (`benchmarks/competitive/external_competitive_evidence.py`, verifiziert).
+
+Damit ist die Bearbeitung definitiv menschenfrei. Der einzige verbleibende
+Akt ist die **einmalige Lizenz-Aktivierung** (RX-Installer in den Share
+legen — `firstboot.cmd` installiert still; Trial-Anmeldung beim ersten
+Start). Das ist ein Rechtsakt, kein Bearbeitungs-Know-how — und wird von
+keinem Agenten übernommen (Abschnitt 6).
 
 ## 3. Was bereits OHNE RX autonom erledigt ist
 
