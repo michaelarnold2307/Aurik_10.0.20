@@ -2,7 +2,7 @@
 
 Die Q≈0-Klassen der Erstbelege (2026-11-12) waren für defektlast blind — die
 Q-Erstbelege konnten die Reparatur weder belegen noch widerlegen. Das
-supervidierte Witness (``backend/core/dsp/witness_detektor.py``, 6/6 Klassen
+supervidierte Witness (``backend/core/dsp/witness_detektor.py``, 7/7 Klassen
 Gate-bestanden, Holdout-AUC 0,90–1,00) macht sie messbar: dieses Skript bucht
 je Klasse die Witness-Q-Quote über die k398-Regionenpaare
 (clean/schaden/restauriert aus data/klassen_paare/manifest.jsonl).
@@ -96,6 +96,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--stichprobe", type=int, default=STICHPROBE)
     ap.add_argument("--klassen", default=None)
+    ap.add_argument(
+        "--manifest", type=Path, default=MANIFEST, help="Manifest-JSONL (Default: data/klassen_paare/manifest.jsonl)"
+    )
+    ap.add_argument(
+        "--report",
+        type=Path,
+        default=None,
+        help="Beleg-Pfad (Default: docs/reports/current/<datum>_witness_q_erstbelege.json)",
+    )
     args = ap.parse_args(argv)
 
     klassen = args.klassen.split(",") if args.klassen else sorted(WITNESS_CHECKPOINT_PFADE.keys())
@@ -105,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     eintraege: dict[str, list[dict[str, Any]]] = {}
-    with MANIFEST.open(encoding="utf-8") as fh:
+    with args.manifest.open(encoding="utf-8") as fh:
         for line in fh:
             d = json.loads(line)
             eintraege.setdefault(str(d["klasse"]), []).append(d)
@@ -113,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     rng = random.Random(args.seed)
     ergebnisse = [buche(k, eintraege.get(k, []), rng) for k in klassen]
     beleg = {"schema": SCHEMA, "datum": date.today().isoformat(), "seed": args.seed, "ergebnisse": ergebnisse}
-    ziel = REPORT_DIR / f"{date.today().isoformat()}_witness_q_erstbelege.json"
+    ziel = args.report or (REPORT_DIR / f"{date.today().isoformat()}_witness_q_erstbelege.json")
     ziel.write_text(json.dumps(beleg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(ergebnisse, indent=1, ensure_ascii=False))
     print(f"Beleg: {ziel}")

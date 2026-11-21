@@ -132,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         server.serve_forever()
     except KeyboardInterrupt:
+        # intentional: Ctrl+C beendet den Share-Server ohne Stacktrace (V74)
         pass
     return 0
 

@@ -40,6 +40,7 @@ WITNESS_CHECKPOINT_PFADE: dict[str, str] = {
     "sibilance": "models/witness_sibilance/witness.pt",
     "compression_artifacts": "models/witness_compression_artifacts/witness.pt",
     "transport_bump": "models/witness_transport_bump/witness.pt",
+    "clipping": "models/witness_clipping/witness.pt",
 }
 
 _cache: dict[str, Any] = {}

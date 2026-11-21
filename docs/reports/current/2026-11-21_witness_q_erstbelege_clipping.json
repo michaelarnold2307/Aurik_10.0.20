@@ -1,0 +1,16 @@
+{
+  "schema": "aurik.witness_q/1",
+  "datum": "2026-11-21",
+  "seed": 42,
+  "ergebnisse": [
+    {
+      "klasse": "clipping",
+      "regionen_stichprobe": 10,
+      "uebersprungen": 0,
+      "n_q_bewertbar": 0,
+      "q_witness_median": null,
+      "anteil_q_ge_0_5": null,
+      "never_worsen_anteil": 1.0
+    }
+  ]
+}

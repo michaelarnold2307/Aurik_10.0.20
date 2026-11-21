@@ -121,9 +121,15 @@ class WitnessCRNN(nn.Module):
         return self.head(o[:, -1]).squeeze(-1)
 
 
-def _baue_dataset(klasse: str) -> tuple[list[tuple[np.ndarray, int, str]], list[str], int]:
+def _baue_dataset(
+    klasse: str, manifest: Path | None = None
+) -> tuple[list[tuple[np.ndarray, int, str]], list[str], int]:
+    # None-Default statt `= MANIFEST`: Default-Argumente binden zur Definitionszeit,
+    # sonst sieht ein Monkeypatch auf das Modul-MANIFEST (Tests) den alten Pfad.
+    if manifest is None:
+        manifest = MANIFEST
     eintraege = []
-    for line in MANIFEST.open(encoding="utf-8"):
+    for line in manifest.open(encoding="utf-8"):
         d = json.loads(line)
         if d["klasse"] == klasse:
             eintraege.append(d)
@@ -150,8 +156,8 @@ def _auc(y: np.ndarray, p: np.ndarray) -> float:
     return float(roc_auc_score(y, p))
 
 
-def trainiere(klasse: str) -> dict[str, Any]:
-    daten, holdouts, uebersprungen = _baue_dataset(klasse)
+def trainiere(klasse: str, manifest: Path | None = None) -> dict[str, Any]:
+    daten, holdouts, uebersprungen = _baue_dataset(klasse, manifest)
     if not daten:
         return {"klasse": klasse, "fehler": "keine verwertbaren Regionen"}
     train = [(m, l) for m, l, t in daten if t not in holdouts]
@@ -228,6 +234,9 @@ def trainiere(klasse: str) -> dict[str, Any]:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Per-Klassen-Schadens-Witness trainieren (report-only)")
     ap.add_argument("--klassen", default=None, help="Komma-Liste (Default: alle Erstbeleg-Klassen)")
+    ap.add_argument(
+        "--manifest", type=Path, default=MANIFEST, help="Manifest-JSONL (Default: data/klassen_paare/manifest.jsonl)"
+    )
     args = ap.parse_args()
     klassen = (
         (args.klassen or "").split(",")
@@ -241,7 +250,7 @@ def main() -> int:
             "transport_bump",
         ]
     )
-    out = [trainiere(k) for k in klassen]
+    out = [trainiere(k, args.manifest) for k in klassen]
     print(json.dumps(out, indent=2, ensure_ascii=False))
     return 0
 

@@ -61,4 +61,5 @@ def test_klassen_liste_stimmt_mit_checkpoint_pfaden_ueberein() -> None:
         "sibilance",
         "compression_artifacts",
         "transport_bump",
+        "clipping",
     }
