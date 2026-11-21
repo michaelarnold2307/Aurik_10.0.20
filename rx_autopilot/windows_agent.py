@@ -134,19 +134,62 @@ def _watch(queue: Path, out: Path, intervall_s: float = 5.0) -> int:
     return 0
 
 
+def _watch_http(basis: str, tmp: Path, intervall_s: float = 5.0) -> int:
+    """HTTP-Modus: Queue des Hosts pollen (QEMU-Usernet: http://10.0.2.2:8090)."""
+    import urllib.request
+
+    rx = _rxconnect_import()
+    presets = _lade_presets()
+    tmp.mkdir(parents=True, exist_ok=True)
+    logger.info("RX-Autopilot-HTTP gestartet: %s", basis)
+    while True:
+        try:
+            with urllib.request.urlopen(basis + "/queue/next", timeout=10) as ant:
+                auftrag = json.loads(ant.read().decode("utf-8"))
+            if not auftrag:
+                time.sleep(intervall_s)
+                continue
+            name = auftrag["name"]
+            stamm = auftrag["stamm"]
+            klasse = auftrag["klasse"]
+            kette = presets.get(klasse)
+            if kette is None:
+                logger.warning("Unbekannte Defektklasse %r — übersprungen: %s", klasse, name)
+                continue
+            eingabe = tmp / name
+            urllib.request.urlretrieve(basis + "/files/" + name, eingabe)
+            ausgabe = tmp / f"{stamm}_rx12.wav"
+            logger.info("Verarbeite %s (Klasse %s, %d Schritte) …", name, klasse, len(kette))
+            _verarbeite(rx, eingabe, ausgabe, kette)
+            with ausgabe.open("rb") as f:
+                daten = f.read()
+            req = urllib.request.Request(basis + "/result/" + ausgabe.name, data=daten, method="PUT")
+            urllib.request.urlopen(req, timeout=60)
+            logger.info("Fertig + hochgeladen: %s", ausgabe.name)
+        except SystemExit:
+            raise
+        except Exception as exc:  # §V6 (copilot-instructions.md): laut melden, nicht still
+            logger.error("HTTP-Zyklus fehlgeschlagen: %s — nächster Versuch in %ss", exc, intervall_s)
+            time.sleep(intervall_s)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="RX-Autopilot (headless, deterministisch)")
     ap.add_argument("--selftest", action="store_true", help="rxconnect-API introspizieren und ausgeben")
-    ap.add_argument("--watch", action="store_true", help="Watch-Queue-Modus")
-    ap.add_argument("--queue", type=Path, default=Path(r"Z:\queue"), help="Eingabe-Ordner (virtiofs-Share)")
+    ap.add_argument("--watch", action="store_true", help="Watch-Queue-Modus (lokaler Ordner)")
+    ap.add_argument("--queue", type=Path, default=Path(r"Z:\queue"), help="Eingabe-Ordner")
     ap.add_argument("--out", type=Path, default=Path(r"Z:\output"), help="Ausgabe-Ordner")
+    ap.add_argument("--http", type=str, default=None, help="HTTP-Basis-URL des Host-Shares (z.B. http://10.0.2.2:8090)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if args.selftest:
         return _selftest()
+    if args.http:
+        return _watch_http(args.http, Path(__file__).resolve().parent / "_tmp")
     if args.watch:
         return _watch(args.queue, args.out)
-    ap.error("--selftest oder --watch erforderlich")
+    ap.error("--selftest, --watch oder --http erforderlich")
     return 2
 
 

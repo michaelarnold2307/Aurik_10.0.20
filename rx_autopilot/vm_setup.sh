@@ -1,11 +1,11 @@
 #!/bin/bash
 # rx_autopilot/vm_setup.sh — Windows-VM für den RX-Autopiloten (ein Befehl, kein Mensch).
 #
-# Baut eine QEMU/KVM-VM mit Windows 11 Enterprise Evaluation und einem
-# QEMU-SMB-Share (Host: <repo>/../rx_vm/share, in der VM \\\\10.0.2.4\\qemu).
-# In der VM läuft nach der unbeaufsichtigten Installation der
-# windows_agent.py als Watch-Queue — RX-Bearbeitung damit vollständig
-# automatisiert.
+# Baut eine QEMU/KVM-VM mit Windows 11 Enterprise Evaluation. Transfer
+# Host<->VM läuft über HTTP (rx_autopilot/http_share.py, Port 8090,
+# aus der VM: http://10.0.2.2:8090) — kein Samba/Root nötig. In der VM
+# läuft nach der unbeaufsichtigten Installation der windows_agent.py als
+# HTTP-Watch-Queue — RX-Bearbeitung damit vollständig automatisiert.
 #
 # Voraussetzungen (einmalig, kein Know-how):
 #   1. Windows-Eval-ISO: <repo>/../rx_vm/Win11_Enterprise_Eval.iso
@@ -37,30 +37,35 @@ if [ ! -e /dev/kvm ]; then
     exit 2
 fi
 
-# Agent + Presets in den Share legen (die VM sieht sie über QEMU-SMB)
+# Agent + Presets + Bootstrap in den Share legen (die VM lädt sie über HTTP)
 cp -f "${AGENT_SRC}/windows_agent.py" "${AGENT_DST}/"
 cp -f "${AGENT_SRC}/rx_presets.json" "${AGENT_DST}/"
 
-# Firstboot-Skript für die VM (wird per autounattend FirstLogonCommands gestartet)
-cat > "${SHARE}/firstboot.cmd" <<'EOF'
+# Bootstrap für die VM: lädt RX-Installer/Agent über HTTP, installiert still,
+# registriert den Agenten als geplante Aufgabe (HTTP-Modus).
+cat > "${AGENT_DST}/bootstrap.cmd" <<'EOF'
 @echo off
-rem RX still installieren, falls der Installer im Share liegt
-if exist Z:\RX_Installer.exe Z:\RX_Installer.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES
-rem Runner auf C: ablegen — er löst das RX-Python auf und startet den Agenten
+set BASE=http://10.0.2.2:8090
 mkdir C:\rx_autopilot 2>nul
-copy /Y Z:\agent\windows_agent.py C:\rx_autopilot\ >nul
-copy /Y Z:\agent\rx_presets.json C:\rx_autopilot\ >nul
+powershell -NoProfile -Command "try { Invoke-WebRequest '%BASE%/files/RX_Installer.exe' -OutFile 'C:\rx_autopilot\RX_Installer.exe' } catch {}"
+if exist C:\rx_autopilot\RX_Installer.exe C:\rx_autopilot\RX_Installer.exe /VERYSILENT /NORESTART /SUPPRESSMSGBOXES
+powershell -NoProfile -Command "Invoke-WebRequest '%BASE%/agent/windows_agent.py' -OutFile 'C:\rx_autopilot\windows_agent.py'; Invoke-WebRequest '%BASE%/agent/rx_presets.json' -OutFile 'C:\rx_autopilot\rx_presets.json'"
 (
   echo @echo off
   echo set RXP=^"C:\Program Files\iZotope\RX 11 Audio Editor\python\python.exe^"
   echo if not exist %%RXP%% set RXP=^"C:\Program Files\iZotope\RX 12 Audio Editor\python\python.exe^"
   echo if not exist %%RXP%% exit /b 1
-  echo %%RXP%% C:\rx_autopilot\windows_agent.py --watch --queue Z:\queue --out Z:\output
+  echo %%RXP%% C:\rx_autopilot\windows_agent.py --http http://10.0.2.2:8090
 ) > C:\rx_autopilot\run_agent.cmd
-rem Agent-Autostart als geplante Aufgabe (läuft dauerhaft als Watch-Queue)
 schtasks /Create /SC ONSTART /RU SYSTEM /TN "RXAutopilot" /TR "C:\rx_autopilot\run_agent.cmd" /F
 schtasks /Run /TN "RXAutopilot"
 EOF
+
+# HTTP-Share (Host) starten, falls nicht aktiv
+if ! pgrep -f "rx_autopilot/http_share.py" >/dev/null; then
+    nohup "${REPO}/.venv_aurik/bin/python" -B "${AGENT_SRC}/http_share.py" --share "${SHARE}" > "${VM_DIR}/http_share.log" 2>&1 &
+    echo "HTTP-Share gestartet: http://127.0.0.1:8090 -> ${SHARE}"
+fi
 
 # Unbeaufsichtigte Installation: autounattend auf eine kleine ISO (floppy-artig)
 if [ ! -f "${VM_DIR}/autounattend.iso" ]; then
@@ -83,12 +88,12 @@ if [ ! -f "${DISK}" ]; then
 fi
 
 echo "Starte VM (VNC :5901). Erster Start installiert Windows unbeaufsichtigt."
-echo "Share: QEMU-SMB \\\\10.0.2.4\\qemu -> ${SHARE} (Agent verarbeitet queue/ automatisch)."
+echo "Transfer: HTTP http://10.0.2.2:8090 (Agent verarbeitet queue/ automatisch)."
 
 exec qemu-system-x86_64 \
     -enable-kvm -cpu host -smp 4 -m 8192 \
     -drive file="${DISK}",if=virtio,format=qcow2 \
     -cdrom "${ISO}" \
     -drive file="${VM_DIR}/autounattend.iso",if=virtio,readonly=on \
-    -netdev user,id=n0,smb="${SHARE}" -device virtio-net-pci,netdev=n0 \
+    -netdev user,id=n0 -device virtio-net-pci,netdev=n0 \
     -daemonize -display none -vnc :1

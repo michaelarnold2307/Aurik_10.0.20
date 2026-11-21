@@ -85,8 +85,8 @@
       <FirstLogonCommands>
         <SynchronousCommand wcm:action="add" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
           <Order>1</Order>
-          <CommandLine>cmd /c net use Z: \\10.0.2.4\qemu /persistent:yes &amp; cmd /c Z:\firstboot.cmd</CommandLine>
-          <Description>QEMU-SMB-Share mappen und RX-Autopilot starten</Description>
+          <CommandLine>cmd /c powershell -NoProfile -Command "Invoke-WebRequest 'http://10.0.2.2:8090/agent/bootstrap.cmd' -OutFile 'C:\bootstrap.cmd'" &amp; cmd /c C:\bootstrap.cmd</CommandLine>
+          <Description>RX-Autopilot-Bootstrap über HTTP laden und ausführen</Description>
         </SynchronousCommand>
       </FirstLogonCommands>
     </component>

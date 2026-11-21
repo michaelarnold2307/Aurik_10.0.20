@@ -20,9 +20,10 @@ weiteren menschlichen Eingriff automatisch abläuft.
 
 1. **`vm_setup.sh`** baut eine Windows-11-Evaluation-VM auf diesem Host
    (QEMU/KVM, `/dev/kvm` vorhanden; ISO ohne Konto herunterladbar) mit
-   unbeaufsichtigter Installation (`autounattend.xml`) und QEMU-SMB-Share.
-2. **`windows_agent.py`** läuft in der VM als Watch-Queue: jede
-   `<name>__<defektklasse>.wav` im Share wird deterministisch mit der
+   unbeaufsichtigter Installation (`autounattend.xml`); Transfer über den
+   HTTP-Share (`http_share.py`, Port 8090 — kein Samba/Root nötig).
+2. **`windows_agent.py`** läuft in der VM als HTTP-Watch-Queue: jede
+   `<name>__<defektklasse>.wav` in der Host-Queue wird deterministisch mit der
    Preset-Kette aus **`rx_presets.json`** (nur dokumentierte
    iZotope-Standard-Einstellungen) headless über rxconnect verarbeitet und
    als `<name>_rx12.wav` ausgegeben. Kein GUI, kein Experten-Tweaking.
