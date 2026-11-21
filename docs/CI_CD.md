@@ -28,7 +28,14 @@ Der Hauptworkflow für Push/PR. Jobs:
 - **pr-evidence-gate** (PR-only): Evidenzblock-Pflicht bei Spec-Änderungen
   (`## Evidenzblock`, `Seed`, `95 %-CI`, `Maintainer Sign-off`) +
   TASK_CHANGES.md-Abdeckung (`scripts/change_ledger.py check`).
-- **snyk-guard**: Security-Scan (`scripts/snyk_guard.py`).
+- **snyk-guard**: Installiert die gepinnte Snyk-CLI, baut getrennte
+  Python-Umgebungen für Laufzeit- und Entwicklungs-Abhängigkeiten auf und scannt
+  beide Requirements-Dateien explizit. Das GitHub-Secret `SNYK_TOKEN` muss in
+  Repository- oder Organization-Actions-Secrets gesetzt sein; sein Wert wird
+  nicht ausgegeben. Findings erzeugen Textausgabe und JSON-Artefakte
+  (`snyk-reports`); Findings oder Scanfehler blockieren fail-closed. Fork-PRs
+  erhalten von GitHub keine Secrets und können diesen Job deshalb nicht
+  authentifizieren.
 - **determinism-gate**: `test_full_pipeline_determinism` + P2-Audit.
 - **export-guard**: Audio-/Metadaten-Export-Vertrag.
 - **normative-guard**: `test_no_production_stubs` + VERBOTEN-Compliance.
@@ -72,6 +79,17 @@ Vor jedem Commit laufen die Hooks aus `.pre-commit-config.yaml` (fail-closed):
 `aurik-file-lifecycle`, `aurik-symbol-duplicates`,
 `aurik-horordnung-calibration`, `aurik-code-weakness`,
 `aurik-spec-integration`, `aurik-unit-smoke` u. a.
+
+Für den lokalen Snyk-Hook wird die Snyk-CLI benötigt, zum Beispiel mit
+`npm install --global snyk`. Danach einmal mit `snyk auth` authentifizieren
+oder `SNYK_TOKEN` über den lokalen Secret-Manager in die Shell-Umgebung geben.
+Anschließend lässt sich der Scan mit `python scripts/snyk_guard.py` ausführen.
+Der Guard scannt `requirements/requirements_aurik.txt` und
+`requirements/requirements_dev.txt` und blockiert bei High/Critical-Findings
+oder Scanfehlern; er führt keine veraltete oder LLM-gestützte Auto-Fix-Aktion
+aus. Bei npm 11, das Installationsskripte standardmäßig blockiert, Snyk gezielt
+freigeben: `npm install --global --allow-scripts=snyk snyk`. Tokens dürfen
+weder in Repository-Dateien noch in Shell-Verläufen abgelegt werden.
 
 Manuell, CI-exakt:
 

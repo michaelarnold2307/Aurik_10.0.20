@@ -1,4 +1,12 @@
-# Changelog — Aurik 10.14.2
+# Changelog — Aurik 10.14.4
+
+## 10.14.4 (2026-11-21)
+
+* **fix(security): Snyk-Abdeckung und Finding-Reports wiederhergestellt** — Laufzeit- und Entwicklungsanforderungen werden mit den passenden Python-Umgebungen explizit gescannt; Findings/Scanfehler blockieren, JSON-Berichte werden als CI-Artefakt bereitgestellt. Veraltetes `snyk fix` wird nicht mehr aufgerufen.
+
+## 10.14.3 (2026-11-21)
+
+* **fix(ci): Snyk-CLI und Authentifizierung im Security-Gate wiederhergestellt** — CI installiert die offiziell gepinnte CLI, verlangt `SNYK_TOKEN` ohne ihn offenzulegen und dokumentiert die lokale Einrichtung.
 
 ## 10.14.2 (2026-11-21)
 

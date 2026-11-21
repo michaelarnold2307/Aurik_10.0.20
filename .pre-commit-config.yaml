@@ -52,7 +52,6 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
-        args: [--allow-multiple-documents]
 # removed check-toml hook
 # removed check-json from local block
       # removed check-ast hook to avoid missing entry requirement

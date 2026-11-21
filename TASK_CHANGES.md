@@ -1,19 +1,22 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-21 07:37 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-21 08:29 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/workflows/ci-lite.yml` | modifiziert |
+| M | `.pre-commit-config.yaml` | modifiziert |
 | M | `CHANGELOG.md` | modifiziert |
 | M | `README.md` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
+| M | `docs/CI_CD.md` | modifiziert |
 | M | `pyproject.toml` | modifiziert |
 | M | `scripts/snyk_guard.py` | modifiziert |
-| ?? | `tests/unit/test_snyk_guard.py` | ungetrackt |
+| M | `tests/unit/test_snyk_guard.py` | modifiziert |
 
 ## Entscheidungen
 
