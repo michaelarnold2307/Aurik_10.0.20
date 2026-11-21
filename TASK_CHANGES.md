@@ -1,20 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-21 06:53 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-21 07:37 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `Aurik10/__init__.py` | modifiziert |
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `CHANGELOG.md` | modifiziert |
 | M | `README.md` | modifiziert |
-| M | `TASK_CHANGES.md` | modifiziert |
 | M | `backend/core/version.py` | modifiziert |
-| M | `plugins/banquet_vinyl_plugin.py` | modifiziert |
 | M | `pyproject.toml` | modifiziert |
-| M | `tests/unit/test_banquet_vinyl_plugin_providers.py` | modifiziert |
+| M | `scripts/snyk_guard.py` | modifiziert |
+| ?? | `tests/unit/test_snyk_guard.py` | ungetrackt |
 
 ## Entscheidungen
 

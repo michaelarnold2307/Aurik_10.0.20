@@ -1,4 +1,8 @@
-# Changelog — Aurik 10.14.1
+# Changelog — Aurik 10.14.2
+
+## 10.14.2 (2026-11-21)
+
+* **fix(security): Snyk-Pre-Commit-Guard fail-closed** — Exitcode 0 gilt als sauberer Scan, bestätigte Findings lösen Fix + erneuten Scan aus; verbleibende Findings, Scanfehler und fehlende CLI blockieren den Commit.
 
 ## 10.14.1 (2026-11-21)
 

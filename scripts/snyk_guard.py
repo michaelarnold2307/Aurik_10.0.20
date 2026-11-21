@@ -1,54 +1,63 @@
-"""Snyk Guard for pre‑commit.
-Runs `snyk test` and, if vulnerabilities are found, attempts an automatic fix with `snyk fix`.
-If any vulnerability remains after the fix attempt, the hook fails and aborts the commit.
+"""Fail-closed Snyk pre-commit guard.
 
-The script respects the current Aurik Spec rules:
-- All security fixes must be applied automatically before a commit is allowed.
-- The guard runs in the same environment as the rest of the pre‑commit hooks (Python 3.11).
+Exit code 0 from ``snyk test`` means the scan completed with no findings;
+exit code 1 means findings were found. Operational scan failures block the
+commit and never trigger an automatic fix.
 """
 
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 
-# Helper to run a command and capture output
-def run(cmd, cwd=None):
+def run(cmd: Sequence[str], cwd: str | None = None) -> tuple[int, str]:
     try:
         result = subprocess.run(
-            cmd,
+            list(cmd),
             cwd=cwd,
-            shell=True,
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
         )
         return result.returncode, result.stdout
-    except Exception as exc:
-        return 1, str(exc)
+    except OSError as exc:
+        return 127, str(exc)
 
 
-# 1. Run snyk test
-print("Running Snyk security scan…")
-ret, out = run("snyk test --severity-threshold=high", cwd=str(Path.cwd()))
-print(out)
-if ret == 0:
-    print("Snyk found vulnerabilities – attempting auto‑fix...")
-    # 2. Attempt automatic fix
-    ret_fix, out_fix = run("snyk fix", cwd=str(Path.cwd()))
-    print(out_fix)
-    if ret_fix == 0:
-        # Re‑run test to confirm all high severity issues are resolved
-        ret_retest, out_retest = run("snyk test --severity-threshold=high", cwd=str(Path.cwd()))
-        print(out_retest)
-        if ret_retest != 0:
-            print("Some high‑severity vulnerabilities remain after auto‑fix. Commit aborted.")
-            sys.exit(1)
+def main() -> int:
+    cwd = str(Path.cwd())
+    test_command = ["snyk", "test", "--severity-threshold=high"]
+
+    print("Running Snyk security scan...")
+    scan_code, scan_output = run(test_command, cwd=cwd)
+    print(scan_output)
+    if scan_code == 0:
+        print("No high-severity vulnerabilities detected.")
+        return 0
+    if scan_code != 1:
+        print(f"Snyk scan failed with exit code {scan_code}; commit blocked.")
+        return 1
+
+    print("Snyk reported vulnerabilities; attempting automatic fix...")
+    fix_code, fix_output = run(["snyk", "fix"], cwd=cwd)
+    print(fix_output)
+    if fix_code != 0:
+        print(f"Snyk fix failed with exit code {fix_code}; commit blocked.")
+        return 1
+
+    retest_code, retest_output = run(test_command, cwd=cwd)
+    print(retest_output)
+    if retest_code == 0:
+        print("No high-severity vulnerabilities remain.")
+        return 0
+    if retest_code == 1:
+        print("High-severity vulnerabilities remain after the fix; commit blocked.")
     else:
-        print("Snyk fix failed – commit aborted.")
-        sys.exit(1)
-else:
-    print("No high‑severity vulnerabilities detected – proceeding with commit.")
+        print(f"Snyk retest failed with exit code {retest_code}; commit blocked.")
+    return 1
 
-sys.exit(0)
+
+if __name__ == "__main__":
+    sys.exit(main())
