@@ -26,9 +26,11 @@ ls study_stimuli/hoerproben/declip_produktionspfad/
 
 ## 2. Blind hören + Urteil
 
-A/B je Paar anhören (Reihenfolge der Schlüssel erst NACH dem Urteil öffnen).
-Urteil als `aurik.ab_stats/1`-Beleg festhalten (mindestens `signifikant`,
-`siege_a`, `siege_b`, `p_wert_vorzeichen_test`).
+Empfohlen: `python3 -B scripts/hoersitzung.py --hoerer NAME` (verblindet, automatische
+Auswertung zu `aurik.ab_stats/2`, siehe `HOERSITZUNG.md`). Hinweis: Declip hat nur 3 Paare
+(kleinstmögliches p = 0,25) und ist so strukturell nicht signifikant — erst mit ≥ 6 Paaren
+entscheidbar (Spec 07 §8.8). Manuell: `aurik.ab_stats/1` ist nur mit `--kandidat-seite A|B`
+buchbar (Richtung des Votums), `/2` trägt die Richtung selbst.
 
 **Ablehnung (nicht signifikant):** kein Flip — `flag_freigabe.py` bricht mit
 `ABBRUCH: Verdikt nicht buchbar` ab (Exit 2), das Flag bleibt AUS. Genau

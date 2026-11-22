@@ -360,7 +360,7 @@ def spectrum_budget_db(
         power = m * m
         noise_power = nz * nz
         defect_db[:, start:end] = band_power_db(noise_power, band_idx, n_bands)
-        signal_power = power - noise_power
+        signal_power: np.ndarray = power - noise_power
         np.maximum(signal_power, 0.0, out=signal_power)
         signal_db[:, start:end] = band_power_db(signal_power, band_idx, n_bands)
     threshold_db = masking_threshold_db(signal_db, centres_z)

@@ -817,6 +817,19 @@ normativ vorhanden sein (fehlertolerant, aber schema-stabil):
 **Rationale:** Ohne explizite Freude-/Ermüdungs- und Root-Cause-Telemetrie bleibt die
 geschlossene Nachbesserung intransparent und kann in UI/Orchestrator nicht stabil genutzt werden.
 
+### §2.2.3a [RELEASE_MUST] Diagnose-Metadaten-Wahrheit (2026-11-22)
+
+Metadaten in `RestorationResult.metadata`, die Aktivität, Verfügbarkeit oder
+Wirkung eines Moduls ausweisen, MÜSSEN aus einer ausgewerteten Prüfung oder
+realen Ausführung stammen. Verbindlich ist die Begriffstrennung
+`loaded_in_process` (Präsenz im Prozess) ≠ `wired_into_restoration_pipeline`
+(Aufrufstelle im Produktionspfad) ≠ `active`/`executed` (erfolgreiche
+Instanziierung oder reale Ausführung im aktuellen Lauf); `active` für bloße
+Präsenz oder Typ-Import ist verboten. Diagnose-Helfer
+importieren nie frisch (Deadlock-Schutz im `QThread`-Batch-Pfad) und sind
+report-only. Vollständige Regeln, Befund und Enforcement: Spec 07 §8.7
+(`07_quality_and_tests.md`).
+
 ### §2.38a ML-Guard-Fallback-Metadaten (PFLICHT)
 
 Wenn eine heavy ML-Stufe wegen RAM-Headroom-Guard nicht gestartet wird, MUESSEN strukturierte Metadaten geschrieben werden.

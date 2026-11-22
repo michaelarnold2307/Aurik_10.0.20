@@ -143,6 +143,13 @@ def _pruefe_drt_131415(fehler: list[str]) -> None:
         q = mod.read_text(encoding="utf-8")
         if "def phase_aus_variante" not in q or "def snapshot" not in q:
             _fehler("DRT-13: Modul ohne snapshot/phase_aus_variante (Teil-Rollback unmöglich)", fehler)
+        if "ContextVar" not in q or "def begin_song" not in q:
+            _fehler("DRT-13: Snapshot-Zustand ist nicht pro Ausführungskontext isoliert", fehler)
+        if "def phase_aus_delta" not in q or "to_samples_first" not in q:
+            _fehler("DRT-13: Chunk-Attribution ohne sparse sample-first Deltas", fehler)
+    chunked = _ROOT / "backend" / "core" / "chunked_streaming.py"
+    if not chunked.is_file() or "def apply_chunk_deltas" not in chunked.read_text(encoding="utf-8"):
+        _fehler("DRT-13: Chunk-Assembly ohne identisch gewichteten Phase-AUS-Kandidatenpfad", fehler)
     phase07 = _ROOT / "backend" / "core" / "phases" / "phase_07_declipper.py"
     if phase07.is_file():
         q7 = phase07.read_text(encoding="utf-8")
@@ -153,6 +160,15 @@ def _pruefe_drt_131415(fehler: list[str]) -> None:
         qu = uv3.read_text(encoding="utf-8")
         if "drt10_teil_rollback" not in qu or "phase_aus_variante" not in qu:
             _fehler("DRT-13: UV3-Verdikt ohne Teil-Rollback-Pfad (M1-Fallback allein ist Normverstoß)", fehler)
+        if (
+            not re.search(
+                r"if\s*\(\s*not _chunked_tail_skip\s+and self\._drt10_verdict_in_metadata",
+                qu,
+            )
+            or "apply_chunk_deltas" not in qu
+            or "phase_attribution" not in qu
+        ):
+            _fehler("DRT-13: DRT-10 wird nicht auf Song-Ebene mit transparentem Chunk-Fallback ausgewertet", fehler)
     # DRT-14: Wirksamkeits-Bericht (Zeuge-Helper + UV3-Verdrahtung)
     zeuge = _ROOT / "backend" / "core" / "dsp" / "wohlklang_zeuge.py"
     if zeuge.is_file():

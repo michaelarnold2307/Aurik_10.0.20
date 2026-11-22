@@ -39,10 +39,15 @@ def main() -> int:
     print(
         "real_audio_restoration_quality_gate "
         f"passed={gate.passed} non_degraded={gate.non_degraded_export_rate:.3f} "
-        f"unblocked={gate.unblocked_export_rate:.3f} musical={gate.musical_goal_case_pass_rate:.3f} "
+        f"unblocked={gate.unblocked_export_rate:.3f} artifact_contract={gate.artifact_contract_rate:.3f} "
+        f"hpi_contract={gate.hpi_contract_rate:.3f} vocal_contract={gate.vocal_contract_rate:.3f} "
+        f"export_contract={gate.export_contract_rate:.3f} evidence_complete={gate.case_evidence_complete_rate:.3f} "
+        f"case_coverage={gate.case_id_coverage_rate:.3f}/{gate.expected_case_count} "
+        f"musical={gate.musical_goal_case_pass_rate:.3f} "
         f"noise_texture={gate.noise_texture_case_pass_rate:.3f} goosebumps={gate.goosebumps_case_pass_rate:.3f} "
         f"vocal={gate.vocal_floor_pass_rate:.3f} hpi_avg={(gate.hpi_average or 0.0):.3f} "
-        f"quality_avg={(gate.quality_estimate_average or 0.0):.3f} runtime_factor={gate.runtime_factor:.3f} "
+        f"quality_avg_report_only={(gate.quality_estimate_average or 0.0):.3f} "
+        f"runtime_factor={gate.runtime_factor:.3f} "
         f"cases={gate.real_audio_cases} vocal_cases={gate.vocal_cases} "
         f"external_benchmark_cases={gate.external_benchmark_cases} output={args.output}"
     )

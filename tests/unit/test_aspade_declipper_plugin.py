@@ -96,6 +96,51 @@ def test_phase07_router_rejects_identity_candidate(monkeypatch):
     assert np.isfinite(result.audio).all()
 
 
+def test_phase07_router_keeps_better_incumbent_over_aspade_candidate(monkeypatch):
+    """Ein Proxy-Gewinn gegen Input darf einen besseren PCHIP-Amtsinhaber nicht verdrängen."""
+    import sys
+    import types
+
+    import backend.core.phases.phase_07_declipper as phase_module
+    from backend.core.phases.phase_07_declipper import DeclipperPhase
+
+    audio = np.ones(48000, dtype=np.float32)
+    incumbent = np.full(audio.shape, 0.6, dtype=np.float64)
+    candidate = np.full(audio.shape, 0.8, dtype=np.float64)
+
+    class _FakeAspade:
+        def is_available(self) -> bool:
+            return True
+
+        def declip(self, _audio, _sr, _threshold):
+            return candidate.copy()
+
+    def _proxy(samples: np.ndarray, _sr: int) -> float:
+        if np.all(samples == 1.0):
+            return 1.0
+        if np.all(samples == 0.6):
+            return 0.2
+        if np.all(samples == 0.8):
+            return 0.5
+        return 2.0
+
+    cqt_stub = types.ModuleType("plugins.cqtdiff_plus_plugin")
+    cqt_stub.inpaint_gap = lambda *_args, **_kwargs: None
+    monkeypatch.setitem(sys.modules, "plugins.cqtdiff_plus_plugin", cqt_stub)
+    monkeypatch.setattr(phase_module, "_histogram_clip_threshold", lambda *_args, **_kwargs: 0.9)
+    monkeypatch.setattr(phase_module, "_declip_pchip", lambda *_args, **_kwargs: incumbent.copy())
+    monkeypatch.setattr(phase_module, "_harmonic_distortion_proxy", _proxy)
+    monkeypatch.setattr(
+        "plugins.aspade_declipper_plugin.get_aspade_declipper_plugin",
+        lambda: _FakeAspade(),
+    )
+
+    result = DeclipperPhase().process(audio, sample_rate=SR)
+
+    assert result.metrics["aspade_used"] is False
+    np.testing.assert_array_equal(result.audio, incumbent.astype(np.float32))
+
+
 def test_phase07_router_fallback_when_unavailable(monkeypatch):
     """Plugin ohne Modell → CQT-Diff/PCHIP-Pfad, aspade_used False, kein Crash (§V6 (copilot-instructions.md))."""
     from backend.core.phases.phase_07_declipper import DeclipperPhase

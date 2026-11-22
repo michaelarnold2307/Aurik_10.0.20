@@ -130,7 +130,7 @@ def generate_markdown(report: dict) -> str:
         "| Metrik | Wert | Ziel | Status |",
         "|--------|------|------|--------|",
         f"| HPI Ø | {gate.get('hpi_average', '?'):.3f} | ≥ 0.78 | {'✅' if (gate.get('hpi_average') or 0) >= 0.78 else '❌'} |",
-        f"| Quality Ø | {gate.get('quality_estimate_average', '?'):.3f} | ≥ 0.84 | {'✅' if (gate.get('quality_estimate_average') or 0) >= 0.84 else '❌'} |",
+        f"| Quality Ø (report-only) | {gate.get('quality_estimate_average', '?'):.3f} | — | Diagnose |",
         f"| Musical Goals | {gate.get('musical_goal_case_pass_rate', 0):.1%} | ≥ 90% | {'✅' if gate.get('musical_goal_case_pass_rate', 0) >= 0.90 else '❌'} |",
         f"| Noise Texture | {gate.get('noise_texture_case_pass_rate', 0):.1%} | ≥ 94% | {'✅' if gate.get('noise_texture_case_pass_rate', 0) >= 0.94 else '❌'} |",
         f"| Goosebumps | {gate.get('goosebumps_case_pass_rate', 0):.1%} | ≥ 90% | {'✅' if gate.get('goosebumps_case_pass_rate', 0) >= 0.90 else '❌'} |",

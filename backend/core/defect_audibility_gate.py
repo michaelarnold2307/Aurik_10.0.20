@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -147,14 +148,24 @@ class DefectAudibilityReport:
     # Blockade ohne Daten), nicht fuer die Qualitaets-Zusage.
     n_verified: int = 0
     n_unevaluable: int = 0  # Zeilen ohne Zahl (nicht gemessen, keine Evidenz)
-    evidence_state: str = "evaluated"  # evaluated | no_residual_defects | scan_missing
-    gate_verified: bool = True  # gate_passed UND Evidenz vorhanden
+    required_type_count: int = 0
+    measured_type_count: int = 0
+    missing_types: list[str] = field(default_factory=list)
+    coverage_complete: bool = False
+    scan_scope: str = "unknown"
+    evidence_state: str = "evaluated"  # evaluated | no_residual_defects | scan_missing | incomplete
+    gate_verified: bool = False  # gate_passed UND vollständige Song-Evidenz vorhanden
 
     def to_metadata(self) -> dict[str, Any]:
         return {
             "gate_passed": bool(self.gate_passed),
             "gate_verified": bool(self.gate_verified),
             "evidence_state": str(self.evidence_state),
+            "scan_scope": str(self.scan_scope),
+            "required_type_count": int(self.required_type_count),
+            "measured_type_count": int(self.measured_type_count),
+            "missing_types": list(self.missing_types),
+            "coverage_complete": bool(self.coverage_complete),
             "n_verified": int(self.n_verified),
             "n_unevaluable": int(self.n_unevaluable),
             "threshold": round(float(self.threshold), 4),
@@ -170,6 +181,35 @@ class DefectAudibilityReport:
             "improvable_types": list(self.improvable_types),
             "per_type": {k: {kk: vv for kk, vv in v.items() if kk != "phase_hint"} for k, v in self.per_type.items()},
         }
+
+
+def write_defect_audibility_metadata(metadata: dict[str, Any], report: DefectAudibilityReport) -> None:
+    """Persist audibility evidence and prevent unverified reports from exporting as OK."""
+    payload = report.to_metadata()
+    metadata["audibility_gate"] = payload
+    metadata["defect_residual_audibility"] = payload
+    metadata["hoerbarkeits_gate_passed"] = bool(report.gate_verified)
+    metadata["hoerbarkeits_gate_evidence_state"] = str(report.evidence_state)
+    metadata["hoerbarkeits_gate_unmasked_types"] = int(report.n_audible_unmasked)
+    metadata["audibility_evidence_status"] = "verified" if report.gate_verified else str(report.evidence_state)
+    if report.gate_verified:
+        return
+
+    if str(metadata.get("degradation_status", "")).strip().lower() not in {"blocked", "critical_degraded"}:
+        metadata["degradation_status"] = "degraded"
+    error_code = "AUDIBILITY_RESIDUAL_ABOVE_THRESHOLD" if not report.gate_passed else "AUDIBILITY_EVIDENCE_INCOMPLETE"
+    detail = (
+        f"scope={report.scan_scope}; measured={report.measured_type_count}/{report.required_type_count}; "
+        f"audible_residuals={report.n_audible_unmasked}"
+    )
+    if not metadata.get("fail_reason"):
+        metadata["fail_reason"] = error_code
+    fail_reasons = metadata.get("fail_reasons")
+    if not isinstance(fail_reasons, list):
+        fail_reasons = [fail_reasons] if fail_reasons else []
+        metadata["fail_reasons"] = fail_reasons
+    if not any(isinstance(reason, dict) and reason.get("error_code") == error_code for reason in fail_reasons):
+        fail_reasons.append({"error_code": error_code, "detail": detail})
 
 
 # --- Kanonische Maskierungs-Instanz (Konsistenz-Slice 2) ---------------------
@@ -344,6 +384,73 @@ def _sev_or_none(value: Any) -> float | None:
     return v if math.isfinite(v) else None
 
 
+def build_defect_reduction_per_type(pre_scan: Any, post_scan: Any) -> dict[str, dict[str, Any]]:
+    """Build explicit per-type evidence, retaining measured zeros and missing scans."""
+    from backend.core.defect_scanner import DefectType
+
+    pre_scores = getattr(pre_scan, "scores", None)
+    post_scores = getattr(post_scan, "scores", None)
+    pre_scores = pre_scores if isinstance(pre_scores, dict) else {}
+    post_scores = post_scores if isinstance(post_scores, dict) else {}
+    reductions: dict[str, dict[str, Any]] = {}
+
+    def score_for(scores: dict[Any, Any], defect_type: Any) -> Any:
+        return scores.get(defect_type, scores.get(defect_type.value))
+
+    for defect_type in DefectType:
+        pre_score = score_for(pre_scores, defect_type)
+        post_score = score_for(post_scores, defect_type)
+        pre_severity = _sev_or_none(getattr(pre_score, "severity", None)) if pre_score is not None else None
+        post_severity = _sev_or_none(getattr(post_score, "severity", None)) if post_score is not None else None
+        reduction = (
+            max(0.0, pre_severity - post_severity) if pre_severity is not None and post_severity is not None else 0.0
+        )
+        post_metadata = getattr(post_score, "metadata", {})
+        masked_events = post_metadata.get("n_masked_events", 0) if isinstance(post_metadata, dict) else 0
+        reductions[defect_type.value] = {
+            # Zero is only a storage placeholder; the explicit measured flags
+            # prevent missing scan rows from being counted as clean evidence.
+            "pre": pre_severity if pre_severity is not None else 0.0,
+            "post": post_severity if post_severity is not None else 0.0,
+            "reduction": reduction,
+            "reduction_pct": round(reduction / max(pre_severity or 0.0, 0.001) * 100, 1),
+            "masked_events": int(masked_events or 0),
+            "pre_measured": pre_severity is not None,
+            "post_measured": post_severity is not None,
+        }
+    return reductions
+
+
+def evaluate_full_song_audibility(
+    pre_scan: Any,
+    post_scan: Any,
+    audio: Any,
+    sample_rate: Any,
+    *,
+    material_key: str,
+    chain_depth: int = 1,
+) -> DefectAudibilityReport:
+    """Evaluate every DefectType against full-song post-scan evidence."""
+    post_scores = getattr(post_scan, "scores", None)
+    locations = {
+        str(getattr(defect_type, "value", defect_type)): [
+            (float(start), float(end)) for start, end in (getattr(score, "locations", []) or [])
+        ]
+        for defect_type, score in (post_scores.items() if isinstance(post_scores, dict) else [])
+        if getattr(score, "locations", None)
+    }
+    return evaluate_defect_audibility(
+        build_defect_reduction_per_type(pre_scan, post_scan),
+        material_key=material_key,
+        chain_depth=chain_depth,
+        audio=audio,
+        sample_rate=sample_rate,
+        defect_locations=locations,
+        post_scan_ran=isinstance(post_scores, dict),
+        scan_scope="whole_song",
+    )
+
+
 def evaluate_defect_audibility(
     defect_reduction_per_type: dict[str, dict[str, Any]] | None,
     *,
@@ -355,6 +462,8 @@ def evaluate_defect_audibility(
     defect_locations: dict[str, list[tuple[float, float]]] | None = None,
     canonical_model: str = "mpeg1",
     post_scan_ran: bool | None = None,
+    expected_types: Iterable[str] | None = None,
+    scan_scope: str = "unknown",
 ) -> DefectAudibilityReport:
     """Bewertet die Restdefekte gegen die Hörbarkeitsschwelle (reine Funktion).
 
@@ -384,16 +493,31 @@ def evaluate_defect_audibility(
             ⇒ ``evidence_state="scan_missing"`` und ``gate_verified=False``
             (§G8 (copilot-instructions.md): ohne Messung keine Zusage). ``None``
             leitet ab: Eintraege vorhanden ⇒ "evaluated", sonst "scan_missing".
+        expected_types: Erwartete DefectTypes. Standardmäßig alle Werte aus
+            ``DefectType``; Tests für gezielte Einzelfälle dürfen eine Teilmenge
+            angeben.
+        scan_scope: ``whole_song`` ist erforderlich, um vollständige
+            Hörbarkeits-Evidenz zu verifizieren.
     """
     thr = audible_threshold(material_key, chain_depth)
     caps = set(PHYSICAL_CAP_DEFECT_TYPES) | set(physical_cap_types or set())
+    if expected_types is None:
+        from backend.core.defect_scanner import DefectType
+
+        required_types = {dt.value for dt in DefectType}
+    else:
+        required_types = {str(name).strip().lower() for name in expected_types if str(name).strip()}
     report = DefectAudibilityReport(
         threshold=thr,
         material_key=str(material_key),
         chain_depth=max(1, int(chain_depth or 1)),
+        required_type_count=len(required_types),
+        scan_scope=str(scan_scope),
     )
-    data = defect_reduction_per_type or {}
-    report.n_total = len(data)
+    raw_data = defect_reduction_per_type or {}
+    data = {str(name).strip().lower(): entry for name, entry in raw_data.items()}
+    report.n_total = len(required_types)
+    verified_types: set[str] = set()
     # Kanonische Maskierungs-Verdikte NUR für Severity-Kandidaten berechnen
     # (post >= Schwelle) - Laufzeit-Budget, Pre-Filter bleibt die Severity-Skala.
     canonical: dict[str, dict[str, Any]] = {}
@@ -407,12 +531,43 @@ def evaluate_defect_audibility(
         except Exception as _canon_exc:  # §V6 (copilot-instructions.md): fail-open
             logger.warning("Kanonische Hör-Instanz nicht verfügbar (%s) - Severity-Ersatzpfad", _canon_exc)
             canonical = {}
-    for dt_name, entry in data.items():
+    for dt_name in sorted(required_types | set(data)):
+        entry = data.get(dt_name)
+        if entry is None:
+            report.per_type[dt_name] = {
+                "pre": None,
+                "post": None,
+                "reduction": 0.0,
+                "masked_events": 0,
+                "audible_pre": False,
+                "audible_post": False,
+                "status": "unevaluable",
+                "evidence": "missing_scan_entry",
+            }
+            report.n_unevaluable += 1
+            if dt_name in required_types:
+                report.missing_types.append(dt_name)
+            continue
         if not isinstance(entry, dict):
+            report.per_type[dt_name] = {
+                "pre": None,
+                "post": None,
+                "reduction": 0.0,
+                "masked_events": 0,
+                "audible_pre": False,
+                "audible_post": False,
+                "status": "unevaluable",
+                "evidence": "malformed_entry",
+            }
+            report.n_unevaluable += 1
+            if dt_name in required_types:
+                report.missing_types.append(dt_name)
             continue
         pre = _sev(entry.get("pre"))
         post = _sev(entry.get("post"))
-        if _sev_or_none(entry.get("pre")) is None or _sev_or_none(entry.get("post")) is None:
+        pre_measured = entry.get("pre_measured") is not False and _sev_or_none(entry.get("pre")) is not None
+        post_measured = entry.get("post_measured") is not False and _sev_or_none(entry.get("post")) is not None
+        if not pre_measured or not post_measured:
             # §G8 (copilot-instructions.md): Zeile ohne Zahl ist NICHT gemessen.
             report.per_type[dt_name] = {
                 "pre": pre,
@@ -425,7 +580,11 @@ def evaluate_defect_audibility(
                 "evidence": "malformed_entry",
             }
             report.n_unevaluable += 1
+            if dt_name in required_types:
+                report.missing_types.append(dt_name)
             continue
+        if dt_name in required_types:
+            verified_types.add(dt_name)
         masked = 0
         try:
             masked = int(entry.get("masked_events", 0) or 0)
@@ -490,26 +649,35 @@ def evaluate_defect_audibility(
                 report.improvable_types.append(dt_name)
         elif status == "never_audible":
             report.n_never_audible += 1
+    report.missing_types.sort()
+    report.measured_type_count = len(verified_types)
+    report.coverage_complete = bool(required_types) and report.measured_type_count == len(required_types)
     report.gate_passed = report.n_audible_unmasked == 0
     # §G8 (copilot-instructions.md) Evidenz-Zustand: "bestanden" (kein hörbarer
     # Restdefekt) und "belegt" (es wurde überhaupt gemessen) sind ZWEI Aussagen.
-    report.n_verified = sum(1 for v in report.per_type.values() if str(v.get("status")) != "unevaluable")
-    if post_scan_ran is False:
+    report.n_verified = report.measured_type_count
+    if post_scan_ran is False or (post_scan_ran is None and not data):
         report.evidence_state = "scan_missing"
-    elif report.n_verified > 0:
+    elif report.scan_scope != "whole_song":
+        report.evidence_state = "scope_incomplete"
+    elif not report.coverage_complete:
+        report.evidence_state = "coverage_incomplete"
+    elif report.n_audible_unmasked == 0 and report.n_physical_cap == 0:
+        report.evidence_state = "no_residual_defects" if report.n_audible_pre == 0 else "evaluated"
+    elif report.coverage_complete:
         report.evidence_state = "evaluated"
-    elif post_scan_ran is True:
-        report.evidence_state = "no_residual_defects"
     else:
         report.evidence_state = "scan_missing"
-    report.gate_verified = bool(report.gate_passed and report.evidence_state != "scan_missing")
-    if report.evidence_state == "scan_missing":
+    report.gate_verified = bool(report.gate_passed and report.evidence_state in {"evaluated", "no_residual_defects"})
+    if report.evidence_state not in {"evaluated", "no_residual_defects"}:
         logger.warning(
-            "§Hörbarkeits-Gate UNGEPRÜFT (§G8 (copilot-instructions.md)): kein §B2-Post-Scan-Ergebnis "
-            "(%d Typ-Einträge) — gate_passed=%s ist damit KEIN Nachweis "
-            "„Residuum unter der Maskierungsschwelle“ (fail-open nur für den Block, "
-            "fail-closed für die Qualitäts-Zusage, §V6 (copilot-instructions.md))",
+            "§Hörbarkeits-Gate UNGEPRÜFT (§G10/§G13 (copilot-instructions.md)): "
+            "scope=%s coverage=%d/%d missing=%d — gate_passed=%s ist KEIN "
+            "Nachweis „Residuum unter der Maskierungsschwelle“",
+            report.scan_scope,
             report.n_verified,
+            report.required_type_count,
+            len(report.missing_types),
             report.gate_passed,
         )
     return report

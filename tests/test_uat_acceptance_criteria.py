@@ -387,7 +387,7 @@ STUDIO_2026_CRITERIA = [
     {
         "id": "S15",
         "name": "Export-Gate erfolgreich",
-        "description": "Export findet statt NUR wenn quality_estimate ≥ 0.55",
+        "description": "Ein zu niedriger quality_estimate-Proxy blockiert den sicheren degraded-Export nicht",
         "category": "Code Quality",
         "severity": "MUST",
         "test_type": "code_inspection",
@@ -1424,13 +1424,13 @@ def test_studio_2026_criteria(criterion: dict[str, Any]):
             result["evidence"] = "Vokal-adaptive Remix-Logik + Kompressorpfad vorhanden"
 
         elif criterion["id"] == "S15":
-            # Export gate
+            # §0c: a diagnostic proxy cannot suppress best-effort export.
             found = check_code_for_pattern(
-                "backend/api/bridge.py",
-                [r"export_guard", r"quality_estimate.*>=.*0.55"],
+                "backend/core/export_workflow.py",
+                [r"export_strategy", r"degraded"],
             )
-            assert found, "Export guard not properly implemented"
-            result["evidence"] = "export_guard() checks quality_estimate >= 0.55"
+            assert found, "Best-effort degraded export is not implemented"
+            result["evidence"] = "Export workflow writes the best safe result with degraded status"
 
         else:
             pytest.fail(f"Unknown criterion {criterion['id']}")

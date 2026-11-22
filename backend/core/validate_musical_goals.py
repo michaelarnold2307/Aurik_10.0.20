@@ -171,10 +171,10 @@ class ArtifactChecker:
             return all(float(v) >= self.minimum for v in scores.values())
 
     class ExzellenzChecker:
-        """Prüft overall excellence: quality_estimate ≥ 0.55 AND speedup ≥ 1.2×.
+        """Validate the diagnostic score range and the speedup target.
 
         Args:
-            quality_threshold: Minimum quality_estimate (default 0.55).
+            quality_threshold: Deprecated compatibility argument; ignored.
             speedup_threshold: Minimum speedup ratio (default 1.2).
         """
 
@@ -183,12 +183,19 @@ class ArtifactChecker:
             quality_threshold: float = 0.55,
             speedup_threshold: float = 1.2,
         ) -> None:
-            self.quality_threshold = quality_threshold
+            _ = quality_threshold
             self.speedup_threshold = speedup_threshold
 
         def check(self, quality_estimate: float, speedup: float) -> bool:
-            """Gibt True when both gates pass zurück."""
-            return float(quality_estimate) >= self.quality_threshold and float(speedup) >= self.speedup_threshold
+            """quality_estimate is report-only; invalid values still fail the contract (§8.1)."""
+            quality = float(quality_estimate)
+            runtime = float(speedup)
+            return bool(
+                np.isfinite(quality)
+                and 0.0 <= quality <= 1.0
+                and np.isfinite(runtime)
+                and runtime >= self.speedup_threshold
+            )
 
 
 # Convenience functions for policy_engine.py compatibility

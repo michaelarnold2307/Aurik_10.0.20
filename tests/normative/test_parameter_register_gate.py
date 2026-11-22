@@ -15,7 +15,7 @@ Kategorien:
   R03 – Noise-Texture-Threshold → test_r03_*
   R04 – Priority-Phasen         → test_r04_*
   R05 – Stereo-Korr.-Guard      → test_r05_*
-  R06 – OQS-Gates               → test_r06_*
+  R06 – OQS-Referenzwerte       → test_r06_*
   R07 – Carrier-Recovery-Ratio  → test_r07_*
 
 Aufruf: pytest tests/normative/test_parameter_register_gate.py -v --timeout=30
@@ -269,20 +269,22 @@ class TestR05StereoCorrelationGuard:
 
 
 # ===========================================================================
-# R06 — OQS-Gates (§8.1.1a/b / §8.5A)
+# R06 — OQS-Referenzwerte (§8.1.1a/b / §8.5A)
 # ===========================================================================
 
 
-class TestR06OQSGates:
-    """Materialadaptive OQS-Gates für beide Modi."""
+class TestR06OQSReferenceValues:
+    """Materialadaptive OQS-Referenzwerte bleiben report-only."""
 
-    def test_studio2026_oqs_gate_88_in_spec(self):
+    def test_studio2026_oqs_target_is_report_only_in_spec(self):
         spec = _spec07_source()
-        assert "OQS ≥ **88**" in spec or "OQS >= 88" in spec, "Studio-2026-OQS-Gate 88 fehlt in Spec 07 §8.1.1a"
+        assert "OQS ≥ **88** bleibt ein Entwicklungsziel" in spec
+        assert "keinen Export blockieren" in spec
 
-    def test_restoration_oqs_digital_80_in_spec(self):
+    def test_restoration_oqs_digital_target_is_diagnostic(self):
         spec = _spec07_source()
-        assert "≥ **80**" in spec or ">= 80" in spec, "Restoration-OQS-Gate 80 (digital) fehlt in Spec 07 §8.1.1b"
+        assert "Digital (cd_digital, dat, streaming, aac) | ≥ **80**" in spec
+        assert "diagnostische Referenzwerte" in spec
 
     def test_parameter_register_section_in_spec(self):
         spec = _spec07_source()

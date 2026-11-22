@@ -10,7 +10,7 @@ degradiert den Export (bestmögliches sicheres Ergebnis, kein Hardstop).
 Regeln (deterministisch, aus vorhandenen Proxies — kein neues ML):
   - artifact_freedom < 0.95                → NO_GO (Artefakt-Risiko)
   - HPI ≤ 0                                → NO_GO (Signal verschlechtert)
-  - quality_estimate < 0.55                → NO_GO (Kernqualität)
+  - quality_estimate < 0.55                → GO_CAUTION (nicht hörkalibrierter Proxy)
   - Structural-Silence-Lift > 1.0 dB       → NO_GO (Energie in Stille)
   - Pump-/Breathing-Indikatoren in Warnings→ NO_GO (NR-Pumpen)
   - Formant-Integrität < 0.72 / Vibrato < 0.80 → NO_GO (Vokalverfärbung)
@@ -90,7 +90,7 @@ def evaluate(result: object, audio: np.ndarray | None = None) -> GoNoGoVerdict:
 
     qe = _num(getattr(result, "quality_estimate", None))
     if qe is not None and qe < 0.55:
-        reasons.append(f"quality_estimate_low={qe:.3f}")
+        cautions.append(f"quality_estimate_low_report_only={qe:.3f}")
 
     # ── Structural-Silence / Vocal-Schäden ────────────────────────────────
     silence = meta.get("structural_silence_audit")

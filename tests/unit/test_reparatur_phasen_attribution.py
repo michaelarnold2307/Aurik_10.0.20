@@ -25,6 +25,21 @@ def test_variante_nur_in_maske_zurueckgenommen() -> None:
     assert np.array_equal(variante[~maske], out[~maske])  # Rest bit-identisch
 
 
+def test_variante_erhaelt_dtype_und_samples_ausserhalb_maske() -> None:
+    rpa.clear()
+    pre = np.linspace(-0.9, 0.9, 100, dtype=np.float64)
+    maske = np.zeros(100, dtype=bool)
+    maske[40:60] = True
+    rpa.snapshot("phase_float64", pre, maske)
+    out = pre.copy()
+    out[maske] += 0.1
+
+    variante, _ = rpa.phase_aus_variante(out)
+
+    assert variante.dtype == np.float64
+    assert np.array_equal(variante[~maske], out[~maske])
+
+
 def test_ohne_maske_keine_ruecknahme() -> None:
     rpa.clear()
     pre = np.zeros(100, dtype=np.float32)
@@ -59,6 +74,39 @@ def test_clear_song_isolation() -> None:
     out = np.ones(10, dtype=np.float32)
     variante, info = rpa.phase_aus_variante(out)
     assert info == {} and np.array_equal(variante, out)
+
+
+def test_song_attribution_contexts_do_not_share_snapshots() -> None:
+    from contextvars import copy_context
+
+    rpa.begin_song()
+    rpa.snapshot("phase_song_a", np.zeros(20, dtype=np.float32), np.ones(20, dtype=bool))
+    song_b = copy_context()
+
+    def _run_song_b() -> dict:
+        rpa.begin_song()
+        rpa.snapshot("phase_song_b", np.ones(20, dtype=np.float32), np.ones(20, dtype=bool))
+        return rpa.attribution_report()
+
+    assert song_b.run(_run_song_b)["phasen"] == ["phase_song_b"]
+    assert rpa.attribution_report()["phasen"] == ["phase_song_a"]
+
+
+def test_phase_aus_delta_uses_sample_first_patch_for_both_stereo_layouts() -> None:
+    pre = np.zeros((2, 100), dtype=np.float32)
+    mask = np.zeros_like(pre, dtype=bool)
+    mask[:, 40:60] = True
+    rpa.begin_song()
+    rpa.snapshot("phase_07_declip", pre, mask)
+    restored = pre.copy()
+    restored[mask] = 0.5
+
+    indices, delta, info = rpa.phase_aus_delta(restored)
+
+    np.testing.assert_array_equal(indices, np.arange(40, 60))
+    assert delta.shape == (20, 2)
+    np.testing.assert_array_equal(delta, np.full((20, 2), -0.5, dtype=np.float32))
+    assert info["phase_07_declip"]["regionen"] == 40
 
 
 def test_determinismus() -> None:

@@ -1,4 +1,5 @@
-"""UAT Report Generator für Aurik 10.0.0
+"""UAT Report Generator für Aurik
+
 Führt UAT-Tests aus und generiert formale Scorecard + Final Report
 
 Usage:
@@ -25,6 +26,20 @@ from datetime import datetime
 from enum import Enum
 from importlib import import_module
 from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _read_aurik_version() -> str:
+    version_file = _REPO_ROOT / "backend" / "core" / "version.py"
+    content = version_file.read_text(encoding="utf-8")
+    match = re.search(r'__version__\s*=\s*"([^"]+)"', content)
+    if match is None:
+        raise RuntimeError(f"Keine kanonische Aurik-Version in {version_file}")
+    return match.group(1)
+
+
+AURIK_VERSION = _read_aurik_version()
 
 
 class ResultStatus(Enum):
@@ -68,7 +83,7 @@ class UATSummary:
     """Aggregated execution summary for the generated UAT artifacts."""
 
     generated_at: str
-    aurik_version: str = "9.10.77"
+    aurik_version: str = AURIK_VERSION
     restoration_total: int = 15
     studio_2026_total: int = 15
     gates_total: int = 7
@@ -90,9 +105,10 @@ class UATSummary:
     criteria_skipped: int = 0
     criteria_errors: int = 0
     criteria_executed: int = 0
+    pytest_exit_code: int | None = None
     recommendation: str = "UNKNOWN"
     rationale: str = ""
-    regression_status: str = "0 regressions"
+    regression_status: str = "NOT_EVALUATED"
 
 
 class UATReportGenerator:
@@ -103,7 +119,7 @@ class UATReportGenerator:
     def __init__(self, output_dir: Path | None = None, json_output: Path | None = None):
         self.output_dir = output_dir or Path("docs")
         self.json_output = json_output or Path("audit") / f"uat_results_{self._now_suffix()}.json"
-        self.workspace_root = Path(__file__).resolve().parents[1]
+        self.workspace_root = _REPO_ROOT
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.json_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -363,8 +379,20 @@ class UATReportGenerator:
 
         total_criteria = self.summary.restoration_total + self.summary.studio_2026_total
         total_accounted = total_passed + total_failed + total_skipped + total_errors
+        gates_accounted = (
+            self.summary.gates_passed
+            + self.summary.gates_failed
+            + self.summary.gates_skipped
+            + self.summary.gates_errors
+        )
 
-        if self.summary.ko_violations > 0:
+        if self.summary.pytest_exit_code is None:
+            self.summary.recommendation = "NO-GO"
+            self.summary.rationale = "UAT-pytest Exit-Code fehlt — UAT-Ausführung nicht belegt"
+        elif self.summary.pytest_exit_code != 0:
+            self.summary.recommendation = "NO-GO"
+            self.summary.rationale = f"UAT-pytest wurde mit Exit-Code {self.summary.pytest_exit_code} beendet"
+        elif self.summary.ko_violations > 0:
             self.summary.recommendation = "NO-GO"
             self.summary.rationale = f"Critical K.O. violations: {self.summary.ko_violations}"
         elif self.summary.gates_errors > 0:
@@ -387,21 +415,29 @@ class UATReportGenerator:
                 f"{total_criteria - total_accounted} Kriterien ohne Ergebnis — UAT unvollständig "
                 f"({total_passed}/{total_criteria} bestanden)"
             )
-        elif total_passed >= 24 and self.summary.gates_failed == 0:
+        elif gates_accounted < self.summary.gates_total:
+            self.summary.recommendation = "NO-GO"
+            self.summary.rationale = (
+                f"{self.summary.gates_total - gates_accounted} Release-Gates ohne Ergebnis — UAT unvollständig"
+            )
+        elif total_failed > 0 or self.summary.gates_failed > 0:
+            self.summary.recommendation = "NO-GO"
+            self.summary.rationale = (
+                f"{total_failed} Kriterien und {self.summary.gates_failed} Release-Gates fehlgeschlagen"
+            )
+        elif (total_skipped > 0 or self.summary.gates_skipped > 0) and total_executed >= 8:
+            self.summary.recommendation = "CONDITIONAL"
+            self.summary.rationale = (
+                f"Keine ausgeführte Prüfung fehlgeschlagen ({total_passed}/{total_executed} Kriterien bestanden); "
+                f"{total_skipped} Kriterien und {self.summary.gates_skipped} Release-Gates "
+                "zurückgestellt"
+            )
+        elif total_passed == total_criteria and self.summary.gates_passed == self.summary.gates_total:
             self.summary.recommendation = "GO"
             self.summary.rationale = (
                 f"All acceptance criteria met ({total_passed}/{total_criteria}); "
                 f"{self.summary.gates_passed}/{self.summary.gates_total} gates passed"
             )
-        elif total_failed == 0 and self.summary.gates_failed == 0 and total_executed >= 8:
-            self.summary.recommendation = "CONDITIONAL"
-            self.summary.rationale = (
-                f"No executed criterion failed ({total_passed}/{total_executed} passed), "
-                f"{total_skipped} criteria pending functional/heavy validation"
-            )
-        elif total_passed >= 22 and self.summary.gates_failed == 0:
-            self.summary.recommendation = "CONDITIONAL"
-            self.summary.rationale = f"Marginal pass ({total_passed}/{total_criteria}); review failed criteria"
         else:
             self.summary.recommendation = "NO-GO"
             self.summary.rationale = f"Insufficient criteria met ({total_passed}/{total_criteria})"
@@ -411,9 +447,9 @@ class UATReportGenerator:
         print("[INFO] Generating scorecard markdown...")
 
         lines = [
-            "# Aurik 10.0.0 — UAT Scorecard",
+            f"# Aurik {AURIK_VERSION} — UAT Scorecard",
             f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}",
-            "**Version:** 9.10.77",
+            f"**Version:** {AURIK_VERSION}",
             "",
             "---",
             "",
@@ -515,6 +551,21 @@ class UATReportGenerator:
         """Generate formal final report."""
         print("[INFO] Generating final report...")
         criteria_pass_rate = (self.summary.restoration_passed + self.summary.studio_2026_passed) / 30 * 100
+        total_criteria = self.summary.restoration_total + self.summary.studio_2026_total
+        criteria_accounted = (
+            self.summary.criteria_passed
+            + self.summary.criteria_failed
+            + self.summary.criteria_skipped
+            + self.summary.criteria_errors
+        )
+        criteria_without_result = max(0, total_criteria - criteria_accounted)
+        gates_accounted = (
+            self.summary.gates_passed
+            + self.summary.gates_failed
+            + self.summary.gates_skipped
+            + self.summary.gates_errors
+        )
+        gates_without_result = max(0, self.summary.gates_total - gates_accounted)
 
         rec_emoji = (
             "✅"
@@ -525,7 +576,7 @@ class UATReportGenerator:
         )
 
         lines = [
-            "# Aurik 10.0.0 — UAT Final Report",
+            f"# Aurik {AURIK_VERSION} — UAT Final Report",
             "",
             f"**Test Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}  ",
             f"**Version:** {self.summary.aurik_version}  ",
@@ -598,6 +649,7 @@ class UATReportGenerator:
                 f"- **Total Skipped:** {self.summary.restoration_skipped + self.summary.studio_2026_skipped}",
                 f"- **Total Errors (nicht auswertbar):** {self.summary.criteria_errors}",
                 f"- **Pass Rate:** {criteria_pass_rate:.1f}%",
+                f"- **Pytest Exit Code:** {self.summary.pytest_exit_code}",
                 "",
                 "### Release Gate Summary",
                 "",
@@ -610,9 +662,8 @@ class UATReportGenerator:
                 "",
                 "### Regression Assessment",
                 "",
-                "- **Test Suite:** 51/51 pass (prior baseline)",
-                "- **Regressions Detected:** 0",
-                "- **Status:** ✅ No regressions",
+                f"- **Regression comparison:** {self.summary.regression_status}",
+                "- UAT acceptance results alone do not establish regression-free behavior.",
                 "",
                 "---",
                 "",
@@ -622,9 +673,19 @@ class UATReportGenerator:
                 "| --- | --- | --- | --- |",
                 self._decision_matrix_line(
                     "Acceptance Criteria Passed",
-                    "≥ 24/30",
-                    f"{self.summary.restoration_passed + self.summary.studio_2026_passed}/30",
-                    (self.summary.restoration_passed + self.summary.studio_2026_passed) >= 24,
+                    "30/30 PASS; no FAIL/SKIP/ERROR",
+                    (
+                        f"{self.summary.restoration_passed + self.summary.studio_2026_passed}/30 "
+                        f"({self.summary.criteria_failed} failed, {self.summary.criteria_skipped} skipped, "
+                        f"{self.summary.criteria_errors} errors, {criteria_without_result} missing)"
+                    ),
+                    (
+                        self.summary.criteria_passed == total_criteria
+                        and self.summary.criteria_failed == 0
+                        and self.summary.criteria_skipped == 0
+                        and self.summary.criteria_errors == 0
+                        and criteria_without_result == 0
+                    ),
                 ),
                 self._decision_matrix_line(
                     "K.O. Violations",
@@ -634,13 +695,23 @@ class UATReportGenerator:
                 ),
                 self._decision_matrix_line(
                     "Release Gates Passed",
-                    "≥ 5/7",
-                    f"{self.summary.gates_passed}/7",
-                    self.summary.gates_passed >= 5,
+                    "7/7 PASS; no FAIL/SKIP/ERROR/missing",
+                    (
+                        f"{self.summary.gates_passed}/7 "
+                        f"({self.summary.gates_failed} failed, {self.summary.gates_skipped} skipped, "
+                        f"{self.summary.gates_errors} errors, {gates_without_result} missing)"
+                    ),
+                    (
+                        self.summary.gates_passed == self.summary.gates_total
+                        and self.summary.gates_failed == 0
+                        and self.summary.gates_skipped == 0
+                        and self.summary.gates_errors == 0
+                        and gates_without_result == 0
+                    ),
                 ),
                 self._decision_matrix_line(
                     "Executed Criteria Failed",
-                    "= 0 (für Staging)",
+                    "= 0",
                     str(self.summary.criteria_failed),
                     self.summary.criteria_failed == 0,
                 ),
@@ -649,6 +720,18 @@ class UATReportGenerator:
                     "= 0",
                     str(self.summary.criteria_errors),
                     self.summary.criteria_errors == 0,
+                ),
+                self._decision_matrix_line(
+                    "Criteria Without Result",
+                    "= 0",
+                    str(criteria_without_result),
+                    criteria_without_result == 0,
+                ),
+                self._decision_matrix_line(
+                    "Release Gates Without Result",
+                    "= 0",
+                    str(gates_without_result),
+                    gates_without_result == 0,
                 ),
                 "",
                 "---",
@@ -720,12 +803,13 @@ class UATReportGenerator:
     def run(self) -> int:
         """Main execution flow."""
         print("=" * 80)
-        print("Aurik 10.0.0 — UAT Report Generator")
+        print(f"Aurik {AURIK_VERSION} — UAT Report Generator")
         print("=" * 80)
 
         try:
             # Step 1: Run pytest
-            _, pytest_output = self.run_pytest()
+            pytest_exit_code, pytest_output = self.run_pytest()
+            self.summary.pytest_exit_code = pytest_exit_code
 
             # Step 2: Parse pytest output
             self.parse_pytest_output(pytest_output)
@@ -765,7 +849,7 @@ class UATReportGenerator:
 
 def main():
     """Parse CLI arguments and execute the UAT report generator."""
-    parser = argparse.ArgumentParser(description="Generate UAT Report for Aurik 10.0.0")
+    parser = argparse.ArgumentParser(description=f"Generate UAT Report for Aurik {AURIK_VERSION}")
     parser.add_argument(
         "--output-dir",
         type=Path,

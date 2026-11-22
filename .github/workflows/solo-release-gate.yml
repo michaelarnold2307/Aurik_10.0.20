@@ -18,51 +18,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Enforce evidence artifact for spec changes on main
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+
+      - name: Enforce evidence artifact for spec changes
         env:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-
+          if [[ -z "${AFTER_SHA}" ]]; then
+            AFTER_SHA="$(git rev-parse HEAD)"
+          fi
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" && ( -z "${BEFORE_SHA}" || "${BEFORE_SHA}" == "0000000000000000000000000000000000000000" ) ]]; then
+            BEFORE_SHA="$(git rev-parse "${AFTER_SHA}^" 2>/dev/null || true)"
+          fi
           if [[ -z "${BEFORE_SHA}" || "${BEFORE_SHA}" == "0000000000000000000000000000000000000000" ]]; then
-            echo "Initial push or unknown before SHA; skipping spec delta gate."
+            echo "No parent commit available; skipping spec delta gate."
             exit 0
           fi
-
-          changed_specs="$(git diff --name-only "${BEFORE_SHA}" "${AFTER_SHA}" | grep '^.github/specs/' || true)"
-          if [[ -z "${changed_specs}" ]]; then
-            echo "No spec changes detected."
-            exit 0
-          fi
-
-          echo "Spec changes detected on main:"
-          echo "${changed_specs}"
-
-          evidence_files="$(git diff --name-only "${BEFORE_SHA}" "${AFTER_SHA}" | grep '^docs/reports/spec_evidence/.*\.md$' || true)"
-          if [[ -z "${evidence_files}" ]]; then
-            echo "Missing evidence artifact under docs/reports/spec_evidence/*.md"
-            echo "Spec changes on main require an evidence report with maintainer sign-off."
-            exit 1
-          fi
-
-          echo "Evidence candidates:"
-          echo "${evidence_files}"
-
-          missing=0
-          for f in ${evidence_files}; do
-            for token in "## Evidenzblock" "Seed" "95 %-CI" "Maintainer Sign-off"; do
-              if ! grep -Fq "${token}" "${f}"; then
-                echo "${f}: missing token '${token}'"
-                missing=1
-              fi
-            done
-          done
-
-          if [[ "${missing}" -ne 0 ]]; then
-            echo "Evidence files are incomplete."
-            exit 1
-          fi
+          python scripts/spec_evidence_gate.py --base "${BEFORE_SHA}" --head "${AFTER_SHA}"
 
   normative-guard:
     name: Normative Guard

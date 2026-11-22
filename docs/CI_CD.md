@@ -15,7 +15,7 @@ Release-Freigabe. Alle Workflows liegen in `.github/workflows/`.
 | Workflow | Trigger | Purpose | Status |
 | --- | --- | --- | --- |
 | `ci-lite.yml` | Push/PR | CI Lite: 11 Gates (Lint, Type, Determinismus, GUI-Smoke, Coverage u. a.) | ✅ Active |
-| `ci-cross-platform.yml` | Push (main) / manuell | Ubuntu/Windows/macOS-Matrix (§15.4) | ✅ Active |
+| `ci-cross-platform.yml` | Push (main) / manuell | Ubuntu-22.04-/Windows-2022-Matrix (§15.4) | ✅ Active |
 | `nightly-quality.yml` | Cron 02:00 / manuell | AMRB + Drift + normative Nacht-Gates | ✅ Active |
 | `solo-release-gate.yml` | Push (main) / manuell | Spec-Evidenz + Heavy-Tests (CLI/GUI-Parität) | ✅ Active |
 
@@ -25,9 +25,12 @@ Release-Freigabe. Alle Workflows liegen in `.github/workflows/`.
 
 Der Hauptworkflow für Push/PR. Jobs:
 
-- **pr-evidence-gate** (PR-only): Evidenzblock-Pflicht bei Spec-Änderungen
-  (`## Evidenzblock`, `Seed`, `95 %-CI`, `Maintainer Sign-off`) +
-  TASK_CHANGES.md-Abdeckung (`scripts/change_ledger.py check`).
+- **pr-evidence-gate** (PR-only): ausgefuellter Evidenzblock bei
+  Spec-Aenderungen, validiert durch `scripts/spec_evidence_gate.py`, plus
+  TASK_CHANGES.md-Abdeckung (`scripts/change_ledger.py check`). Ein Push auf
+  `main` verlangt zusaetzlich den im selben Push geaenderten Bericht unter
+  `docs/reports/spec_evidence/`; DRT-16-Paritaetsbehauptungen muessen den
+  maschinengeprueften JSON-Beleg aus `docs/reports/current/` referenzieren.
 - **snyk-guard**: Security-Scan (`scripts/snyk_guard.py`).
 - **determinism-gate**: `test_full_pipeline_determinism` + P2-Audit.
 - **export-guard**: Audio-/Metadaten-Export-Vertrag.
@@ -42,10 +45,10 @@ Der Hauptworkflow für Push/PR. Jobs:
 
 ## 🔄 Cross-Platform (`ci-cross-platform.yml`)
 
-Matrix Ubuntu 22.04 / Windows 2022 / macOS 14 (ARM64), Python 3.10.
+Matrix Ubuntu 22.04 (Python 3.10.12) / Windows 2022 (Python 3.10.11).
 
 - `platform-compat`-Job: statischer Kompat-Check (hartkodierte Windows-Pfade,
-  CRLF, Case-Konflikte).
+  Entwickler-Lokalpfade, CRLF, Case-Konflikte).
 - Test-Job je OS: exakte Produktions-Pins (numpy 1.26.4, scipy 1.15.3,
   soundfile 0.13.1, librosa 0.11.0, **numba 0.64.0**, pytest 9.0.2);
   Tests ohne `NUMBA_DISABLE_JIT` (Produktionskonfiguration); voller Log mit
@@ -54,12 +57,16 @@ Matrix Ubuntu 22.04 / Windows 2022 / macOS 14 (ARM64), Python 3.10.
 
 ## 🔄 Nightly Quality (`nightly-quality.yml`)
 
-Nächtliche Gates (Cron 02:00): Spec-Evidenz der letzten 24 h, AMRB,
+Nächtliche Gates (Cron 02:00): Inhaltspruefung der Spec-Evidenz der letzten
+24 h via `scripts/spec_evidence_gate.py`, AMRB,
 Drift-Checks (`spec_drift_check.py`) und normative Gates.
 
 ## 🔄 Solo Release Gate (`solo-release-gate.yml`)
 
-Der maßgebliche Release-Check: Spec-Evidenz-Artefakt auf main +
+Der maßgebliche Release-Check: ausgefuelltes Spec-Evidenz-Artefakt im selben
+Main-Push, validiert via `scripts/spec_evidence_gate.py`. Ein manueller Lauf
+prüft die Änderung des gewählten Commits gegen seinen Eltern-Commit; bei einem
+ersten Commit ohne Eltern-Commit wird die Delta-Prüfung übersprungen. Dazu
 normative Heavy-Tests inkl. CLI/GUI-Parität (echte Vollpipeline, 60-min-Limit).
 
 ---

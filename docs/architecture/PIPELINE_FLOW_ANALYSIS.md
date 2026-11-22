@@ -99,13 +99,13 @@ CausalReasoner), dann optimiert intervenieren (GP-Optimizer), dann verifizieren
 
 ## Qualitätsgrenzen
 
-| Metrik | Hard-Fail-Schwelle | Internes Spitzenziel |
+| Metrik | Release-Gate | Diagnose-/Zielwert |
 | --- | --- | --- |
 | PQS MOS | >= 3.8 | >= 4.5 |
 | NSIM | >= 0.70 | >= 0.90 |
 | MCD | <= 8.0 dB | <= 3.0 dB |
 | Spectral Coherence | >= 0.60 | >= 0.85 |
-| quality_estimate | >= 0.55 | > 0.85 |
+| quality_estimate | report-only, endlich in [0, 1] | keine Freigabe über diesen Proxy |
 | Alle 15 Musical Goals | >= Pflicht-Schwellwert | >= Studio-Schwellwert |
 
 ---

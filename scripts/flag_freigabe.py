@@ -46,8 +46,24 @@ FLAGS_PY = PROJECT_ROOT / "backend" / "core" / "music_model_flags.py"
 BELEGTE_VERDIKTE = ("HOERBAR_BELEGT", "PRAEFERENZ_BELEGT")
 
 
-def verdikt_ok(data: dict) -> tuple[bool, str]:
-    """Nur belegte Vorteile sind buchbar — alles andere ist eine ehrliche Ablehnung."""
+def _richtung_ok(siege_kandidat: object, siege_bestand: object) -> tuple[bool, str]:
+    """Nur ein Votum FÜR den Kandidaten ist buchbar (nie Gleichstand, nie Bestand)."""
+    if not isinstance(siege_kandidat, int) or not isinstance(siege_bestand, int):
+        return False, "Richtung nicht auswertbar (Siege fehlen oder sind keine Ganzzahlen)"
+    if siege_kandidat <= siege_bestand:
+        return False, f"Richtung: Kandidat {siege_kandidat} ≤ Bestand {siege_bestand} — kein Vorteil des Kandidaten"
+    return True, ""
+
+
+def verdikt_ok(data: dict, kandidat_seite: str | None = None) -> tuple[bool, str]:
+    """Nur belegte Vorteile des KANDIDATEN sind buchbar — alles andere ist eine ehrliche Ablehnung.
+
+    Hörbelege (``aurik.ab_stats``) müssen die Richtung tragen: ``/2`` führt ``siege_kandidat``/
+    ``siege_bestand`` explizit; ``/1`` kennt nur A/B und ist nur mit Seitenangabe
+    (``kandidat_seite`` im Beleg oder ``--kandidat-seite``) buchbar. Befund 2026-11-22: ``/1``
+    wurde zuvor richtungsblind akzeptiert — ein signifikantes Votum FÜR den Bestand hätte ein
+    Flag freischalten können. Simulierte, ungültige oder unvollständige Belege sind nie buchbar.
+    """
     if "verdict" in data:
         verdict = str(data.get("verdict"))
         pooled = data.get("pooled", {}) or {}
@@ -58,13 +74,40 @@ def verdikt_ok(data: dict) -> tuple[bool, str]:
         if not pooled.get("trials_sufficient"):
             return False, "Mindestzahl Trials nicht erreicht (trials_sufficient=False)"
         return True, f"fit.json: {verdict} (n={pooled.get('trials')})"
-    if str(data.get("schema", "")).startswith("aurik.ab_stats"):
+    schema = str(data.get("schema", ""))
+    if schema.startswith("aurik.ab_stats"):
+        if data.get("simuliert"):
+            return False, "ab_stats: simulierter Lauf (simuliert=True) ist kein Hörbeleg"
+        if data.get("gueltig") is False:
+            return False, "ab_stats: Hörer-Validität nicht gegeben (gueltig=False)"
+        if data.get("vollstaendig") is False:
+            return False, "ab_stats: Sitzung unvollständig (vollstaendig=False)"
         if not data.get("signifikant"):
             return False, "ab_harness: nicht signifikant (signifikant=False)"
-        if (data.get("siege_a") or 0) == (data.get("siege_b") or 0):
-            return False, "ab_harness: ausgeglichenes Bild — kein Vorteil"
-        return True, f"ab_harness: signifikant (p={data.get('p_wert_vorzeichen_test')})"
-    return False, "unbekanntes Verdikt-Schema (weder fit.json noch aurik.ab_stats/1)"
+        if schema.startswith("aurik.ab_stats/2"):
+            richtung_ok, grund = _richtung_ok(data.get("siege_kandidat"), data.get("siege_bestand"))
+            if not richtung_ok:
+                return False, f"ab_stats/2: {grund}"
+            return True, f"ab_stats/2: Kandidat signifikant bevorzugt (p={data.get('p_wert_vorzeichen_test')})"
+        seite = str(kandidat_seite or data.get("kandidat_seite") or "").upper()
+        if kandidat_seite and data.get("kandidat_seite") and str(data["kandidat_seite"]).upper() != seite:
+            return False, "ab_stats/1: --kandidat-seite widerspricht der Seitenangabe im Beleg"
+        if seite not in ("A", "B"):
+            return False, (
+                "ab_stats/1 trägt keine Richtung (welche Seite ist der Kandidat?) — "
+                "--kandidat-seite A|B angeben oder einen ab_stats/2-Beleg verwenden"
+            )
+        sk, sb = (
+            (data.get("siege_a"), data.get("siege_b")) if seite == "A" else (data.get("siege_b"), data.get("siege_a"))
+        )
+        richtung_ok, grund = _richtung_ok(sk, sb)
+        if not richtung_ok:
+            return False, f"ab_stats/1 (Kandidat = Seite {seite}): {grund}"
+        return (
+            True,
+            f"ab_harness: Kandidat (Seite {seite}) signifikant bevorzugt (p={data.get('p_wert_vorzeichen_test')})",
+        )
+    return False, "unbekanntes Verdikt-Schema (weder fit.json noch aurik.ab_stats)"
 
 
 def objektivbeschluss_ok(data: dict, flag: str) -> tuple[bool, str]:
@@ -166,6 +209,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--objektivbeschluss", default=None, help="Formeller Objektivmetrik-Beschluss (JSON, Wohlklang-Vertrag B3)"
     )
+    ap.add_argument(
+        "--kandidat-seite",
+        choices=("A", "B"),
+        default=None,
+        help="nur für ab_stats/1-Belege ohne Richtung: welche Seite war der Kandidat (Challenger)?",
+    )
     ap.add_argument("--commit", action="store_true", help="anschließend committen (sonst nur vorbereitet)")
     args = ap.parse_args(argv)
 
@@ -193,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("ABBRUCH: entweder --signoff (Hör-Abnahme) oder --objektivbeschluss (Vertrag B3) erforderlich.")
         return 2
-    ok, grund = verdikt_ok(json.loads(verdikt.read_text(encoding="utf-8")))
+    ok, grund = verdikt_ok(json.loads(verdikt.read_text(encoding="utf-8")), kandidat_seite=args.kandidat_seite)
     if not ok:
         print(f"ABBRUCH: Verdikt nicht buchbar — {grund}")
         return 2

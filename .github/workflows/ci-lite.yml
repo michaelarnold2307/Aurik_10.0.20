@@ -23,35 +23,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10.12"
+
       - name: Require evidence block for spec changes
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          set -euo pipefail
-          changed_specs="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep '^.github/specs/' || true)"
-          if [[ -z "$changed_specs" ]]; then
-            echo "No spec changes detected; evidence gate skipped."
-            exit 0
-          fi
-
-          echo "Spec changes detected:"
-          echo "$changed_specs"
-
-          missing=0
-          for token in "## Evidenzblock" "Seed" "95 %-CI" "Maintainer Sign-off"; do
-            if ! grep -Fq "$token" <<< "$PR_BODY"; then
-              echo "Missing PR body token: $token"
-              missing=1
-            fi
-          done
-
-          if [[ "$missing" -ne 0 ]]; then
-            echo "Spec changes require a complete evidence block in PR description."
-            echo "Template: docs/guides/SPEC_EVIDENZBLOCK_TEMPLATE.md"
-            exit 1
-          fi
+          python scripts/spec_evidence_gate.py \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --pr-body-env PR_BODY
 
       - name: Require TASK_CHANGES.md coverage for code changes
         env:
@@ -292,20 +278,9 @@ jobs:
       - name: Run undefined-variable check (backend/core/phases)
         run: |
           pylint backend/core/phases/ \
-            --enable=undefined-variable,used-before-assignment \
             --disable=all \
-            --output-format=text \
-            --exit-zero \
-          | tee /tmp/pylint_scope.txt
-
-      - name: Fail on new scope bugs
-        run: |
-          if grep -q "undefined-variable\|used-before-assignment" /tmp/pylint_scope.txt; then
-            echo "Scope-Bugs gefunden:"
-            grep "undefined-variable\|used-before-assignment" /tmp/pylint_scope.txt
-            exit 1
-          fi
-          echo "Keine Scope-Bugs — Gate passed"
+            --enable=undefined-variable,used-before-assignment \
+            --output-format=text
 
   type-gate:
     name: Type Gate (mypy)
@@ -329,16 +304,7 @@ jobs:
         run: |
           # Spec 10_bug_gap_strategy.md:324 — kanonischer Type-Safety-Scope:
           # backend/core backend/api plugins Aurik10 cli (keine tests/scripts).
-          mypy --config-file pyproject.toml backend/core backend/api plugins Aurik10 cli --show-error-codes 2>&1 | tee /tmp/mypy_ci.txt
-
-      - name: Fail on type errors
-        run: |
-          if grep -q ': error:' /tmp/mypy_ci.txt; then
-            echo "Type-Errors gefunden:"
-            grep ': error:' /tmp/mypy_ci.txt | head -20
-            exit 1
-          fi
-          echo "0 Type-Errors — Gate passed"
+          mypy --config-file pyproject.toml backend/core backend/api plugins Aurik10 cli --show-error-codes
 
   lint-gate:
     name: Lint Gate (ruff)
@@ -360,17 +326,7 @@ jobs:
           pip install ruff==0.16.7
 
       - name: "Run ruff (identisch zum Pre-Commit-Gate: F821/F601/B009/I001)"
-        run: |
-          ruff check --select F821,F601,B009,I001 backend/ plugins/ denker/ Aurik10/ cli/ scripts/ --output-format=full 2>&1 | tee /tmp/ruff_ci.txt
-
-      - name: Fail on lint errors
-        run: |
-          if grep -qE '[A-Z][0-9]+' /tmp/ruff_ci.txt; then
-            echo "Lint-Fehler gefunden:"
-            head -20 /tmp/ruff_ci.txt
-            exit 1
-          fi
-          echo "0 Lint-Fehler — Gate passed"
+        run: ruff check --select F821,F601,B009,I001 backend/ plugins/ denker/ Aurik10/ cli/ scripts/ --output-format=full
 
   coverage-gate:
     name: Coverage Gate (RELEASE_MUST, normativ)

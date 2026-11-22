@@ -236,8 +236,10 @@ def hoeren(set_name: str, seed: int, wiederholen: bool = False) -> int:
     stats.update(
         {
             "schema": "aurik.ab_stats/1",
-            "label_a": "Kandidat A",
-            "label_b": "Kandidat B",
+            "label_a": "Bestand/Referenz (A)",
+            "label_b": "Challenger (B)",
+            # Richtung explizit (flag_freigabe: ab_stats/1 ohne Seite ist nicht buchbar).
+            "kandidat_seite": "B",
             "entscheidung": s["entscheidung"],
             "quelle": "scripts/hoer_entscheidung.py",
             "n_trials_gesamt": len(gespeichert),

@@ -657,9 +657,8 @@ def process_audio(
     _export_degraded = False
     _export_degraded_reasons: list[str] = []
 
-    # §2.54 Material-adaptive quality_estimate threshold: Physikalische Qualitätsdecke je
-    # Material-Klasse — multi-generationale mp3_low-Ketten können strukturell keine CD-Qualität
-    # erreichen. Hardcoded 0.55 erzeugt für legitime Restaurierungen immer 'degraded'-Export.
+    # Material-adaptive diagnostic reference for quality_estimate; it is not an
+    # export threshold because the proxy is not calibrated against listeners.
     _mat_str = str(getattr(result, "material", "") or "").lower()
     _mat_str = _mat_str.rsplit(".", maxsplit=1)[-1]  # Enum-Value (.mp3_low → mp3_low)
     _QE_THRESHOLD: dict[str, float] = {
@@ -685,11 +684,10 @@ def process_audio(
     _qe_delta, _pegel_delta, _gate_profile = _compute_export_gate_adjustment(_mat_str, _sig, result)
     _qe_threshold = float(np.clip(_qe_threshold + _qe_delta, 0.25, 0.70))
     _qe = getattr(result, "quality_estimate", None)
-    if _qe is not None and _qe < _qe_threshold:
-        _export_degraded = True
-        _export_degraded_reasons.append(f"quality_estimate={_qe:.3f}<{_qe_threshold:.2f} (§8.1)")
-        logger.warning(
-            "§0c: quality_estimate=%.3f < %.2f (%s-Schwelle) — Ausgabe mit Status 'degraded'.",
+    if _qe is not None:
+        logger.info(
+            "quality_estimate=%.3f (diagnostischer Proxy; materialbezogener Referenzwert %.2f, "
+            "kein Export-Veto; Material=%s).",
             _qe,
             _qe_threshold,
             _mat_str or "default",

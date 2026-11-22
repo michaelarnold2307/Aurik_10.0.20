@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -53,13 +55,63 @@ def test_verdikt_ok_ab_stats_und_unbekannt() -> None:
             "siege_a": 15,
             "siege_b": 5,
             "p_wert_vorzeichen_test": 0.041389,
-        }
+        },
+        kandidat_seite="A",
     )
     assert ok and "signifikant" in grund
-    ok2, _ = verdikt_ok({"schema": "aurik.ab_stats/1", "signifikant": False, "siege_a": 6, "siege_b": 4})
+    ok2, _ = verdikt_ok(
+        {"schema": "aurik.ab_stats/1", "signifikant": False, "siege_a": 6, "siege_b": 4}, kandidat_seite="A"
+    )
     assert not ok2
     ok3, g3 = verdikt_ok({"irgendwas": 1})
     assert not ok3 and "unbekannt" in g3
+
+
+def test_ab_stats_1_ohne_richtung_ist_nicht_buchbar() -> None:
+    """Befund 2026-11-22: /1 wurde richtungsblind akzeptiert (siege_a=15 > siege_b=5 reichte)."""
+    daten = {"schema": "aurik.ab_stats/1", "signifikant": True, "siege_a": 15, "siege_b": 5}
+    ok, grund = verdikt_ok(daten)
+    assert not ok and "Richtung" in grund
+
+
+def test_ab_stats_1_votum_fuer_den_bestand_ist_nie_buchbar() -> None:
+    daten = {"schema": "aurik.ab_stats/1", "signifikant": True, "siege_a": 15, "siege_b": 5}
+    ok, grund = verdikt_ok(daten, kandidat_seite="B")  # B = Kandidat hat nur 5 von 20
+    assert not ok and "kein Vorteil des Kandidaten" in grund
+    ok_a, _ = verdikt_ok(daten, kandidat_seite="A")
+    assert ok_a
+
+
+def test_ab_stats_1_seitenangabe_im_beleg_und_widerspruch() -> None:
+    mit_seite = {"schema": "aurik.ab_stats/1", "signifikant": True, "siege_a": 3, "siege_b": 12, "kandidat_seite": "B"}
+    assert verdikt_ok(mit_seite)[0]
+    ok, grund = verdikt_ok(mit_seite, kandidat_seite="A")
+    assert not ok and "widerspricht" in grund
+
+
+def test_ab_stats_2_traegt_die_richtung_explizit() -> None:
+    basis = {"schema": "aurik.ab_stats/2", "signifikant": True, "p_wert_vorzeichen_test": 0.03}
+    assert verdikt_ok({**basis, "siege_kandidat": 6, "siege_bestand": 0})[0]
+    for kandidat, bestand in ((0, 6), (3, 3)):
+        ok, grund = verdikt_ok({**basis, "siege_kandidat": kandidat, "siege_bestand": bestand})
+        assert not ok and "Kandidat" in grund
+    assert not verdikt_ok({**basis, "siege_kandidat": None, "siege_bestand": 0})[0]
+
+
+@pytest.mark.parametrize(
+    ("feld", "wert", "erwartet"),
+    [("simuliert", True, "simuliert"), ("gueltig", False, "Validität"), ("vollstaendig", False, "unvollständig")],
+)
+def test_ab_stats_2_simuliert_ungueltig_unvollstaendig_nie_buchbar(feld: str, wert: object, erwartet: str) -> None:
+    daten = {
+        "schema": "aurik.ab_stats/2",
+        "signifikant": True,
+        "siege_kandidat": 6,
+        "siege_bestand": 0,
+        feld: wert,
+    }
+    ok, grund = verdikt_ok(daten)
+    assert not ok and erwartet in grund
 
 
 def test_register_buchung_behaelt_8_zellen() -> None:

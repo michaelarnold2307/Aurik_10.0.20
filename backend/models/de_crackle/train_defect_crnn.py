@@ -53,7 +53,7 @@ def _logmel(audio: np.ndarray, sr: int) -> np.ndarray:
     else:
         pad = np.full((N_MELS, FRAMES - logm.shape[1]), logm.min(), dtype=np.float32)
         logm = np.concatenate([logm, pad], axis=1)
-    return logm.astype(np.float32)
+    return np.array(logm, dtype=np.float32, copy=True)
 
 
 def _inject_defect(audio: np.ndarray, sr: int, rng, kind: str) -> np.ndarray:

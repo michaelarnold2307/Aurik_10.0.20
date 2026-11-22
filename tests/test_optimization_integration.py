@@ -94,6 +94,43 @@ def test_export_quality_blocks_severe_vocal_naturalness_damage() -> None:
     assert any("Vibrato" in warning for warning in warnings)
 
 
+def test_quality_estimate_is_report_only_for_export_and_go_no_go() -> None:
+    """Ein nicht hörkalibrierter Gesamt-Proxy darf den sicheren Export nicht herabstufen."""
+    from backend.api.bridge import build_export_quality_gate_payload
+    from backend.core.go_nogo_export_gate import evaluate
+    from backend.exporter import validate_export_quality
+
+    result = SimpleNamespace(
+        quality_estimate=0.1,
+        metadata={"musical_goals": {"scores": {}, "violations": [], "thresholds": {}}},
+        warnings=[],
+        audio=np.zeros(32, dtype=np.float32),
+    )
+
+    passed, warnings = validate_export_quality(result)
+    verdict = evaluate(result, np.zeros(32, dtype=np.float32))
+    payload = build_export_quality_gate_payload(result)
+
+    assert passed is True
+    assert any("quality_estimate" in warning and "kein Export-Veto" in warning for warning in warnings)
+    assert verdict.verdict == "GO_CAUTION"
+    assert verdict.reasons == []
+    assert any("quality_estimate_low_report_only" in caution for caution in verdict.cautions)
+    assert payload["passed"] is True
+    assert payload["degradation_status"] == "ok"
+    assert payload["failure_class"] == "none"
+    assert payload["fail_reason"] == ""
+
+
+def test_excellence_checker_does_not_apply_a_quality_estimate_floor() -> None:
+    from backend.core.validate_musical_goals import ArtifactChecker
+
+    checker = ArtifactChecker.ExzellenzChecker(quality_threshold=0.95)
+
+    assert checker.check(quality_estimate=0.1, speedup=1.2) is True
+    assert checker.check(quality_estimate=float("nan"), speedup=1.2) is False
+
+
 def test_ab_plan_recommendation_prefers_safe_candidate_over_metric_gain() -> None:
     """A/B-Harness darf Metrikgewinn nie ueber AFG/VQI-Sicherheitsveto stellen."""
     from scripts.ab_plan_eval import _recommend_plan

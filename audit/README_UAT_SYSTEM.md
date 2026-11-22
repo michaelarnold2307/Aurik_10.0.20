@@ -2,7 +2,7 @@
 
 **Version:** 1.1  
 **Date:** 2026-04-14  
-**Status:** Operational (Daily Gate active)
+**Status:** Not currently release-certified (as of 2026-11-22)
 
 ---
 
@@ -16,12 +16,13 @@ This UAT system provides formal acceptance testing and release gate validation f
 
 Total: **30 acceptance criteria + 7 release gates**
 
-Current runtime snapshot (latest available run):
-
-- Recommendation: GO
-- Gates: 7/7 passed
-- Real-Audio subset R5-R12: 8/8 passed
-- Daily trend status: ready
+Latest available UAT analysis is dated 2026-11-15 and is stale under the
+48-hour freshness requirement. It recorded 29/30 criteria, with R5 failed,
+and 5/7 gates: G1 skipped and G6 missing. The old report nevertheless said
+`GO`; that was a false-positive caused by permissive recommendation logic.
+The generator now requires a successful pytest exit, complete accounting, and
+all-pass evidence before `GO`. A fresh UAT run is still required; refreshing
+the daily trend timestamp alone does not renew the underlying analysis.
 
 ---
 
@@ -227,27 +228,29 @@ For current decisioning use `audit/uat_results_2026-04-12.json` and
 
 ### Go/No-Go Logic
 
-| Condition         | Threshold | Current            | Status |
-|-------------------|-----------|--------------------|--------|
-| Acceptance passed | ≥ 24/30   | 30/30 (latest UAT) | ✅     |
-| K.O. violations   | = 0       | 0                  | ✅     |
-| Gates passed      | ≥ 5/7     | 7/7                | ✅     |
-| Regressions       | = 0       | 0                  | ✅     |
+| Condition | Threshold for GO | Latest available evidence | Status |
+|---|---|---|---|
+| Acceptance criteria | 30/30 PASS; no failed, skipped, or errored criteria | 29/30; R5 failed (2026-11-15) | ❌ |
+| K.O. violations | 0 | 0 in the stale run | ⚪ |
+| Release gates | 7/7 PASS; no failed, skipped, errored, or missing gates | 5/7; G1 skipped, G6 missing | ❌ |
+| Evidence freshness | < 48 hours | 7 days old on 2026-11-22 | ❌ |
 
 ### Recommendation Algorithm
 
 ```python
-if ko_violations > 0:
+if pytest_exit_code != 0 or ko_violations > 0 or any_failure_or_error_or_missing_result:
     recommendation = "NO-GO"
-elif total_passed >= 24 and gates_failed <= 1:
+elif all_30_criteria_passed and all_7_gates_passed and no_skips:
     recommendation = "GO"
-elif total_passed >= 22:
-    recommendation = "CONDITIONAL GO"
+elif no_failures_or_errors_or_missing_results and explicit_skips and executed_criteria >= 8:
+    recommendation = "CONDITIONAL"
 else:
     recommendation = "NO-GO"
 ```
 
-**Current:** GO
+**Current:** No current release certification. The 2026-11-15 `GO` is invalid
+because its own results contain a failed criterion, a skipped gate, and a
+missing gate; its analysis is also stale.
 
 ---
 
@@ -278,23 +281,26 @@ pytest tests/ -m "not e2e and not ml" --timeout=60 -v
 pytest tests -m "e2e" --timeout=120 -v
 ```
 
-### Phase 4: Release Certification ✅ ACTIVE
+### Phase 4: Release Certification ⏸ PENDING
 
-- ✅ All 30 criteria passed
-- ✅ 7/7 gates passed
-- ✅ 0 regressions
-- ✅ OQS >= 80 on AMRB
-- → **FULL AUTHORIZATION FOR RELEASE**
+- Requires a fresh UAT run, 30/30 criteria PASS, 7/7 gates PASS, and complete
+  result accounting.
+- Any failure, error, missing result, or nonzero pytest exit blocks `GO`.
+- Skips can at most produce `CONDITIONAL`; they are not release approval.
+- UAT alone does not establish zero regressions, OQS qualification, listening
+  acceptance, or RX-12 parity.
 
 ---
 
 ## Regression Assessment
 
-**Prior Baseline:** 51/51 unit tests passed (2026-03-27)  
-**Current:** UAT latest run GO with 30/30 + 7/7 (2026-04-12)  
-**Regression Risk:** ✅ Zero
+**Prior baseline:** 51/51 unit tests passed (2026-03-27); historical only.
+**Current evidence:** The latest UAT analysis is stale and contains a failure
+and incomplete gate accounting.
+**Regression risk:** Not measured by the UAT report generator.
 
-All UAT additions are non-breaking. Existing test suite remains green.
+The report generator must not infer regression-free behavior from acceptance
+criteria counts.
 
 ---
 
@@ -317,7 +323,8 @@ All UAT additions are non-breaking. Existing test suite remains green.
 
 - Daily status artifacts are generated via `audit/daily_real_audio_gate.py`.
 - Trend tracks recommendation, gate pass count, and R5-R12 pass-rate over time.
-- Current trend: 2026-03-28 (CONDITIONAL) -> 2026-04-12 (GO).
+- The latest underlying analysis is 2026-11-15; the daily status is not fresh
+  on 2026-11-22 and cannot certify release readiness.
 
 ---
 
@@ -464,5 +471,5 @@ Update `UAT_VERSION` in `test_uat_acceptance_criteria.py` when criteria change.
 
 ---
 
-**Last Updated:** 2026-04-14  
-**Status:** Operational (GO + Daily Gate) ✅
+**Last Updated:** 2026-11-22
+**Status:** UAT freshness failed; release certification pending.

@@ -103,7 +103,8 @@ def test_go_nogo_gate_verdicts() -> None:
     bad = R()
     bad.quality_estimate = 0.4
     v = evaluate(bad)
-    assert v.verdict == "NO_GO" and any("quality_estimate" in r for r in v.reasons)
+    assert v.verdict == "GO_CAUTION" and not v.reasons
+    assert any("quality_estimate" in c for c in v.cautions)
 
     pump = R()
     pump.warnings = ["NR pumping artifact detected"]

@@ -1971,6 +1971,7 @@ class UnifiedRestorerV3:
         self._iad_artifact_fraction_penalty: float = 1.0
         self._artifact_freedom_score: float = 1.0
         self._ssa_segments: list | None = None  # §2.52b SongStructureAnalyzer result
+        self._song_context_map_meta: dict | None = None  # §SCM SongContextMap (report-only, pro restore() neu)
         self._cstc_noise_profile: object = None  # §CSTC pre-pipeline noise profile
         # Additional per-restore() attrs (avoid Pyright 'defined outside __init__')
         self._session_recovered_goals: set[str] = set()  # §Perf: reset per-restore(), see restore()
@@ -8465,6 +8466,11 @@ class UnifiedRestorerV3:
         # für Flüsse ohne Stufe-2/m1b; mit m1b ist sie ohnehin redundant, da die
         # Stufe-2 die Kaskade einmal auf dem assemblierten Song ausführt).
         _chunked_last = bool(kwargs.pop("_chunked_last", False))
+        from backend.core.dsp.reparatur_phasen_attribution import (
+            begin_song as _begin_drt13_song,
+        )
+
+        _begin_drt13_song()
         # §v10.734: Song-global vorberechnetes Gender (aus _restore_chunked)
         # hier poppen und als Attribut ablegen — _select_phases hat KEIN kwargs.
         _precomputed_vocal_gender = kwargs.pop("_precomputed_vocal_gender", None)
@@ -12987,6 +12993,29 @@ class UnifiedRestorerV3:
                     }
         except Exception as _ssa_exc:
             logger.debug("§2.52b SongStructureAnalyzer nicht blockierend: %s", _ssa_exc)
+
+        # §SCM (Spec 03) SongContextMap — konsolidierte, unsichere Musikverständnis-Karte.
+        # REPORT-ONLY: keine Entscheidungslogik liest sie; kein Audio-Eingriff. Pro restore()
+        # zurückgesetzt (§V8 (copilot-instructions.md)) und explizit in die Ergebnis-Metadaten
+        # geschrieben — der Phasen-Akkumulator allein erreicht das Ergebnis nicht (Spec 07 §8.7).
+        self._song_context_map_meta = None
+        try:
+            from backend.core.song_context_map import build_song_context_map
+
+            _scm_acc = (self._phase_metadata_accumulator or {}).get("song_structure")
+            _scm_bpm = _scm_acc.get("bpm") if isinstance(_scm_acc, dict) else None
+            _scm_is_chunk = bool(kwargs.get("_precomputed_song_structure")) or bool(_chunk_start_sample_kwarg)
+            _scm_samples = audio.shape[1] if audio.ndim == 2 and audio.shape[0] <= 8 else audio.shape[0]
+            self._song_context_map_meta = build_song_context_map(
+                self._restoration_context,
+                structure_segments=self._ssa_segments,
+                structure_bpm=_scm_bpm,
+                scope="chunk" if _scm_is_chunk else "song",
+                analysis_window_s=float(_scm_samples) / max(1, int(sample_rate)),
+            ).to_dict()
+        except Exception as _scm_exc:
+            # §V6 (copilot-instructions.md): kein stilles Fehlen — Warnung samt Grund.
+            logger.warning("§SCM SongContextMap nicht erzeugt (%s) — Metadatum bleibt leer", _scm_exc)
 
         # §2.50 Material-Adaptive Gate Baseline: Stereo-Feldanalyse vor Pipeline.
         # Erkennt pre-existing Trägerkettenprobleme im Quellmaterial und injiziert
@@ -19168,9 +19197,6 @@ class UnifiedRestorerV3:
                 executed_phases=executed_phases,
                 _pqs_result=_pqs_result,
             )
-        # Merge gate fail-reasons from analytics into the central accumulator
-        _fail_reasons.extend(_analytics_meta.pop("_fail_reasons_from_analytics", []) or [])
-
         try:
             from backend.core.pipeline_health_state import (
                 pipeline_health_from_fail_reasons,
@@ -19250,27 +19276,11 @@ class UnifiedRestorerV3:
                     dt: _post_defect_result.scores[dt].severity for dt in DefectType if dt in _post_defect_result.scores
                 }
                 # ── §v10.702 B2: Per-Defekt-Reduktions-Summary ──  # §G133 Per-Defekt-Reduktions-Pflicht
-                _defect_reduction_per_type: dict[str, dict[str, float]] = {}
-                for dt in DefectType:
-                    _pre_entry = defect_result.scores.get(dt)
-                    _pre_sev = float(getattr(_pre_entry, "severity", 0.0) or 0.0) if _pre_entry is not None else 0.0
-                    _post_entry = _post_defect_result.scores.get(dt)
-                    _post_sev = float(getattr(_post_entry, "severity", 0.0) or 0.0) if _post_entry is not None else 0.0
-                    _reduction = max(0.0, _pre_sev - _post_sev)
-                    if _pre_sev > 0.01 or _post_sev > 0.01:
-                        _masked_ev = 0
-                        try:
-                            _post_md = getattr(_post_entry, "metadata", {}) or {}
-                            _masked_ev = int(_post_md.get("n_masked_events", 0) or 0)
-                        except Exception:
-                            _masked_ev = 0
-                        _defect_reduction_per_type[dt.value] = {
-                            "pre": round(_pre_sev, 4),
-                            "post": round(_post_sev, 4),
-                            "reduction": round(_reduction, 4),
-                            "reduction_pct": round(_reduction / max(_pre_sev, 0.001) * 100, 1),
-                            "masked_events": _masked_ev,
-                        }
+                from backend.core.defect_audibility_gate import (
+                    build_defect_reduction_per_type as _build_defect_reduction_per_type,
+                )
+
+                _defect_reduction_per_type = _build_defect_reduction_per_type(defect_result, _post_defect_result)
                 self._defect_reduction_per_type = _defect_reduction_per_type
                 # ── §v10.703 Step 1: Defekt-Countdown für GUI ──
                 # §v10.704 S3 Adaptive-Schwellwert-Pflicht (§G154):
@@ -19290,22 +19300,34 @@ class UnifiedRestorerV3:
                 _AUDIBLE_THRESHOLD = float(
                     np.clip(0.08 + _MATERIAL_JND_OFFSET.get(_mat_key, 0.0) + _depth_offset, 0.03, 0.15)
                 )
-                _defects_total = len(_defect_reduction_per_type)
+                _defects_total = sum(
+                    1 for v in _defect_reduction_per_type.values() if v["pre_measured"] or v["post_measured"]
+                )
                 _defects_audible_pre = sum(
-                    1 for v in _defect_reduction_per_type.values() if v["pre"] >= _AUDIBLE_THRESHOLD
+                    1
+                    for v in _defect_reduction_per_type.values()
+                    if v["pre_measured"] and v["pre"] >= _AUDIBLE_THRESHOLD
                 )
                 _defects_audible_post = sum(
-                    1 for v in _defect_reduction_per_type.values() if v["post"] >= _AUDIBLE_THRESHOLD
+                    1
+                    for v in _defect_reduction_per_type.values()
+                    if v["post_measured"] and v["post"] >= _AUDIBLE_THRESHOLD
                 )
                 _defects_resolved = sum(
                     1
                     for v in _defect_reduction_per_type.values()
-                    if v["pre"] >= _AUDIBLE_THRESHOLD and v["post"] < _AUDIBLE_THRESHOLD
+                    if v["pre_measured"]
+                    and v["post_measured"]
+                    and v["pre"] >= _AUDIBLE_THRESHOLD
+                    and v["post"] < _AUDIBLE_THRESHOLD
                 )
                 _defects_reduced = sum(
                     1
                     for v in _defect_reduction_per_type.values()
-                    if v["reduction"] > 0.01 and v["post"] >= _AUDIBLE_THRESHOLD
+                    if v["pre_measured"]
+                    and v["post_measured"]
+                    and v["reduction"] > 0.01
+                    and v["post"] >= _AUDIBLE_THRESHOLD
                 )
                 # Hörordnung Ebene 2 (hoerordnung.instructions.md §4), Stufe A:
                 # Bericht weist zusätzlich aus, wie viele über-Schwelle-Typen
@@ -19313,7 +19335,7 @@ class UnifiedRestorerV3:
                 _defects_masked_any = sum(
                     1
                     for v in _defect_reduction_per_type.values()
-                    if v["post"] >= _AUDIBLE_THRESHOLD and v.get("masked_events", 0) > 0
+                    if v["post_measured"] and v["post"] >= _AUDIBLE_THRESHOLD and v.get("masked_events", 0) > 0
                 )
                 self._defect_countdown = {
                     "total_detected": _defects_total,
@@ -23127,6 +23149,8 @@ class UnifiedRestorerV3:
                 "do_no_harm_scores": list(_do_no_harm_scores) if _do_no_harm_scores else [],
                 "guardian_passed": bool(not _do_no_harm_reverted),
                 "uqm_override_applied": bool(_uqm_override_applied),
+                # §SCM (Spec 03) SongContextMap — report-only; None, wenn nicht erzeugbar.
+                "song_context_map": getattr(self, "_song_context_map_meta", None),
                 # Perzeptuelle Scores für GUI
                 "mushra_score": float(_dnh_mushra),
                 "do_no_harm_hpi_score": float(_dnh_hpi),
@@ -23891,6 +23915,7 @@ class UnifiedRestorerV3:
                 sample_rate=sample_rate if _ag_audio is not None else None,
                 defect_locations=_ag_locations if _ag_audio is not None else None,
                 post_scan_ran=_post_defect_result is not None,
+                scan_scope="chunk" if _chunked_tail_skip else "whole_song",
             )
             log_audibility_report(_ag_report)
             # §Hörordnung §4 / §V7 (copilot-instructions.md): maskierungs-
@@ -24331,36 +24356,36 @@ class UnifiedRestorerV3:
                     warnings=list(result.warnings),
                     metadata=dict(result.metadata),
                 )
-                return result
-
-            _retry_result = self.restore(audio, sample_rate, progress_callback, **_retry_kwargs)
-            self._wohlklang_strength_multiplier = 1.0  # Reset
-            _retry_mushra = float(getattr(self, "_mqa_mushra", 0.0) or 0.0)
-            if _retry_mushra > self._wohlklang_best_mushra:
-                logger.info(
-                    "⚡ Wohlklang-Garantie: Re-Ausfuehrung MUSHRA %.1f > Erstlauf %.1f → Re-Ausfuehrung gewinnt",
-                    _retry_mushra,
-                    self._wohlklang_best_mushra,
-                )
-                return _retry_result
             else:
-                logger.info(
-                    "⚡ Wohlklang-Garantie: Erstlauf MUSHRA %.1f ≥ Re-Ausfuehrung %.1f → Erstlauf gewinnt",
-                    self._wohlklang_best_mushra,
-                    _retry_mushra,
-                )
-                result = RestorationResult(
-                    audio=self._wohlklang_best_audio,
-                    config=result.config,
-                    material_type=result.material_type,
-                    defect_scores=dict(result.defect_scores),
-                    phases_executed=list(result.phases_executed),
-                    total_time_seconds=result.total_time_seconds,
-                    rt_factor=result.rt_factor,
-                    quality_estimate=result.quality_estimate,
-                    warnings=list(result.warnings),
-                    metadata=dict(result.metadata),
-                )
+                _retry_result = self.restore(audio, sample_rate, progress_callback, **_retry_kwargs)
+                self._wohlklang_strength_multiplier = 1.0  # Reset
+                _retry_mushra = float(getattr(self, "_mqa_mushra", 0.0) or 0.0)
+                if _retry_mushra > self._wohlklang_best_mushra:
+                    logger.info(
+                        "⚡ Wohlklang-Garantie: Re-Ausfuehrung MUSHRA %.1f > Erstlauf %.1f → Re-Ausfuehrung gewinnt",
+                        _retry_mushra,
+                        self._wohlklang_best_mushra,
+                    )
+                    result = _retry_result
+                else:
+                    logger.info(
+                        "⚡ Wohlklang-Garantie: Erstlauf MUSHRA %.1f ≥ Re-Ausfuehrung %.1f → Erstlauf gewinnt",
+                        self._wohlklang_best_mushra,
+                        _retry_mushra,
+                    )
+                    result = RestorationResult(
+                        audio=self._wohlklang_best_audio,
+                        config=result.config,
+                        material_type=result.material_type,
+                        defect_scores=dict(result.defect_scores),
+                        phases_executed=list(result.phases_executed),
+                        total_time_seconds=result.total_time_seconds,
+                        rt_factor=result.rt_factor,
+                        quality_estimate=result.quality_estimate,
+                        warnings=list(result.warnings),
+                        metadata=dict(result.metadata),
+                    )
+                self._wohlklang_strength_multiplier = 1.0
 
         # §T3 End-Garantie: terminaler 100-%-Callback — unabhängig von Phasenzahl,
         # Skips, Deferrals oder Planänderungen erreicht jeder Fortschritts-Konsument
@@ -24391,10 +24416,15 @@ class UnifiedRestorerV3:
                 )
             except Exception as _rn_exc:
                 logger.debug("DRT-14-Nachweis nicht verfügbar: %s", _rn_exc)
+            _drt10_prior_state = self._drt10_metadata_snapshot(result.metadata)
             # Spec 26 DRT-10 (M1, 2026-11-17): Produktions-Invariante — Überrestauration
             # degradiert JEDEN Lauf (§0c); Identitäts-Rollback nur ohne hohe
             # Hör-Instanz (§7-Konfliktregel).
-            if self._drt10_verdict_in_metadata(result.metadata) and self._drt10_rollback_zulaessig(result.metadata):
+            if (
+                not _chunked_tail_skip
+                and self._drt10_verdict_in_metadata(result.metadata)
+                and self._drt10_rollback_zulaessig(result.metadata)
+            ):
                 # DRT-13 (Spec 26, 2026-11-17): Teil-Rollback vor Identitäts-Rollback —
                 # nur die Reparatur-Regionen zurücknehmen, wenn die Phase-AUS-Variante
                 # frei von Überrestauration ist; sonst M1-Fallback (Ganz-Titel).
@@ -24404,33 +24434,151 @@ class UnifiedRestorerV3:
                     )
 
                     _variant, _attribution = phase_aus_variante(result.audio)
-                except Exception:
+                except Exception as _drt13_exc:
+                    logger.warning("DRT-13-Attribution fehlgeschlagen: %s — DRT-10-M1 bleibt aktiv", _drt13_exc)
                     _variant, _attribution = None, {}
-                if _variant is not None and _attribution:
-                    _vmeta = self._wohlklang_zeuge_meta(audio, _variant, sample_rate)
-                    if not (isinstance(_vmeta, dict) and _vmeta.get("verfuegbar") and _vmeta.get("ueberrestauration")):
+                    _attribution_failure_reason: str | None = f"attribution_error:{type(_drt13_exc).__name__}"
+                else:
+                    _attribution_failure_reason = next(
+                        (
+                            str(details["grund"])
+                            for details in _attribution.values()
+                            if details.get("grund") not in (None, "keine_regionen")
+                        ),
+                        None,
+                    )
+                _all_snapshots_aligned = bool(_attribution) and all(
+                    details.get("grund") in (None, "keine_regionen") for details in _attribution.values()
+                )
+                _attributed_phases = {
+                    phase_id: details
+                    for phase_id, details in _attribution.items()
+                    if int(details.get("regionen", 0)) > 0
+                }
+                if _variant is not None and _all_snapshots_aligned and _attributed_phases:
+                    try:
+                        _vmeta = self._wohlklang_zeuge_meta(audio, _variant, sample_rate)
+                    except Exception as _witness_exc:
+                        logger.warning(
+                            "DRT-13-Kandidatenmessung fehlgeschlagen: %s — DRT-10-M1 bleibt aktiv",
+                            _witness_exc,
+                        )
+                        _vmeta = {"verfuegbar": False, "grund": f"{type(_witness_exc).__name__}: {_witness_exc}"}
+                    result.metadata["phase_attribution"] = {
+                        "schema": "aurik.phase_attribution/1",
+                        "status": "unavailable",
+                        "reason": "candidate_witness_unavailable"
+                        if not isinstance(_vmeta, dict) or not _vmeta.get("verfuegbar")
+                        else "candidate_overrestoration",
+                        "phasen": sorted(_attributed_phases),
+                    }
+                    if isinstance(_vmeta, dict) and _vmeta.get("verfuegbar") and not _vmeta.get("ueberrestauration"):
                         result.audio = _variant
                         result.metadata["drt10_teil_rollback"] = True
-                        result.metadata["phase_attribution"] = _attribution
+                        result.metadata["phase_attribution"]["status"] = "applied"
+                        result.metadata["drt10_original_witness"] = result.metadata.get("wohlklang_zeuge")
+                        result.metadata["drt10_original_sii_witness"] = result.metadata.get("sii_zeuge")
+                        result.metadata["wohlklang_zeuge"] = _vmeta
+                        result.metadata["sii_zeuge"] = self._sii_zeuge_meta(audio, _variant, sample_rate)
+                        self._drt10_restore_metadata_snapshot(result.metadata, _drt10_prior_state)
+                        result.metadata.pop("drt10_rollback", None)
                         logger.warning(
                             "👂 DRT-13: Teil-Rollback — Reparatur-Regionen zurückgenommen "
                             "(Phase-AUS-Variante frei von Überrestauration): %s",
-                            sorted(_attribution),
+                            sorted(_attributed_phases),
                         )
                     else:
                         result.audio = audio
                         result.metadata["drt10_rollback"] = True
-                        result.metadata["phase_attribution"] = _attribution
+                        result.metadata["phase_attribution"]["reason"] = (
+                            "candidate_witness_unavailable"
+                            if not isinstance(_vmeta, dict) or not _vmeta.get("verfuegbar")
+                            else "candidate_overrestoration"
+                        )
                         logger.warning(
-                            "👂 DRT-10: Identitäts-Rollback — auch die Phase-AUS-Variante "
-                            "überrestauriert (§0c-degradiert)"
+                            "👂 DRT-10: Identitäts-Rollback — DRT-13-Kandidat nicht sicher (%s, §0c-degradiert)",
+                            result.metadata["phase_attribution"]["reason"],
                         )
                 else:
                     result.audio = audio
                     result.metadata["drt10_rollback"] = True
+                    result.metadata["phase_attribution"] = {
+                        "schema": "aurik.phase_attribution/1",
+                        "status": "unavailable",
+                        "reason": _attribution_failure_reason or "no_aligned_phase_snapshot",
+                    }
                     logger.warning(
                         "👂 DRT-10: Identitäts-Rollback — keine DRT-13-Attribution verfügbar (§0c-degradiert)"
                     )
+        if not _chunked_tail_skip:
+            from backend.core.dsp.reparatur_phasen_attribution import clear as _clear_drt13_snapshots
+
+            _clear_drt13_snapshots()
+
+            from backend.core.defect_audibility_gate import build_defect_reduction_per_type as _build_final_reduction
+            from backend.core.defect_audibility_gate import evaluate_defect_audibility as _evaluate_final_audibility
+            from backend.core.defect_audibility_gate import (
+                evaluate_full_song_audibility as _evaluate_full_song_audibility,
+            )
+            from backend.core.defect_audibility_gate import log_audibility_report as _log_final_audibility
+            from backend.core.defect_audibility_gate import (
+                write_defect_audibility_metadata as _write_final_audibility_metadata,
+            )
+
+            _final_scan_started = time.perf_counter()
+            _final_defect_scan_seconds = 0.0
+            try:
+                _final_forensic_result = getattr(self, "_forensic_chain_result", None)
+                if not _final_forensic_result and hasattr(_mc_result, "transfer_chain"):
+                    _final_forensic_result = _mc_result
+                _final_defect_scan_started = time.perf_counter()
+                _final_post_scan = self.defect_scanner.scan(
+                    result.audio,
+                    sample_rate,
+                    material_type,
+                    file_ext=_file_ext_for_scan,
+                    forensic_medium_result=_final_forensic_result,
+                )
+                _final_defect_scan_seconds = time.perf_counter() - _final_defect_scan_started
+                _final_audibility_report = _evaluate_full_song_audibility(
+                    defect_result,
+                    _final_post_scan,
+                    result.audio,
+                    sample_rate,
+                    material_key=str(getattr(material_type, "value", material_type)).lower(),
+                    chain_depth=int(getattr(self, "_transfer_chain_depth", 1) or 1),
+                )
+                result.metadata["defect_reduction_per_type"] = _build_final_reduction(defect_result, _final_post_scan)
+            except Exception as _final_audibility_exc:
+                _final_defect_scan_seconds = max(
+                    _final_defect_scan_seconds,
+                    time.perf_counter() - _final_defect_scan_started,
+                )
+                logger.warning(
+                    "Finaler Vollsong-Audibility-Scan fehlgeschlagen; Evidenz bleibt ungeprüft: %s",
+                    _final_audibility_exc,
+                    exc_info=True,
+                )
+                _final_audibility_report = _evaluate_final_audibility(
+                    {},
+                    material_key=str(getattr(material_type, "value", material_type)).lower(),
+                    chain_depth=int(getattr(self, "_transfer_chain_depth", 1) or 1),
+                    post_scan_ran=False,
+                    scan_scope="whole_song",
+                )
+            _write_final_audibility_metadata(result.metadata, _final_audibility_report)
+            _final_budget = result.metadata.get("pipeline_budget_timings")
+            if not isinstance(_final_budget, dict):
+                _final_budget = {}
+                result.metadata["pipeline_budget_timings"] = _final_budget
+            _previous_defect_scan = _final_budget.get("defect_scanner_s")
+            _final_budget["defect_scanner_s"] = round(
+                (float(_previous_defect_scan) if isinstance(_previous_defect_scan, (int, float)) else 0.0)
+                + _final_defect_scan_seconds,
+                4,
+            )
+            _final_budget["final_audibility_scan_s"] = round(time.perf_counter() - _final_scan_started, 4)
+            _log_final_audibility(_final_audibility_report)
 
         return result
 
@@ -25917,18 +26065,14 @@ class UnifiedRestorerV3:
         kann (pytorch_lightning → torchvision), der im Test-Environment hängt.
         Die Analytics-Info „Klasse verfügbar" benötigt keine Instanziierung.
         """
-        try:
-            # import check only — no instantiation to avoid import-chain hang
-            _hd_mod: Any = sys.modules.get("backend.core.hybrid.hybrid_dereverb")
-            if _hd_mod is None:
-                return None
-
-            _hybrid_dereverb_result = {"class": "HybridDereverb", "active": True}
-            logger.debug("🏛️ HybridDereverb: Klasse verfügbar")
-            return _hybrid_dereverb_result
-        except Exception as _e38a:
-            logger.warning("§G23 ML→DSP-Ersatzpfad HybridDereverb: %s", _e38a, exc_info=True)
-            return None
+        # Präsenz-Meldung ohne Konstruktor und ohne Frischimport (Spec 07 §8.7):
+        # reale Aufrufstelle ist phase_20_reverb_reduction.py.
+        return self._compute_module_presence_result(
+            "backend.core.hybrid.hybrid_dereverb",
+            "HybridDereverb",
+            wired_into_restoration_pipeline=True,
+            note="Aufrufstelle: backend/core/phases/phase_20_reverb_reduction.py.",
+        )
 
     def _compute_hybrid_ml_denoiser_result(self) -> dict | None:
         """Berechnet v10.0.0 HybridMLDenoiser payload."""
@@ -26009,16 +26153,92 @@ class UnifiedRestorerV3:
             logger.debug("AuditLog übersprungen: %s", _e37a)
             return None
 
-    def _compute_epistemic_ethics_engine_result(self) -> dict | None:
-        """Berechnet v10.0.0 EpistemicGate ethics-engine payload."""
+    def _compute_module_presence_result(
+        self,
+        module_path: str,
+        attr_name: str,
+        *,
+        key: str = "class",
+        wired_into_restoration_pipeline: bool = False,
+        note: str = "",
+    ) -> dict | None:
+        """Prüft real, ob ein Diagnose-Modul im Prozess geladen ist (§G8 (copilot-instructions.md) Transparenz).
+
+        Befund 2026-11-22 (Messwahrheit-Korrektur): Das frühere Muster
+        ``_mod_cache = sys.modules.get(...)`` las das Ergebnis NIE aus und
+        meldete unconditional ``{"active": True}`` — eine unbelegte
+        Erfolgsmeldung (§V6 (copilot-instructions.md) Silent-Failure-Verbot, §G11 (copilot-instructions.md)) unabhängig davon,
+        ob das Modul je importiert wurde.
+
+        **Deadlock-Sicherheit (KEIN Frisch-Import):** Diese Methode läuft im
+        selben Aufrufkontext wie der dokumentierte Hyperparameter-Check
+        weiter unten in ``_collect_reporting_analytics`` ("DEADLOCK-SAFE: Nur
+        aus sys.modules-Cache laden — KEIN direkter Import in Thread") —
+        ``restore()`` wird im GUI-Batch-Pfad aus einem ``QThread`` heraus
+        aufgerufen (``Aurik10/ui/modern_window.py::BatchProcessingThread``).
+        Ein frischer ``importlib.import_module()``-Aufruf aus einem
+        Nicht-Hauptthread kann mit CPythons Import-Lock kollidieren, wenn
+        gleichzeitig ein anderer Thread importiert. Deshalb wird hier —
+        konsistent mit der bestehenden Konvention — NUR der bereits
+        bestehende ``sys.modules``-Zwischenspeicher gelesen (kein neuer
+        Import-Vorgang), das Ergebnis aber diesmal tatsächlich via
+        ``hasattr`` geprüft, statt wie zuvor ungenutzt zu verfallen.
+
+        Das Ergebnis heißt bewusst ``loaded_in_process``, NICHT ``active`` — es
+        belegt nur, dass das Modul in diesem Prozess bereits geladen wurde
+        UND das Zielattribut dort existiert, NICHT dass es in diesem
+        Restaurierungslauf tatsächlich ausgeführt wurde.
+        ``wired_into_restoration_pipeline`` ist eine recherchierte
+        Codebase-Tatsache (grep-Befund 2026-11-22, keine Laufzeit-Prüfung):
+        ``False`` bedeutet, dass das Modul außerhalb dieser Diagnose-Methode
+        keine Aufrufstelle im produktiven Restaurierungspfad
+        (``backend/api/bridge.py`` → ``denker/`` →
+        ``unified_restorer_v3.restore()``) hat.
+        """
         try:
-            _mod_cache = sys.modules.get("backend.core.epistemic_gate.ethics_engine")
-            _epistemic_ethics_result = {"class": "AuthenticityConstraints", "active": True}
-            logger.debug("⚖️ EpistemicGate.EthicsEngine: geladen")
-            return _epistemic_ethics_result
-        except Exception as _e37b:
-            logger.debug("EpistemicGate.EthicsEngine übersprungen: %s", _e37b)
+            _mod = sys.modules.get(module_path)
+            if _mod is None:
+                logger.debug("%s: in diesem Prozess nicht geladen (sys.modules)", module_path)
+                return None
+            if not hasattr(_mod, attr_name):
+                logger.debug("%s: Attribut '%s' nicht gefunden — nicht importierbar", module_path, attr_name)
+                return None
+            _result: dict[str, Any] = {
+                key: attr_name,
+                "loaded_in_process": True,
+                "wired_into_restoration_pipeline": wired_into_restoration_pipeline,
+            }
+            if note:
+                _result["note"] = note
+            logger.debug(
+                "📦 %s::%s: loaded_in_process=True wired=%s", module_path, attr_name, wired_into_restoration_pipeline
+            )
+            return _result
+        except Exception as _mp_exc:
+            logger.debug("%s nicht verfügbar: %s", module_path, _mp_exc)
             return None
+
+    def _compute_epistemic_ethics_engine_result(self) -> dict | None:
+        """Berechnet v10.0.0 EpistemicGate ethics-engine payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``AuthenticityConstraints`` wird nur als
+        Default-Argument innerhalb von ``EthicsEngine.__init__`` im selben
+        Modul verwendet; ``EthicsEngine``/``integrate_ethics_into_pipeline``
+        haben keine Aufrufstelle außerhalb ihres eigenen Moduls und von
+        Tests. Die reale Epistemic-Gate-Diagnose läuft über einen separaten,
+        bereits korrekt geprüften Pfad (``backend.core.epistemic_gate.
+        epistemic_gate.EpistemicGate``, Metadaten-Schlüssel
+        ``metadata["epistemic_gate"]``).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.epistemic_gate.ethics_engine",
+            "AuthenticityConstraints",
+            wired_into_restoration_pipeline=False,
+            note=(
+                "Nur als Default-Argument in EthicsEngine.__init__ verwendet; keine Aufrufstelle im "
+                "produktiven Restaurierungspfad (separat geprüft: metadata['epistemic_gate'])."
+            ),
+        )
 
     def _compute_mg_feedback_loop_result(self) -> dict | None:
         """Berechnet v10.0.0 MusicalGoalsFeedbackLoop payload."""
@@ -26034,15 +26254,17 @@ class UnifiedRestorerV3:
             return None
 
     def _compute_goal_conflict_result(self) -> dict | None:
-        """Berechnet v10.0.0 GoalConflictResolver payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.musical_goals.goal_conflict_resolver")
-            _goal_conflict_result = {"enum": "ConflictSeverity", "active": True}
-            logger.debug("⚔️ GoalConflictResolver: ConflictSeverity geladen")
-            return _goal_conflict_result
-        except Exception as _e37d:
-            logger.debug("GoalConflictResolver übersprungen: %s", _e37d)
-            return None
+        """Berechnet v10.0.0 GoalConflictResolver payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: keine Aufrufstelle außerhalb von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.musical_goals.goal_conflict_resolver",
+            "ConflictSeverity",
+            key="enum",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_goal_optimizer_result(self) -> dict | None:
         """Berechnet v10.0.0 MusicalGoalsOptimizer payload."""
@@ -26062,9 +26284,9 @@ class UnifiedRestorerV3:
         try:
             from backend.core.processing_modes import ProcessingMode
 
+            # Reine Enum-Auflistung (Fakt über den Code) — kein „active“-Anspruch (Spec 07 §8.7).
             _processing_modes_result = {
                 "modes": [m.name for m in ProcessingMode] if hasattr(ProcessingMode, "__members__") else [],
-                "active": True,
             }
             logger.debug("🎚️ ProcessingMode: %d Modi", len(_processing_modes_result["modes"]))  # type: ignore[arg-type]
             return _processing_modes_result
@@ -26073,129 +26295,154 @@ class UnifiedRestorerV3:
             return None
 
     def _compute_mg_quality_gate_result(self) -> dict | None:
-        """Berechnet v10.0.0 musical_goals.quality_gate payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.musical_goals.quality_gate")
-            _mg_quality_gate_result = {"class": "EnhancedPostCheckResult", "active": True}
-            logger.debug("🚦 musical_goals.QualityGate: geladen")
-            return _mg_quality_gate_result
-        except Exception as _e37g:
-            logger.debug("musical_goals.QualityGate übersprungen: %s", _e37g)
-            return None
+        """Berechnet v10.0.0 musical_goals.quality_gate payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: einzige externe Aufrufstelle ist
+        ``golden_samples/benchmark_runner.py`` (Offline-Benchmark-Tooling),
+        keine Aufrufstelle im produktiven Restaurierungspfad.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.musical_goals.quality_gate",
+            "EnhancedPostCheckResult",
+            wired_into_restoration_pipeline=False,
+            note="Nur von golden_samples/benchmark_runner.py (Offline-Tooling) verwendet.",
+        )
 
     def _compute_onnx_fallback_result(self) -> dict | None:
-        """Berechnet v10.0.0 ONNX fallback payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.onnx.fallback")
-            _onnx_fallback_result = {"class": "FallbackEvent", "active": True}
-            logger.debug("🔄 ONNX-Ersatzpfad: FallbackEvent geladen")
-            return _onnx_fallback_result
-        except Exception as _e37h:
-            logger.debug("ONNX-Ersatzpfad übersprungen: %s", _e37h)
-            return None
+        """Berechnet v10.0.0 ONNX fallback payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: nur von ``backend/core/onnx/plugin_manager.py``
+        referenziert, das selbst keine Aufrufstelle im Produktionspfad hat.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.onnx.fallback",
+            "FallbackEvent",
+            wired_into_restoration_pipeline=False,
+            note="Nur von backend/core/onnx/plugin_manager.py referenziert (selbst unverdrahtet).",
+        )
 
     def _compute_onnx_quantizer_result(self) -> dict | None:
-        """Berechnet v10.0.0 ONNX quantizer payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.onnx.quantizer")
-            _onnx_quantizer_result = {"class": "ModelQuantizer", "active": True}
-            logger.debug("🗜️ ONNX-Quantizer: ModelQuantizer geladen")
-            return _onnx_quantizer_result
-        except Exception as _e37i:
-            logger.debug("ONNX-Quantizer übersprungen: %s", _e37i)
-            return None
+        """Berechnet v10.0.0 ONNX quantizer payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: keine Aufrufstelle außerhalb des
+        Re-Exports in backend/core/onnx/__init__.py.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.onnx.quantizer",
+            "ModelQuantizer",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_onnx_runtime_result(self) -> dict | None:
-        """Berechnet v10.0.0 ONNX runtime payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.onnx.runtime")
-            _onnx_runtime_result = {"class": "onnx.runtime.ModelInfo", "active": True}
-            logger.debug("⚙️ ONNX-Runtime: ModelInfo geladen")
-            return _onnx_runtime_result
-        except Exception as _e37j:
-            logger.debug("ONNX-Runtime übersprungen: %s", _e37j)
-            return None
+        """Berechnet v10.0.0 ONNX runtime payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``create_inference_session`` hat keine
+        Aufrufstelle im Produktionspfad; nur von
+        ``backend/core/onnx/plugin_manager.py`` referenziert (selbst
+        unverdrahtet).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.onnx.runtime",
+            "ModelInfo",
+            wired_into_restoration_pipeline=False,
+            note="create_inference_session() hat keine Aufrufstelle im Produktionspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_adv_ensemble_result(self) -> dict | None:
-        """Berechnet v10.0.0 AdvancedEnsemble payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.optimization.advanced_ensemble")
-            _adv_ensemble_result = {"class": "AdvancedEnsemble", "active": True}
-            logger.debug("🎼 AdvancedEnsemble: geladen")
-            return _adv_ensemble_result
-        except Exception as _e37k:
-            logger.debug("AdvancedEnsemble übersprungen: %s", _e37k)
-            return None
+        """Berechnet v10.0.0 AdvancedEnsemble payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: nur vom Trainings-/Experimentier-Framework
+        ``backend/core/optimization/optimization_integration.py`` verwendet,
+        nicht vom produktiven Restaurierungspfad.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.optimization.advanced_ensemble",
+            "AdvancedEnsemble",
+            wired_into_restoration_pipeline=False,
+            note="Nur Trainings-/Experimentier-Framework (optimization_integration.py).",
+        )
 
     def _compute_auto_augmentation_result(self) -> dict | None:
-        """Berechnet v10.0.0 AudioAugmentations payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.optimization.automated_augmentation")
-            _auto_aug_result = {"class": "AudioAugmentations", "active": True}
-            logger.debug("🎨 AudioAugmentations: geladen")
-            return _auto_aug_result
-        except Exception as _e37l:
-            logger.debug("AudioAugmentations übersprungen: %s", _e37l)
-            return None
+        """Berechnet v10.0.0 AudioAugmentations payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: analog adv_ensemble, nur Trainings-Framework.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.optimization.automated_augmentation",
+            "AudioAugmentations",
+            wired_into_restoration_pipeline=False,
+            note="Nur Trainings-/Experimentier-Framework (optimization_integration.py).",
+        )
 
     def _compute_neural_arch_search_result(self) -> dict | None:
-        """Berechnet v10.0.0 NeuralArchitectureSearch payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.optimization.neural_architecture_search")
-            _nas_result = {"class": "AudioNASNetwork", "active": True}
-            logger.debug("🧠 NeuralArchitectureSearch: AudioNASNetwork geladen")
-            return _nas_result
-        except Exception as _e37n:
-            logger.debug("NeuralArchitectureSearch übersprungen: %s", _e37n)
-            return None
+        """Berechnet v10.0.0 NeuralArchitectureSearch payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: analog adv_ensemble, nur Trainings-Framework.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.optimization.neural_architecture_search",
+            "AudioNASNetwork",
+            wired_into_restoration_pipeline=False,
+            note="Nur Trainings-/Experimentier-Framework (optimization_integration.py).",
+        )
 
     def _compute_opt_integration_result(self) -> dict | None:
-        """Berechnet v10.0.0 OptimizationIntegration payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.optimization.optimization_integration")
-            _opt_integration_result = {"class": "optimization_integration.AdvancedEnsemble", "active": True}
-            logger.debug("🔗 OptimizationIntegration: geladen")
-            return _opt_integration_result
-        except Exception as _e37o:
-            logger.debug("OptimizationIntegration übersprungen: %s", _e37o)
-            return None
+        """Berechnet v10.0.0 OptimizationIntegration payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``OptimizationIntegration`` selbst hat keine
+        Aufrufstelle im Produktionspfad (reines Trainings-/Experimentier-
+        Framework).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.optimization.optimization_integration",
+            "AdvancedEnsemble",
+            wired_into_restoration_pipeline=False,
+            note="OptimizationIntegration ist reines Trainings-/Experimentier-Framework, nicht produktiv verdrahtet.",
+        )
 
     def _compute_perceptual_loss_result(self) -> dict | None:
-        """Berechnet v10.0.0 PerceptualLoss payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.optimization.perceptual_loss")
-            _perceptual_loss_result = {"class": "MultiResolutionSTFTLoss", "active": True}
-            logger.debug("🎵 PerceptualLoss: MultiResolutionSTFTLoss geladen")
-            return _perceptual_loss_result
-        except Exception as _e37p:
-            logger.debug("PerceptualLoss übersprungen: %s", _e37p)
-            return None
+        """Berechnet v10.0.0 PerceptualLoss payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``MultiResolutionSTFTLoss``/
+        ``CombinedPerceptualLoss`` werden nur von Trainingsskripten
+        (``backend/core/optimization/e2e_optimizer.py``,
+        ``scripts/train_banquet_vinyl_finetune.py``) verwendet — keine
+        Aufrufstelle im produktiven Restaurierungspfad
+        (``unified_restorer_v3.restore()``).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.optimization.perceptual_loss",
+            "MultiResolutionSTFTLoss",
+            wired_into_restoration_pipeline=False,
+            note="Nur von Trainingsskripten verwendet (e2e_optimizer.py, train_banquet_vinyl_finetune.py).",
+        )
 
     def _compute_mod_parallel_result(self) -> dict | None:
-        """Berechnet v10.0.0 module_parallel payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.parallel.module_parallel")
-            _mod_parallel_result = {"class": "ModuleDependency", "active": True}
-            logger.debug("⚡ module_parallel: ModuleDependency geladen")
-            return _mod_parallel_result
-        except Exception as _e37q:
-            logger.debug("module_parallel übersprungen: %s", _e37q)
-            return None
+        """Berechnet v10.0.0 module_parallel payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: keine Aufrufstelle außerhalb von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.parallel.module_parallel",
+            "ModuleDependency",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_stereo_par_result(self) -> dict | None:
-        """Berechnet v10.0.0 stereo_parallel payload."""
-        try:
-            from backend.core.parallel.stereo_parallel import ChannelType as _CT37r
+        """Berechnet v10.0.0 stereo_parallel payload (§G8-Diagnose, keine Laufzeit-Aktivität).
 
-            _stereo_par_result = {
-                "channels": [c.name for c in _CT37r] if hasattr(_CT37r, "__members__") else [],
-                "active": True,
-            }
-            logger.debug("🔊 stereo_parallel: ChannelType geladen")
-            return _stereo_par_result
-        except Exception as _e37r:
-            logger.debug("stereo_parallel übersprungen: %s", _e37r)
-            return None
+        Grep-Befund 2026-11-22: ``backend.core.parallel.stereo_parallel`` hat
+        keine Aufrufstelle außerhalb von Tests; ein Typ-Import belegt keine Aktivität.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.parallel.stereo_parallel",
+            "ChannelType",
+            key="enum",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_quality_gate_result_37(self) -> dict | None:
         """Berechnet v10.0.0 QualityGate payload."""
@@ -26211,48 +26458,62 @@ class UnifiedRestorerV3:
             return None
 
     def _compute_reg_adaptive_goal_result(self) -> dict | None:
-        """Berechnet v10.0.0 regulator adaptive_goal payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.regulator.adaptive_goal")
-            _reg_adaptive_goal_result = {"class": "regulator.AdaptiveGoalEngine", "active": True}
-            logger.debug("🎯 regulator.AdaptiveGoal: geladen")
-            return _reg_adaptive_goal_result
-        except Exception as _e37t:
-            logger.debug("regulator.AdaptiveGoal übersprungen: %s", _e37t)
-            return None
+        """Berechnet v10.0.0 regulator adaptive_goal payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``AdaptiveGoalEngine`` wird nirgendwo
+        konstruiert (``AdaptiveGoalEngine(`` hat null Treffer außerhalb
+        der Klassendefinition selbst).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.regulator.adaptive_goal",
+            "AdaptiveGoalEngine",
+            wired_into_restoration_pipeline=False,
+            note="AdaptiveGoalEngine wird nirgendwo konstruiert (grep-Befund 2026-11-22).",
+        )
 
     def _compute_reg_context_result(self) -> dict | None:
-        """Berechnet v10.0.0 regulator context_analysis payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.regulator.context_analysis")
-            _reg_context_result = {"class": "regulator.ContextAnalyzer", "active": True}
-            logger.debug("🔍 regulator.ContextAnalysis: ContextAnalyzer geladen")
-            return _reg_context_result
-        except Exception as _e37u:
-            logger.debug("regulator.ContextAnalysis übersprungen: %s", _e37u)
-            return None
+        """Berechnet v10.0.0 regulator context_analysis payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``ContextAnalyzer`` wird nur innerhalb von
+        ``ZoneEngine.__init__`` konstruiert; ``ZoneEngine`` wiederum nur von
+        der verwaisten ``backend/core/pipeline.py::AurikPipeline`` (selbst
+        ohne Aufrufstelle im Produktionspfad).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.regulator.context_analysis",
+            "ContextAnalyzer",
+            wired_into_restoration_pipeline=False,
+            note="Nur über die verwaiste backend/core/pipeline.py::AurikPipeline erreichbar.",
+        )
 
     def _compute_reg_ethics_result(self) -> dict | None:
-        """Berechnet v10.0.0 regulator ethics_engine payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.regulator.ethics_engine")
-            _reg_ethics_result = {"class": "EpistemicDecision", "active": True}
-            logger.debug("⚖️ regulator.EthicsEngine: EpistemicDecision geladen")
-            return _reg_ethics_result
-        except Exception as _e37v:
-            logger.debug("regulator.EthicsEngine übersprungen: %s", _e37v)
-            return None
+        """Berechnet v10.0.0 regulator ethics_engine payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``EpistemicDecision`` wird nur innerhalb des
+        eigenen definierenden Moduls (epistemic_gate/ethics_engine.py)
+        verwendet, keine externe Aufrufstelle.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.regulator.ethics_engine",
+            "EpistemicDecision",
+            wired_into_restoration_pipeline=False,
+            note="Nur innerhalb des eigenen definierenden Moduls verwendet (grep-Befund 2026-11-22).",
+        )
 
     def _compute_reg_quality_ctrl_result(self) -> dict | None:
-        """Berechnet v10.0.0 regulator quality_control payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.regulator.quality_control")
-            _reg_quality_ctrl_result = {"class": "regulator.QualityControl", "active": True}
-            logger.debug("🛡️ regulator.QualityControl: geladen")
-            return _reg_quality_ctrl_result
-        except Exception as _e37w:
-            logger.debug("regulator.QualityControl übersprungen: %s", _e37w)
-            return None
+        """Berechnet v10.0.0 regulator quality_control payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: die kanonische ``backend.quality_control.
+        QualityControl`` wird einzig von der verwaisten
+        ``backend/feature_analysis.py`` konstruiert (keine Aufrufstelle im
+        Produktionspfad).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.regulator.quality_control",
+            "QualityControl",
+            wired_into_restoration_pipeline=False,
+            note="Nur von der verwaisten backend/feature_analysis.py konstruiert.",
+        )
 
     def _compute_regulator_result(self) -> dict | None:
         """Berechnet v10.0.0 Regulator payload."""
@@ -26268,19 +26529,24 @@ class UnifiedRestorerV3:
             return None
 
     def _compute_regulator_v8_result(self) -> dict | None:
-        """Berechnet v10.0.0 RegulatorV8 payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.regulator.regulator_v8")
-            _regulator_v8_result = {
-                "enum": "DecisionType",
-                "values": [],
-                "active": True,
-            }
-            logger.debug("📜 RegulatorV8: DecisionType geladen")
-            return _regulator_v8_result
-        except Exception as _e37y:
-            logger.debug("RegulatorV8 übersprungen: %s", _e37y)
-            return None
+        """Berechnet v10.0.0 RegulatorV8 payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        ``.github/FILE_REGISTRY.md`` führt ``backend/core/regulator/
+        regulator_v8.py`` explizit als **DEPRECATED** (Suffix-Variante ohne
+        Importe, repo_graph --duplicates Fund 2026-08-22); kanonisch ist
+        ``backend/core/regulator/regulator.py`` (siehe
+        ``_compute_regulator_result``, das echte Konstruktion durchführt).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.regulator.regulator_v8",
+            "DecisionType",
+            key="enum",
+            wired_into_restoration_pipeline=False,
+            note=(
+                "DEPRECATED (FILE_REGISTRY): kanonisch ist backend.core.regulator.regulator "
+                "(siehe metadata['regulator'])."
+            ),
+        )
 
     def _compute_sota_max_result(self) -> dict | None:
         """Berechnet v10.0.0 SOTAMaximumAnalyzer payload."""
@@ -26296,48 +26562,59 @@ class UnifiedRestorerV3:
             return None
 
     def _compute_undo_manager_result(self) -> dict | None:
-        """Berechnet v10.0.0 UndoManager payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.undo.undo_manager")
-            _undo_manager_result = {"class": "Action", "active": True}
-            logger.debug("↩️ UndoManager: Action geladen")
-            return _undo_manager_result
-        except Exception as _e37aa:
-            logger.debug("UndoManager übersprungen: %s", _e37aa)
-            return None
+        """Berechnet v10.0.0 UndoManager payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: keine Aufrufstelle außerhalb von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.undo.undo_manager",
+            "Action",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_zone_context_result(self) -> dict | None:
-        """Berechnet v10.0.0 ZoneEngine context payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.zone_engine.context_analysis")
-            _zone_context_result = {"class": "zone_engine.ContextAnalyzer", "active": True}
-            logger.debug("🗺️ ZoneEngine.ContextAnalysis: geladen")
-            return _zone_context_result
-        except Exception as _e37ab:
-            logger.debug("ZoneEngine.ContextAnalysis übersprungen: %s", _e37ab)
-            return None
+        """Berechnet v10.0.0 ZoneEngine context payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: nur über die verwaiste
+        ``backend/core/pipeline.py::AurikPipeline`` erreichbar (selbst
+        ohne Aufrufstelle im Produktionspfad).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.zone_engine.context_analysis",
+            "ContextAnalyzer",
+            key="class",
+            wired_into_restoration_pipeline=False,
+            note="Nur über die verwaiste backend/core/pipeline.py::AurikPipeline erreichbar.",
+        )
 
     def _compute_region_analysis_result(self) -> dict | None:
-        """Berechnet v10.0.0 ZoneEngine region-analysis payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.zone_engine.region_analysis")
-            _region_analysis_result = {"class": "AudioRegion", "active": True}
-            logger.debug("🗺️ ZoneEngine.RegionAnalysis: AudioRegion geladen")
-            return _region_analysis_result
-        except Exception as _e37ac:
-            logger.debug("ZoneEngine.RegionAnalysis übersprungen: %s", _e37ac)
-            return None
+        """Berechnet v10.0.0 ZoneEngine region-analysis payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: analog zone_context, nur über die verwaiste
+        AurikPipeline erreichbar.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.zone_engine.region_analysis",
+            "AudioRegion",
+            wired_into_restoration_pipeline=False,
+            note="Nur über die verwaiste backend/core/pipeline.py::AurikPipeline erreichbar.",
+        )
 
     def _compute_zone_engine_result(self) -> dict | None:
-        """Berechnet v10.0.0 ZoneEngine payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.zone_engine.zone_engine")
-            _zone_engine_result = {"class": "Zone", "active": True}
-            logger.debug("🗺️ ZoneEngine: Zone geladen")
-            return _zone_engine_result
-        except Exception as _e37ad:
-            logger.debug("ZoneEngine übersprungen: %s", _e37ad)
-            return None
+        """Berechnet v10.0.0 ZoneEngine payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``AurikPipeline`` (einziger Konstrukteur von
+        ``ZoneEngine``) hat selbst keine Aufrufstelle im Repository
+        außerhalb seiner eigenen Definition und von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.zone_engine.zone_engine",
+            "Zone",
+            key="enum",
+            wired_into_restoration_pipeline=False,
+            note="Nur über die verwaiste backend/core/pipeline.py::AurikPipeline erreichbar.",
+        )
 
     def _compute_adaptive_goal_result_36(self) -> dict | None:
         """Berechnet v10.0.0 adaptive_goal payload."""
@@ -26484,95 +26761,117 @@ class UnifiedRestorerV3:
             return None
 
     def _compute_reference_learning_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 reference_based_learning payload."""
-        try:
-            from backend.core.musical_goals.reference_based_learning import LearningStrategy as _LS36k
+        """Berechnet v10.0.0 reference_based_learning payload (§G8-Diagnose, keine Laufzeit-Aktivität).
 
-            _reference_learning_result = {"strategy_class": str(_LS36k), "active": True}
-            logger.debug("📖 ReferenceLearning: LearningStrategy geladen")
-            return _reference_learning_result
-        except Exception as _exc36k:
-            logger.debug("ReferenceLearning übersprungen: %s", _exc36k)
-            return None
+        Grep-Befund 2026-11-22: keine Aufrufstelle außerhalb von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.musical_goals.reference_based_learning",
+            "LearningStrategy",
+            key="strategy_class",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_semantic_goals_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 semantic_goals payload."""
-        try:
-            from backend.core.musical_goals.semantic_goals import GoalProfile as _GP36l
+        """Berechnet v10.0.0 semantic_goals payload (§G8-Diagnose, keine Laufzeit-Aktivität).
 
-            _semantic_goals_result = {"profile_class": str(_GP36l), "active": True}
-            logger.debug("🎯 SemanticGoals: GoalProfile geladen")
-            return _semantic_goals_result
-        except Exception as _exc36l:
-            logger.debug("SemanticGoals übersprungen: %s", _exc36l)
-            return None
+        Grep-Befund 2026-11-22: keine Aufrufstelle außerhalb von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.musical_goals.semantic_goals",
+            "GoalProfile",
+            key="profile_class",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_mg_uncertainty_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 musical_goals uncertainty payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.musical_goals.uncertainty_quantification")
-            _mg_uncertainty_result = {"report_class": "GoalsUncertaintyReport", "active": True}
-            logger.debug("❓ MusicalGoalsUncertainty: GoalsUncertaintyReport geladen")
-            return _mg_uncertainty_result
-        except Exception as _exc36m:
-            logger.debug("MusicalGoalsUncertainty übersprungen: %s", _exc36m)
-            return None
+        """Berechnet v10.0.0 musical_goals uncertainty payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``GoalsUncertaintyReport`` wird nur innerhalb
+        des eigenen definierenden Moduls verwendet, keine externe Aufrufstelle
+        im produktiven Restaurierungspfad.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.musical_goals.uncertainty_quantification",
+            "GoalsUncertaintyReport",
+            key="report_class",
+            wired_into_restoration_pipeline=False,
+            note="Nur innerhalb des eigenen definierenden Moduls verwendet (grep-Befund 2026-11-22).",
+        )
 
     def _compute_onnx_converter_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 onnx.converter payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.onnx.converter")
-            _onnx_converter_result = {"config_class": "ConversionConfig", "active": True}
-            logger.debug("🔌 ONNX-Converter: ConversionConfig geladen")
-            return _onnx_converter_result
-        except Exception as _exc36n:
-            logger.debug("ONNX-Converter übersprungen: %s", _exc36n)
-            return None
+        """Berechnet v10.0.0 onnx.converter payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: keine Aufrufstelle außerhalb von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.onnx.converter",
+            "ConversionConfig",
+            key="config_class",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_onnx_model_info_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 onnx.model_info payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.onnx.model_info")
-            _onnx_model_info_result = {"info_class": "ModelInfo", "active": True}
-            logger.debug("ℹ️ ONNX-ModelInfo: ModelInfo geladen")
-            return _onnx_model_info_result
-        except Exception as _exc36o:
-            logger.debug("ONNX-ModelInfo übersprungen: %s", _exc36o)
-            return None
+        """Berechnet v10.0.0 onnx.model_info payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: keine Aufrufstelle außerhalb von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.onnx.model_info",
+            "ModelInfo",
+            key="info_class",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_onnx_plugin_mgr_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 onnx.plugin_manager payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.onnx.plugin_manager")
-            _onnx_plugin_mgr_result = {"manager_class": "FallbackManager", "active": True}
-            logger.debug("🔧 ONNX-PluginManager: FallbackManager geladen")
-            return _onnx_plugin_mgr_result
-        except Exception as _exc36p:
-            logger.debug("ONNX-PluginManager übersprungen: %s", _exc36p)
-            return None
+        """Berechnet v10.0.0 onnx.plugin_manager payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``backend/core/onnx/plugin_manager.py`` hat
+        selbst keine Aufrufstelle im Produktionspfad.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.onnx.plugin_manager",
+            "FallbackManager",
+            key="manager_class",
+            wired_into_restoration_pipeline=False,
+            note="plugin_manager.py hat keine Aufrufstelle im Produktionspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_multi_objective_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 optimization.multi_objective payload."""
-        try:
-            from backend.core.optimization.multi_objective import Individual as _Ind36q
+        """Berechnet v10.0.0 optimization.multi_objective payload (§G8-Diagnose, keine Laufzeit-Aktivität).
 
-            _multi_objective_result = {"individual_class": str(_Ind36q), "active": True}
-            logger.debug("🎯 MultiObjective: Individual geladen")
-            return _multi_objective_result
-        except Exception as _exc36q:
-            logger.debug("MultiObjective übersprungen: %s", _exc36q)
-            return None
+        Grep-Befund 2026-11-22: nur vom Trainings-Framework ``optimization_integration.py`` verwendet.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.optimization.multi_objective",
+            "Individual",
+            key="individual_class",
+            wired_into_restoration_pipeline=False,
+            note="Nur Trainings-/Experimentier-Framework (optimization_integration.py).",
+        )
 
     def _compute_opt_uncertainty_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 optimization uncertainty payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.optimization.uncertainty_quantification")
-            _opt_uncertainty_result = {"model_class": "BayesianLinear", "active": True}
-            logger.debug("🧪 OptUncertainty: BayesianLinear geladen")
-            return _opt_uncertainty_result
-        except Exception as _exc36r:
-            logger.debug("OptUncertainty übersprungen: %s", _exc36r)
-            return None
+        """Berechnet v10.0.0 optimization uncertainty payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Grep-Befund 2026-11-22: ``BayesianLinear`` wird nur vom
+        Trainings-Framework ``optimization_integration.py`` importiert. Das
+        im Produktionspfad echt wirksame ``backend/core/pipeline_uncertainty.
+        py::estimate_pipeline_confidence`` ist eine eigenständige,
+        unabhängige Implementierung ohne Abhängigkeit von diesem Modul
+        (verifiziert: kein Import von ``optimization.uncertainty_
+        quantification`` in pipeline_uncertainty.py).
+        """
+        return self._compute_module_presence_result(
+            "backend.core.optimization.uncertainty_quantification",
+            "BayesianLinear",
+            key="model_class",
+            wired_into_restoration_pipeline=False,
+            note=("Nur Trainings-Framework; pipeline_uncertainty.py (echt verdrahtet) ist unabhängig davon."),
+        )
 
     def _compute_batch_parallel_result_36(self) -> dict | None:
         """Berechnet v10.0.0 parallel.batch_parallel payload."""
@@ -26589,56 +26888,39 @@ class UnifiedRestorerV3:
             return None
 
     def _compute_module_parallel_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 parallel.module_parallel payload."""
-        try:
-            _mp36_mod = sys.modules.get("backend.core.parallel")
-            _mp36_cls = (
-                next(
-                    (getattr(_mp36_mod, n) for n in dir(_mp36_mod) if "Parallel" in n and not n.startswith("_")),
-                    None,
-                )
-                if _mp36_mod is not None
-                else None
-            )
-            _module_parallel_result = (
-                {
-                    "class": str(_mp36_cls),
-                    "active": True,
-                }
-                if _mp36_cls
-                else {"active": True}
-            )
-            logger.debug("⚡ ModuleParallel: %s", _module_parallel_result)
-            return _module_parallel_result
-        except Exception as _exc36t:
-            logger.debug("ModuleParallel übersprungen: %s", _exc36t)
-            return None
+        """Berechnet v10.0.0 parallel.module_parallel payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Befund 2026-11-22: Die vorherige Implementierung suchte via
+        ``sys.modules.get("backend.core.parallel")`` (dem fast leeren
+        ``__init__.py`` des Pakets) nach einem Attribut mit „Parallel" im
+        Namen — ``backend/core/parallel/__init__.py`` enthält nur einen
+        Docstring, re-exportiert nichts, sodass die Suche strukturell IMMER
+        fehlschlägt und der else-Zweig unconditional ``{"active": True}``
+        zurückgab. Grep-Befund: ``ModuleParallelProcessor``/
+        ``ModuleDependency`` haben keine Aufrufstelle außerhalb von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.parallel.module_parallel",
+            "ModuleDependency",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_stereo_parallel_result_36(self) -> dict | None:
-        """Berechnet v10.0.0 parallel.stereo_parallel payload."""
-        try:
-            _mod_cache = sys.modules.get("backend.core.parallel")
-            _sp36_cls = (
-                next(
-                    (getattr(_mod_cache, n) for n in dir(_mod_cache) if "Parallel" in n and not n.startswith("_")),
-                    None,
-                )
-                if _mod_cache
-                else None
-            )
-            _stereo_parallel_result = (
-                {
-                    "class": str(_sp36_cls),
-                    "active": True,
-                }
-                if _sp36_cls
-                else {"active": True}
-            )
-            logger.debug("⚡ StereoParallel: %s", _stereo_parallel_result)
-            return _stereo_parallel_result
-        except Exception as _exc36u:
-            logger.debug("StereoParallel übersprungen: %s", _exc36u)
-            return None
+        """Berechnet v10.0.0 parallel.stereo_parallel payload (§G8-Diagnose, keine Laufzeit-Aktivität).
+
+        Befund 2026-11-22: analoger Fehler wie module_parallel_36 (leeres
+        Paket-``__init__.py`` strukturell nie treffbar ⇒ unconditional
+        ``active: True``). Grep-Befund: ``StereoParallelProcessor`` hat
+        keine Aufrufstelle außerhalb seines eigenen Moduls und von Tests.
+        """
+        return self._compute_module_presence_result(
+            "backend.core.parallel.stereo_parallel",
+            "ChannelType",
+            key="enum",
+            wired_into_restoration_pipeline=False,
+            note="Keine Aufrufstelle im produktiven Restaurierungspfad (grep-Befund 2026-11-22).",
+        )
 
     def _compute_fatigue_result_35(self, restored_audio: "np.ndarray", sample_rate: int) -> dict | None:
         """Berechnet v10.0.0 listening_fatigue_analyzer payload."""
@@ -26767,17 +27049,14 @@ class UnifiedRestorerV3:
             dict of metadata key-value pairs to be merged into
             RestorationResult.metadata via ``**`` unpacking.
         """
-        # Accumulator for gate fail-reasons to be merged into restore()'s _fail_reasons
-        _local_fail_reasons: list[dict] = []
-
-        # MushraEvaluator: Objektiver MUSHRA-Score (§8.1, OQS) — Original vs. Restauriert
-        # Pflicht-Schwelle: OQS ≥ 80 (Good); Studio-2026-Ziel: ≥ 88
+        # MushraEvaluator: algorithmic OQS proxy for diagnostics — original vs. restored
+        # OQS is an unvalidated diagnostic proxy, not an export or rollback gate.
         _mushra_result = None
         try:
             from backend.core.mushra_evaluator import get_mushra_evaluator as _get_mushra
 
             _mushra_eval = _get_mushra()
-            # §§2.45a + §8.1 [RELEASE_MUST] MUSHRA-Referenz-Wahl:
+            # §§2.45a + §8.1 MUSHRA-Referenz-Wahl:
             # Normalfall: original_audio_for_goals (= audio, LUFS-aligned zu restored_audio).
             # §0d CCR Reference-Shift-Ausnahme: Wenn CCR aktiv ist, wurde original_audio_for_goals
             # auf best_carrier_checkpoint (post-Carrier-Phase) verschoben. MUSHRA würde dann
@@ -26791,8 +27070,7 @@ class UnifiedRestorerV3:
             _mushra_ref_src = audio if (original_audio_for_goals is not audio) else original_audio_for_goals
             _orig_mono_m = _mushra_ref_src if _mushra_ref_src.ndim == 1 else _mushra_ref_src.mean(axis=0)
             _rest_mono_m = restored_audio if restored_audio.ndim == 1 else restored_audio.mean(axis=0)
-            # §8.1 [BUG-FIX v10.0.0] Self-Comparison Guard: skip expensive MUSHRA evaluate()
-            # when restored == original (no-op pipeline). Prevents NSIM=1.000/OQS=93.5 false-positive.
+            # Self-comparison is not an OQS measurement and must not be assigned a synthetic score.
             _mushra_init_is_self = _is_effective_self_comparison(_orig_mono_m, _rest_mono_m)
             if not _mushra_init_is_self:
                 _mushra_result = _mushra_eval.evaluate(
@@ -26803,13 +27081,12 @@ class UnifiedRestorerV3:
                 )
             else:
                 logger.warning(
-                    "§8.1 MushraEvaluator (initial): self-comparison erkannt (no-op pipeline) "
-                    "→ MUSHRA ueberspringen, OQS=50.0 (keine Verbesserung)"
+                    "§8.1 MushraEvaluator (initial): self-comparison erkannt (no-op pipeline); "
+                    "OQS wird nicht ausgewertet"
                 )
-                _mushra_result = None  # handled in post-LUFS guard; OQS=50 set there
-            # §8.1.1a [RELEASE_MUST] Studio-2026 OQS-Gate (v10.0.0):
-            # Studio 2026: OQS ≥ 88. Restoration: material-adaptiv (§2.54).
-            # mp3/shellac/wax können strukturell nie 80 erreichen — hardcoded 80 verletzt §2.54.
+                _mushra_result = None
+            # Material-adaptive reference levels are reported only; this proxy is
+            # not calibrated to authorize a destructive decision.
             if _mushra_result is not None:
                 _mat_str_m = str(getattr(material_type, "value", material_type) or "").lower()
                 _restoration_oqs_threshold = {
@@ -26831,46 +27108,21 @@ class UnifiedRestorerV3:
                 _mushra_threshold = 88.0 if self.is_studio_mode() else _restoration_oqs_threshold
                 _mushra_pass = _mushra_result.passes_mushra_threshold(_mushra_threshold)
                 logger.info(
-                    "📊 MushraEvaluator: OQS=%.1f grade=%s anchor=%.1f (Schwelle=%.0f [%s] → %s)",
+                    "📊 OQS-Diagnose: %.1f grade=%s anchor=%.1f (Referenz=%.0f [%s], "
+                    "Referenz erreicht=%s; report-only, nicht hörkalibriert)",
                     _mushra_result.mushra_score,
                     _mushra_result.grade,
                     _mushra_result.anchor_score,
                     _mushra_threshold,
                     "Studio2026" if self.is_studio_mode() else "Restoration",
-                    "✅ Pass" if _mushra_pass else "❌ FAIL",
+                    _mushra_pass,
                 )
                 # §v10.704 B27: MUSHRA-Score für MQA-Perceptual-Improvement forwarden.
                 # Der MushraEvaluator läuft im execute_pipeline-Pfad, MQA liest aber
                 # self._mqa_mushra — ohne Forwarding sieht MQA MUSHRA=0 → NO IMPROVEMENT.
                 self._mqa_mushra = float(_mushra_result.mushra_score)
-                # Hard-fail for Studio 2026: OQS < 88 → export blocked (§8.1.1a RELEASE_MUST)
-                if not _mushra_pass and self.is_studio_mode():
-                    _local_fail_reasons.append(
-                        {
-                            "error_code": "STUDIO_OQS_GATE_FAIL",
-                            "message": (
-                                f"Studio 2026: OQS {_mushra_result.mushra_score:.1f} < {_mushra_threshold:.0f} "
-                                "(§8.1.1a RELEASE_MUST — export blockiert)"
-                            ),
-                            "oqs_score": round(_mushra_result.mushra_score, 1),
-                            "oqs_threshold": _mushra_threshold,
-                            "severity": "critical",
-                        }
-                    )
             elif self.is_studio_mode():
-                # No-op pipeline in Studio 2026 mode: OQS=50 < 88 → hard-fail
-                _local_fail_reasons.append(
-                    {
-                        "error_code": "STUDIO_OQS_GATE_FAIL",
-                        "message": (
-                            "Studio 2026: no-op pipeline (restored == original) → OQS=50.0 < 88.0 "
-                            "(§8.1.1a RELEASE_MUST — export blockiert)"
-                        ),
-                        "oqs_score": 50.0,
-                        "oqs_threshold": 88.0,
-                        "severity": "critical",
-                    }
-                )
+                logger.info("Studio-2026-OQS: Selbstvergleich; kein Messwert und kein Gate-Verdikt.")
         except Exception as _mushra_exc:
             logger.debug("MushraEvaluator nicht verfügbar: %s", _mushra_exc)
 
@@ -27948,11 +28200,12 @@ class UnifiedRestorerV3:
         # optimization.hyperparameter_optimizer
         # DEADLOCK-SAFE: Nur aus sys.modules-Cache laden — KEIN direkter Import in Thread.
         # HyperparameterConfig wird hier nur für Tracking benötigt, nicht funktional.
-        _hyperparam_result: dict | None = None
-        _mod_hpo = sys.modules.get("backend.core.optimization.hyperparameter_optimizer")
-        if _mod_hpo is not None:
-            _hyperparam_result = {"class": "HyperparameterConfig", "active": True}
-            logger.debug("🔬 HyperparameterOptimizer: HyperparameterConfig aus Zwischenspeicher")
+        _hyperparam_result: dict | None = self._compute_module_presence_result(
+            "backend.core.optimization.hyperparameter_optimizer",
+            "HyperparameterConfig",
+            wired_into_restoration_pipeline=False,
+            note="Nur Trainings-Framework (train_e2e_optimization.py); keine Aufrufstelle im Produktionspfad.",
+        )
 
         # optimization.neural_architecture_search (extracted helper to reduce method complexity)
         _nas_result = self._compute_neural_arch_search_result()
@@ -28280,7 +28533,8 @@ class UnifiedRestorerV3:
                 else:
                     _quality_control_result = {"active": True}
             else:
-                _quality_control_result = {"active": True}
+                # Konstruktion scheiterte (TypeError/nicht aufrufbar): keine Aktivität behaupten (§8.7 Spec 07).
+                logger.debug("QualityControl nicht instanziierbar — kein Metadatum")
             logger.debug("🛡️ QualityControl: %s", _quality_control_result)
         except Exception as _qc_exc:
             logger.debug("QualityControl nicht verfügbar: %s", _qc_exc)
@@ -28357,6 +28611,8 @@ class UnifiedRestorerV3:
                     "anchor_score": round(_mushra_result.anchor_score, 1),
                     "passes_80": _mushra_result.passes_mushra_threshold(80.0),
                     "passes_88": _mushra_result.passes_mushra_threshold(88.0),
+                    "reference_threshold": _mushra_threshold,
+                    "threshold_role": "report_only_unvalidated",
                 }
                 if _mushra_result is not None
                 else None
@@ -28508,8 +28764,6 @@ class UnifiedRestorerV3:
             "zone_context": _zone_context_result,
             "region_analysis": _region_analysis_result,
             "zone_engine": _zone_engine_result,
-            # §8.1.1a: Gate fail-reasons from analytics (merged into restore()'s _fail_reasons)
-            "_fail_reasons_from_analytics": _local_fail_reasons,
             # v10.0.0 — core/hybrid/-Module
             "hybrid_dereverb": _hybrid_dereverb_result,
             "hybrid_ml_denoiser": _hybrid_ml_denoiser_result,
@@ -45811,6 +46065,11 @@ class UnifiedRestorerV3:
         )
         if _drt10_rollback:
             _meta_options["drt10_rollback"] = True
+            _meta_options["phase_attribution"] = {
+                "schema": "aurik.phase_attribution/1",
+                "status": "unavailable",
+                "reason": "options_path_has_no_phase_snapshots",
+            }
             logger.warning("👂 DRT-10: Identitäts-Rollback (Options-Pfad) — Überrestauration, Eingang zurückgegeben")
 
         return RestorationResult(
@@ -47743,6 +48002,25 @@ class UnifiedRestorerV3:
             return False
         return True
 
+    @staticmethod
+    def _drt10_metadata_snapshot(meta: dict[str, Any]) -> dict[str, tuple[bool, Any]]:
+        snapshot: dict[str, tuple[bool, Any]] = {}
+        for key in ("degradation_status", "fail_reason", "fail_reasons"):
+            present = key in meta
+            value = meta.get(key)
+            if key == "fail_reasons" and isinstance(value, list):
+                value = list(value)
+            snapshot[key] = (present, value)
+        return snapshot
+
+    @staticmethod
+    def _drt10_restore_metadata_snapshot(meta: dict[str, Any], snapshot: dict[str, tuple[bool, Any]]) -> None:
+        for key, (present, value) in snapshot.items():
+            if present:
+                meta[key] = value
+            else:
+                meta.pop(key, None)
+
     def _sii_zeuge_meta(self, eingang: Any, ausgang: Any, sample_rate: int) -> dict[str, Any]:
         """Hörordnung §3 (L1, 2026-11-09): Verständlichkeits-Zeuge je Lauf.
 
@@ -47786,7 +48064,7 @@ class UnifiedRestorerV3:
         RAM O(1) statt O(duration). Alle ML-Modelle bleiben GELADEN.
         """
         try:
-            from backend.core.chunked_streaming import ChunkedPipeline, select_chunk_duration_s
+            from backend.core.chunked_streaming import ChunkDeltaPatch, ChunkedPipeline, select_chunk_duration_s
 
             self._in_chunked = True
 
@@ -47871,6 +48149,61 @@ class UnifiedRestorerV3:
                 )
             cp = ChunkedPipeline(chunk_duration_s=_chunk_s)
             chunks = cp.compute_chunks(audio, sample_rate)
+            _drt13_patches: list[ChunkDeltaPatch] = []
+            _drt13_chunk_reports: list[dict[str, Any]] = []
+
+            def _capture_drt13_chunk(chunk_result: Any, chunk_index: int) -> None:
+                try:
+                    from backend.core.dsp.reparatur_phasen_attribution import (
+                        phase_aus_delta,
+                    )
+
+                    _indices, _delta, _info = phase_aus_delta(chunk_result.audio)
+                    _aligned = bool(_info) and all(
+                        details.get("grund") in (None, "keine_regionen") for details in _info.values()
+                    )
+                    _alignment_reason = next(
+                        (
+                            details["grund"]
+                            for details in _info.values()
+                            if details.get("grund") not in (None, "keine_regionen")
+                        ),
+                        None,
+                    )
+                    if _indices.size:
+                        _drt13_patches.append(ChunkDeltaPatch(chunk_index, _indices, _delta))
+                    _drt13_chunk_reports.append(
+                        {
+                            "chunk_index": chunk_index,
+                            "status": "captured" if _aligned else "unavailable",
+                            "reason": None if _aligned else (_alignment_reason or "no_phase_snapshot"),
+                            "phasen": sorted(
+                                phase_id for phase_id, details in _info.items() if int(details.get("regionen", 0)) > 0
+                            ),
+                        }
+                    )
+                except Exception as _drt13_exc:
+                    logger.warning(
+                        "DRT-13-Chunk-Attribution für Chunk %d fehlgeschlagen: %s — DRT-10-M1 bleibt aktiv",
+                        chunk_index,
+                        _drt13_exc,
+                    )
+                    _drt13_chunk_reports.append(
+                        {
+                            "chunk_index": chunk_index,
+                            "status": "unavailable",
+                            "reason": f"attribution_error:{type(_drt13_exc).__name__}",
+                            "phasen": [],
+                        }
+                    )
+                finally:
+                    try:
+                        from backend.core.dsp.reparatur_phasen_attribution import clear as _clear_drt13
+
+                        _clear_drt13()
+                    except Exception as _clear_exc:
+                        logger.warning("DRT-13-Snapshot-Cleanup fehlgeschlagen: %s", _clear_exc)
+
             # §P0-1 Safety: einziger Chunk = letzter Chunk (Kaskade nicht verlieren)
             _chunk_kwargs["_chunked_last"] = len(chunks) == 1
             logger.info(
@@ -48016,6 +48349,7 @@ class UnifiedRestorerV3:
             _first_result = self.restore(
                 _first_chunk, sample_rate, progress_callback=_first_pc or progress_callback, **_chunk_kwargs
             )
+            _capture_drt13_chunk(_first_result, 0)
 
             # ── §v10.702 B3: Pre-Analysis-State einfrieren für deterministische Folge-Chunks ──  # §G135, §G136 Wiederholungs-Reproduzierbarkeit
             # §v10.703 B17: Sichere deepcopy — filtert nicht-picklebare Objekte (thread.lock etc.)
@@ -48174,6 +48508,7 @@ class UnifiedRestorerV3:
                     _res = self.restore(
                         chunk, sample_rate, progress_callback=_chunk_pc or progress_callback, **_chunk_kwargs
                     )
+                    _capture_drt13_chunk(_res, i)
                     results.append(_ChunkResult(_res.audio, sample_rate, i, start, end))
                     _all_warnings.extend(getattr(_res, "warnings", []) or [])
                     _all_phases_exec.extend(getattr(_res, "phases_executed", []) or [])
@@ -48181,6 +48516,20 @@ class UnifiedRestorerV3:
                     _last_result = _res  # §P0-1 (b/c): Analytik-Metadaten des letzten Chunks
                     _chunk_count += 1
                 except Exception as _chunk_exc:
+                    _drt13_chunk_reports.append(
+                        {
+                            "chunk_index": i,
+                            "status": "unavailable",
+                            "reason": "chunk_failed",
+                            "phasen": [],
+                        }
+                    )
+                    try:
+                        from backend.core.dsp.reparatur_phasen_attribution import clear as _clear_drt13
+
+                        _clear_drt13()
+                    except Exception as _clear_exc:
+                        logger.warning("DRT-13-Snapshot-Cleanup nach Chunk-Fehler fehlgeschlagen: %s", _clear_exc)
                     logger.error(
                         "Chunk %d/%d FEHLGESCHLAGEN: %s — Originalsignal beibehalten",
                         i + 1,
@@ -48319,48 +48668,6 @@ class UnifiedRestorerV3:
                         _m1b_chunked_types = list(_m1b_rep.improvable_types)
             except Exception as _m1bc_exc:
                 logger.debug("§P1-7 m1b chunked nicht blockierend: %s", _m1bc_exc)
-
-            # §G10 (copilot-instructions.md) / D-K3-68 (2026-10-08): Song-globaler
-            # Audibility-Nachzug nach der Assembly. Ohne ihn bliebe im Export-Meta
-            # das Chunk-0-Verdikt aus _first_result.metadata stehen (evidence_state
-            # „scan_missing" → „Residuum NICHT gegen die Maskierungsschwelle
-            # belegt", §V6-fail-closed) — die §G10/§G11 (copilot-instructions.md)-Qualitäts-Zusage könnte
-            # nie vergeben werden (Lauf-Befund 10.12.17, Chunk-0-Tail). Basis sind
-            # die Per-Defekt-Reduktionsdaten des letzten Chunk-Laufs (selbe Quelle
-            # wie die Song-m1b oben); der §B2-Post-Scan lief gemäß §P0-1 (d) auf
-            # dem letzten Chunk — fehlen die Daten, bleibt es fail-closed.
-            try:
-                from backend.core.defect_audibility_gate import (
-                    evaluate_defect_audibility as _song_aud_eval,
-                )
-
-                _song_aud_mat = getattr(_first_result, "material_type", MaterialType.UNKNOWN)
-                _song_aud_data = getattr(self, "_defect_reduction_per_type", None) or {}
-                _song_aud_rep = _song_aud_eval(
-                    _song_aud_data if isinstance(_song_aud_data, dict) else {},
-                    material_key=str(getattr(_song_aud_mat, "value", _song_aud_mat)).lower(),
-                    chain_depth=int(getattr(self, "_transfer_chain_depth", 1) or 1),
-                    post_scan_ran=bool(_song_aud_data),  # Daten existieren nur bei gelaufenem §B2-Post-Scan
-                )
-                _song_aud_meta = _song_aud_rep.to_metadata()
-                _fd_meta = getattr(_first_result, "metadata", None)
-                if isinstance(_fd_meta, dict):
-                    _fd_meta["audibility_gate"] = _song_aud_meta
-                    _fd_meta["defect_residual_audibility"] = _song_aud_meta  # §G10 (copilot-instructions.md)-Feldname
-                logger.info(
-                    "§G10 (copilot-instructions.md) Song-Audibility nach Assembly: "
-                    "evidence=%s gate_verified=%s audible=%d resolved=%d masked=%d",
-                    getattr(_song_aud_rep, "evidence_state", "?"),
-                    bool(getattr(_song_aud_rep, "gate_verified", False)),
-                    int(getattr(_song_aud_rep, "n_audible_unmasked", 0) or 0),
-                    int(getattr(_song_aud_rep, "n_resolved", 0) or 0),
-                    int(getattr(_song_aud_rep, "n_masked", 0) or 0),
-                )
-            except Exception as _song_aud_exc:
-                logger.debug(
-                    "§G10 (copilot-instructions.md) Song-Audibility-Nachzug nicht verfügbar: %s",
-                    _song_aud_exc,
-                )
 
             # §P0-1 Slice B (2026-11-05): Song-Level Perceptual-Gates — die
             # song-globalen Größen EmotionalArc (§8.2 (phases.instructions.md),
@@ -48741,14 +49048,144 @@ class UnifiedRestorerV3:
             # REPORT-ONLY; Eingang ist die Original-Audio (wie beim Einladungs-Gate).
             _meta["wohlklang_zeuge"] = self._wohlklang_zeuge_meta(audio, output, sample_rate)
             _meta["sii_zeuge"] = self._sii_zeuge_meta(audio, output, sample_rate)
+            _drt10_prior_state = self._drt10_metadata_snapshot(_meta)
             # Spec 26 DRT-10 (M1): Produktions-Verdikt auch im Chunked-Pfad (§0c);
             # Rollback = Original-Audio zurückgeben (nur ohne hohe Hör-Instanz, §7).
             if self._drt10_verdict_in_metadata(_meta) and self._drt10_rollback_zulaessig(_meta):
-                output = audio
-                _meta["drt10_rollback"] = True
-                logger.warning(
-                    "👂 DRT-10: Identitäts-Rollback (Chunked-Pfad) — Überrestauration, Original zurückgegeben"
+                _all_chunks_attributed = (
+                    len(results) == len(chunks)
+                    and len(_drt13_chunk_reports) == len(chunks)
+                    and all(report["status"] == "captured" for report in _drt13_chunk_reports)
                 )
+                _drt13_phases = sorted({phase for report in _drt13_chunk_reports for phase in report["phasen"]})
+                _drt13_report: dict[str, Any] = {
+                    "schema": "aurik.phase_attribution/1",
+                    "status": "unavailable",
+                    "chunks": _drt13_chunk_reports,
+                    "phasen": _drt13_phases,
+                }
+                _reason = None
+                if not _all_chunks_attributed:
+                    _reason = "incomplete_or_unaligned_chunk_attribution"
+                elif not _drt13_patches:
+                    _reason = "no_phase_delta"
+
+                if _reason is None:
+                    try:
+                        _variant = cp.apply_chunk_deltas(output, results, _drt13_patches, sample_rate)  # type: ignore[arg-type]
+                        _variant_witness = self._wohlklang_zeuge_meta(audio, _variant, sample_rate)
+                        if not isinstance(_variant_witness, dict) or not _variant_witness.get("verfuegbar"):
+                            _reason = "candidate_witness_unavailable"
+                        elif _variant_witness.get("ueberrestauration"):
+                            _reason = "candidate_overrestoration"
+                        else:
+                            output = _variant
+                            _meta["drt10_original_witness"] = _meta.get("wohlklang_zeuge")
+                            _meta["drt10_original_sii_witness"] = _meta.get("sii_zeuge")
+                            _meta["wohlklang_zeuge"] = _variant_witness
+                            _meta["sii_zeuge"] = self._sii_zeuge_meta(audio, _variant, sample_rate)
+                            _meta["drt10_teil_rollback"] = True
+                            self._drt10_restore_metadata_snapshot(_meta, _drt10_prior_state)
+                            _drt13_report["status"] = "applied"
+                            logger.warning(
+                                "👂 DRT-13: Songweiter Teil-Rollback — %d Chunk-Patches, Phasen: %s",
+                                len(_drt13_patches),
+                                _drt13_phases,
+                            )
+                    except Exception as _drt13_exc:
+                        logger.warning(
+                            "DRT-13-Song-Kandidat nicht messbar: %s — DRT-10-M1 bleibt aktiv",
+                            _drt13_exc,
+                        )
+                        _reason = f"candidate_error:{type(_drt13_exc).__name__}"
+
+                if _drt13_report["status"] != "applied":
+                    output = audio
+                    _meta["drt10_rollback"] = True
+                    logger.warning(
+                        "👂 DRT-10: Identitäts-Rollback (Chunked-Pfad) — DRT-13 unavailable (%s)",
+                        _reason or "unknown",
+                    )
+                else:
+                    _meta.pop("drt10_rollback", None)
+                if _reason is not None:
+                    _drt13_report["reason"] = _reason
+                _meta["phase_attribution"] = _drt13_report
+
+            from backend.core.defect_audibility_gate import build_defect_reduction_per_type as _build_song_reduction
+            from backend.core.defect_audibility_gate import evaluate_defect_audibility as _evaluate_song_audibility
+            from backend.core.defect_audibility_gate import (
+                evaluate_full_song_audibility as _evaluate_full_song_audibility,
+            )
+            from backend.core.defect_audibility_gate import log_audibility_report as _log_song_audibility
+            from backend.core.defect_audibility_gate import (
+                write_defect_audibility_metadata as _write_song_audibility_metadata,
+            )
+
+            _song_scan_started = time.perf_counter()
+            _song_defect_scan_started = time.perf_counter()
+            _song_defect_scan_seconds = 0.0
+            try:
+                _song_material = getattr(_first_result, "material_type", MaterialType.UNKNOWN)
+                _song_forensic = kwargs.get("forensic_medium_result") or getattr(self, "_forensic_chain_result", None)
+                _song_file_ext = str(kwargs.get("file_ext") or "")
+                _song_pre_scan = kwargs.get("cached_defect_result")
+                if not isinstance(getattr(_song_pre_scan, "scores", None), dict):
+                    _song_pre_scan = self.defect_scanner.scan(
+                        audio,
+                        sample_rate,
+                        _song_material,
+                        file_ext=_song_file_ext,
+                        forensic_medium_result=_song_forensic,
+                    )
+                _song_post_scan = self.defect_scanner.scan(
+                    output,
+                    sample_rate,
+                    _song_material,
+                    file_ext=_song_file_ext,
+                    forensic_medium_result=_song_forensic,
+                )
+                _song_defect_scan_seconds = time.perf_counter() - _song_defect_scan_started
+                _song_report = _evaluate_full_song_audibility(
+                    _song_pre_scan,
+                    _song_post_scan,
+                    output,
+                    sample_rate,
+                    material_key=str(getattr(_song_material, "value", _song_material)).lower(),
+                    chain_depth=int(getattr(self, "_transfer_chain_depth", 1) or 1),
+                )
+                _meta["defect_reduction_per_type"] = _build_song_reduction(_song_pre_scan, _song_post_scan)
+            except Exception as _song_scan_exc:
+                _song_defect_scan_seconds = max(
+                    _song_defect_scan_seconds,
+                    time.perf_counter() - _song_defect_scan_started,
+                )
+                logger.warning(
+                    "Vollsong-Audibility-Scan nach Chunk-Assembly fehlgeschlagen; Evidenz bleibt ungeprüft: %s",
+                    _song_scan_exc,
+                    exc_info=True,
+                )
+                _song_material = getattr(_first_result, "material_type", MaterialType.UNKNOWN)
+                _song_report = _evaluate_song_audibility(
+                    {},
+                    material_key=str(getattr(_song_material, "value", _song_material)).lower(),
+                    chain_depth=int(getattr(self, "_transfer_chain_depth", 1) or 1),
+                    post_scan_ran=False,
+                    scan_scope="whole_song",
+                )
+            _write_song_audibility_metadata(_meta, _song_report)
+            _song_budget = _meta.get("pipeline_budget_timings")
+            if not isinstance(_song_budget, dict):
+                _song_budget = {}
+                _meta["pipeline_budget_timings"] = _song_budget
+            _previous_song_defect_scan = _song_budget.get("defect_scanner_s")
+            _song_budget["defect_scanner_s"] = round(
+                (float(_previous_song_defect_scan) if isinstance(_previous_song_defect_scan, (int, float)) else 0.0)
+                + _song_defect_scan_seconds,
+                4,
+            )
+            _song_budget["final_audibility_scan_s"] = round(time.perf_counter() - _song_scan_started, 4)
+            _log_song_audibility(_song_report)
 
             return RestorationResult(
                 audio=output,
@@ -48782,6 +49219,12 @@ class UnifiedRestorerV3:
             raise
         finally:
             self._in_chunked = False
+            try:
+                from backend.core.dsp.reparatur_phasen_attribution import clear as _clear_drt13_final
+
+                _clear_drt13_final()
+            except Exception as _clear_exc:
+                logger.warning("DRT-13-Snapshot-Cleanup nach Chunk-Assembly fehlgeschlagen: %s", _clear_exc)
 
 
 class _ChunkResult:  # §v10.360 Internal helper

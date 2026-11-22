@@ -43,6 +43,16 @@ def test_seed_konstanten() -> None:
     assert tw.FRAMES == 64
 
 
+def test_training_without_selected_checkpoint_fails_explicitly(monkeypatch: pytest.MonkeyPatch) -> None:
+    mel = np.zeros((64, tw.FRAMES), dtype=np.float32)
+    daten = [(mel, 0, "train"), (mel, 1, "holdout")]
+    monkeypatch.setattr(tw, "_baue_dataset", lambda klasse, manifest=None: (daten, ["holdout"], 0))
+    monkeypatch.setattr(tw, "EPOCHS", 0)
+
+    with pytest.raises(RuntimeError, match="Kein gültiger Witness-Checkpoint"):
+        tw.trainiere("groove_echo")
+
+
 def test_dataset_leak_frei_nach_titel(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Der Holdout-Titel taucht in keinem Trainingsbeispiel auf (leak-frei).
 

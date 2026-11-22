@@ -2994,8 +2994,8 @@ class AurikDenker:
             _rest_metadata["fail_reasons"] = [dict(entry) for entry in _stage_fail_reasons]
 
         # Material-adaptives MOS-Gate (zentral im Orchestrator).
-        # Falls VERSA-MOS unter Materialziel liegt, erzwingt ein Clamp
-        # quality_estimate < 0.55, sodass Export-Gates konsistent blockieren.
+        # Materialbezogener VERSA-MOS-Befund bleibt Diagnose; der abgeleitete
+        # quality_estimate ist kein alleiniger Export-Entscheider.
         _mos_material, _mos_target = self._material_mos_target(material, chain_info)
         stage_notes["material_mos_gate"] = f"{_mos_material}: MOS-Ziel≥{_mos_target:.2f}"
         if 0.0 < _versa_mos < _mos_target:

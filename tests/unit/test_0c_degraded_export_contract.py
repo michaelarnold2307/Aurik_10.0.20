@@ -1,8 +1,8 @@
 """§0c (copilot-instructions.md) — Export-Vertrag bei fehlgeschlagenem Quality-Gate.
 
 Schließt den P1-4-Befund (2026-09-14): Drei MUSHRA-Pilot-Szenarien erzeugten
-50-Byte-WAVs (Header + 2 Samples) mit rc=0/Status „ok", als das Export-Gate
-scheiterte (quality_estimate ~0,48 < 0,55). §0c verlangt stattdessen: das
+50-Byte-WAVs (Header + 2 Samples) mit rc=0/Status „ok", als ein echtes
+Export-Sicherheits-Gate scheiterte. §0c verlangt stattdessen: das
 BESTMÖGLICHE sichere Ergebnis wird mit Status „degraded" exportiert — ein
 Hardstop ohne Ausgabedatei ODER eine leere Datei ist normativ unzulässig.
 
@@ -58,7 +58,7 @@ class TestDegradedExportContract:
         audio = self._audio()
         gate = {
             "passed": False,
-            "fail_reason": "KRITISCH: quality_estimate 0.476 < 0.55",
+            "fail_reason": "Structural-Silence-Audit: unzulässiger Energieeintrag",
             "recovery_attempted": False,
         }
         path = export_audio(audio, 48000, "gate_fail_case", quality_gate=gate, output_dir=str(tmp_path))

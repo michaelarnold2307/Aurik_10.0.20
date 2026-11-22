@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 INTERVALL_S = 300
 LOCKFILE = Path("/tmp/ketten_watchdog.lock")
 LOGFILE = Path("/tmp/ketten_watchdog.log")
-_REPO = "/media/michael/Software 4TB/Aurik_Standalone"
+_REPO = str(Path(__file__).resolve().parents[1])
 
 
 def _wait_for_success(name: str) -> str:

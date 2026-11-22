@@ -96,6 +96,12 @@ def test_drt_16_baseline_gruen() -> None:
     assert fehler == [], f"DRT-16-Vertrag fehlt: {fehler}"
 
 
+def test_drt13_chunk_parity_contract_baseline_gruen() -> None:
+    fehler: list[str] = []
+    drt._pruefe_drt_131415(fehler)
+    assert not [meldung for meldung in fehler if meldung.startswith("DRT-13")], f"DRT-13-Vertrag verletzt: {fehler}"
+
+
 def test_disziplinregister_baseline_strukturell_gruen() -> None:
     register = parity.LEDGER.read_text(encoding="utf-8")
     fehler: list[str] = []

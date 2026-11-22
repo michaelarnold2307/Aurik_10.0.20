@@ -10,6 +10,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -68,6 +69,25 @@ def test_fail_closed_witness_checkpoint_vor_training() -> None:
     i_pruefung = quelltext.find("Witness-Checkpoint fehlt")
     i_loop = quelltext.find("for ep in range(epochen)")
     assert i_pruefung > 0 and i_loop > i_pruefung
+
+
+def test_training_without_selected_checkpoint_fails_explicitly(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(wk, "_ROOT", tmp_path)
+    checkpoint_dir = tmp_path / "models" / "witness_groove_echo"
+    checkpoint_dir.mkdir(parents=True)
+    witness = wk.WitnessCRNN(wk.N_MELS)
+    wk.torch.save({"n_mels": wk.N_MELS, "state_dict": witness.state_dict()}, checkpoint_dir / "witness.pt")
+
+    audio = np.zeros(wk.FENSTER, dtype=np.float32)
+    monkeypatch.setattr(wk, "_baue_regionen", lambda klasse: ([], "holdout", 1))
+    monkeypatch.setattr(
+        wk,
+        "_lade_split",
+        lambda regionen, holdout_titel, max_regionen: ([audio], [audio], [audio], [audio], [audio], [audio]),
+    )
+
+    with pytest.raises(RuntimeError, match="Kein gültiger Witness-Kopf-Checkpoint"):
+        wk.trainiere("groove_echo", epochen=0, hidden=2, stufen=1, lam=0.1, device="cpu")
 
 
 def test_quelltext_pin_kein_flag_kein_cuda_zwang() -> None:

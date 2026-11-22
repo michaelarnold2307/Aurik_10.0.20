@@ -73,7 +73,7 @@ def _logmel(audio: np.ndarray, sr: int) -> np.ndarray:
     else:
         pad = np.full((N_MELS, FRAMES - logm.shape[1]), logm.min(), dtype=np.float32)
         logm = np.concatenate([logm, pad], axis=1)
-    return logm.astype(np.float32)
+    return np.array(logm, dtype=np.float32, copy=True)
 
 
 def _label_for(path: str) -> str | None:
@@ -82,8 +82,11 @@ def _label_for(path: str) -> str | None:
     try:
         man = yaml.safe_load(open(mf))
         for e in man if isinstance(man, list) else []:
+            if not isinstance(e, dict):
+                continue
             if e.get("file") == base:
-                return e.get("material")
+                material = e.get("material")
+                return material if isinstance(material, str) else None
     except Exception as _e:  # §V6 (copilot-instructions.md)
         logger.debug("_label_for Manifest fehlgeschlagen: %s", _e)
     d = os.path.basename(os.path.dirname(os.path.dirname(path)))
@@ -108,7 +111,7 @@ def _load_dataset(corpus: str):
             X.append(_logmel(mono, sr))
             y.append(MATERIALS.index(mat))
         except Exception as _e:  # §V6 (copilot-instructions.md)
-            logger.debug("_load_dataset Datei uebersprungen: %s", _e)
+            logger.debug("Datensatz-Einlesen: Datei uebersprungen: %s", _e)
             continue
     return np.array(X), np.array(y)
 

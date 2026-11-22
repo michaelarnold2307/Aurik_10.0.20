@@ -7,6 +7,10 @@ Zweck: Pflichtblock fuer jede normative Aenderung in `.github/specs/*`
 ## Verwendung
 
 Diesen Block unterhalb der geaenderten Spec-Stelle einfuegen oder im zugehoerigen Report referenzieren.
+Alle Felder muessen ausgefuellt sein. Nicht anwendbare Messungen brauchen eine
+konkrete Begruendung; leere Felder, Platzhalter und ein ausstehender Sign-off
+bestehen das Gate nicht. Eine DRT-16/RX-12-Paritaetsbehauptung muss auf den
+kanonischen JSON-Beleg unter `docs/reports/current/` verweisen.
 
 ---
 

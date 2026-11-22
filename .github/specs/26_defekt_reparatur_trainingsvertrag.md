@@ -168,13 +168,31 @@ schärft das Verhältnis:
    Überrestauration, wird SIE das Ergebnis (Teil-Rollback) — der
    Identitäts-Rollback (M1) bleibt NUR der Fallback, wenn keine Attribution
    greift oder auch die AUS-Variante überrestauriert.
+4. **Song-Ebene und Chunk-Parität:** DRT-10 ist ein Ganz-Titel-Verdikt. Im
+   Chunked-Pfad darf es deshalb nicht je Chunk über den endgültigen
+   Song-Output entscheiden; der Verdikt und die DRT-13-Kandidatenmessung
+   laufen nach der Chunk-Assembly auf dem vollständigen Song. Chunk-lokale
+   Phase-AUS-Deltas werden mit denselben RMS-Match-Faktoren und
+   Crossfade-Gewichten wie die Chunk-Assembly auf den Kandidaten übertragen.
+   Samples außerhalb der erfassten Reparaturregionen bleiben bit-identisch.
+   Die zusammengesetzte Phase-AUS-Variante wird gegen den vollständigen
+   Eingang gemessen; nur ein verfügbarer Kandidat ohne Überrestauration darf
+   den Identitäts-Rollback ersetzen. Fehlende, nicht ausgerichtete oder
+   unmessbare Attribution führt fail-closed zu M1 und wird im Report begründet.
+5. **Song-Isolation:** Snapshot-Zustand ist pro Ausführungskontext isoliert
+   und wird vor jedem neuen Song bzw. Chunk zurückgesetzt (§G1/§V8
+   (copilot-instructions.md)). Modul-globaler Zustand darf weder einen
+   Folgesong noch parallele Restaurierungen beeinflussen.
+6. **Pfadtransparenz:** Jeder DRT-10-Rollback berichtet DRT-13 als
+   `applied` oder `unavailable` mit Grund. Der Options-Pfad ohne
+   Reparatur-Phasen-Snapshots muss `unavailable` melden und M1 beibehalten;
+   fehlende Attribution darf nicht als erfolgreicher Teil-Rollback erscheinen.
 
 Kein stiller Flip: Teil-Rollback ist ein deklarierter, belegter Eingriff
 (§V7 (copilot-instructions.md)); der M1-Fallback bleibt unverändert, bis die
-Attribution nachweislich greift. Stufe 1 (2026-11-17): Snapshot + Attribution
-
-- Teil-Rollback im Einzel-Pfad; Options-/Chunked-Pfad nutzen den M1-Fallback
-(Stufe 2 folgt im nächsten freien GPU-Fenster).
+Attribution nachweislich greift. Der bisherige Ein-Pfad-Stand (2026-11-17)
+war Stufe 1; Stufe 2 verlangt die Song-Ebene, Chunk-Parität und Isolation
+nach den obigen Punkten, bevor DRT-13 als pfadübergreifend vollständig gilt.
 
 ## DRT-14 — Wirksamkeits-Gebot: kein „neutral ist genug“
 

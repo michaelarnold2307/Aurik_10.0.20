@@ -99,6 +99,15 @@ class ChunkResult:
     end_sample: int
 
 
+@dataclass(frozen=True)
+class ChunkDeltaPatch:
+    """Sparse phase-off delta for one chunk (sample-first, Spec 26 DRT-13)."""
+
+    chunk_index: int
+    sample_indices: np.ndarray
+    delta: np.ndarray
+
+
 class ChunkedPipeline:
     """Chunked-Streaming-Wrapper für die Restaurierungs-Pipeline.
 
@@ -199,6 +208,27 @@ class ChunkedPipeline:
 
         return a_tail * fade_out + b_head * fade_in  # type: ignore[no-any-return]
 
+    @staticmethod
+    def _rms_match_ratio(
+        previous_audio: np.ndarray,
+        current_audio: np.ndarray,
+        match_samples: int,
+        channels_first: bool,
+    ) -> float:
+        if match_samples <= 0:
+            return 1.0
+        previous = previous_audio.T if channels_first and previous_audio.ndim == 2 else previous_audio
+        current = np.asarray(current_audio, dtype=np.float64)
+        if channels_first and current.ndim == 2:
+            current = current.T
+        previous_tail = previous[-min(match_samples, previous.shape[0]) :]
+        current_head = current[: min(match_samples, current.shape[0])]
+        rms_previous = float(np.sqrt(np.mean(np.square(previous_tail)) + 1e-12))
+        rms_current = float(np.sqrt(np.mean(np.square(current_head)) + 1e-12))
+        if rms_previous <= 1e-10 or rms_current <= 1e-10:
+            return 1.0
+        return float(np.clip(rms_previous / rms_current, 0.25, 4.0))
+
     def collect_results(self, results: list[ChunkResult], sample_rate: int) -> np.ndarray:
         """Setzt Chunk-Ergebnisse mit Crossfade + RMS-Matching zusammen.
 
@@ -245,26 +275,22 @@ class ChunkedPipeline:
             if i > 0 and match_samples > 0:
                 # §v10.712: RMS-Match vor Crossfade
                 _prev_chunk = results[i - 1]
-                _prev_tail = _prev_chunk.audio[-min(match_samples, _prev_chunk.audio.shape[0]) :]
-                _curr_head = chunk_audio[: min(match_samples, chunk_audio.shape[0])]
-
-                _rms_prev = float(np.sqrt(np.mean(np.square(_prev_tail)) + 1e-12))
-                _rms_curr = float(np.sqrt(np.mean(np.square(_curr_head)) + 1e-12))
-
-                if _rms_prev > 1e-10 and _rms_curr > 1e-10:
-                    _rms_ratio = _rms_prev / _rms_curr
-                    # Clamp ratio to avoid extreme gains
-                    _rms_ratio = float(np.clip(_rms_ratio, 0.25, 4.0))
-                    if abs(_rms_ratio - 1.0) > 0.02:  # > 0.17 dB difference
-                        chunk_audio = chunk_audio * _rms_ratio
-                        _rms_db = 20.0 * np.log10(_rms_ratio)
-                        logger.info(
-                            "§v10.712 RMS-Match Chunk %d→%d: Verhaeltnis=%.3f (%.1f dB)",
-                            i - 1,
-                            i,
-                            _rms_ratio,
-                            _rms_db,
-                        )
+                _rms_ratio = self._rms_match_ratio(
+                    _prev_chunk.audio,
+                    cr.audio,
+                    match_samples,
+                    _is_channels_first,
+                )
+                if abs(_rms_ratio - 1.0) > 0.02:  # > 0.17 dB difference
+                    chunk_audio = chunk_audio * _rms_ratio
+                    _rms_db = 20.0 * np.log10(_rms_ratio)
+                    logger.info(
+                        "§v10.712 RMS-Match Chunk %d→%d: Verhaeltnis=%.3f (%.1f dB)",
+                        i - 1,
+                        i,
+                        _rms_ratio,
+                        _rms_db,
+                    )
 
             chunk_audio = chunk_audio.astype(np.float32)
 
@@ -300,6 +326,96 @@ class ChunkedPipeline:
                         output[out_start + crossfade_len : out_end, :] = chunk_audio[crossfade_len:, :]
 
         return cast(np.ndarray, output)
+
+    def apply_chunk_deltas(
+        self,
+        assembled_audio: np.ndarray,
+        results: list[ChunkResult],
+        patches: list[ChunkDeltaPatch],
+        sample_rate: int,
+    ) -> np.ndarray:
+        """Wendet DRT-13-Deltas mit den Produktions-Gains und Crossfades an."""
+        if not results:
+            raise ValueError("Keine Chunk-Ergebnisse für DRT-13")
+        base = np.asarray(assembled_audio, dtype=np.float32)
+        if not np.isfinite(base).all():
+            raise ValueError("DRT-13 Assembly enthält NaN/Inf")
+        first_audio = results[0].audio
+        channels_first = bool(first_audio.ndim == 2 and first_audio.shape[0] == 2 and first_audio.shape[1] > 2)
+        channels = 2 if channels_first else (int(first_audio.shape[1]) if first_audio.ndim == 2 else 1)
+        expected_shape = (results[-1].end_sample,) if channels == 1 else (results[-1].end_sample, channels)
+        if base.shape != expected_shape:
+            raise ValueError(f"DRT-13 Assembly-Shape {base.shape} != {expected_shape}")
+
+        patches_by_chunk: dict[int, ChunkDeltaPatch] = {}
+        for patch in patches:
+            if patch.chunk_index in patches_by_chunk:
+                raise ValueError(f"Mehrere DRT-13-Patches für Chunk {patch.chunk_index}")
+            if patch.chunk_index < 0 or patch.chunk_index >= len(results):
+                raise ValueError(f"Ungültiger DRT-13-Chunk-Index {patch.chunk_index}")
+            indices = np.asarray(patch.sample_indices)
+            delta = np.asarray(patch.delta)
+            if indices.ndim != 1 or not np.issubdtype(indices.dtype, np.integer):
+                raise ValueError("DRT-13-Sample-Indizes müssen ein eindimensionales Integer-Array sein")
+            if delta.ndim not in (1, 2) or delta.shape[0] != indices.size:
+                raise ValueError("DRT-13-Delta-Länge stimmt nicht mit Sample-Indizes überein")
+            if not np.isfinite(delta).all():
+                raise ValueError("DRT-13-Delta enthält NaN/Inf")
+            if indices.size and (
+                int(indices.min()) < 0
+                or int(indices.max()) >= results[patch.chunk_index].audio.shape[-1 if channels_first else 0]
+            ):
+                raise ValueError(f"DRT-13-Sample-Index außerhalb Chunk {patch.chunk_index}")
+            if np.unique(indices).size != indices.size:
+                raise ValueError(f"Doppelte DRT-13-Sample-Indizes in Chunk {patch.chunk_index}")
+            expected_delta_shape = (indices.size,) if channels == 1 else (indices.size, channels)
+            if delta.shape != expected_delta_shape:
+                raise ValueError(f"DRT-13-Delta-Shape {delta.shape} != {expected_delta_shape}")
+            patches_by_chunk[patch.chunk_index] = patch
+
+        delta_output = np.zeros_like(base)
+        overlap_samples = int(self.config.overlap_s * sample_rate)
+        match_samples = int(0.5 * sample_rate)
+
+        for i, chunk_result in enumerate(results):
+            chunk_len = chunk_result.end_sample - chunk_result.start_sample
+            chunk_delta_shape = (chunk_len,) if channels == 1 else (chunk_len, channels)
+            chunk_delta = np.zeros(chunk_delta_shape, dtype=np.float32)
+            chunk_patch = patches_by_chunk.get(chunk_result.chunk_index)
+            if chunk_patch is not None and np.asarray(chunk_patch.sample_indices).size:
+                chunk_delta[np.asarray(chunk_patch.sample_indices)] = np.asarray(chunk_patch.delta, dtype=np.float32)
+
+            if i > 0:
+                ratio = self._rms_match_ratio(
+                    results[i - 1].audio,
+                    chunk_result.audio,
+                    match_samples,
+                    channels_first,
+                )
+                if abs(ratio - 1.0) > 0.02:
+                    chunk_delta *= ratio
+
+            start = chunk_result.start_sample
+            end = chunk_result.end_sample
+            if i == 0:
+                delta_output[start:end] = chunk_delta[: end - start]
+                continue
+
+            crossfade_len = min(overlap_samples, end - start)
+            if crossfade_len > 0:
+                delta_output[start : start + crossfade_len] = self.crossfade(
+                    delta_output[start : start + crossfade_len],
+                    chunk_delta[:crossfade_len],
+                    crossfade_len,
+                )
+            remaining = end - start - crossfade_len
+            if remaining > 0:
+                delta_output[start + crossfade_len : end] = chunk_delta[crossfade_len : crossfade_len + remaining]
+
+        candidate = base.copy()
+        changed = delta_output != 0
+        candidate[changed] = base[changed] + delta_output[changed]
+        return cast(np.ndarray, candidate)
 
     @staticmethod
     def verify_crossfade(results: list, sample_rate: int) -> list[str]:

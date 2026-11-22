@@ -1357,3 +1357,63 @@ basierend auf der physikalischen Bandbreite des Signals:
 - `rolloff < 16 kHz` → -1 Dekade (pre-digitales Equipment)
 
 Implementiert in `backend/core/era_classifier.py` (§Decade-Boundary-Softener).
+
+## §SCM [RELEASE_MUST] SongContextMap — Musikverständnis-Kontextkarte (2026-11-22)
+
+> Ziel: Aurik soll für jeden Song **eine** konsolidierte, ehrlich unsichere Sicht
+> darauf besitzen, was es über die Musik „verstanden“ hat — als Grundlage für
+> spätere, hörkalibrierte Entscheidungen (Präferenz-Zeuge, Hörordnung §7
+> (hoerordnung.instructions.md): Metriken sind Zeugen). Menschliches Verstehen wird
+> dadurch nicht behauptet; die Karte macht sichtbar, **was gemessen wurde und was nicht**.
+
+**Modul:** `backend/core/song_context_map.py` (`build_song_context_map`).
+**Aufruf:** `UnifiedRestorerV3.restore()` unmittelbar nach dem SongStructureAnalyzer-Block.
+**Ausgabe:** `RestorationResult.metadata["song_context_map"]`, Schema `aurik.song_context_map/1`
+(`scope`, `analysis_window_s`, `coverage`, `unavailable`, `weakest_confidence`, `dimensions`).
+
+| Dimension | Quelle (bestehender Analysator) | Konfidenz |
+| --- | --- | --- |
+| `provenance` | Ära-, Genre-, Medium-Erkennung (`restoration_context`) | `era_confidence`, nur wenn die Ära ermittelt wurde |
+| `voice` | `VocalFocusAnalyzer` (`vfa_result`) | keine analysatoreigene Konfidenz ⇒ `None` |
+| `instruments` | PANNs-/AudioSet-Tags (`panns_tags`) | `None`; jeder Tag trägt seinen Score (Top-5, Berichtsgröße) |
+| `harmony` | `HarmonicContextAnalyzer` (`harmonic_context`) | `analysis_confidence` |
+| `rhythm` | `MusicalStructureAnalyzer` + Genre-Klassifikator | `None`; beide Schätzungen und `bpm_ratio` ohne Urteil |
+| `structure` | `SongStructureAnalyzer` (Segmente) | `None` |
+| `dynamics_arc` | VFA-Spannungs-/Entspannungs-/Frisson-Zonen, `EmotionalArcPlanner` | `None` |
+
+**Normative Regeln:**
+
+1. **Konsolidierung, keine Neumessung.** Die Karte führt vorhandene Analyseergebnisse zusammen;
+   neue Messungen gehören in die jeweiligen Analysatoren.
+2. **Konfidenz nur analysatoreigen.** Liefert ein Analysator kein Konfidenzfeld, ist sie `None` —
+   nie geschätzt (§V7 (copilot-instructions.md)). Fremdmaße werden nicht umetikettiert
+   (`VFAResult.style_confidence` ist der Anteil intentionaler Voicing-Events und steht als
+   `style_intent_share`, nicht als Konfidenz der Stimmerkennung). Analysatoreigene Konfidenzen sind
+   **nicht hörkalibriert**: Im Realitätscheck 2026-11-22 meldete der HarmonicContextAnalyzer 0,997
+   für 20 s Musik ohne Modulation. Sie sind kein Wahrscheinlichkeits- und kein Qualitätsbeleg.
+3. **Lücken sind erste Klasse.** Nicht gemessene Dimensionen heißen `unavailable` (leerer `value`,
+   Begründung in `note`) — nie 0, nie „ok“ (§G10 (copilot-instructions.md): unbewiesen ≠ bestanden).
+   `coverage` ist der Anteil gemessener Dimensionen, **kein** Qualitätsmaß.
+4. **Report-only.** Keine Entscheidungslogik (Gate, Stärke, Rollback, Phasenwahl) liest die Karte.
+   Ein Wechsel in den Entscheidungspfad ist klangwirksam und läuft ausschließlich über das
+   §4-Verfahren (`flag_freigabe.py`) mit A/B-Hörnachweis und Never-worsen.
+5. **Scope ehrlich.** `scope` ist `song` oder `chunk`. Im Chunked-Pfad stammt das Ergebnis-Metadatum
+   aus dem ersten Chunk (`scope="chunk"`); eine Ganz-Song-Karte im Chunked-Pfad ist offene Schuld.
+6. **Song-Isolation und Determinismus.** Die Karte wird pro `restore()` zurückgesetzt (§V8
+   (copilot-instructions.md), §G1 (copilot-instructions.md)); gleiche Eingaben ⇒ gleiche Karte
+   (§G5 (copilot-instructions.md)); JSON-sicher und NaN/Inf-frei; Eingaben werden nicht verändert.
+7. **Metadaten-Wahrheit.** Die Karte erreicht das Ergebnis explizit im Metadaten-Dict, nicht nur im
+   Phasen-Akkumulator (Spec 07 §8.7). Ein Fehler beim Aufbau wird mit `logger.warning` gemeldet
+   (§V6 (copilot-instructions.md)); Dimensionsfehler werden als `unavailable` geführt.
+
+**Bekannte Grenzen (kein Mangel der Karte, sondern der Quellen):** `instruments` sind AudioSet-Tag-Scores
+und keine Instrumentenerkennung; `dynamics_arc` ist gesangsbezogen abgeleitet und deckt
+Instrumentalpassagen nicht ab; `rhythm` kann Tempo-Oktavfehler enthalten (Realitätscheck: 200,9 BPM
+für einen Schlager-Ausschnitt — auffällig, unverifiziert; `bpm_ratio` macht Abweichungen zwischen zwei
+Schätzungen sichtbar). `provenance` und `instruments` setzen Pre-Analysis bzw. PANNs voraus und sind
+ohne sie `unavailable`.
+
+**Enforcement:** `tests/unit/test_song_context_map.py` (Wahrheitseigenschaften gegen die echten
+Produzenten `VFAResult`, `HarmonicContextResult`, `SongSegment`) und
+`tests/unit/test_song_context_map_wiring.py` (Ergebnis-Metadatum, Chunk-Scope, Song-Isolation,
+Reset→Aufbau→Ergebnis-Reihenfolge per AST).

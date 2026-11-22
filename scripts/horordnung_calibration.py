@@ -295,11 +295,11 @@ def main() -> int:
             failures.append("GO-Verdict für sauberes Ergebnis fehlt")
         _bad = _R()
         _bad.quality_estimate = 0.3
-        if _cal_gn(_bad).verdict != "NO_GO":
-            failures.append("NO_GO-Verdict für quality_estimate=0.3 fehlt")
-        print(
-            f"11) GO/NO-GO: Verdict-Logik deterministisch  {'OK' if not any('GO-' in f or 'Verdict' in f for f in failures) else 'FAIL'}"
-        )
+        _low_proxy = _cal_gn(_bad)
+        _go_nogo_failed = _low_proxy.verdict != "GO_CAUTION" or bool(_low_proxy.reasons)
+        if _go_nogo_failed:
+            failures.append("Niedriger quality_estimate-Proxy muss report-only bleiben")
+        print(f"11) GO/NO-GO: Verdict-Logik deterministisch  {'FAIL' if _go_nogo_failed else 'OK'}")
     except Exception as exc:  # pragma: no cover
         failures.append(f"GO/NO-GO nicht verfügbar: {exc}")
 

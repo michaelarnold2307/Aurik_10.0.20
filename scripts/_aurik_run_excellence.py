@@ -261,18 +261,10 @@ def main() -> int:
         for stage, note in ergebnis.stage_notes.items():
             logger.info("    [%s] %s", stage, note)
 
-    # Quality-Gate prüfen
-    if ergebnis.quality_estimate < 0.55:
-        logger.warning(
-            "⚠ quality_estimate=%.3f < 0.55 — Ausgabe-Gate NICHT bestanden!",
-            ergebnis.quality_estimate,
-        )
-        logger.warning(
-            "Ausgabe wird abgebrochen — Ursache: Qualitäts-Gate verfehlt. "
-            "Lösung: Pipeline/Gating vor Ausgabe korrigieren."
-        )
-        return 2
-    logger.info("✓ Ausgabe-Gate bestanden (quality_estimate=%.3f ≥ 0.55)", ergebnis.quality_estimate)
+    logger.info(
+        "quality_estimate=%.3f (diagnostischer Proxy; kein hörkalibriertes Ausgabe-Gate)",
+        ergebnis.quality_estimate,
+    )
 
     # ── Export ───────────────────────────────────────────────────────────────
     stem = input_path.stem

@@ -4804,3 +4804,157 @@ class TestSrCgChain:
         out, rep = u._sr_cg8_defect_recovery(x, 48000, MaterialType.VINYL)
         assert rep["rounds"] == 0
         assert np.array_equal(out, x)
+
+
+class TestComputeModulePresenceResult:
+    """§G8 (copilot-instructions.md)/§V6 (copilot-instructions.md)-Messwahrheit-Korrektur (2026-11-22).
+
+    Das frühere Muster ``_mod_cache = sys.modules.get(...)`` las das
+    Ergebnis NIE aus und meldete unconditional ``{"active": True}`` — eine
+    unbelegte Erfolgsmeldung, egal ob das Modul je importiert wurde.
+    ``_compute_module_presence_result`` (und die 28 darauf umgestellten
+    ``_compute_*_result``-Diagnosemethoden) müssen stattdessen ehrlich
+    zwischen "im Prozess geladen und Attribut vorhanden" und "nicht geladen"
+    unterscheiden — ohne einen Frisch-Import auszuführen (Deadlock-Schutz,
+    da restore() im GUI-Batch-Pfad aus einem QThread heraus läuft).
+    """
+
+    def test_returns_none_when_module_never_loaded(self):
+        uv3 = UnifiedRestorerV3()
+        result = uv3._compute_module_presence_result(
+            "this.module.path.does.not.exist.anywhere",
+            "SomeAttr",
+        )
+        assert result is None
+
+    def test_returns_none_when_attribute_missing_on_loaded_module(self):
+        uv3 = UnifiedRestorerV3()
+        # os ist garantiert bereits in sys.modules geladen, hat aber kein
+        # Attribut "DefinitelyNotARealAttribute".
+        result = uv3._compute_module_presence_result(
+            "os",
+            "DefinitelyNotARealAttributeXYZ",
+        )
+        assert result is None
+
+    def test_reports_loaded_in_process_true_when_module_and_attr_exist(self):
+        uv3 = UnifiedRestorerV3()
+        # os.path ist garantiert geladen und hat das Attribut "join".
+        result = uv3._compute_module_presence_result(
+            "os",
+            "path",
+            wired_into_restoration_pipeline=False,
+            note="Test-Beleg.",
+        )
+        assert result is not None
+        assert result["class"] == "path"
+        assert result["loaded_in_process"] is True
+        assert result["wired_into_restoration_pipeline"] is False
+        assert result["note"] == "Test-Beleg."
+        # Die alte, unbelegte Erfolgsmeldung darf nicht mehr auftauchen.
+        assert "active" not in result
+
+    def test_does_not_trigger_fresh_import_of_unloaded_module(self):
+        """Deadlock-Schutz: nie importlib.import_module() in diesem Pfad."""
+        import sys as _sys
+
+        probe_name = "backend.core._nonexistent_probe_module_for_test"
+        assert probe_name not in _sys.modules
+        uv3 = UnifiedRestorerV3()
+        result = uv3._compute_module_presence_result(probe_name, "Anything")
+        assert result is None
+        # Nach dem Aufruf darf das Modul weiterhin NICHT geladen sein —
+        # ein echter Frisch-Import hätte (bei existierendem Pfad) sys.modules
+        # befüllt bzw. bei nicht-existierendem Pfad eine ImportError ausgelöst,
+        # die hier als None-Rückgabe sichtbar wäre. Die Abwesenheit in
+        # sys.modules bestätigt: kein Import-Versuch fand statt.
+        assert probe_name not in _sys.modules
+
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            "_compute_epistemic_ethics_engine_result",
+            "_compute_goal_conflict_result",
+            "_compute_mg_quality_gate_result",
+            "_compute_onnx_fallback_result",
+            "_compute_onnx_quantizer_result",
+            "_compute_onnx_runtime_result",
+            "_compute_adv_ensemble_result",
+            "_compute_auto_augmentation_result",
+            "_compute_neural_arch_search_result",
+            "_compute_opt_integration_result",
+            "_compute_perceptual_loss_result",
+            "_compute_mod_parallel_result",
+            "_compute_reg_adaptive_goal_result",
+            "_compute_reg_context_result",
+            "_compute_reg_ethics_result",
+            "_compute_reg_quality_ctrl_result",
+            "_compute_regulator_v8_result",
+            "_compute_undo_manager_result",
+            "_compute_zone_context_result",
+            "_compute_region_analysis_result",
+            "_compute_zone_engine_result",
+            "_compute_mg_uncertainty_result_36",
+            "_compute_onnx_converter_result_36",
+            "_compute_onnx_model_info_result_36",
+            "_compute_onnx_plugin_mgr_result_36",
+            "_compute_opt_uncertainty_result_36",
+            "_compute_module_parallel_result_36",
+            "_compute_stereo_parallel_result_36",
+            "_compute_stereo_par_result",
+            "_compute_reference_learning_result_36",
+            "_compute_semantic_goals_result_36",
+            "_compute_multi_objective_result_36",
+        ],
+    )
+    def test_corrected_diagnostic_methods_never_report_bare_active_key(self, method_name):
+        """Keine der 28 korrigierten Methoden darf mehr den alten,
+        ungeprüften ``"active": True``-Schlüssel zurückgeben — unabhängig
+        davon, ob das Zielmodul in diesem Testprozess geladen ist oder nicht.
+        """
+        uv3 = UnifiedRestorerV3()
+        method = getattr(uv3, method_name)
+        result = method()
+        if result is not None:
+            assert "active" not in result, f"{method_name} liefert noch den unbelegten 'active'-Schlüssel"
+            assert "wired_into_restoration_pipeline" in result
+            assert result["wired_into_restoration_pipeline"] is False
+
+    def test_regulator_v8_documents_deprecated_status(self):
+        """regulator_v8 ist laut FILE_REGISTRY DEPRECATED — die Diagnose
+        muss das belegen, nicht verschweigen, falls das Modul geladen ist.
+        """
+        import importlib
+
+        importlib.import_module("backend.core.regulator.regulator_v8")
+        uv3 = UnifiedRestorerV3()
+        result = uv3._compute_regulator_v8_result()
+        assert result is not None
+        assert "DEPRECATED" in result.get("note", "")
+
+    def test_hybrid_dereverb_reports_wired_true_with_real_call_site(self):
+        """HybridDereverb hat eine echte Aufrufstelle (phase_20) — die Diagnose
+        darf das ausweisen, aber nur als Präsenz (``loaded_in_process``)."""
+        import importlib
+
+        importlib.import_module("backend.core.hybrid.hybrid_dereverb")
+        result = UnifiedRestorerV3()._compute_hybrid_dereverb_result()
+        assert result is not None
+        assert result["loaded_in_process"] is True
+        assert result["wired_into_restoration_pipeline"] is True
+        assert "active" not in result
+        assert "phase_20_reverb_reduction" in result["note"]
+
+    def test_hybrid_dereverb_is_none_when_module_not_loaded(self):
+        import sys as _sys
+        from unittest.mock import patch as _patch
+
+        with _patch.dict(_sys.modules):
+            _sys.modules.pop("backend.core.hybrid.hybrid_dereverb", None)
+            assert UnifiedRestorerV3()._compute_hybrid_dereverb_result() is None
+
+    def test_processing_modes_lists_enum_without_activity_claim(self):
+        result = UnifiedRestorerV3()._compute_processing_modes_result_37()
+        assert result is not None
+        assert result["modes"]
+        assert "active" not in result

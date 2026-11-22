@@ -3,11 +3,22 @@
     "passed": false,
     "non_degraded_export_rate": 0.13725490196078433,
     "unblocked_export_rate": 0.11764705882352941,
+    "artifact_contract_rate": 0.0,
+    "hpi_contract_rate": 0.9803921568627451,
+    "vocal_contract_rate": 1.0,
+    "export_contract_rate": 1.0,
+    "case_evidence_complete_rate": 0.0,
+    "case_id_coverage_complete": true,
+    "case_id_coverage_rate": 1.0,
+    "expected_case_count": 51,
+    "missing_case_ids": [],
+    "unexpected_case_ids": [],
+    "duplicate_case_ids": [],
     "musical_goal_case_pass_rate": 0.1568627450980392,
     "noise_texture_case_pass_rate": 1.0,
     "goosebumps_case_pass_rate": 0.5490196078431373,
-    "final_quality_case_pass_rate": 0.11764705882352941,
-    "vocal_floor_pass_rate": 0.4583333333333333,
+    "final_quality_case_pass_rate": 0.0,
+    "vocal_floor_pass_rate": 0.4166666666666667,
     "hpi_average": 0.8137313725490196,
     "quality_estimate_average": 0.6337119373928426,
     "runtime_factor": 38.34166552312672,
@@ -17,17 +28,22 @@
     "fail_reasons": [
       "non_degraded_export_rate 0.137 < 0.500",
       "unblocked_export_rate 0.118 < 0.500",
+      "artifact_contract_rate 0.000 < 1.000",
+      "hpi_contract_rate 0.980 < 1.000",
+      "case_evidence_complete_rate 0.000 < 1.000",
       "musical_goal_case_pass_rate 0.157 < 0.850",
       "goosebumps_case_pass_rate 0.549 < 0.850",
-      "final_quality_case_pass_rate 0.118 < 0.850",
-      "vocal_floor_pass_rate 0.458 < 1.000",
-      "quality_estimate_average 0.634 < 0.800",
+      "final_quality_case_pass_rate 0.000 < 0.850",
+      "vocal_floor_pass_rate 0.417 < 1.000",
       "runtime_factor 38.342 > 12.000",
       "external_benchmark_cases 0 < 10"
     ],
     "prioritized_actions": [
       "create_real_audio_restoration_quality_gate",
+      "complete_quality_evidence",
       "goal_directed_candidate_recovery",
+      "artifact_freedom_recovery",
+      "stereo_safety_recovery",
       "frisson_goosebumps_protection",
       "vocal_vqi_recovery",
       "phase_minimalism_runtime_budget",
@@ -41,34 +57,56 @@
       "case_id": "real_vinyl_jazz_1950s_scratched",
       "non_degraded_export": true,
       "unblocked_export": true,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": true,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
-      "final_quality_passed": true,
+      "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9707,
       "quality_estimate": 0.6856993176705135,
       "vqi": null,
       "vqi_floor": null,
       "fail_reasons": [],
-      "required_actions": [],
+      "required_actions": [
+        "complete_quality_evidence",
+        "artifact_freedom_recovery"
+      ],
       "metadata": {
         "path": "test_audio/vinyl/jazz_1950s_scratched.wav",
         "material": "vinyl",
         "degradation_status": "ok",
         "export_strategy": "success",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_vinyl_classical_1960s_hiss",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9501,
       "quality_estimate": 0.7224946229510144,
       "vqi": null,
@@ -77,7 +115,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -85,18 +125,28 @@
         "material": "vinyl",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_vinyl_rock_1970s_worn",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": true,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9337,
       "quality_estimate": 0.6781386966161744,
       "vqi": null,
@@ -105,48 +155,73 @@
         "FINAL_EXPORT_AUDIO_GATE_FAIL"
       ],
       "required_actions": [
-        "productive_non_degraded_export_recovery"
+        "complete_quality_evidence",
+        "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery"
       ],
       "metadata": {
         "path": "test_audio/vinyl/rock_1970s_worn.wav",
         "material": "vinyl",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_reel_1940s_dropout",
       "non_degraded_export": true,
       "unblocked_export": true,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": true,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
-      "final_quality_passed": true,
+      "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9788,
       "quality_estimate": 0.6908414295540554,
       "vqi": null,
       "vqi_floor": null,
       "fail_reasons": [],
-      "required_actions": [],
+      "required_actions": [
+        "complete_quality_evidence",
+        "artifact_freedom_recovery"
+      ],
       "metadata": {
         "path": "test_audio/tape/reel_1940s_dropout.wav",
         "material": "tape",
         "degradation_status": "ok",
         "export_strategy": "success",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_cassette_1980s_wow",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9,
       "quality_estimate": 0.45751641589741365,
       "vqi": 0.9,
@@ -156,7 +231,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -165,18 +242,28 @@
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_digital_mp3_64kbps_artifacts",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9,
       "quality_estimate": 0.47277157048739543,
       "vqi": 0.9,
@@ -187,7 +274,10 @@
         "STEREO_SAFETY_HARD_FAIL"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "stereo_safety_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -196,64 +286,100 @@
         "material": "mp3_low",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_digital_streaming_glitches",
       "non_degraded_export": true,
       "unblocked_export": true,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": true,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
-      "final_quality_passed": true,
+      "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9939,
       "quality_estimate": 0.7794696609780738,
       "vqi": null,
       "vqi_floor": null,
       "fail_reasons": [],
-      "required_actions": [],
+      "required_actions": [
+        "complete_quality_evidence",
+        "artifact_freedom_recovery"
+      ],
       "metadata": {
         "path": "test_audio/digital/streaming_glitches.wav",
         "material": "streaming",
         "degradation_status": "ok",
         "export_strategy": "success",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_vocal_choir_breaths_hiss",
       "non_degraded_export": true,
       "unblocked_export": true,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": true,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
-      "final_quality_passed": true,
+      "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.9506,
       "quality_estimate": 0.6980535951200895,
       "vqi": 0.8023861814428781,
       "vqi_floor": 0.72,
       "fail_reasons": [],
-      "required_actions": [],
+      "required_actions": [
+        "complete_quality_evidence",
+        "artifact_freedom_recovery"
+      ],
       "metadata": {
         "path": "test_audio/vocals/choir_breaths.wav",
         "material": "vinyl",
         "degradation_status": "ok",
         "export_strategy": "success",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1908_caruso_rigoletto_la_donna_e_mobile",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8994,
       "quality_estimate": 0.7912658471976706,
       "vqi": 0.9999999999997,
@@ -264,7 +390,10 @@
         "HPI_EXCEPTION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "hpi_quality_candidate_ranking",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -273,18 +402,28 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1911_caruso_celeste_aida",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.9,
       "quality_estimate": 0.4366495522935526,
       "vqi": 0.9,
@@ -294,7 +433,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -303,18 +444,28 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1916_caruso_o_sole_mio",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8992,
       "quality_estimate": 0.7669288826109057,
       "vqi": 0.9999999786926798,
@@ -326,7 +477,11 @@
         "STEREO_SAFETY_HARD_FAIL"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "hpi_quality_candidate_ranking",
+        "stereo_safety_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -335,18 +490,28 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1919_samuels_dance_orch_taxi",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.5038,
       "quality_estimate": 0.7526231725063086,
       "vqi": null,
@@ -357,28 +522,40 @@
         "HPI_EXCEPTION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "hpi_quality_candidate_ranking",
         "goal_directed_candidate_recovery",
-        "frisson_goosebumps_protection",
-        "hpi_quality_candidate_ranking"
+        "frisson_goosebumps_protection"
       ],
       "metadata": {
         "path": "corpus/shellac/damaged/shellac_1919_samuels_dance_orch_taxi.mp3",
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1922_kaufman_eddie_leonard_blues",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.9,
       "quality_estimate": 0.43824045917595444,
       "vqi": 0.9,
@@ -388,7 +565,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -397,18 +576,28 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1923_bessie_smith_far_away_blues",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.7239,
       "quality_estimate": 0.7450656190891785,
       "vqi": 0.9999999999997,
@@ -419,7 +608,10 @@
         "HPI_EXCEPTION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "hpi_quality_candidate_ranking",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -428,18 +620,28 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1923_jolson_style_dirty_hands_dirty_face",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": false,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.0032,
       "quality_estimate": 0.7575433360465931,
       "vqi": 0.9999999733132997,
@@ -452,28 +654,40 @@
         "FINAL_EXPORT_AUDIO_GATE_FAIL"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "hpi_quality_candidate_ranking",
         "goal_directed_candidate_recovery",
-        "frisson_goosebumps_protection",
-        "hpi_quality_candidate_ranking"
+        "frisson_goosebumps_protection"
       ],
       "metadata": {
         "path": "corpus/shellac/damaged/shellac_1923_jolson_style_dirty_hands_dirty_face.mp3",
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1924_schachmeister_slik_pinden",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9059,
       "quality_estimate": 0.7270561091186563,
       "vqi": 0.9071402757154918,
@@ -482,7 +696,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -490,18 +706,28 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1924_two_franks_rock_a_bye_blues",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
-      "vocal_floor_passed": true,
+      "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.2241,
       "quality_estimate": 0.7496315445502405,
       "vqi": 0.9999999871477738,
@@ -513,51 +739,77 @@
         "SINGMOS_BELOW_2_5"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "hpi_quality_candidate_ranking",
+        "vocal_vqi_recovery",
         "goal_directed_candidate_recovery",
-        "frisson_goosebumps_protection",
-        "hpi_quality_candidate_ranking"
+        "frisson_goosebumps_protection"
       ],
       "metadata": {
         "path": "corpus/shellac/damaged/shellac_1924_two_franks_rock_a_bye_blues.mp3",
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1924_virtuoso_string_quartet_op59_no2_mvt3",
       "non_degraded_export": true,
       "unblocked_export": true,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": true,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
-      "final_quality_passed": true,
+      "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.8223,
       "quality_estimate": 0.7408581520941836,
       "vqi": 0.8634280197347063,
       "vqi_floor": null,
       "fail_reasons": [],
-      "required_actions": [],
+      "required_actions": [
+        "complete_quality_evidence",
+        "artifact_freedom_recovery"
+      ],
       "metadata": {
         "path": "corpus/shellac/damaged/shellac_1924_virtuoso_string_quartet_op59_no2_mvt3.flac",
         "material": "shellac",
         "degradation_status": "ok",
         "export_strategy": "success",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1925_caruso_vesti_la_giubba",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.9,
       "quality_estimate": 0.4398062438423242,
       "vqi": 0.9,
@@ -567,7 +819,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -576,41 +830,64 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_1925_covent_garden_scheherazade_pt3",
       "non_degraded_export": true,
       "unblocked_export": true,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": true,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
-      "final_quality_passed": true,
+      "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9263,
       "quality_estimate": 0.7326821787489424,
       "vqi": null,
       "vqi_floor": null,
       "fail_reasons": [],
-      "required_actions": [],
+      "required_actions": [
+        "complete_quality_evidence",
+        "artifact_freedom_recovery"
+      ],
       "metadata": {
         "path": "corpus/shellac/damaged/shellac_1925_covent_garden_scheherazade_pt3.flac",
         "material": "shellac",
         "degradation_status": "ok",
         "export_strategy": "success",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_vinyl_blues_1950s_hiss_hum",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.6553,
       "quality_estimate": 0.6279439465875585,
       "vqi": 0.34748731733417954,
@@ -623,10 +900,12 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection",
-        "vocal_vqi_recovery",
         "hpi_quality_candidate_ranking"
       ],
       "metadata": {
@@ -634,18 +913,28 @@
         "material": "vinyl",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_vinyl_soul_1970s_wow_flutter",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8993,
       "quality_estimate": 0.6525219665749155,
       "vqi": 0.4440277140171684,
@@ -657,27 +946,39 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
-        "goal_directed_candidate_recovery",
-        "vocal_vqi_recovery"
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
+        "goal_directed_candidate_recovery"
       ],
       "metadata": {
         "path": "corpus/vinyl/damaged/vinyl_soul_1970s_wow_flutter.wav",
         "material": "vinyl",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_vinyl_rock_1970s_clicks",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.5852,
       "quality_estimate": 0.5861663331589118,
       "vqi": 0.4114640626602884,
@@ -690,10 +991,12 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection",
-        "vocal_vqi_recovery",
         "hpi_quality_candidate_ranking"
       ],
       "metadata": {
@@ -701,18 +1004,28 @@
         "material": "vinyl",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_vinyl_classical_1960s_hiss_hum_wow",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.8488,
       "quality_estimate": 0.6159919304660356,
       "vqi": null,
@@ -721,7 +1034,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -729,18 +1044,28 @@
         "material": "vinyl",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_vinyl_jazz_1960s_hiss_crackle",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.6279,
       "quality_estimate": 0.5772025041664279,
       "vqi": null,
@@ -749,7 +1074,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "hpi_quality_candidate_ranking"
       ],
@@ -758,18 +1085,28 @@
         "material": "vinyl",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_vinyl_classical_1960s_surface_noise",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.7822,
       "quality_estimate": 0.6100054698674917,
       "vqi": null,
@@ -778,7 +1115,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -786,18 +1125,28 @@
         "material": "vinyl",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_country_1960s_hiss",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8022,
       "quality_estimate": 0.6206528853946578,
       "vqi": 0.3584376027769204,
@@ -809,27 +1158,39 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
-        "goal_directed_candidate_recovery",
-        "vocal_vqi_recovery"
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
+        "goal_directed_candidate_recovery"
       ],
       "metadata": {
         "path": "corpus/tape/damaged/tape_country_1960s_hiss.wav",
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_country_1960s_dropouts",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8956,
       "quality_estimate": 0.6460021608208784,
       "vqi": 0.45276481977135585,
@@ -841,27 +1202,39 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
-        "goal_directed_candidate_recovery",
-        "vocal_vqi_recovery"
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
+        "goal_directed_candidate_recovery"
       ],
       "metadata": {
         "path": "corpus/tape/damaged/tape_country_1960s_dropouts.wav",
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_folk_1970s_hiss_hum",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8221,
       "quality_estimate": 0.6215221863306063,
       "vqi": 0.366652748832478,
@@ -873,27 +1246,39 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
-        "goal_directed_candidate_recovery",
-        "vocal_vqi_recovery"
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
+        "goal_directed_candidate_recovery"
       ],
       "metadata": {
         "path": "corpus/tape/damaged/tape_folk_1970s_hiss_hum.wav",
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_folk_1970s_wow_flutter",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.822,
       "quality_estimate": 0.6533821983206518,
       "vqi": 0.3839144755788895,
@@ -905,27 +1290,39 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
-        "goal_directed_candidate_recovery",
-        "vocal_vqi_recovery"
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
+        "goal_directed_candidate_recovery"
       ],
       "metadata": {
         "path": "corpus/tape/damaged/tape_folk_1970s_wow_flutter.wav",
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_rock_1980s_hiss",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.8438,
       "quality_estimate": 0.6266889748658035,
       "vqi": null,
@@ -934,7 +1331,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -942,18 +1341,28 @@
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_rock_1980s_dropouts_hiss",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.8574,
       "quality_estimate": 0.6266004994279815,
       "vqi": null,
@@ -962,7 +1371,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -970,18 +1381,28 @@
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_jazz_1950s_hiss_hum",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.8037,
       "quality_estimate": 0.6067874372422374,
       "vqi": null,
@@ -991,7 +1412,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -1000,18 +1423,28 @@
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_classical_1970s_hiss",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9,
       "quality_estimate": 0.5536148375659425,
       "vqi": 0.9,
@@ -1021,7 +1454,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -1030,18 +1465,28 @@
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_tape_classical_1970s_dropouts_hum",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.8392,
       "quality_estimate": 0.6234183670167139,
       "vqi": null,
@@ -1050,7 +1495,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -1058,18 +1505,28 @@
         "material": "tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_cassette_rock_1990s_hiss_wow",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8513,
       "quality_estimate": 0.6336593124191442,
       "vqi": 0.3518116016469682,
@@ -1081,27 +1538,39 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
-        "goal_directed_candidate_recovery",
-        "vocal_vqi_recovery"
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
+        "goal_directed_candidate_recovery"
       ],
       "metadata": {
         "path": "corpus/cassette/damaged/cassette_rock_1990s_hiss_wow.wav",
         "material": "cassette",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_cassette_rock_1990s_dropouts",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8797,
       "quality_estimate": 0.6605519521684888,
       "vqi": 0.40843382387692256,
@@ -1113,27 +1582,39 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
-        "goal_directed_candidate_recovery",
-        "vocal_vqi_recovery"
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
+        "goal_directed_candidate_recovery"
       ],
       "metadata": {
         "path": "corpus/cassette/damaged/cassette_rock_1990s_dropouts.wav",
         "material": "cassette",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_cassette_hiphop_1980s_hiss",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.9,
       "quality_estimate": 0.5764505755450366,
       "vqi": 0.9,
@@ -1144,7 +1625,10 @@
         "STEREO_SAFETY_HARD_FAIL"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "stereo_safety_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -1153,18 +1637,28 @@
         "material": "cassette",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_cassette_hiphop_1980s_wow_flutter",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8934,
       "quality_estimate": 0.6463265001347935,
       "vqi": 0.4457838377559482,
@@ -1177,28 +1671,40 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
         "goal_directed_candidate_recovery",
-        "frisson_goosebumps_protection",
-        "vocal_vqi_recovery"
+        "frisson_goosebumps_protection"
       ],
       "metadata": {
         "path": "corpus/cassette/damaged/cassette_hiphop_1980s_wow_flutter.wav",
         "material": "cassette",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_reel_jazz_1950s_hiss_hum",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.8462,
       "quality_estimate": 0.6064506064893815,
       "vqi": null,
@@ -1207,7 +1713,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -1215,18 +1723,28 @@
         "material": "reel_tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_reel_jazz_1950s_dropouts",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9084,
       "quality_estimate": 0.628395323305456,
       "vqi": null,
@@ -1235,7 +1753,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -1243,18 +1763,28 @@
         "material": "reel_tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_reel_classical_1960s_hiss",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9,
       "quality_estimate": 0.517946792013675,
       "vqi": 0.9,
@@ -1264,7 +1794,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -1273,43 +1805,65 @@
         "material": "reel_tape",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_reel_classical_1960s_wow_flutter",
       "non_degraded_export": true,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": true,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.8947,
       "quality_estimate": 0.6400621370930066,
       "vqi": null,
       "vqi_floor": null,
       "fail_reasons": [],
       "required_actions": [
-        "productive_non_degraded_export_recovery"
+        "complete_quality_evidence",
+        "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery"
       ],
       "metadata": {
         "path": "corpus/reel_tape/damaged/reel_classical_1960s_wow_flutter.wav",
         "material": "reel_tape",
         "degradation_status": "ok",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_digital_pop_2000s_clicks",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.6902,
       "quality_estimate": 0.5920189413039629,
       "vqi": 0.3149058943002405,
@@ -1321,9 +1875,11 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
-        "goal_directed_candidate_recovery",
+        "artifact_freedom_recovery",
         "vocal_vqi_recovery",
+        "goal_directed_candidate_recovery",
         "hpi_quality_candidate_ranking"
       ],
       "metadata": {
@@ -1331,18 +1887,28 @@
         "material": "cd_digital",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_digital_pop_2000s_mp3_artifacts",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.8685,
       "quality_estimate": 0.6577847837136459,
       "vqi": 0.38691346797163084,
@@ -1354,27 +1920,39 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
-        "goal_directed_candidate_recovery",
-        "vocal_vqi_recovery"
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
+        "goal_directed_candidate_recovery"
       ],
       "metadata": {
         "path": "corpus/digital/damaged/digital_pop_2000s_mp3_artifacts.wav",
         "material": "cd_digital",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_digital_jazz_2010s_clicks",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.729,
       "quality_estimate": 0.585237652770875,
       "vqi": null,
@@ -1384,7 +1962,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -1393,18 +1973,28 @@
         "material": "cd_digital",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_digital_jazz_2010s_mp3_artifacts",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": true,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.8765,
       "quality_estimate": 0.6489365554368616,
       "vqi": null,
@@ -1413,7 +2003,9 @@
         "MUSICAL_GOALS_VIOLATION"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery"
       ],
       "metadata": {
@@ -1421,18 +2013,28 @@
         "material": "cd_digital",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_blues_1930s_hiss_crackle_hum",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": false,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.6479,
       "quality_estimate": 0.5910283759877892,
       "vqi": 0.47231234974352204,
@@ -1445,10 +2047,12 @@
         "VQI_BELOW_THRESHOLD"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
+        "vocal_vqi_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection",
-        "vocal_vqi_recovery",
         "hpi_quality_candidate_ranking"
       ],
       "metadata": {
@@ -1456,18 +2060,28 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_blues_1930s_surface_noise",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": true,
       "hpi": 0.9,
       "quality_estimate": 0.6062025949788037,
       "vqi": 0.9,
@@ -1477,7 +2091,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -1486,18 +2102,28 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": true
+        "vocal_required": true,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_classical_1940s_crackle",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.6439,
       "quality_estimate": 0.5999414034855202,
       "vqi": null,
@@ -1507,7 +2133,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection",
         "hpi_quality_candidate_ranking"
@@ -1517,18 +2145,28 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     },
     {
       "case_id": "real_shellac_classical_1940s_hiss_hum",
       "non_degraded_export": false,
       "unblocked_export": false,
+      "artifact_contract_passed": false,
+      "hpi_contract_passed": true,
+      "vocal_contract_passed": true,
+      "export_contract_passed": true,
+      "evidence_complete": false,
+      "missing_evidence": [
+        "artifact_freedom"
+      ],
       "musical_goals_passed": false,
       "noise_texture_passed": true,
       "goosebumps_passed": false,
       "vocal_floor_passed": true,
       "final_quality_passed": false,
+      "vocal_required": false,
       "hpi": 0.9,
       "quality_estimate": 0.6164771958324733,
       "vqi": 0.9,
@@ -1538,7 +2176,9 @@
         "GOOSEBUMPS_LOW"
       ],
       "required_actions": [
+        "complete_quality_evidence",
         "productive_non_degraded_export_recovery",
+        "artifact_freedom_recovery",
         "goal_directed_candidate_recovery",
         "frisson_goosebumps_protection"
       ],
@@ -1547,11 +2187,12 @@
         "material": "shellac",
         "degradation_status": "degraded",
         "export_strategy": "blocked",
-        "vocal_required": false
+        "vocal_required": false,
+        "artifact_freedom": null
       }
     }
   ],
   "execution_report_path": "/media/michael/Software 4TB/Aurik_Standalone/audit/real_audio_execution_golden_report.json",
   "manifest_path": "/media/michael/Software 4TB/Aurik_Standalone/audit/real_audio_strategy_golden_manifest.json",
-  "elapsed_seconds": 0.005085945129394531
+  "elapsed_seconds": 0.0028297901153564453
 }

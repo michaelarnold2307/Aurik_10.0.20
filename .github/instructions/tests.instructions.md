@@ -50,7 +50,7 @@ class MyManager:
 @pytest.fixture(autouse=True)
 def mock_no_thrashing(monkeypatch):
     monkeypatch.setattr(
-        "backend.core.plugin_lifecycle_manager.is_system_thrashing",
+        "backend.core.ml_memory_budget.is_system_thrashing",
         lambda: False,
     )
 
@@ -231,3 +231,10 @@ Jede hat EIN kanonisches Muster — keine Ad-hoc-Kopien:
    `AURIK_FORCE_CPU=1` (Hook `aurik-unit-smoke`, dokumentierter Schalter aus
    `ml_device_manager`) und bleibt lastunabhängig. GPU-Pfade werden in den
    dedizierten Gates (`test_gpu_determinism_gate.py`) geprüft, nicht im Smoke.
+
+   **Swap-Gate (2026-11-22):** `UnifiedRestorerV3.restore()` verweigert den Pipeline-Start bei
+   Swap > 95 % (§MEM-GATE, liefert dann ein Tupel statt `RestorationResult`) — Tests, die
+   `restore()` ausführen und Ergebnis-Metadaten prüfen, MÜSSEN `psutil.swap_memory` und
+   `backend.core.ml_memory_budget.is_system_thrashing` deterministisch stubben (Muster:
+   `tests/unit/test_song_context_map_wiring.py::_deterministic_host`). Beleg: derselbe Test
+   bestand einzeln und scheiterte im Gesamtlauf, weil ein paralleles Training den Swap füllte.

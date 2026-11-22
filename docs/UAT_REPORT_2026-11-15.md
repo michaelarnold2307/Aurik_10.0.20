@@ -1,5 +1,13 @@
 # Aurik 10.0.0 — UAT Final Report
 
+> **Erratum 2026-11-22:** This report's `GO` is invalid and must not be used
+> for release approval. Its own results show R5 failed (29/30 criteria), G1
+> skipped, and no G6 result (5/7 gates). The underlying analysis is seven
+> days old, and the recorded version `9.10.77` does not match the current
+> Aurik version. The old recommendation logic allowed this incomplete run to
+> report `GO`; the generator now requires complete all-pass evidence and a
+> successful pytest exit. A fresh UAT run is still pending.
+
 **Test Date:** 2026-11-15 09:37:42 UTC  
 **Version:** 9.10.77  
 **Mode:** Restoration + Studio 2026 Hybrid  

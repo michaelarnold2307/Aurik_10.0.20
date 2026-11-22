@@ -746,8 +746,8 @@ class DeclipperPhase(PhaseInterface):
                 )
 
         # §DECLIPPER_SOTA_PLAN.md Slice B/C (2026-09-12): A-SPADE-ONNX als
-        # erster neuronaler Zweig für schwere Fälle — Never-worsen über den
-        # Harmonik-Proxy; ohne Modell oder ohne Gewinn bleibt CQT-Diff.
+        # erster neuronaler Zweig für schwere Fälle — Never-worsen gegen Input
+        # und aktuellen Amtsinhaber; ohne Modell oder Gewinn bleibt dieser.
         _aspade_used = False
         if has_severe_runs and self._clip_fraction >= 0.01 and not _aspade_class_used:
             try:
@@ -770,8 +770,9 @@ class DeclipperPhase(PhaseInterface):
                             _asp_out[_ch] = audio_out[_ch]
                             continue
                         _pin = _harmonic_distortion_proxy(audio_in[_ch], sample_rate)
+                        _pinc = _harmonic_distortion_proxy(audio_out[_ch], sample_rate)
                         _pout = _harmonic_distortion_proxy(_asp_cand, sample_rate)
-                        if _pout < _pin:
+                        if _pout < _pin and _pout < _pinc:
                             _asp_out[_ch] = _asp_cand
                             _acc += 1
                         else:
@@ -780,7 +781,8 @@ class DeclipperPhase(PhaseInterface):
                         audio_out = _asp_out
                         _aspade_used = True
                         logger.info(
-                            "Verarbeitungsschritt 07 A-SPADE: %d/%d Kanäle übernommen (Harmonik-Proxy sank)",
+                            "Verarbeitungsschritt 07 A-SPADE: %d/%d Kanäle übernommen "
+                            "(Harmonik-Proxy sank gegen Input und Amtsinhaber)",
                             _acc,
                             audio_in.shape[0],
                         )

@@ -204,7 +204,7 @@ def build_export_quality_gate_payload(result: object) -> dict[str, Any]:
         first = fail_reasons[0]
         if isinstance(first, dict):
             primary_fail_reason = str(first.get("error_code", "QUALITY_GATE_FAILED") or "QUALITY_GATE_FAILED")
-    if not primary_fail_reason and warnings:
+    if not passed and not primary_fail_reason and warnings:
         primary_fail_reason = str(warnings[0])
 
     if not degradation_status:

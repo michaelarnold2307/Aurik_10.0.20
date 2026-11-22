@@ -331,11 +331,12 @@ def _export_nuance_guard(audio: np.ndarray, sr: int) -> np.ndarray:
 def validate_export_quality(result: Any) -> tuple[bool, list[str]]:
     """Validiert export quality based on RestorationResult metadata.
 
-    Hard-fail conditions (§8.1 / §8.2 / Copilot-Instructions):
+    Hard-fail conditions (§8.2 / Copilot-Instructions):
     - chroma_correlation < 0.80 (catastrophic tonal shift)
-    - quality_estimate < 0.55 (spec §8.1 E2E-Pflicht)
     - P1 goal (natuerlichkeit, authentizitaet) below minimum threshold
 
+    ``quality_estimate`` is a diagnostic proxy, not a calibrated listening
+    result. A low value is reported but cannot fail this gate by itself.
     Returns (passed, list_of_warnings).
     """
     warnings: list[str] = []
@@ -353,15 +354,13 @@ def validate_export_quality(result: Any) -> tuple[bool, list[str]]:
         elif chroma < 0.95:
             warnings.append(f"WARNUNG: Chroma-Korrelation {chroma:.3f} < 0.95 — geringe Tonart-Abweichung erkannt.")
 
-    # §8.1 quality_estimate ≥ 0.55 (E2E-Pflicht)
+    # §8.1: quality_estimate is report-only until calibrated against listeners.
     quality_estimate = getattr(result, "quality_estimate", None)
     if quality_estimate is not None and quality_estimate < 0.55:
         warnings.append(
-            f"KRITISCH: quality_estimate {quality_estimate:.3f} < 0.55 — "
-            "Mindestqualität nicht erreicht. Mögliche Ursache: schweres Ausgangsmaterial "
-            "oder Pipeline-Fehler. Prüfe Defekt-Analyse und Musical Goals."
+            f"DIAGNOSTIK: quality_estimate {quality_estimate:.3f} < 0.55 — "
+            "nicht hörkalibrierter Proxy; kein Export-Veto."
         )
-        passed = False
 
     # §8.2 LUFS delta ≤ 1 LU (Restoration) / EBU R128 (Studio 2026)
     lufs_delta = getattr(result, "lufs_delta", None)

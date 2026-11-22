@@ -49,16 +49,18 @@ def test_g10_norm_verankert() -> None:
 
 
 def test_g10_gate_semantik_fail_closed() -> None:
-    """Gate-API: ohne Scan keine Zusage (fail-closed)."""
+    """Gate-API: fehlende Typ- oder Song-Abdeckung ist keine Zusage."""
     from backend.core.defect_audibility_gate import evaluate_defect_audibility
 
-    rep_ok = evaluate_defect_audibility({}, material_key="vinyl", post_scan_ran=True)
-    assert rep_ok.evidence_state == "no_residual_defects"
+    rep_ok = evaluate_defect_audibility({}, material_key="vinyl", post_scan_ran=True, scan_scope="whole_song")
+    assert rep_ok.evidence_state == "coverage_incomplete"
     assert rep_ok.gate_passed is True
-    assert rep_ok.gate_verified is True
+    assert rep_ok.gate_verified is False
+    assert rep_ok.coverage_complete is False
     meta = rep_ok.to_metadata()
-    assert meta["gate_verified"] is True
-    assert meta["evidence_state"] == "no_residual_defects"
+    assert meta["gate_verified"] is False
+    assert meta["evidence_state"] == "coverage_incomplete"
+    assert meta["required_type_count"] == 65
 
     rep_missing = evaluate_defect_audibility({}, material_key="vinyl", post_scan_ran=False)
     assert rep_missing.evidence_state == "scan_missing"
@@ -66,13 +68,11 @@ def test_g10_gate_semantik_fail_closed() -> None:
 
 
 def test_g10_chunked_song_nachzug_verdrahtet() -> None:
-    """D-K3-68: §G10 (copilot-instructions.md)-Exportfeld — Song-Audibility-Nachzug nach der Assembly."""
+    """§G10 (copilot-instructions.md): vollständige Songmessung nach Assembly."""
     src = _text(_UV3)
-    assert (
-        "§G10 (copilot-instructions.md) Song-Audibility nach Assembly" in src
-    )  # Pin §G10 (copilot-instructions.md) — UV3-Logzeile (R2-qualifiziert, 10.12.22)
-    assert '_fd_meta["defect_residual_audibility"] = _song_aud_meta' in src
-    assert "post_scan_ran=bool(_song_aud_data)" in src, "post_scan_ran muss fail-closed aus der Datenlage kommen"
+    assert "_song_post_scan = self.defect_scanner.scan(" in src
+    assert "_evaluate_full_song_audibility(" in src
+    assert "_write_song_audibility_metadata(_meta, _song_report)" in src
 
 
 # ── §G11 (copilot-instructions.md): Weltklasse-Abnahme ────────────────────────

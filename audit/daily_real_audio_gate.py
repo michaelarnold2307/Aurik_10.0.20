@@ -1,7 +1,8 @@
 """Daily Real-Audio-Gate Trend Reporter (R5-R12).
 
 Builds a compact daily status from existing UAT result files in audit/.
-The report is fully offline and deterministic.
+Trend aggregation is offline; source timestamps are normalized to UTC before
+sorting, and generated timestamps are emitted in UTC.
 """
 
 from __future__ import annotations
@@ -10,13 +11,14 @@ import argparse
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 _R_CRITERIA = {"R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"}
+_MIN_UTC = datetime.min.replace(tzinfo=timezone.utc)
 
 
 @dataclass(frozen=True)
@@ -41,13 +43,17 @@ def _safe_int(value: Any, default: int = 0) -> int:
 
 def _safe_ts(value: Any) -> datetime:
     if not isinstance(value, str) or not value.strip():
-        return datetime.min
+        return _MIN_UTC
     text = value.strip()
     try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            # Legacy UAT reports stored local wall time without an offset.
+            parsed = parsed.astimezone()
+        return parsed.astimezone(timezone.utc)
     except Exception:
         logger.warning("daily_real_audio_gate.py::_safe_ts Ersatzpfad", exc_info=True)
-        return datetime.min
+        return _MIN_UTC
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
@@ -99,7 +105,7 @@ def build_daily_points(runs: list[tuple[Path, dict[str, Any]]]) -> list[DailyGat
         rate = (float(r_passed) / float(r_total)) if r_total > 0 else 0.0
 
         ts = _safe_ts(payload.get("generated_at"))
-        date_label = ts.date().isoformat() if ts != datetime.min else "unknown"
+        date_label = ts.date().isoformat() if ts != _MIN_UTC else "unknown"
 
         points.append(
             DailyGatePoint(
@@ -119,7 +125,7 @@ def build_daily_points(runs: list[tuple[Path, dict[str, Any]]]) -> list[DailyGat
 def build_status(points: list[DailyGatePoint]) -> dict[str, Any]:
     if not points:
         return {
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "status": "no_data",
             "latest": None,
             "trend": [],
@@ -134,7 +140,7 @@ def build_status(points: list[DailyGatePoint]) -> dict[str, Any]:
     )
 
     return {
-        "generated_at": datetime.now().isoformat(),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "ready" if latest_ready else "attention",
         "latest": {
             "date": latest.date,

@@ -18,9 +18,10 @@ k398-LOO 3/3 (Boogie +15,6 dB SDR). Hörpaare in
 
 ```bash
 cd "/media/michael/Software 4TB/Aurik_Standalone"
-# 1. Paare anhören (Schlüssel erst nach dem Urteil öffnen)
-# 2. Urteil als aurik.ab_stats/1 festhalten
-# 3. Nur bei signifikantem Vorteil:
+# 1. Ein Befehl: verblindet hören + automatische Auswertung (docs/guides/HOERSITZUNG.md)
+python3 -B scripts/hoersitzung.py --hoerer DEINNAME
+# 2. Beleg: output_audio/hoersitzung/sitzung_s42/ergebnis/hoer_verdikt_<block>.json (aurik.ab_stats/2)
+# 3. Nur bei "buchbar" (signifikant FÜR den Kandidaten, gültiger Hörer):
 .venv_aurik/bin/python -B scripts/flag_freigabe.py \
   --flag use_aspade_declipper \
   --verdikt <beleg.json> --signoff <signoff.md> --commit
@@ -58,8 +59,8 @@ A/B-Paare in `study_stimuli/hoerproben/witness_kopf/<klasse>/probeNN_*.wav`
 
 ```bash
 cd "/media/michael/Software 4TB/Aurik_Standalone"
-# Je Kanal: Paare anhören → Verdikt als aurik.ab_stats/1 festhalten
-# (hoer_entscheidung.py); nur bei signifikantem Vorteil:
+# Je Kanal: scripts/hoersitzung.py (HOERSITZUNG.md) liefert aurik.ab_stats/2;
+# nur bei signifikantem Vorteil FÜR den Kandidaten:
 .venv_aurik/bin/python -B scripts/flag_freigabe.py \
   --flag use_witness_kopf_<klasse> \
   --verdikt <beleg.json> --signoff <signoff.md> --commit

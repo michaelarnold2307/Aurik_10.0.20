@@ -176,14 +176,16 @@ def test_uv3_verdrahtung_beide_produktionspfade() -> None:
     quelle = (PROJEKT / "backend/core/unified_restorer_v3.py").read_text(encoding="utf-8")
 
     assert "def _wohlklang_zeuge_meta(" in quelle
-    # 4 Aufrufe: Einzelpfad, Chunked-Pfad, Options-Pfad + DRT-13-Attributionsmessung
-    # (Teil-Rollback-Variante, 2026-11-17) — Definition separat geprüft
-    assert quelle.count("self._wohlklang_zeuge_meta(") == 4
+    # 5 Aufrufe: Einzel-, Options- und Chunked-Pfad inkl. DRT-13-Kandidatenmessungen.
+    # Die Helper-Definition wird separat geprüft.
+    assert quelle.count("self._wohlklang_zeuge_meta(") == 5
     assert 'result.metadata["wohlklang_zeuge"]' in quelle
     assert '_meta["wohlklang_zeuge"]' in quelle
-    # REPORT-ONLY: genau DREI Schreibstellen, keine Lesestelle (kein Gate/Pfad
-    # entscheidet über den Zeugen — die Hör-Instanz entscheidet).
-    assert quelle.count('"wohlklang_zeuge"') == 3
+    # DRT-10 nutzt den Zeugen produktiv; bei angenommenem DRT-13-Kandidaten
+    # wird der ursprüngliche und der finale Befund getrennt dokumentiert.
+    assert quelle.count('"wohlklang_zeuge"') == 7
+    assert quelle.count('["wohlklang_zeuge"] =') == 4
+    assert quelle.count('["drt10_original_witness"] =') == 2
 
 
 # ---------------------------------------------------------------------------

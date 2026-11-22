@@ -50,7 +50,7 @@ import random
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import numpy as np
 import torch
@@ -78,6 +78,14 @@ MOS_ZIEL = 4.0  # Hinge-Ziel-mos des musik_mos-Proxy-Terms (Regularisierer-Richt
 NW_TOL = 0.02
 
 logger = logging.getLogger(__name__)
+
+
+class _BestCheckpoint(TypedDict):
+    score: float
+    ep: int
+    state: dict[str, torch.Tensor] | None
+    mos: float | None
+    nw: float | None
 
 
 def _seed_all(seed: int) -> None:
@@ -446,7 +454,7 @@ def trainiere(
     _seed_all(SEED)
     model = WitnessKopf(hidden, stufen).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
-    best = {"score": float("inf"), "ep": -1, "state": None}
+    best: _BestCheckpoint = {"score": float("inf"), "ep": -1, "state": None, "mos": None, "nw": None}
     # musik_mos-Proxy-Term (DRT-8/10, SOTA-HANDOVER Punkt 34f): Default AUS —
     # ohne --lambda-mos > 0 entsteht kein Proxy, kein Teacher-Aufruf, der Loss
     # bleibt bit-identisch zum Vorgänger (§G5 (GEBOTE.md)). Mit Flag: kleines
@@ -526,6 +534,8 @@ def trainiere(
                     "score": score_h,
                     "ep": ep,
                     "state": {k: v.cpu().clone() for k, v in model.state_dict().items()},
+                    "mos": None,
+                    "nw": None,
                 }
         else:
             # --nw-min erfasst Epochen auch dann als Kandidaten, wenn der
@@ -571,8 +581,8 @@ def trainiere(
                 "score": float(gewaehlt["score"]),
                 "ep": int(gewaehlt["ep"]),
                 "state": gewaehlt["state"],
-                "mos": gewaehlt["mos"],
-                "nw": gewaehlt["nw"],
+                "mos": float(gewaehlt["mos"]) if gewaehlt.get("mos") is not None else None,
+                "nw": float(gewaehlt["nw"]) if gewaehlt.get("nw") is not None else None,
             }
         elif nw_min is not None:
             nw_werte = [float(k["nw"]) for k in kandidaten if k.get("nw") is not None]
@@ -586,7 +596,10 @@ def trainiere(
             )
         else:
             logger.warning("§V6 (VERBOTEN.md): Zwei-Metrik-Auswahl ohne Kandidaten — kein Checkpoint gewählt")
-    model.load_state_dict(best["state"])
+    best_state = best["state"]
+    if best_state is None:
+        raise RuntimeError(f"Kein gültiger Witness-Kopf-Checkpoint für {klasse} ausgewählt")
+    model.load_state_dict(best_state)
     model.eval()
     with torch.no_grad():
         out_s = model(Xs_t.to(device))
@@ -631,7 +644,7 @@ def trainiere(
             report["mos_ziel"] = mos_ziel
             report["mos_jnd"] = MOS_JND
             report["auswahl_modus"] = "zwei_metrik_drt_8_10"
-            report["holdout_mos"] = round(float(best["mos"]), 4) if best.get("mos") is not None else None
+            report["holdout_mos"] = round(best["mos"], 4) if best["mos"] is not None else None
             report["drt_8_10"] = (
                 "Zwei-Metrik-Modellauswahl (defektlast UND musik_mos, Mindest-Schwelle JND) — "
                 "D-K3-95-Folge; Aktivierung bleibt dem Never-worsen-Gate + §4 vorbehalten"
@@ -639,9 +652,9 @@ def trainiere(
         else:
             report["auswahl_modus"] = "defektlast_unter_nw_min"
         report["nw_min"] = nw_min
-        report["holdout_never_worsen"] = round(float(best["nw"]), 4) if best.get("nw") is not None else None
+        report["holdout_never_worsen"] = round(best["nw"], 4) if best["nw"] is not None else None
         if nw_min is not None:
-            report["nw_auswahl_erfuellt"] = bool(best.get("nw") is not None and float(best["nw"]) >= float(nw_min))
+            report["nw_auswahl_erfuellt"] = bool(best["nw"] is not None and best["nw"] >= nw_min)
         if kandidaten:
             report["kandidaten_zwischenstaende"] = [
                 {

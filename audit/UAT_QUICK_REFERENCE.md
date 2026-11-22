@@ -1,9 +1,15 @@
 # Aurik 10.0.0 — UAT Quick Reference
 
-**Generation Date:** 2026-03-28  
-**Status:** CONDITIONAL GO ⚠️  
-**Version:** 9.10.77  
-**Test Framework:** pytest  
+- **Last Updated:** 2026-11-22
+- **Status:** NOT CERTIFIED — UAT analysis stale
+- **Version:** 10.14.0
+- **Test Framework:** pytest
+
+> The metrics and test counts below are a historical 2026-03-28 snapshot, not
+> a current release decision. The latest available analysis is dated
+> 2026-11-15 (7 days old): 29/30 criteria, R5 failed, 5/7 release gates,
+> G1 skipped and G6 missing. Its recorded `GO` is invalid. The freshness gate
+> failed on 2026-11-22; a fresh UAT run is pending a training-free window.
 
 ---
 
@@ -58,57 +64,56 @@
 
 ---
 
-## Decision Path
+## Current Decision Path
 
 ```
                     START
                       ↓
     ┌─────────────────────────────────┐
-    │  K.O. violations = 0?           │
-    │  (G1–G7 critical gates)         │
+    │ pytest exit 0; no failed/error/ │
+    │ missing result; no K.O.?       │
     └─────────────────────────────────┘
                       │
                   YES │ NO
                       ↓
     ┌─────────────────────────────────┐
-    │  Criteria passed ≥ 24/30?       │
-    │  Gates passed ≥ 5/7?            │
+    │ 30/30 criteria PASS and 7/7     │
+    │ gates PASS with no skips?       │
     └─────────────────────────────────┘
                       │
            YES        │        NO
             ↓         ↓         ↓
            GO    CONDITIONAL  NO-GO
-                    GO
            ✅        ⚠️        ❌
-                      ↓
-           [Release with conditions]
 ```
 
-**Current Status:** K.O. = 0 ✅ | Criteria = 6/30 ⚠️ → **CONDITIONAL GO**
+**Current Status:** NOT CERTIFIED. A failed, skipped, errored, or missing
+mandatory check cannot be counted as a pass. Skips can result in at most
+`CONDITIONAL`; only complete 30/30 + 7/7 all-pass evidence results in `GO`.
 
 ---
 
 ## What This Means
 
-### ✅ Current Status: Safe
+### Current Status: Not certified
 
-- Critical release gates validated (5/7 confirmed)
-- No K.O. violations
-- No test regressions
-- Core code paths verified
+- The latest analysis is stale, so it cannot establish current readiness.
+- The recorded run failed R5 and did not produce all seven gate results.
+- Zero K.O. violations alone do not override failures or missing evidence.
 
 ### ⚠️ Conditions for Final Release
 
-**MUST Complete Before Production:**
+**Required before release:**
 
-1. Run functional test suite (audio processing)
-2. Verify 11 Restoration audio criteria
-3. Verify 13 Studio 2026 audio criteria
-4. Confirm no regressions after functional tests
+1. Run the full UAT in a training-free window.
+2. Resolve every failed criterion and gate; investigate missing results.
+3. Regenerate the daily status from the new UAT JSON and rerun the freshness test.
+4. Validate audio quality with paired full-title measurements and human
+   listening sign-off; UAT alone is not an audio-quality or RX-12 claim.
 
-**SHOULD Complete:**
-5. Run AMRB OQS >= 80 benchmark
-6. Confirm Docker normative gate
+**Next quality step:** Recheck R5's stereo-correlation regression in the fresh
+run before changing its guard. If it reproduces, trace the production path and
+repair the cause; do not loosen the threshold to make the test pass.
 
 ---
 
@@ -154,46 +159,22 @@ pytest tests -m "ml" --run-heavy-tests --timeout=120
 
 ---
 
-## Risk Assessment
+## Current Risks (as of 2026-11-22)
 
-| Risk | Sev | Likelihood | Mitigation | Status |
-|------|-----|-----------|-----------|--------|
-| Functional tests fail | HIGH | LOW | Re-run with debug | ✅ Ready |
-| Regressions appear | HIGH | MINIMAL | 51/51 prior pass | ✅ Clean |
-| K.O. violation in gates | CRITICAL | MINIMAL | 5/7 confirmed | ✅ Pass |
-| Audio quality issues | MEDIUM | LOW | AMRB benchmark | 🔄 Pending |
+| Risk | Evidence | Required action |
+|---|---|---|
+| Stale UAT | Latest analysis 2026-11-15; freshness test fails at 7 days | Run full UAT in a training-free window |
+| Stereo criterion R5 | Latest analysis reports correlation 0.595 → 0.759, above its 0.695 ceiling | Reproduce on fresh run, then fix the production cause |
+| Incomplete release gates | G1 skipped; G6 missing; 5/7 passed | Produce all seven gate results |
+| False-positive release label | Old summary said GO despite 29/30 and incomplete gates | Generator now fails closed; rerun after fix |
+| Regression claim | UAT does not compare a regression baseline | Do not claim zero regressions from UAT alone |
 
----
+## Release Recommendation
 
-## Comparison: Code Inspection vs. Full Test
-
-| Phase | Passed | Failed | Pending | Time | Type |
-|-------|--------|--------|---------|------|------|
-| Code Inspection | 6/30 | 0 | 24 | 2 min | Static analysis |
-| Functional (NEXT) | Est. 20/30 | <5 | 5 | 2 hrs | Audio processing |
-| Integration | Est. 28/30 | 1–2 | 0 | 1 hr | E2E scenarios |
-| Full Suite | Est. 30/30 | 0 | 0 | 7 hrs | All + benchmark |
-
----
-
-## Official Recommendation
-
-### Statement
-
-**"Aurik 10.0.0 is CONDITIONALLY APPROVED for release pending functional test validation."**
-
-### Conditions
-
-1. ✅ All K.O. gates passed (verified)
-2. ⚠️ Functional audio tests must pass (deferred to Phase 2)
-3. ✅ No regressions detected (verified)
-4. Optional: OQS benchmark (deferred to Phase 4)
-
-### Authority
-
-- **Criteria:** 30 acceptance tests (15R + 15S)
-- **Gates:** 7 release gates (5 passed, 2 pending)
-- **Baseline:** Aurik spec `.github/specs/01-08_*.md`
+No release approval is asserted. `GO` requires a successful pytest exit, all
+30 acceptance criteria passing, all 7 release gates passing, no skips/errors,
+and complete result accounting. Any failure, error, or missing result is
+`NO-GO`; explicit skips can yield at most `CONDITIONAL`.
 
 ---
 
@@ -214,22 +195,24 @@ pytest tests -m "ml" --run-heavy-tests --timeout=120
 ## Frequently Asked Questions
 
 **Q: Can we release now?**  
-A: Conditionally yes. K.O. gates passed, but functional audio tests pending. Recommend Phase 2 completion before public release.
+A: No current release certification is available. The latest analysis is stale, failed R5, and omitted a gate result.
 
 **Q: What are K.O. violations?**  
-A: Critical release gates (marked 🔴) that block release if failed. Currently: 0 violations ✅
+A: Critical gates that block release if failed. Zero K.O. violations do not override failures, skips, errors, or missing results.
 
 **Q: Why are so many tests skipped?**  
-A: By design. Code inspection validates infrastructure; functional tests verify audio quality (Phase 2, ~2 hours).
+A: A skip is not a pass. Skips can result in at most a conditional recommendation.
 
 **Q: What if functional tests fail?**  
-A: Go to NO-GO; investigate failures; remediate; rerun full suite.
+A: The report must be NO-GO; investigate and fix the production cause, then rerun the full suite.
 
-**Q: How long until full pass?**  
-A: Code inspection done (2 min). Functional tests ~2 hrs. Integration ~1 hr. Total: ~5 hours to full certification.
+**Q: What is needed for an actual audio-quality breakthrough?**
 
-**Q: What's the AMRB benchmark?**  
-A: Optional heavy test (4 hrs). Validates OQS >= 80 on 10 audio scenarios. Not blocking; recommended for quality documentation.
+A: Reproducible, paired full-title gains without over-restoration, protected hearing invariants, and blinded human listening. RX-12 parity additionally requires the external DRT-16 holdout and panel evidence.
+
+**Q: How is UAT freshness renewed?**
+
+A: Run `audit/uat_report_generator.py` in a training-free window, regenerate `audit/daily_real_audio_gate.py` from that result, then rerun `test_daily_gate_stored_recently`. Do not refresh only the report timestamp.
 
 ---
 
@@ -248,10 +231,10 @@ A: Optional heavy test (4 hrs). Validates OQS >= 80 on 10 audio scenarios. Not b
 
 ## Report Generation
 
-**Last Run:** 2026-03-28 14:32:00 UTC  
-**Version:** 9.10.77  
-**Framework:** pytest 7.4+  
-**Python:** 3.11.x  
+- **Historical Snapshot:** 2026-03-28
+- **Latest Available UAT Analysis:** 2026-11-15 (stale)
+- **Current Version:** 10.14.0
+- **Python:** Repository `.venv_aurik` environment
 
 To regenerate:
 
@@ -261,10 +244,9 @@ python audit/uat_report_generator.py
 
 ---
 
-**STATUS: CONDITIONAL GO ⚠️**  
-**PROCEED TO PHASE 2 (Functional Testing)**
+**CURRENT STATUS: NOT CERTIFIED — fresh UAT and audio-quality evidence pending**
 
 ---
 
-_Aurik 10.0.0 — User Acceptance Testing Framework_  
-_Generated: 2026-03-28 | Version: 1.0_
+_Aurik 10 — User Acceptance Testing Framework_
+_Historical snapshot retained; current status updated 2026-11-22_

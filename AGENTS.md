@@ -159,9 +159,19 @@ Details immer in der normativen Kette (§1) nachlesen.
 
 ## 4. PR-/CI-Vertrag — ohne den wird nichts gemerged
 
-- Änderungen an `.github/specs/` ⇒ PR-Body MUSS die Abschnitte
-  `## Evidenzblock`, `## Seed`, `## 95 %-CI`, `## Maintainer Sign-off`
-  enthalten (Vorlage: `.github/pull_request_template.md`).
+- Änderungen an `.github/specs/` ⇒ PR-Body MUSS den ausgefüllten Evidenzblock
+  aus `.github/pull_request_template.md` enthalten. Pflichtfelder dürfen nicht
+  leer oder Platzhalter sein; nicht anwendbare Statistik/Messungen brauchen eine
+  konkrete Begründung. Ein Maintainer-Sign-off ist eine tatsächliche Freigabe,
+  keine bloße Überschrift.
+- Jeder Push auf `main` mit Spec-Änderungen (direkt oder per Merge) MUSS im
+  selben Push einen ausgefüllten Bericht unter `docs/reports/spec_evidence/`
+  enthalten. Die PR-Body-Pflicht und der eingecheckte Bericht sind getrennte
+  Nachweise; Enforcement: `scripts/spec_evidence_gate.py`.
+- Eine DRT-16/RX-12-Paritätsbehauptung braucht den kanonischen JSON-Beleg unter
+  `docs/reports/current/` und muss die maschinelle Prüfung des
+  Wettbewerbs-Paritäts-Gates bestehen. Ein Spec-Evidenzbericht allein ist kein
+  Klang- oder Paritätsnachweis.
 - Conventional Commits (Pre-Commit-erzwungen): feat/fix/docs/style/refactor/
   perf/test/chore/spec/build/ci.
 - Spec-Referenzen (§G1, §V1, …) sind in Code-Kommentaren zu verwenden (§G9).

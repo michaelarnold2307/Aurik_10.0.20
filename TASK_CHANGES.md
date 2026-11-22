@@ -1,26 +1,105 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-20 22:15 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-22 11:23 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
+| M | `.github/FILE_REGISTRY.md` | modifiziert |
+| M | `.github/WETTBEWERBS_PARITAET.md` | modifiziert |
+| M | `.github/instructions/tests.instructions.md` | modifiziert |
+| M | `.github/pull_request_template.md` | modifiziert |
+| M | `.github/specs/02_pipeline_architecture.md` | modifiziert |
+| M | `.github/specs/03_cognitive_modules.md` | modifiziert |
+| M | `.github/specs/07_quality_and_tests.md` | modifiziert |
+| M | `.github/specs/26_defekt_reparatur_trainingsvertrag.md` | modifiziert |
+| M | `.github/workflows/ci-lite.yml` | modifiziert |
+| M | `.github/workflows/nightly-quality.yml` | modifiziert |
+| M | `.github/workflows/solo-release-gate.yml` | modifiziert |
+| M | `AGENTS.md` | modifiziert |
 | M | `TASK_CHANGES.md` | modifiziert |
-| M | `backend/core/phases/phase_67_crackle_texture_removal.py` | modifiziert |
-| M | `docs/SOTA_HANDOVER.md` | modifiziert |
-| M | `docs/reports/current/2026-11-19_kanalsatz_ab_voll.json` | modifiziert |
-| M | `docs/reports/current/2026-11-19_kanalsatz_ab_voll_zeilen/001_Snowmine - Curfews (hum).json` | modifiziert |
-| M | `plugins/panns_plugin.py` | modifiziert |
-| M | `plugins/vinylnet_decrackle_plugin.py` | modifiziert |
+| M | `audit/README_UAT_SYSTEM.md` | modifiziert |
+| M | `audit/UAT_QUICK_REFERENCE.md` | modifiziert |
+| M | `audit/daily_real_audio_gate.py` | modifiziert |
+| M | `audit/real_audio_restoration_quality_gate.py` | modifiziert |
+| M | `audit/real_audio_restoration_quality_report.json` | modifiziert |
+| M | `audit/real_audio_strategy_golden_manifest.json` | modifiziert |
+| M | `audit/uat_report_generator.py` | modifiziert |
+| M | `backend/api/bridge.py` | modifiziert |
+| M | `backend/api/bridge_export.py` | modifiziert |
+| M | `backend/core/chunked_streaming.py` | modifiziert |
+| M | `backend/core/defect_audibility_gate.py` | modifiziert |
+| M | `backend/core/dsp/audibility_budget.py` | modifiziert |
+| M | `backend/core/dsp/reparatur_phasen_attribution.py` | modifiziert |
+| M | `backend/core/go_nogo_export_gate.py` | modifiziert |
+| M | `backend/core/phases/phase_07_declipper.py` | modifiziert |
+| M | `backend/core/real_audio_restoration_quality_gate.py` | modifiziert |
+| M | `backend/core/unified_restorer_v3.py` | modifiziert |
+| M | `backend/core/validate_musical_goals.py` | modifiziert |
+| M | `backend/exporter.py` | modifiziert |
+| M | `backend/models/de_crackle/train_defect_crnn.py` | modifiziert |
+| M | `backend/models/loudness_dpn/train_loudness_dpn.py` | modifiziert |
+| M | `cli/aurik_cli.py` | modifiziert |
+| M | `denker/aurik_denker.py` | modifiziert |
+| M | `docs/CI_CD.md` | modifiziert |
+| M | `docs/UAT_REPORT_2026-11-15.md` | modifiziert |
+| M | `docs/architecture/PIPELINE_FLOW_ANALYSIS.md` | modifiziert |
+| M | `docs/guides/DECLIP_SIGNOFF_RUNBOOK.md` | modifiziert |
+| M | `docs/guides/HOERBATCH_DECLIP_MUSHRA_W1.md` | modifiziert |
+| M | `docs/guides/SPEC_EVIDENZBLOCK_TEMPLATE.md` | modifiziert |
+| M | `docs/reports/spec_evidence/README.md` | modifiziert |
+| M | `reports/spec_drift_baseline.json` | modifiziert |
+| M | `scripts/_aurik_run_excellence.py` | modifiziert |
+| M | `scripts/compliance/drt_contract_gate.py` | modifiziert |
+| M | `scripts/diagnose_gate_failures.py` | modifiziert |
+| M | `scripts/flag_freigabe.py` | modifiziert |
+| M | `scripts/hoer_entscheidung.py` | modifiziert |
+| M | `scripts/horordnung_calibration.py` | modifiziert |
 | M | `scripts/ketten_watchdog.py` | modifiziert |
-| M | `scripts/messe_kanalsatz_ab.py` | modifiziert |
-| M | `tests/unit/test_ketten_watchdog.py` | modifiziert |
-| M | `tests/unit/test_messe_kanalsatz_ab.py` | modifiziert |
-| M | `tests/unit/test_panns_rocm_provider_filter.py` | modifiziert |
-| M | `tests/unit/test_phase_67_crackle_texture_removal.py` | modifiziert |
-| M | `tests/unit/test_phase_68_vinylnet_decrackle.py` | modifiziert |
+| M | `scripts/train_era_crnn.py` | modifiziert |
+| M | `scripts/train_material_crnn.py` | modifiziert |
+| M | `scripts/train_witness_detektor.py` | modifiziert |
+| M | `scripts/train_witness_kopf.py` | modifiziert |
+| M | `tests/integration/test_aurik_denker_e2e.py` | modifiziert |
+| M | `tests/normative/test_parameter_register_gate.py` | modifiziert |
+| M | `tests/normative/test_real_audio_restoration_quality_gate.py` | modifiziert |
+| M | `tests/normative/test_weltklasse_kette.py` | modifiziert |
+| M | `tests/test_e2e_v9_10_41.py` | modifiziert |
+| M | `tests/test_full_chain_ml_hybrid.py` | modifiziert |
+| M | `tests/test_optimization_integration.py` | modifiziert |
+| M | `tests/test_uat_acceptance_criteria.py` | modifiziert |
+| M | `tests/unit/test_0c_degraded_export_contract.py` | modifiziert |
+| M | `tests/unit/test_aspade_declipper_plugin.py` | modifiziert |
+| M | `tests/unit/test_chunked_streaming_layouts.py` | modifiziert |
+| M | `tests/unit/test_daily_real_audio_gate.py` | modifiziert |
+| M | `tests/unit/test_defect_audibility_gate.py` | modifiziert |
+| M | `tests/unit/test_dk368_song_audibility_chain.py` | modifiziert |
+| M | `tests/unit/test_drt_contract_gate.py` | modifiziert |
+| M | `tests/unit/test_flag_freigabe.py` | modifiziert |
+| M | `tests/unit/test_real_audio_restoration_quality_gate.py` | modifiziert |
+| M | `tests/unit/test_reparatur_phasen_attribution.py` | modifiziert |
+| M | `tests/unit/test_sota_hearing_modules.py` | modifiziert |
+| M | `tests/unit/test_studio_oqs_gate.py` | modifiziert |
+| M | `tests/unit/test_uat_report_generator.py` | modifiziert |
+| M | `tests/unit/test_unified_restorer_v3.py` | modifiziert |
+| M | `tests/unit/test_witness_detektor.py` | modifiziert |
+| M | `tests/unit/test_witness_kopf.py` | modifiziert |
+| M | `tests/unit/test_wohlklang_zeuge.py` | modifiziert |
+| ?? | `backend/core/song_context_map.py` | ungetrackt |
+| ?? | `docs/guides/HOERSITZUNG.md` | ungetrackt |
+| ?? | `docs/reports/spec_evidence/2026-11-22_spec_03_song_context_map.md` | ungetrackt |
+| ?? | `docs/reports/spec_evidence/2026-11-22_spec_07_hoersitzung.md` | ungetrackt |
+| ?? | `docs/reports/spec_evidence/2026-11-22_spec_diagnose_metadaten_wahrheit.md` | ungetrackt |
+| ?? | `docs/reports/spec_evidence/2026-11-22_spec_evidence_gate_and_parity_status.md` | ungetrackt |
+| ?? | `scripts/hoersitzung.py` | ungetrackt |
+| ?? | `scripts/spec_evidence_gate.py` | ungetrackt |
+| ?? | `tests/normative/test_diagnostic_metadata_truth_gate.py` | ungetrackt |
+| ?? | `tests/unit/test_hoersitzung.py` | ungetrackt |
+| ?? | `tests/unit/test_song_context_map.py` | ungetrackt |
+| ?? | `tests/unit/test_song_context_map_wiring.py` | ungetrackt |
+| ?? | `tests/unit/test_spec_evidence_gate.py` | ungetrackt |
 
 ## Entscheidungen
 

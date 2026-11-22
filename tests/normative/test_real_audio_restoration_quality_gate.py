@@ -1,11 +1,8 @@
 """Real-Audio Restoration Quality Gate — CI Enforcement (§15.2, §19).
 
-Prüft den Quality-Gate-Report, der via audit/daily_real_audio_gate.py
-generiert wird. Fails CI wenn:
-- Gate nicht passed
-- HPI-Average unter Minimum
-- Weniger als min_real_audio_cases
-- Keine Verbesserung zum Vormonat
+Prüft den Report aus audit/real_audio_restoration_quality_gate.py und den
+separaten Daily-UAT-Status. Fails CI bei verfehlten Manifest-Schwellen oder
+veralteter bzw. inkonsistenter UAT-Evidenz.
 
 Nutzung:
   pytest tests/normative/test_real_audio_restoration_quality_gate.py -v
@@ -14,6 +11,7 @@ Nutzung:
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -50,6 +48,16 @@ def _load_daily_status() -> dict | None:
         return None
 
 
+def _quality_thresholds() -> dict:
+    if not MANIFEST_PATH.exists():
+        pytest.fail(f"Golden-Set-Manifest fehlt: {MANIFEST_PATH}")
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    thresholds = manifest.get("restoration_quality_thresholds") if isinstance(manifest, dict) else None
+    if not isinstance(thresholds, dict):
+        pytest.fail("restoration_quality_thresholds fehlt im Golden-Set-Manifest")
+    return thresholds
+
+
 # ── Core Quality Gate Tests ────────────────────────────────────────────────
 
 
@@ -76,68 +84,75 @@ class TestRealAudioQualityGate:
         assert gate, "Gate-Feld fehlt im Report"
 
     def test_gate_passed(self, gate: dict):
-        """Quality Gate muss 'passed: true' liefern (oder progressive Verbesserung zeigen)."""
-        passed = gate.get("passed", False)
-        hpi = gate.get("hpi_average", 0)
-        qe = gate.get("quality_estimate_average", 0)
-
-        # Progressive Improvement: HPI ≥ 0.80 und Quality ≥ 0.60 als akzeptabel
-        if not passed and hpi >= 0.80 and qe >= 0.60:
-            pytest.skip(
-                f"Gate nicht bestanden, aber progressive Verbesserung erkannt "
-                f"(HPI={hpi:.3f}, Quality={qe:.3f}). Führe audit/daily_real_audio_gate.py aus."
-            )
-
-        if not passed:
-            fail_reasons = gate.get("fail_reasons", [])
-            reason_text = "\n  ".join(fail_reasons) if fail_reasons else "unbekannt"
-            pytest.fail(
-                f"Real-Audio Quality Gate NICHT bestanden:\n"
-                f"  HPI-Avg: {gate.get('hpi_average', '?'):.3f}\n"
-                f"  Quality-Avg: {gate.get('quality_estimate_average', '?'):.3f}\n"
-                f"  Musical-Goal-Rate: {gate.get('musical_goal_case_pass_rate', 0):.1%}\n"
-                f"  Noise-Texture-Rate: {gate.get('noise_texture_case_pass_rate', 0):.1%}\n"
-                f"  Goosebumps-Rate: {gate.get('goosebumps_case_pass_rate', 0):.1%}\n"
-                f"  Gründe: {reason_text}\n"
-                f"  Actions: {gate.get('prioritized_actions', [])}"
-            )
+        """A high average HPI cannot waive failures in other mandatory dimensions."""
+        fail_reasons = gate.get("fail_reasons", [])
+        reason_text = "\n  ".join(fail_reasons) if fail_reasons else "keine Gründe angegeben"
+        assert gate.get("passed") is True, (
+            f"Real-Audio Quality Gate NICHT bestanden:\n"
+            f"  HPI-Avg: {gate.get('hpi_average', '?')}\n"
+            f"  Musical-Goal-Rate: {gate.get('musical_goal_case_pass_rate', 0):.1%}\n"
+            f"  Noise-Texture-Rate: {gate.get('noise_texture_case_pass_rate', 0):.1%}\n"
+            f"  Goosebumps-Rate: {gate.get('goosebumps_case_pass_rate', 0):.1%}\n"
+            f"  Gründe: {reason_text}\n"
+            f"  Actions: {gate.get('prioritized_actions', [])}"
+        )
 
     def test_minimum_case_count(self, gate: dict):
-        """Mindestens 20 Real-Audio-Cases erforderlich (§15.2)."""
+        """Der Case-Umfang folgt dem Golden-Set-Manifest."""
         cases = gate.get("real_audio_cases", 0)
-        assert cases >= 20, (
-            f"Nur {cases} Real-Audio-Cases (mindestens 20 erforderlich). "
+        minimum = int(_quality_thresholds()["min_real_audio_cases"])
+        assert cases >= minimum, (
+            f"Nur {cases} Real-Audio-Cases (mindestens {minimum} erforderlich). "
             f"Nutze scripts/generate_corpus_from_public_domain.py."
         )
 
     def test_minimum_vocal_cases(self, gate: dict):
-        """Mindestens 5 Vokal-Cases erforderlich."""
+        """Der Vokal-Case-Umfang folgt dem Golden-Set-Manifest."""
         vocal_cases = gate.get("vocal_cases", 0)
-        assert vocal_cases >= 5, f"Nur {vocal_cases} Vokal-Cases (mindestens 5 erforderlich)."
+        minimum = int(_quality_thresholds()["min_vocal_cases"])
+        assert vocal_cases >= minimum, f"Nur {vocal_cases} Vokal-Cases (mindestens {minimum} erforderlich)."
+
+    def test_exact_golden_set_case_coverage(self, gate: dict):
+        """Kein Golden-Set-Fall darf fehlen, dupliziert oder ersetzt werden."""
+        manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        expected_cases = manifest.get("cases")
+        assert isinstance(expected_cases, list) and expected_cases
+        assert gate.get("case_id_coverage_complete") is True
+        assert gate.get("case_id_coverage_rate") == 1.0
+        assert gate.get("expected_case_count") == len(expected_cases)
 
     def test_hpi_above_minimum(self, gate: dict):
-        """HPI-Average muss ≥ 0.60 betragen (Basis-Schwelle für CI)."""
+        """HPI muss vorliegen und die im Golden-Set definierte Schwelle erreichen."""
         hpi = gate.get("hpi_average")
-        if hpi is None:
-            pytest.skip("HPI-Average nicht verfügbar")
-        assert hpi >= 0.60, f"HPI-Average {hpi:.3f} < 0.60. Siehe diagnose_gate_failures.py."  # type: ignore[operator]
+        assert isinstance(hpi, (int, float)) and math.isfinite(float(hpi)), "HPI-Average fehlt oder ist nicht endlich"
+        minimum = float(_quality_thresholds()["min_hpi_average"])
+        assert hpi >= minimum, f"HPI-Average {hpi:.3f} < {minimum:.3f}. Siehe diagnose_gate_failures.py."
 
-    def test_quality_above_minimum(self, gate: dict):
-        """Quality-Estimate-Average muss ≥ 0.60 betragen (Basis-Schwelle für CI)."""
+    def test_quality_estimate_is_report_only(self, gate: dict):
+        """Quality-Estimate-Average wird nur als endlicher Diagnosewert berichtet."""
+        assert "min_quality_estimate_average" not in _quality_thresholds()
         qe = gate.get("quality_estimate_average")
         if qe is None:
-            pytest.skip("Quality-Estimate-Average nicht verfügbar")
-        assert qe >= 0.60, f"Quality-Estimate {qe:.3f} < 0.60."  # type: ignore[operator]
+            return
+        assert math.isfinite(qe) and 0.0 <= qe <= 1.0, f"Ungültiger Quality-Estimate-Wert: {qe!r}"
 
     def test_noise_texture_above_minimum(self, gate: dict):
-        """Noise-Texture-Pass-Rate muss ≥ 0.50 betragen (Basis-Schwelle)."""
+        """Noise-Texture-Pass-Rate folgt der Golden-Set-Schwelle."""
         rate = gate.get("noise_texture_case_pass_rate", 0)
-        assert rate >= 0.50, f"Noise-Texture-Pass-Rate {rate:.1%} < 50%."
+        minimum = float(_quality_thresholds()["min_noise_texture_case_pass_rate"])
+        assert rate >= minimum, f"Noise-Texture-Pass-Rate {rate:.1%} < {minimum:.1%}."
 
     def test_goosebumps_above_minimum(self, gate: dict):
-        """Goosebumps-Pass-Rate muss ≥ 0.50 betragen (Basis-Schwelle)."""
+        """Goosebumps-Pass-Rate folgt der Golden-Set-Schwelle."""
         rate = gate.get("goosebumps_case_pass_rate", 0)
-        assert rate >= 0.50, f"Goosebumps-Pass-Rate {rate:.1%} < 50%."
+        minimum = float(_quality_thresholds()["min_goosebumps_case_pass_rate"])
+        assert rate >= minimum, f"Goosebumps-Pass-Rate {rate:.1%} < {minimum:.1%}."
+
+    def test_external_benchmark_case_count(self, gate: dict):
+        """Externe Vergleichsevidenz folgt der Golden-Set-Vorgabe."""
+        cases = gate.get("external_benchmark_cases", 0)
+        minimum = int(_quality_thresholds()["min_external_benchmark_cases"])
+        assert cases >= minimum, f"Nur {cases} externe Benchmark-Cases (mindestens {minimum} erforderlich)."
 
 
 # ── Daily Status Tests ─────────────────────────────────────────────────────
@@ -176,15 +191,34 @@ class TestDailyGateStatus:
             f"Führe audit/uat_report_generator.py aus (echte Evidenz erneuern)."
         )
 
-    def test_daily_status_consistent_with_report(self, status: dict):
-        """Daily-Status muss konsistent mit dem Gate-Report sein."""
-        report = _load_gate_report()
-        if report is None:
-            pytest.skip("Kein Gate-Report zum Vergleich")
-        gate = report.get("gate", {})  # type: ignore[union-attr]
-        # Daily-Status muss dieselben Key-Metriken wie der Gate-Report enthalten
-        for key in ("hpi_average", "real_audio_cases", "musical_goal_case_pass_rate"):
-            if key in gate and key in status:
-                assert abs(status[key] - gate[key]) < 0.001, (
-                    f"Daily-Status {key}={status[key]:.3f} weicht von Gate-Report {key}={gate[key]:.3f} ab"
-                )
+    def test_daily_status_consistent_with_source_uat(self, status: dict):
+        """Daily-Zusammenfassung muss exakt zur referenzierten UAT-Quelle passen."""
+        from audit.daily_real_audio_gate import _extract_r5_r12_pass_counts, _safe_ts
+
+        latest = status.get("latest")
+        assert isinstance(latest, dict), "Daily-Status hat keinen latest-Datensatz"
+        source_name = Path(str(latest.get("source_file", ""))).name
+        assert source_name.startswith("uat_results_"), f"Ungültige UAT-Quelle: {source_name!r}"
+        source_path = REPO_ROOT / "audit" / source_name
+        assert source_path.is_file(), f"Referenzierte UAT-Quelle fehlt: {source_path}"
+        source = json.loads(source_path.read_text(encoding="utf-8"))
+        summary = source.get("summary") if isinstance(source, dict) else None
+        assert isinstance(summary, dict), "UAT-Quelle hat kein summary-Feld"
+
+        source_date = _safe_ts(source.get("generated_at")).date().isoformat()
+        assert latest.get("date") == source_date
+        assert latest.get("recommendation") == summary.get("recommendation", "UNKNOWN")
+        assert latest.get("gates") == {
+            "passed": int(summary.get("gates_passed", 0)),
+            "total": int(summary.get("gates_total", 0)),
+        }
+        failed_results = int(summary.get("criteria_failed", 0)) + int(summary.get("gates_failed", 0))
+        errored_results = int(summary.get("criteria_errors", 0)) + int(summary.get("gates_errors", 0))
+        if failed_results or errored_results:
+            assert latest.get("recommendation") == "NO-GO", (
+                "UAT-Quelle meldet fehlgeschlagene oder nicht auswertbare Kriterien, "
+                "darf aber nicht als GO/CONDITIONAL zusammengefasst werden"
+            )
+        r5_r12_passed, r5_r12_total = _extract_r5_r12_pass_counts(source)
+        assert latest.get("r5_r12", {}).get("passed") == r5_r12_passed
+        assert latest.get("r5_r12", {}).get("total") == r5_r12_total

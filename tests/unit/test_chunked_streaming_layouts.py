@@ -6,8 +6,9 @@ war dann die Chunklänge statt der Kanalzahl → 56.7-TiB-Allokation
 """
 
 import numpy as np
+import pytest
 
-from backend.core.chunked_streaming import ChunkedPipeline, ChunkResult, select_chunk_duration_s
+from backend.core.chunked_streaming import ChunkDeltaPatch, ChunkedPipeline, ChunkResult, select_chunk_duration_s
 
 
 def test_collect_channels_first():
@@ -35,6 +36,56 @@ def test_collect_mono():
     results = [ChunkResult(np.zeros(48000, np.float32), 48000, 0, 0, 48000)]
     out = mgr.collect_results(results, 48000)
     assert out.shape == (48000,)
+
+
+def test_chunk_delta_rollback_uses_same_crossfade_and_preserves_unpatched_samples():
+    mgr = ChunkedPipeline(overlap_s=0.3)
+    results = [
+        ChunkResult(np.full(6, 0.1, np.float32), 10, 0, 0, 6),
+        ChunkResult(np.full(6, 0.05, np.float32), 10, 1, 3, 9),
+    ]
+    output = mgr.collect_results(results, 10)
+    patches = [
+        ChunkDeltaPatch(0, np.array([3, 4, 5]), np.full(3, -0.1, np.float32)),
+        ChunkDeltaPatch(1, np.array([0, 1, 2]), np.full(3, -0.05, np.float32)),
+    ]
+
+    candidate = mgr.apply_chunk_deltas(output, results, patches, 10)
+    phase_off_results = [
+        ChunkResult(results[0].audio.copy(), 10, 0, 0, 6),
+        ChunkResult(results[1].audio.copy(), 10, 1, 3, 9),
+    ]
+    phase_off_results[0].audio[3:6] += -0.1
+    phase_off_results[1].audio[:3] += -0.05
+    expected = mgr.collect_results(phase_off_results, 10)
+
+    np.testing.assert_array_equal(candidate[:3], output[:3])
+    np.testing.assert_allclose(candidate[3:6], 0.0, atol=1e-7)
+    np.testing.assert_array_equal(candidate[6:], output[6:])
+    np.testing.assert_allclose(candidate, expected, atol=1e-7)
+
+
+def test_chunk_delta_rollback_normalizes_channels_first_patch_layout():
+    mgr = ChunkedPipeline(overlap_s=0.0)
+    audio = np.full((2, 8), 0.25, np.float32)
+    result = ChunkResult(audio, 10, 0, 0, 8)
+    output = mgr.collect_results([result], 10)
+    patch = ChunkDeltaPatch(0, np.array([3, 4]), np.full((2, 2), -0.25, np.float32))
+
+    candidate = mgr.apply_chunk_deltas(output, [result], [patch], 10)
+
+    assert candidate.shape == (8, 2)
+    np.testing.assert_array_equal(candidate[[0, 1, 2, 5, 6, 7]], output[[0, 1, 2, 5, 6, 7]])
+    np.testing.assert_allclose(candidate[3:5], 0.0, atol=1e-7)
+
+
+def test_chunk_delta_rollback_rejects_non_finite_delta():
+    mgr = ChunkedPipeline(overlap_s=0.0)
+    result = ChunkResult(np.zeros(8, np.float32), 10, 0, 0, 8)
+    patch = ChunkDeltaPatch(0, np.array([3]), np.array([np.nan], np.float32))
+
+    with pytest.raises(ValueError, match="NaN/Inf"):
+        mgr.apply_chunk_deltas(np.zeros(8, np.float32), [result], [patch], 10)
 
 
 def test_r16_select_default_heuristic():

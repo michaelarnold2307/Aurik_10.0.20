@@ -34,7 +34,7 @@ import random
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import numpy as np
 import torch
@@ -56,6 +56,12 @@ LR = 1e-3
 AUC_ZIEL = 0.80
 SR = 44100
 SCHEMA = "aurik.witness_training/1"
+
+
+class _BestCheckpoint(TypedDict):
+    auc: float
+    epoch: int
+    state: dict[str, torch.Tensor] | None
 
 
 def _seed_all(seed: int) -> None:
@@ -177,7 +183,7 @@ def trainiere(klasse: str, manifest: Path | None = None) -> dict[str, Any]:
     loss_fn = nn.BCEWithLogitsLoss()
     Xt = torch.from_numpy(X_tr)
     yt = torch.from_numpy(y_tr)
-    best = {"auc": 0.0, "epoch": -1, "state": None}
+    best: _BestCheckpoint = {"auc": 0.0, "epoch": -1, "state": None}
     for ep in range(EPOCHS):
         model.train()
         perm = torch.randperm(len(Xt))
@@ -197,7 +203,10 @@ def trainiere(klasse: str, manifest: Path | None = None) -> dict[str, Any]:
         if ep in (0, 4, 9, 19):
             print(f"  {klasse}: ep {ep + 1}/{EPOCHS} hoAUC {auc_ho:.3f}", flush=True)
 
-    model.load_state_dict(best["state"])
+    best_state = best["state"]
+    if best_state is None:
+        raise RuntimeError(f"Kein gültiger Witness-Checkpoint für {klasse} ausgewählt")
+    model.load_state_dict(best_state)
     model.eval()
     with torch.no_grad():
         p_ho = torch.sigmoid(model(torch.from_numpy(X_ho))).numpy()
@@ -208,7 +217,7 @@ def trainiere(klasse: str, manifest: Path | None = None) -> dict[str, Any]:
     out_dir = MODELS_DIR / f"witness_{klasse}"
     out_dir.mkdir(parents=True, exist_ok=True)
     checkpoint = out_dir / "witness.pt"
-    torch.save({"state_dict": best["state"], "n_mels": n_mels, "frames": FRAMES, "seed": SEED}, checkpoint)
+    torch.save({"state_dict": best_state, "n_mels": n_mels, "frames": FRAMES, "seed": SEED}, checkpoint)
     report = {
         "schema": SCHEMA,
         "datum": date.today().isoformat(),

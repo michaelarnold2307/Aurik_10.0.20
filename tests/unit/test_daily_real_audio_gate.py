@@ -77,6 +77,37 @@ def test_load_uat_runs_sorted_by_timestamp(tmp_path: Path) -> None:
     assert runs[1][0].name == "uat_results_2026-04-12.json"
 
 
+@pytest.mark.unit
+def test_load_uat_runs_sorts_mixed_naive_and_aware_timestamps(tmp_path: Path) -> None:
+    _write_uat(
+        tmp_path / "uat_results_aware.json",
+        generated_at="2026-04-10T00:00:00+00:00",
+        gates_passed=7,
+        gates_total=7,
+        recommendation="GO",
+        r_statuses={},
+    )
+    _write_uat(
+        tmp_path / "uat_results_naive.json",
+        generated_at="2026-04-12T10:00:00",
+        gates_passed=7,
+        gates_total=7,
+        recommendation="GO",
+        r_statuses={},
+    )
+
+    runs = load_uat_runs(tmp_path)
+
+    assert [path.name for path, _ in runs] == ["uat_results_aware.json", "uat_results_naive.json"]
+
+
+@pytest.mark.unit
+def test_build_daily_points_marks_invalid_timestamp_unknown() -> None:
+    points = build_daily_points([(Path("uat_results_invalid.json"), {"generated_at": "not-a-timestamp"})])
+
+    assert points[0].date == "unknown"
+
+
 def test_build_status_marks_ready_when_latest_is_fully_passing(tmp_path: Path) -> None:
     _write_uat(
         tmp_path / "uat_results_2026-04-11.json",
@@ -117,6 +148,7 @@ def test_build_status_marks_ready_when_latest_is_fully_passing(tmp_path: Path) -
     status = build_status(points)
 
     assert status["status"] == "ready"
+    assert status["generated_at"].endswith("+00:00")
     assert status["latest"]["gates"]["passed"] == 7
     assert status["latest"]["r5_r12"]["passed"] == 8
 

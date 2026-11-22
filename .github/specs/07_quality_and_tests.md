@@ -48,23 +48,35 @@ jeweils geänderten Aufrufpfade.
 
 ## §8.1 Numerische Qualitätsgrenzen
 
-### PQS-Metriken (`backend/core/holistic_perceptual_gate.py` (v10.0.0-Phantom))
+### Historische PQS-Proxybereiche (nicht gate-faehig)
 
-| Metrik | Hard-Fail-Minimum | Internes Spitzenziel |
+| Metrik | Historischer Diagnosebereich | Historischer Zielbereich |
 | --- | --- | --- |
 | PQS MOS | ≥ 3.8 | ≥ 4.5 |
 | PQS NSIM | ≥ 0.70 | ≥ 0.90 |
 | MCD (dB) | ≤ 8.0 | ≤ 3.0 |
 | Spectral Coherence | ≥ 0.60 | ≥ 0.85 |
 
-### quality_estimate — normative Formel
+Diese Bereiche stammen aus dem Legacy-PQS-Vertrag; sie sind keine
+Export-, Release- oder Hörabnahme-Gates. Ein Proxy ohne aktuelle
+Hörpanel-Kalibrierung darf weder einen Restaurierungserfolg behaupten noch
+einen bestmöglichen sicheren Export herabstufen.
+
+### quality_estimate — diagnostische Formel
 
 ```python
 quality_estimate = 0.40 * (1 - defect_severity) + 0.60 * (pqs_mos - 1) / 4
 # Clip: max(0.0, min(1.0, quality_estimate))
 # VERBOTEN: quality_estimate * 1.15 als fixer Bonus
-# E2E-Pflicht: result.quality_estimate >= 0.55 nach erfolgreicher Restaurierung
+# E2E-Vertrag: vorhanden, endlich und in [0, 1]; kein Mindestwert als Pass/Fail
 ```
+
+`quality_estimate` kombiniert Defektlast und einen MOS-/PQS-Proxy, dessen
+absolute Skala nicht als Hörerurteil kalibriert ist. Der Wert wird fuer
+Diagnose und Verlauf berichtet; `< 0.55` ist hoechstens ein Hinweis und darf
+allein weder `NO_GO`/`degraded` ausloesen noch Export oder Ergebnis verwerfen.
+Destruktive Entscheidungen bleiben an die Hörordnung, Hör-Invarianten und
+evidenzkalibrierte Gates gebunden.
 
 ### Verbotene Metriken für Musikqualitätsbewertung
 
@@ -99,8 +111,10 @@ Erlaubte Musikmetriken: **PEAQ, FAD, PQS-MOS, ViSQOL v3 (`--audio` Mode), Musica
 3. Reproduzierbare Competitive-Benchmarks gegen Referenzsysteme
 4. Externe verblindete Hörtests
 
-**Invariante**: Level 1 bis 3 dürfen harte Release-Entscheidungen steuern. Öffentliche Superlative,
-„transparent wie das Original“ oder formale Hörtest-Äquivalenz sind erst mit Level 4 belastbar.
+**Invariante**: Level 1 bis 3 liefern interne Evidenz, aber ein nicht hörkalibrierter
+Proxy darf weder allein noch als Mindestwert ein Export- oder Release-Veto auslösen.
+Öffentliche Superlative, „transparent wie das Original“ oder formale Hörtest-Äquivalenz
+sind erst mit Level 4 belastbar.
 
 | OQS-Stufe | Score | Pflicht |
 | --- | --- | --- |
@@ -108,23 +122,26 @@ Erlaubte Musikmetriken: **PEAQ, FAD, PQS-MOS, ViSQOL v3 (`--audio` Mode), Musica
 | Good (B) | ≥ 80 | **[RELEASE_MUST] Pflicht für jede neue Phase / Plugin** |
 | Fair (C) | ≥ 60 | — |
 
-### §8.1.1a [RELEASE_MUST] Studio-2026 OQS-Gate (v10.0.0)
+### §8.1.1a Studio-2026 OQS-Zielwert (nicht gate-faehig)
 
-Für `mode="studio2026"` gilt ein dediziertes End-Gate:
+Für `mode="studio2026"` gilt ein diagnostischer Referenzwert:
 
-- OQS ≥ **88** ist verpflichtend (vormals TARGET_2026).
-- Bei OQS < 88 darf kein finaler Studio-2026-Export freigegeben werden.
-- Fallback-Verhalten: kontrollierter Rollback auf bestes artefaktfreies Checkpoint-Audio
-    oder Modus-Rückfall auf konservative Qualitätskette mit dokumentiertem `fail_reason`.
+- OQS ≥ **88** bleibt ein Entwicklungsziel, bis der Proxy gegen verblindete
+  Hörurteile kalibriert ist.
+- OQS < 88 wird als Befund berichtet; es darf keinen Export blockieren, keinen
+  Rollback auslösen und keinen Status `degraded` allein begründen.
+- Selbstvergleich/No-op liefert keinen OQS-Messwert und darf keinen Score
+  synthetisch zugewiesen bekommen.
 
-**Rationale:** Studio-2026 ist ein Qualitätsversprechen („modern, frisch, kräftig").
-Ein optionales Roadmap-Ziel ist dafür normativ zu weich.
+**Rationale:** `mushra_evaluator.py` liefert eine algorithmische Approximation,
+keinen ITU-R BS.1534-3-konformen Hörertest. Ein Score-Schwellenwert ist deshalb
+kein Nachweis für das menschliche Hörerlebnis.
 
-### §8.1.1b [RELEASE_MUST] Restoration OQS-Gate (v10.0.0)
+### §8.1.1b Restoration OQS-Referenzwerte (nicht gate-faehig)
 
-Für `mode="restoration"` gilt ein materialadaptives End-Gate:
+Für `mode="restoration"` gelten materialadaptive diagnostische Referenzwerte:
 
-| Material-Klasse | OQS-Minimum | Begründung |
+| Material-Klasse | OQS-Zielwert | Begründung |
 | --- | --- | --- |
 | Digital (cd_digital, dat, streaming, aac) | ≥ **80** | Geringe Degradierung → hohe Erwartung |
 | Analog modern (vinyl, tape, reel_tape, cassette, minidisc) | ≥ **72** | Moderate Degradierung |
@@ -132,9 +149,14 @@ Für `mode="restoration"` gilt ein materialadaptives End-Gate:
 | Lossy Codec (mp3_low, mp3_high) | ≥ **75** | Codec-Artefakte reparierbar |
 | Unknown | ≥ **70** | Konservativer Fallback |
 
-**Recovery-Verhalten**: Bei OQS < Minimum → §8.2b Recovery-Kaskade (kein Hardstop). Export mit Status `degraded` + `fail_reason`.
+Werte unter dem Referenzwert werden berichtet, lösen aber weder eine Recovery-
+Kaskade noch Rollback oder `degraded` allein aus. Export- und Recovery-
+Entscheidungen verwenden ausschließlich kalibrierte Hörnachweise und
+eigenständige Sicherheits-/Never-worsen-Invarianten.
 
-**Invariante**: Restoration-Modus darf Audio nie verschlechtern — wenn OQS(output) < OQS(input), MUSS Rollback auf Input erfolgen.
+**Invariante**: Restoration-Modus darf Audio nie verschlechtern. Ein Rollback
+benötigt dafür einen gültigen, kalibrierten Never-worsen-Befund; ein OQS-Delta
+allein genügt nicht.
 
 ### §8.1.1c [RELEASE_MUST] MUSHRA-Referenz-Wahl bei CCR Reference-Shift (v10.0.0)
 
@@ -164,12 +186,12 @@ in der MushraEvaluator-Gewichtungsmatrix bereits abgebildet und ist kein Ausschl
 
 > **Methodischer Hinweis**: AMRB verwendet **synthetisch degradierte Referenzaudio** (saubere Studioproduktionen
 > mit kontrollierten Defekten). Die Pflicht-Scores sind auf synthetischem Material erreichbar. Sie unterscheiden
-> sich bewusst von den Produktions-Gates (§8.1.1b), die für **echtes historisches Material** gelten — dieses
+> sich bewusst von den materialadaptiven OQS-Referenzwerten (§8.1.1b), die für **echtes historisches Material** gelten — dieses
 > hat physikalische Grenzen, die synthetische Degradation nicht vollständig modelliert. AMRB-03-SHELLAC OQS ≥ 60
-> ist der Produktions-Gate für echte 78-rpm-Aufnahmen; OQS ≥ 80 ist das AMRB-Ziel auf synthetisch degradiertem
+> ist ein diagnostischer Referenzwert für echte 78-rpm-Aufnahmen; OQS ≥ 80 ist das AMRB-Ziel auf synthetisch degradiertem
 > Material mit klar definiertem SNR-Ausgangspunkt.
 
-| Szenario | Defekt | AMRB-Pflicht-Score | Produktions-Gate (§8.1.1b) |
+| Szenario | Defekt | AMRB-Pflicht-Score | OQS-Referenzwert (§8.1.1b, report-only) |
 | --- | --- | --- | --- |
 | AMRB-01-TAPE | Tape-Hiss + Dropout | OQS ≥ 80 | OQS ≥ 72 (analog modern) |
 | AMRB-02-VINYL | Vinyl-Crackle + Rumble | OQS ≥ 80 | OQS ≥ 72 (analog modern) |
@@ -474,6 +496,145 @@ automatisch geprüft werden.
   Stereo-Layout-Invariante (C, N).
 - **Status:** Report-Only-Zeuge. Richtungs-Zertifizierung über Hör-Labels
   (D-K4-9); Stärke-/Schwellen-Nutzung nur über das §4-Verfahren.
+
+---
+
+## §8.7 [RELEASE_MUST] Diagnose-Metadaten-Wahrheit (Messwahrheit, 2026-11-22)
+
+> Hörordnung §7 (hoerordnung.instructions.md): Metriken und Telemetrie sind
+> Zeugen, keine Richter — und ein Zeuge muss etwas **gesehen** haben. Ein
+> Metadatum, das Aktivität, Verfügbarkeit oder Wirkung eines Moduls ausweist,
+> ohne dass diese Aussage geprüft wurde, ist eine unbelegte Erfolgsmeldung
+> (§V6 (copilot-instructions.md), §G8 (copilot-instructions.md), §G11
+> (copilot-instructions.md)).
+
+**Befund (belegt, 2026-11-22):** `UnifiedRestorerV3._collect_reporting_analytics`
+rief 28 Diagnose-Helfer `_compute_*_result` auf, die den Modulzustand per
+`sys.modules.get(...)` lasen, das Ergebnis **nie auswerteten** („toter Zeuge“,
+26 Fälle) bzw. in einem leeren Paket-`__init__` per Namenssuche suchten, die
+strukturell nie trifft (2 Fälle: `module_parallel`, `stereo_parallel`), und
+unbedingt `{"active": True}` zurückgaben. Die Metadaten behaupteten damit
+Aktivität (u. a. `perceptual_loss`, `zone_engine`, `regulator_v8`,
+`onnx_runtime`, `mod_parallel`), unabhängig davon, ob das Modul geladen war
+oder je ausgeführt wurde. Eine Quellcode-Nachsuche (grep über Produktionscode
+ohne Tests) ergab: **keine** dieser 28 Komponenten hat eine Aufrufstelle im
+produktiven Restaurierungspfad (`backend/api/bridge.py` → `denker/` →
+`UnifiedRestorerV3.restore()`). Ergänzend wurden sechs weitere Meldungen
+korrigiert, die `active: True` allein nach Typ-Import oder Cache-Präsenz
+lieferten (`stereo_par`, `reference_learning`, `semantic_goals`,
+`multi_objective`, `hyperparameter`, `hybrid_dereverb`), die reine
+Enum-Auflistung `processing_modes` verlor den bedeutungslosen `active`-Schlüssel,
+und der `QualityControl`-Block meldete `active: True`, obwohl die Konstruktion
+gescheitert war (jetzt: kein Metadatum).
+
+| Gruppe (alle `wired_into_restoration_pipeline=False`, außer der letzten Zeile) | Metadaten-Schlüssel |
+| --- | --- |
+| Trainings-/Experimentier-Framework (`optimization/`) | `adv_ensemble`, `auto_augmentation`, `neural_arch_search`, `opt_integration`, `perceptual_loss`, `opt_uncertainty`, `multi_objective`, `hyperparameter` |
+| Nur über verwaiste `backend/core/pipeline.py::AurikPipeline` erreichbar | `reg_context`, `zone_context`, `region_analysis`, `zone_engine` |
+| Keine Aufrufstelle außerhalb von Tests/eigenem Modul | `goal_conflict`, `undo_manager`, `mod_parallel`, `module_parallel`, `stereo_par`, `stereo_parallel`, `reference_learning`, `semantic_goals`, `onnx_converter`, `onnx_model_info`, `onnx_plugin_manager`, `onnx_fallback`, `onnx_quantizer`, `onnx_runtime`, `reg_adaptive_goal`, `reg_ethics`, `ethics_engine` (epistemic), `mg_uncertainty` |
+| Nur Offline-Tooling | `mg_quality_gate` (`golden_samples/benchmark_runner.py`) |
+| Nur verwaiste Datei | `reg_quality_ctrl` (`backend/feature_analysis.py`) |
+| FILE_REGISTRY: DEPRECATED (kanonisch: `regulator.py`) | `regulator_v8` |
+| **Real verdrahtet** (`wired_into_restoration_pipeline=True`) | `hybrid_dereverb` (`phase_20_reverb_reduction.py`) |
+
+**Normative Regeln:**
+
+1. **Kein toter Zeuge.** Jede im Produktionspfad gelesene Zustandsgröße
+   (`sys.modules.get`, Flag, Probe), aus der ein Metadatum abgeleitet wird,
+   MUSS ausgewertet werden. Lesen ohne Auswerten ist verboten.
+2. **Begriffstrennung (Metadaten-Vokabular):**
+   - `loaded_in_process` — Modul und Zielattribut sind im Prozess vorhanden
+     (reine Präsenz, kein Frischimport);
+   - `wired_into_restoration_pipeline` — das Modul hat eine Aufrufstelle im
+     produktiven Restaurierungspfad (Codebase-Tatsache, per Quellcode-Nachsuche
+     belegt, mit Begründung im Feld `note`);
+   - `active` / `executed` — **nur** nach erfolgreicher Instanziierung oder
+     realer Ausführung der Komponente im aktuellen Lauf.
+   `active` darf nie für bloße Präsenz, Typ-Import oder Importierbarkeit
+   stehen; ein gescheiterter Konstruktor liefert kein Metadatum.
+3. **Deadlock-Schutz.** Reine Präsenz-Meldungen (Helfer
+   `_compute_module_presence_result`) dürfen keinen Frischimport auslösen
+   (`import`, `importlib.import_module`); `restore()` läuft im GUI-Batch-Pfad
+   in einem `QThread` (Aurik10/ui/modern_window.py, `BatchProcessingThread`).
+   Zulässig ist nur das Lesen von `sys.modules` (Lock-Disziplin, §VI
+   (copilot-instructions.md), Punkt 7). **Offene Schuld:** Diagnose-Helfer, die
+   eine Komponente instanziieren (`hybrid_*`, `audit_log`, `regulator`,
+   `quality_gate`, `adaptive_*` u. a.), importieren weiterhin lokal im
+   Analytik-Pfad; die Vereinheitlichung auf Cache-Zugriff plus belegte
+   Konstruktion ist nicht erfolgt und bleibt eigenes Arbeitspaket.
+4. **Report-Only.** Diagnose-Metadaten verändern weder Audio noch eine
+   Entscheidung (Gate, Stärke, Rollback). Aus Modul-Präsenz folgt **keine**
+   Qualitäts- oder Hörbehauptung (insbesondere kein „Perceptual-Loss aktiv“
+   als Wohlklang-Beleg: `CombinedPerceptualLoss` ist ein Trainings-Verlust und
+   steht nicht im Signalpfad).
+5. **Verdrahtungslücke = offene Schuld.** `wired_into_restoration_pipeline=False`
+   ist kein Erfolg. Ein solches Modul wird entweder mit Hörnachweis nach dem
+   §4-Verfahren (`flag_freigabe.py`) in den Pfad aufgenommen oder in
+   `.github/FILE_REGISTRY.md` als DEPRECATED/TEST_ONLY/ARCHIVED geführt —
+   nicht still als „aktiv“ belassen (Anti-Parallelwelten-Prinzip, AGENTS.md §3).
+   **Offene Schuld (Stand 2026-11-22):** Von den 32 nicht verdrahteten Modulen
+   der Tabelle steht nur `regulator_v8.py` im FILE_REGISTRY (DEPRECATED); die
+   übrigen 31 sind dort nicht geführt. Die Entscheidung je Modul — mit Hörnachweis
+   integrieren, als TEST_ONLY führen oder archivieren — ist eine
+   Architekturentscheidung (u. a. importiert `backend/core/onnx/__init__.py` den
+   Quantizer) und steht aus.
+   **Offene Schuld (Schreibzugriffe ohne Leser):** Der Phasen-Akkumulator
+   `UnifiedRestorerV3._phase_metadata_accumulator` erreicht das Ergebnis nicht als
+   Ganzes; nur einzeln kopierte Schlüssel kommen an. Eine statische Suche
+   (2026-11-22) fand 49 literal geschriebene Schlüssel, davon 21 ohne erkennbaren
+   Leser (u. a. `wohlklang_ordnung_violation`, `human_hearing_comfort_guard`,
+   `preflight_risk_guard`, `recovery_state_machine`). Das sind **Kandidaten**
+   (statisch, teils über Wert-Scans einzelner Unterfelder gelesen) — je Schlüssel
+   ist zu entscheiden, ob er im Ergebnis erscheinen (§G8 (copilot-instructions.md):
+   Entscheidungen nachvollziehbar) oder entfallen muss. Der Schlüssel
+   `song_structure` war bis 2026-11-22 ein solcher Fall (nur geschrieben); die
+   SongContextMap (Spec 03 §SCM) liest ihn jetzt und bringt Tempo und Segmente
+   explizit ins Ergebnis.
+6. **Umstellung auf `True`.** `wired_into_restoration_pipeline=True` darf erst
+   gesetzt werden, wenn Aufrufstelle und Test im selben Commit belegt sind.
+
+**Enforcement (maschinell):**
+`tests/unit/test_unified_restorer_v3.py::TestComputeModulePresenceResult`
+(Helfer-Semantik, Verbot des `active`-Schlüssels, kein Frischimport, alle
+umgestellten Methoden) und `tests/normative/test_diagnostic_metadata_truth_gate.py`
+(AST-Gate mit Selbsttest: kein toter `sys.modules`-Zeuge in Produktionscode;
+`"active": True` in `UnifiedRestorerV3._compute_*` nur nach Instanziierung).
+Wirkungsbeleg: auf dem eingecheckten Stand vor der Korrektur meldet derselbe
+Scanner 26 tote Zeugen und 36 unbelegte `active`-Ansprüche (34 Helfer), danach 0/0.
+
+---
+
+## §8.8 [RELEASE_MUST] Hörsitzung — verblindete, richtungsexplizite Hör-Evidenz (2026-11-22)
+
+Menschliche Hörurteile sind die einzige Instanz, die einen Reparatur-Kanal freigeben
+darf (hoerordnung.instructions.md §7). Der Weg dorthin muss die Menschenzeit
+effizient nutzen und darf **nie** Evidenz erzeugen, die keine ist.
+
+- **Verblindung:** Der Hörer sieht nie Bestand/Kandidat, Blocknamen oder Dateinamen.
+  Schlüssel liegt versiegelt (`versiegelt/`), der öffentliche Plan (`plan.json`) enthält
+  nur Nummer, neutrale ID, Dauer und Runde.
+- **Richtung explizit:** Beleg-Schema `aurik.ab_stats/2` trägt `siege_kandidat` und
+  `siege_bestand`; `scripts/flag_freigabe.py` bucht nur bei `siege_kandidat >
+  siege_bestand`. `aurik.ab_stats/1` ist nur mit `kandidat_seite` buchbar. Ein
+  signifikantes Votum für den Bestand schaltet nie ein Flag frei (Befund 2026-11-22:
+  `/1` wurde zuvor richtungsblind akzeptiert).
+- **Machbarkeit vor dem Hören:** Der exakte Vorzeichentest erreicht bei n Paaren höchstens
+  p = 2/2ⁿ; Signifikanz (α = 0,05) braucht n ≥ 6. Blöcke mit weniger Paaren werden
+  zurückgestellt und mit Nachbau-Hinweis ausgewiesen, statt Menschenzeit ohne mögliches
+  Ergebnis zu verbrauchen. Byte-identische Paare (A=B) werden mit Grund ausgeschlossen.
+- **Bias-Kontrolle:** je Block exakt ausbalancierte Position (Kandidat erste/zweite Hälfte),
+  Pegelabgleich auf Body-Perzentil p25 (nur Abschwächung, Toleranz 0,5 dB), Tiefpass-Anker
+  (3,5 kHz, ITU-R BS.1534) und identische Paare als Kontrollen; Hörer mit
+  Anker-Trefferquote < 0,75 sind ungültig. Beide Schwellen sind Vorbelegungen
+  (`vorbelegung_hoerpanel_offen`), keine Hörpanel-Kalibrierung.
+- **Keine simulierte Evidenz:** `simuliert=True`, `gueltig=False`, `vollstaendig=False`
+  sind nie buchbar. Der Sign-off-Entwurf trägt „Maintainer Sign-off: AUSSTEHEND“; das
+  Werkzeug flippt nie ein Flag.
+- **Grenze:** Ein Hörer ist ein Zeuge, kein MUSHRA-Panel (n ≥ 30, §8.1.5 bleibt offen).
+
+**Enforcement (maschinell):** `tests/unit/test_hoersitzung.py` (Verblindung, Balance,
+Machbarkeit, Kontrollen, Richtung, Gültigkeit, Simulationssperre) und
+`tests/unit/test_flag_freigabe.py` (Richtungsregel). Bedienung: `docs/guides/HOERSITZUNG.md`.
 
 ---
 
@@ -1038,13 +1199,15 @@ Gesamtwert ohne Modus-Trennung ist unzulässig.
 1. Blindvergleich `Input` vs `Restored` vs `Modern Reference` dokumentiert
 2. Bewertungsachsen enthalten mindestens:
     `Frische/Presence`, `Punch/Bass-Kraft`, `Klarheit`, `Artefaktfreiheit`
-3. OQS-Gate (§8.1.1a) und Hörurteil dürfen sich nicht widersprechen
-4. Bei Widerspruch gilt Hörurteil als Release-Blocker bis Root-Cause-Analyse vorliegt
+3. OQS-Referenzwert (§8.1.1a) und Hörurteil dürfen sich nicht widersprechen
+4. Bei Widerspruch gilt das Hörurteil; OQS bleibt report-only bis zur Hörkalibrierung
 5. **Szenarien-Pflicht**: Alle 3 mandatory Szenarien (`docs/reports/hearing_test_scenarios_studio2026.yaml`) müssen als Validierungsbasis durchlaufen werden:
     - `STUDIO2026_SCENARIO_1`: Compressed Pop Mix + Thin Vocal (Pop/Dance Vocal)
     - `STUDIO2026_SCENARIO_2`: Lo-Fi Hip-Hop Muddy Mix + Weak Vocal (Hip-Hop Vocal)
     - `STUDIO2026_SCENARIO_3`: Acoustic Folk Thin + Narrow Stereo (Folk Vocal)
-6. Jedes Szenario muss die dokumentierten `mandatory_validation_points` erfüllen (OQS ≥ 86–88, PQS MOS ≥ 4.3–4.5)
+6. `mandatory_validation_points` (einschließlich OQS/PQS-Werten) werden als
+   Diagnose berichtet; Export- und Release-Entscheidungen stützen sich auf das
+   verblindete Hörurteil und die kalibrierten Sicherheits-Invarianten.
 7. GO/NO-GO-Entscheidung folgt Studio-2026-Entscheidungslogik in `docs/guides/GO_NO_GO_DECISION_PROTOCOL.md` (Phase 1–4)
 
 **PR-Artefakt-Pflicht:**
@@ -1152,7 +1315,7 @@ def pytest_sessionfinish(session, exitstatus):
 
 ```python
 assert len(set(result.phases_executed) & TIER_1_PHASES) >= 2
-assert result.quality_estimate >= 0.55  # Formel: §8.1
+assert math.isfinite(result.quality_estimate) and 0.0 <= result.quality_estimate <= 1.0
 assert result.material_type is not None
 assert result.metadata.get("era") is not None
 assert result.metadata.get("panns_tags") is not None
@@ -1288,7 +1451,7 @@ Tests dürfen den Host nicht destabilisieren. Für potenziell hostgefährdende M
 7. **GrooveMetric** — DTW ≤ 8 ms RMS
 8. **SOFT_SATURATION** — nicht als CLIPPING detektiert
 9. **Pass-Through** — SNR > 40 dB → PQS-MOS-Verlust ≤ 0.05
-10. **quality_estimate** — ≥ 0.55 im E2E
+10. **quality_estimate** — endlich und in [0, 1]; report-only, kein Mindestwert
 11. **Sample-Rate** — `assert sr == 48000` löst `AssertionError` bei 44100
 
 ### Test-Pattern (Vorlage)
@@ -1383,7 +1546,7 @@ In externen Berichten: „OQS (algorithmisch)".
 | Good (B) | ≥ 80 | **[RELEASE_MUST]** — Pflicht für jede neue Phase/Plugin |
 | Excellent (A) | ≥ 91 | Exzellenz-Label — kein harter Gate-Wert |
 
-**[TARGET_2026]** Studio-2026-Ziel: OQS ≥ **88** — Roadmap-Ziel, kein Release-Blocker.
+**[TARGET_2026]** Studio-2026-Ziel: OQS ≥ **88** — report-only bis zur Hörkalibrierung, kein Export- oder Release-Blocker.
 
 ### AMRB-Details
 

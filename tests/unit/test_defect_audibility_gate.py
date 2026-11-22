@@ -17,12 +17,14 @@ from backend.core.defect_audibility_gate import (
     DefectAudibilityReport,
     MaskingStrengthDecision,
     audible_threshold,
+    build_defect_reduction_per_type,
     canonical_audibility_verdicts,
     evaluate_defect_audibility,
     is_fully_masked,
     masking_governed_strength,
     masking_governed_strength_from_report,
     target_residual_severity,
+    write_defect_audibility_metadata,
 )
 
 
@@ -126,16 +128,96 @@ class TestEvaluateAudibility:
         assert rep.to_metadata()["evidence_state"] == "scan_missing"
 
     def test_no_residual_defects_after_real_scan_is_verified(self) -> None:
-        # Post-Scan lief, fand nichts Ueber-der-Schwelle-Liegendes -> bestanden.
-        rep = evaluate_defect_audibility({}, material_key="vinyl", post_scan_ran=True)
+        # A real full-song scan explicitly measured every required type as zero.
+        from backend.core.defect_scanner import DefectType
+
+        measured_zeroes = {defect_type.value: _entry(0.0, 0.0) for defect_type in DefectType}
+        rep = evaluate_defect_audibility(
+            measured_zeroes,
+            material_key="vinyl",
+            post_scan_ran=True,
+            scan_scope="whole_song",
+        )
         assert rep.evidence_state == "no_residual_defects"
+        assert rep.coverage_complete is True
+        assert rep.measured_type_count == len(DefectType)
         assert rep.gate_verified is True
 
     def test_evaluated_scan_is_verified(self) -> None:
-        rep = evaluate_defect_audibility({"clicks": _entry(0.5, 0.02)}, material_key="vinyl", post_scan_ran=True)
+        rep = evaluate_defect_audibility(
+            {"clicks": _entry(0.5, 0.02)},
+            material_key="vinyl",
+            post_scan_ran=True,
+            expected_types=["clicks"],
+            scan_scope="whole_song",
+        )
         assert rep.evidence_state == "evaluated"
         assert rep.n_verified == 1
         assert rep.gate_verified is True
+
+    def test_partial_type_coverage_is_not_verified(self) -> None:
+        rep = evaluate_defect_audibility(
+            {"clicks": _entry(0.0, 0.0)},
+            material_key="vinyl",
+            post_scan_ran=True,
+            scan_scope="whole_song",
+        )
+        assert rep.gate_passed is True
+        assert rep.gate_verified is False
+        assert rep.evidence_state == "coverage_incomplete"
+        assert rep.coverage_complete is False
+        assert "clicks" not in rep.missing_types
+        assert rep.required_type_count == len(rep.missing_types) + rep.measured_type_count
+
+    def test_reduction_builder_keeps_measured_zero_and_marks_absent_types(self) -> None:
+        from types import SimpleNamespace
+
+        from backend.core.defect_scanner import DefectType
+
+        zero = SimpleNamespace(severity=0.0, metadata={}, locations=[])
+        scan = SimpleNamespace(scores={DefectType.CLICKS: zero})
+        reductions = build_defect_reduction_per_type(scan, scan)
+
+        assert len(reductions) == len(DefectType)
+        assert reductions["clicks"]["pre"] == 0.0
+        assert reductions["clicks"]["pre_measured"] is True
+        assert reductions["crackle"]["pre_measured"] is False
+        report = evaluate_defect_audibility(
+            reductions,
+            material_key="vinyl",
+            post_scan_ran=True,
+            scan_scope="whole_song",
+        )
+        assert report.gate_verified is False
+        assert "crackle" in report.missing_types
+
+    def test_chunk_local_scan_is_not_verified_as_whole_song(self) -> None:
+        rep = evaluate_defect_audibility(
+            {"clicks": _entry(0.0, 0.0)},
+            material_key="vinyl",
+            post_scan_ran=True,
+            expected_types=["clicks"],
+            scan_scope="chunk",
+        )
+        assert rep.coverage_complete is True
+        assert rep.evidence_state == "scope_incomplete"
+        assert rep.gate_verified is False
+
+    def test_unverified_report_degrades_export_metadata(self) -> None:
+        report = evaluate_defect_audibility(
+            {},
+            material_key="vinyl",
+            post_scan_ran=True,
+            scan_scope="whole_song",
+        )
+        metadata: dict = {}
+
+        write_defect_audibility_metadata(metadata, report)
+
+        assert metadata["degradation_status"] == "degraded"
+        assert metadata["hoerbarkeits_gate_passed"] is False
+        assert metadata["defect_residual_audibility"]["coverage_complete"] is False
+        assert metadata["fail_reasons"][0]["error_code"] == "AUDIBILITY_EVIDENCE_INCOMPLETE"
 
     def test_failed_gate_is_never_verified(self) -> None:
         rep = evaluate_defect_audibility({"clicks": _entry(0.5, 0.20)}, material_key="vinyl", post_scan_ran=True)
