@@ -583,18 +583,21 @@ gescheitert war (jetzt: kein Metadatum).
    steht weiter aus (u. a. importiert `backend/core/onnx/__init__.py` den Quantizer;
    mehrere Module sind nur über andere nicht verdrahtete Module erreichbar, die
    Klassifikation ist nicht transitiv).
-   **Offene Schuld (Schreibzugriffe ohne Leser):** Der Phasen-Akkumulator
+   **Schreibzugriffe ohne Leser — geschlossen (2026-11-22):** Der Phasen-Akkumulator
    `UnifiedRestorerV3._phase_metadata_accumulator` erreicht das Ergebnis nicht als
-   Ganzes; nur einzeln kopierte Schlüssel kommen an. Eine statische Suche
-   (2026-11-22) fand 49 literal geschriebene Schlüssel, davon 21 ohne erkennbaren
-   Leser (u. a. `wohlklang_ordnung_violation`, `human_hearing_comfort_guard`,
-   `preflight_risk_guard`, `recovery_state_machine`). Das sind **Kandidaten**
-   (statisch, teils über Wert-Scans einzelner Unterfelder gelesen) — je Schlüssel
-   ist zu entscheiden, ob er im Ergebnis erscheinen (§G8 (copilot-instructions.md):
-   Entscheidungen nachvollziehbar) oder entfallen muss. Der Schlüssel
-   `song_structure` war bis 2026-11-22 ein solcher Fall (nur geschrieben); die
-   SongContextMap (Spec 03 §SCM) liest ihn jetzt und bringt Tempo und Segmente
-   explizit ins Ergebnis.
+   Ganzes. Eine strenge statische Suche (nur Literal-Lesezugriffe im Produktionscode;
+   Tests, die den Quelltext greppen, zählen nicht als Leser) fand 16 nur geschriebene
+   Schlüssel. Entscheidung (§G8 (copilot-instructions.md): Entscheidungen
+   nachvollziehbar): Sie erscheinen **report-only** unter
+   `metadata["phase_decision_diagnostics"]` (JSON-sicher, NaN/Inf → `None`, große
+   Arrays nur als Form, Größenbegrenzung); die Liste steht in
+   `UnifiedRestorerV3._PHASE_DECISION_DIAGNOSTIC_KEYS`. Der Schlüssel `song_structure`
+   wird von der SongContextMap (Spec 03 §SCM) gelesen. **Maschinelle Regel:** Ein neuer
+   nur geschriebener Akkumulator-Schlüssel ohne Eintrag in dieser Liste lässt
+   `tests/normative/test_diagnostic_metadata_truth_gate.py` fehlschlagen. **Grenze:** Das
+   ist Sichtbarkeit, keine Wirkung — ob ein Schlüssel eine Entscheidung treiben soll,
+   ist eine eigene Entscheidung mit Hörnachweis nach §4; die Suche ist literal
+   (dynamisch gebildete Schlüsselnamen bleiben unsichtbar).
 6. **Umstellung auf `True`.** `wired_into_restoration_pipeline=True` darf erst
    gesetzt werden, wenn Aufrufstelle und Test im selben Commit belegt sind.
 

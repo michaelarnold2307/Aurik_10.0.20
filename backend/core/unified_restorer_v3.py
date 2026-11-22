@@ -23151,6 +23151,8 @@ class UnifiedRestorerV3:
                 "uqm_override_applied": bool(_uqm_override_applied),
                 # §SCM (Spec 03) SongContextMap — report-only; None, wenn nicht erzeugbar.
                 "song_context_map": getattr(self, "_song_context_map_meta", None),
+                # §G8 (copilot-instructions.md): bisher nur geschriebene Entscheidungs-Diagnosen, report-only.
+                "phase_decision_diagnostics": self._phase_decision_diagnostics_meta(),
                 # Perzeptuelle Scores für GUI
                 "mushra_score": float(_dnh_mushra),
                 "do_no_harm_hpi_score": float(_dnh_hpi),
@@ -26152,6 +26154,56 @@ class UnifiedRestorerV3:
         except Exception as _e37a:
             logger.debug("AuditLog übersprungen: %s", _e37a)
             return None
+
+    # §G8 (copilot-instructions.md), Spec 07 §8.7 Punkt 5: Akkumulator-Schlüssel, die geschrieben, aber von
+    # keinem Code gelesen wurden (Befund 2026-11-22), erscheinen report-only im Ergebnis.
+    _PHASE_DECISION_DIAGNOSTIC_KEYS: tuple[str, ...] = (
+        "cumulative_budget",
+        "dag_sorted_before_execution",
+        "dag_violations_final",
+        "dag_violations_intermediate",
+        "dgwcs",
+        "goal_baseline_recovery",
+        "import_temporal_coherence",
+        "metric_reliability_confidence",
+        "mono_phase_cancellation_db",
+        "post_mdem_warmth_blend",
+        "post_mdem_warmth_loss_db",
+        "preflight_risk_guard",
+        "short_excerpt_goal_feasibility",
+        "singmos_phase65_recovery",
+        "wohlklang_ordnung_enforcement",
+        "wohlklang_ordnung_violation",
+    )
+
+    @classmethod
+    def _json_safe_diagnostic(cls, value: Any, depth: int = 0) -> Any:
+        """JSON-sichere, größenbegrenzte Kopie (NaN/Inf → None, große Arrays nur als Form)."""
+        if depth > 6:
+            return None
+        if value is None or isinstance(value, (bool, str)):
+            return value if not isinstance(value, str) else value[:300]
+        if isinstance(value, (int, np.integer)):
+            return int(value)
+        if isinstance(value, (float, np.floating)):
+            number = float(value)
+            return number if math.isfinite(number) else None
+        if isinstance(value, np.ndarray):
+            if value.size <= 64:
+                return cls._json_safe_diagnostic(value.tolist(), depth + 1)
+            return {"shape": list(value.shape), "dtype": str(value.dtype)}
+        if isinstance(value, dict):
+            return {str(k)[:80]: cls._json_safe_diagnostic(v, depth + 1) for k, v in list(value.items())[:100]}
+        if isinstance(value, (list, tuple, set, frozenset)):
+            return [cls._json_safe_diagnostic(v, depth + 1) for v in list(value)[:200]]
+        return str(value)[:300]
+
+    def _phase_decision_diagnostics_meta(self) -> dict[str, Any]:
+        """Report-only: im Akkumulator belegte Entscheidungs-Diagnosen; fehlende Schlüssel erscheinen nicht."""
+        acc = getattr(self, "_phase_metadata_accumulator", None)
+        if not isinstance(acc, dict):
+            return {}
+        return {k: self._json_safe_diagnostic(acc[k]) for k in self._PHASE_DECISION_DIAGNOSTIC_KEYS if k in acc}
 
     def _compute_module_presence_result(
         self,

@@ -119,3 +119,55 @@ def test_active_true_in_unified_restorer_diagnostics_requires_instantiation() ->
         "'active': True ohne Instanziierung in UnifiedRestorerV3 (Spec 07 §8.7 Regel 2): "
         + ", ".join(f"{fn}:{line}" for fn, line in offenders)
     )
+
+
+def _write_only_accumulator_keys(source: str) -> set[str]:
+    """Akkumulator-Schlüssel, die in UV3 nur geschrieben, nie gelesen werden (Literal-Suche)."""
+    import re
+
+    keys = set(re.findall(r'_phase_metadata_accumulator\[\s*"([^"]+)"\s*\]\s*=(?!=)', source))
+    return {
+        k
+        for k in keys
+        if len(re.findall(rf'["\']{re.escape(k)}["\']', source))
+        == len(re.findall(rf'_phase_metadata_accumulator\[\s*"{re.escape(k)}"\s*\]\s*=(?!=)', source))
+    }
+
+
+def test_write_only_accumulator_keys_reach_the_result() -> None:
+    """Spec 07 §8.7 Punkt 5: Ein nur geschriebener Akkumulator-Schlüssel muss im Ergebnis erscheinen (§G8)."""
+    from backend.core.unified_restorer_v3 import UnifiedRestorerV3
+
+    source = _UV3.read_text(encoding="utf-8")
+    offen = _write_only_accumulator_keys(source) - set(UnifiedRestorerV3._PHASE_DECISION_DIAGNOSTIC_KEYS)
+    assert not offen, f"Nur geschriebene Akkumulator-Schlüssel ohne Ergebnis-Pfad: {sorted(offen)}"
+    assert '"phase_decision_diagnostics"' in source
+
+
+def test_write_only_scanner_selbsttest() -> None:
+    synthetic = 'self._phase_metadata_accumulator["zombie"] = 1\nself._phase_metadata_accumulator["gelesen"] = 2\nx = acc.get("gelesen")\n'
+    assert _write_only_accumulator_keys(synthetic) == {"zombie"}
+
+
+def test_phase_decision_diagnostics_are_json_safe_and_report_only() -> None:
+    import json
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    from backend.core.unified_restorer_v3 import UnifiedRestorerV3 as UV3
+
+    fake = SimpleNamespace(
+        _phase_metadata_accumulator={
+            "dgwcs": {"score": float("nan"), "arr": np.arange(1000), "n": np.int64(3)},
+            "cumulative_budget": {"used": np.float32(0.5)},
+            "nicht_gelistet": 1,
+        }
+    )
+    fake._PHASE_DECISION_DIAGNOSTIC_KEYS = UV3._PHASE_DECISION_DIAGNOSTIC_KEYS
+    fake._json_safe_diagnostic = UV3._json_safe_diagnostic
+    meta = UV3._phase_decision_diagnostics_meta(fake)
+    json.dumps(meta, allow_nan=False)
+    assert set(meta) == {"dgwcs", "cumulative_budget"}
+    assert meta["dgwcs"]["score"] is None and meta["dgwcs"]["arr"]["shape"] == [1000] and meta["dgwcs"]["n"] == 3
+    assert UV3._phase_decision_diagnostics_meta(SimpleNamespace()) == {}

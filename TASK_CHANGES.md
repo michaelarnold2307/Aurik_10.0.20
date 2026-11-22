@@ -1,6 +1,6 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-22 13:43 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-22 14:00 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
@@ -8,13 +8,11 @@
 | Status | Pfad | Art |
 |---|---|---|
 | M | `.github/specs/07_quality_and_tests.md` | modifiziert |
-| M | `configs/package.json` | modifiziert |
-| M | `docs/guides/HOERSITZUNG.md` | modifiziert |
-| M | `docs/reports/spec_evidence/2026-11-22_spec_07_hoersitzung.md` | modifiziert |
+| M | `CLAUDE.md` | modifiziert |
+| M | `backend/core/unified_restorer_v3.py` | modifiziert |
 | M | `reports/spec_drift_baseline.json` | modifiziert |
-| M | `scripts/erstelle_hoerproben.py` | modifiziert |
-| M | `scripts/hoersitzung.py` | modifiziert |
-| M | `tests/unit/test_hoersitzung.py` | modifiziert |
+| M | `tests/normative/test_diagnostic_metadata_truth_gate.py` | modifiziert |
+| ?? | `docs/reports/spec_evidence/2026-11-22_spec_07_akkumulator_diagnosen.md` | ungetrackt |
 
 ## Entscheidungen
 

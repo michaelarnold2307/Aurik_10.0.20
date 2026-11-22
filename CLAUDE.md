@@ -160,7 +160,7 @@ mp3_low  (Physical)       → IQR-Guard, Bandbreiten-Cap, Pre-Echo-Schutz
 
 - MediumDetector → physikalische Chain + `physical_analog_sources`
 - EraClassifier → `material_prior` als Precursor, §v10.303.42 Deep-Chain-Korrektur (≥3 Träger → +10y/Stufe)
-- DefectScanner → kettenadaptive Schwellwerte für ALLE 20 Defekttypen + §v10.304 AST Defect-Music-Discriminator
+- DefectScanner → kettenadaptive Schwellwerte für jeden Defekttyp, der auf dem primären Material gesperrt ist (≥ 0.95; most-sensitive-wins über die Kettenstufen, `MATERIAL_SENSITIVITY`) + §v10.304 AST Defect-Music-Discriminator
 - SourceFidelityReconstructor → Bandbreiten-Ziel vom ältesten Träger
 - Phase-Selektion → `reel_tape`-Precursor aktiviert Phase 06 (Frequency Restoration)
 - LyricsGuidedEnhancement → §v10.303.50 HF-Whisper-Decoder (echte Wort-Transkription) + §v10.303.52 Semantic-DSP
