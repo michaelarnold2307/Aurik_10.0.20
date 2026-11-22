@@ -6,7 +6,7 @@
 > Eintrag muss als Datei existieren. Verwaiste Specs (nirgendwo referenziert)
 > gelten über diesen Index als kanonisch verankert.
 
-Stand: 95 Specs.
+Stand: 96 Specs.
 
 | Spec | Titel |
 |---|---|
@@ -49,6 +49,7 @@ Stand: 95 Specs.
 | 24_ml_fallback_architektur.md | Spec 24: ML-Fallback-Architektur — Kein stiller Ausfall mehr |
 | 25_ambience_match_plugin.md | Spec 25: Ambience-Match — Natürliche Raumhülle für restauriertes Material · §v10 Pleasantness-First |
 | 26_defekt_reparatur_trainingsvertrag.md | Spec 26: Defekt-Reparatur-Trainingsvertrag (DRT-1..DRT-16) — Trainings-/Aktivierungs-Leitplanken, Ganz-Titel-Never-worsen, RX-12-Nichtunterlegenheitsvertrag und maschinelle Paritäts-Belegpflicht |
+| 27_ablehnung_nacharbeit_vertrag.md | Spec 27: Ablehnungs-Nacharbeit-Vertrag (ANT-1..ANT-9) — Ablehnung als Startpunkt belegter SOTA-Überarbeitung; Klassen ANT-A (Substanz) / ANT-B (Mess-Artefakt), Umkehr-Register, Re-Gate über den Produktions-Pfad |
 | CHANGELOG_2026-08-12.md | Changelog — 2026-08-11/12 |
 | XX_measure_template.md | Spec XX: [TITEL] — [KURZBESCHREIBUNG] |
 | aurik_gesamtoekosystem_v10_17.md | §v10.17 Aurik Gesamtökosystem — Spezifikation |

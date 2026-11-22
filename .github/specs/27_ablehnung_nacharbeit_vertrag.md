@@ -1,0 +1,113 @@
+# Spec 27: Ablehnungs-Nacharbeit-Vertrag (ANT)
+
+> **Status: Aktiv — kanonisch über `00_SPEC_INDEX.md`, maschinell geprüft durch
+> `audit/spec_integration_scanner.py`.**
+> Dieser Vertrag macht die **Ablehnung eines Gate-Verdikts zum Startpunkt einer
+> belegten SOTA-Überarbeitung** statt zum Endzustand. Er ergänzt Spec 26
+> (DRT-1..DRT-16): Spec 26 definiert die Messung, Spec 27 den Umgang mit dem
+> gemessenen „nein".
+
+## 1. Zweck
+
+Jede Ablehnung (B3-Beschluss, Witness-Kopf-Gate, Detektor-Gate, D3-Gate,
+Cantus-Gate, …) trägt eine der beiden folgenden Ursachenklassen. Die Klasse
+bestimmt den Überarbeitungsweg. **Eine Ablehnung wird nie durch Schwellwert-
+Senkung, Mess-Anpassung oder phasen-individuelle Ausnahme umgekehrt** (DRT-5);
+sie wird durch Ursachen-Arbeit am Modell, an den Daten oder am Messpfad
+umgekehrt und anschließend über denselben Produktions-Pfad neu gemessen.
+
+## 2. Die zwei Ablehnungs-Klassen
+
+### ANT-A — Substanz-Ablehnung (das Modell ist wirklich nicht gut genug)
+
+Erkennung: Der Messpfad ist verifiziert wirksam (D-K3-85-Klasse „Schalter hat
+Lesestelle", an/aus-Deltas über Lauf-Rauschen), und der Kandidat verfehlt die
+Gate-Bedingung auf Substanz.
+
+Beispiele (belegt):
+
+- **Cantus v3** (2026-11-19): never_worsen verfehlt auf sauberem Gesang
+  (mos 4,71→4,43) — Substanz, weil der Pfad wirksam gemessen wurde. Zugleich
+  belegter Nutzen auf degradiertem Gesang (AvaLuna +0,74 MOS, 3,51→4,25).
+- **W-3-Neumessung** (2026-11-11): 2/6 Vorteile trotz pfad_wirksam ✓ und
+  never_worsen ✓ — die 9 ML→DSP-Fallbacks sind ein Produktions-Defekt der
+  Tier-0-Erreichbarkeit, kein Mess-Artefakt.
+- **dropouts-Kopf** (2026-11-21): q −0,26 (Kopf regressiert den Holdout),
+  später q 2,0 (Clip = Überrestauration) — Substanz des Kopfs.
+
+### ANT-B — Mess-Artefakt-Ablehnung (der Messpfad hat nie richtig gemessen)
+
+Erkennung: an/aus-Deltas ≤ Lauf-Rauschen (≤ 1e-4) ODER widersprüchliche
+Objektiv-Belege ODER der Schalter hat keine wirksame Lesestelle
+(D-K3-85-Klasse) ODER die Metrik ist für die Defekt-Dimension blind.
+
+Beispiele (belegt):
+
+- **W-2** (2026-11-11): an/aus-Deltas ≤ 1e-4 = Lauf-Rauschen — es wurde nie
+  das Modell gemessen; die Ablehnung ist ein Qualitätsurteil über den
+  Messpfad, nicht über SCNet.
+- **W-3-Erstbeschluss** (2026-11-05): No-Op-Artefakt durch Dauer-Achsen-Bug —
+  nachweislich ungültig (2026-11-06 korrigiert).
+- **W-1**: never_worsen verfehlt UND widersprüchliche Belege (HF-Gain
+  BESTÄTIGT vs. musik_mos ABGELEHNT) — der mono-basierte musik_mos-Teacher
+  honoriert Stereo-/HF-Verbesserungen nicht (Snowmine-Muster 2026-11-20:
+  mono-blinde Metrik verwarf einen robusten Stereo-Gewinn).
+- **WF-V4 / TP-V2** (2026-11-08/09): B3-Ablehnungen waren Mess-Artefakte
+  (nie erzeugtes `.onnx` geladen bzw. Seed-Gewichte statt Checkpoint) —
+  D-K3-85-Klasse, nachweislich keine Qualitätsurteile.
+- **Witness-Blindheit dropout_oxide/tape_splice** (2026-11-22): die
+  max-normalisierte Mel löscht die Pegel-Dimension, in der die Defekte leben
+  (Kontrast +17,4/+4,6 dB im Audio, 0,01 in der Mel) — die Ablehnung ist ein
+  Repräsentations-Artefakt, kein Urteil über die Reparierbarkeit.
+
+## 3. Umkehr-Register (priorisiert nach Wohlklang-Wert fürs menschliche Ohr)
+
+| Priorität | Kandidat | Klasse | Belegter Nutzen | Überarbeitungs-Hebel |
+|---|---|---|---|---|
+| 1 | Cantus (Gesang) | A | +0,74 MOS auf degradiertem Gesang | Clean-seitige Never-worsen-Regularisierung im Domain-Adapt |
+| 2 | W-1 (Brillanz/Air) | B | HF-Gain-Beschluss bestätigt; entspricht §4-Wunschrichtung „heller UND weniger Rauschen" | Stereo-bewusste Messung + §7-Hör-Entscheidung |
+| 3 | W-2/W-3 (Musik-Denoise) | B/A | „Decrackle ist nach Denoise der größte Register-Hebel" (SOTA-HANDOVER) | W-2: Schalter-Lesestelle verifizieren, dann echt messen; W-3: 9 Fallbacks beheben |
+| 4 | Witness dropouts / dropout_oxide / tape_splice | B | 8–17 dB Pegel-Kontrast der Defekte; Dropout-Reparatur = unmittelbarer Hörgewinn auf Bandmaterial | abs-Mel (Drift-Schluss) + RMS-Skip + Kontrast-Hinge + Clean-Gewichtung; Re-Gate über den Produktions-Pfad |
+| 5 | M4-Router | A | indirekt (Routing-Präzision) | nur nach belegtem Router-Fehlerbild |
+| 6 | BigVGAN-F3 / FlashSR-Finetunes | A | inkrementeller HF-Gewinn über funktionierender Basis | Produktions-Mel-Training (BigVGAN) bzw. HF-Residual (FlashSR) |
+
+## 4. Bindende Regeln (ANT-1..ANT-9)
+
+1. **Keine Umkehr ohne Ursachen-Beleg.** Jede Überarbeitung beginnt mit einer
+   Klassen-Entscheidung ANT-A/ANT-B und einem dokumentierten Befund
+   (Messzahlen, Log-Verweis, Beleg-JSON).
+2. **Mess-Artefakt zuerst.** ANT-B-Verdikte werden vor jeder Modell-Änderung
+   durch Messpfad-Reparatur aufgelöst und neu gemessen — nie durch
+   Modell-Tuning „um den Fehler herum" trainiert.
+3. **Repräsentations-Parität ist Messpflicht** (DRT-4, D-K3-96-Lehre): Training,
+   Gate und Produktions-DSP müssen dieselbe Merkmals-Repräsentation nutzen.
+   Jede Mel-/Fenster-/Normalisierungs-Änderung ist ein Paritäts-Ereignis mit
+   Beleg über alle drei Seiten.
+4. **Keine Schwellwert-Senkung** (DRT-5): Gate-Schwellen sind unantastbar;
+   überarbeitet wird das Modell, die Daten oder der Messpfad.
+5. **Default-AUS während der Überarbeitung:** jeder Kandidat bleibt hinter
+   einem bit-identischen Flag (Default AUS); Verdrahtung erzeugt keine
+   klangliche Änderung (§G1 (copilot-instructions.md)).
+6. **Re-Gate über den Produktions-Pfad** (DRT-7): nach jeder Überarbeitung
+   läuft das vollständige Gate erneut — Regionen-Beweis allein ist nie
+   hinreichend.
+7. **Aktivierung nur über §4:** auch ein bestandenes Gate aktiviert nichts;
+   der Flag-Flip bleibt der Hör-Instanz vorbehalten (DRT-6, DRT-8/12).
+8. **Ehrliches Scheitern bleibt erlaubt** (DRT-6): führt auch die Überarbeitung
+   nicht zum Gate-Erfolg, bleibt der Kanal report-only mit präziser
+   Rest-Ursache — nie ein stiller No-Op, nie ein Schein-Erfolg.
+9. **Umkehr-Register pflegen:** jede neue Ablehnung wird nach Klassen-Entscheid
+   in das Register (§3) aufgenommen; jede gelungene Umkehr wird mit Datum,
+   Gate-Zahlen und Beleg dokumentiert.
+
+## 5. Prozess
+
+```
+Gate-Verdikt „abgelehnt"
+   → Klassen-Entscheidung (ANT-A Substanz / ANT-B Mess-Artefakt) mit Beleg
+   → ANT-B: Messpfad reparieren → erneut messen
+   → ANT-A: Ursache (Modell/Rezeptur/Daten) beheben
+   → Re-Gate über den Produktions-Pfad (DRT-7, DRT-4-Parität)
+   → bestanden: Flag bleibt AUS, §4-Hör-Sign-off entscheidet über Aktivierung
+   → verfehlt: ehrlicher Report-only-Status mit Rest-Ursache (DRT-6)
+```
