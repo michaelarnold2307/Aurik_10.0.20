@@ -117,3 +117,22 @@ Ursache ist Datenarmut: tape_splice 51 Regionen (32 Trainingspaare),
 dropout_oxide 58 trainierbare Trainingsregionen. Die Expansions-Kette läuft;
 mit dem erweiterten Manifest ist die nächste ANT-A-Runde daten-gedeckt.
 Gate-Schwellen unangetastet (ANT-4), kein Flag-Flip (ANT-5).
+
+## 7. Zeile-7-Maximalausbau dropout_head_contact (2026-11-22, Nacht)
+
+Ausgang: q_med 2,0 (Clip = Überrestauration), Witness schwach (hoAUC 0,72,
+Kontrast 0,03), nur 15 trainierbare Trainingsregionen. Runde 1 (Pegel-Instrumente)
+negativ (hoAUC 0,40) — deterministische Umkehr. **Runde 2 — Transfer-Warmstart**
+(neues Flag `--init-von`, Commit: warm-start aus dem dropouts-Witness der
+verwandten Defekt-Familie): **Durchbruch** — der Transfer-Witness erreicht
+**hoAUC 0,9387, p_schaden 0,92 / p_clean 0,26 (Kontrast 0,66)** und besteht das
+Detektor-Gate. Der Kopf brauchte ein Retraining gegen den neuen Witness: der
+`--nw-min`-Filter blockierte (Rohkopf-NW 0,36 — der Filter modelliert den
+Produktions-Trigger nicht; Produktions-NW war 1,0), deshalb R2b mit
+Q-Ziel-1.0-Auswahl ohne NW-Filter; das Gate misst den Produktions-Schutzarm
+unverändert. **Ergebnis (2026-11-23): GATE BESTANDEN — q_median 0,58,
+q≥0,5 = 0,93, never_worsen 1,0, musik_mos +1,30** — Beleg
+`2026-11-23_witness_kopf_gate_dropout_head_contact.json`. Die Überrestauration
+(q 2,0 → 0,58) ist behoben, der Witness-Kontrast von 0,03 auf 0,66 gehoben.
+Transfer-Warmstart ist damit das dokumentierte Muster für daten-arme
+Witness-Klassen derselben Defekt-Familie.
