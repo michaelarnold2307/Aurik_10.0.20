@@ -80,6 +80,12 @@ mögliches Ergebnis. Sie brauchen weitere Paare (Nachbau mit
 Lauf — nicht während eines laufenden Trainings). Mit `--auch-nicht-entscheidbare`
 werden sie trotzdem gehört (nur Hinweis, nie buchbar).
 
+**M5 (Lücken-Synthese) ungültig:** Der Kandidat war ein Vocoder-Resynthese-Lauf einer
+Mel-Lücke, die Lücke blieb leer (Befund 2026-11-22: Hörer meldete in allen 12 Proben eine
+nicht gefüllte Lücke; gemessen −25…−28 dB gegenüber dem Rest). Paare mit ungefüllter Lücke
+werden ausgeschlossen. Ein Vocoder ist kein Inpainter — neu bauen mit einem echten
+Inpainter (CQTDiff+/GACELA) als Kandidat; erst dann ist M5 hörbar.
+
 Pakete mit byte-identischen A/B (aktuell: C4/Vocos) werden mit Grund ausgeschlossen; sie
 müssen neu erzeugt werden.
 

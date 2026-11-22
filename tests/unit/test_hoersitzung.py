@@ -228,6 +228,20 @@ def test_zu_kurze_proben_werden_nicht_zum_hoeren_angeboten(proben: Path, tmp_pat
     assert "witness_clicks" not in _plan(proben, tmp_path / "s2", mit_nicht_entscheidbaren=True)["bloecke"]
 
 
+def test_m5_mit_ungefuellter_luecke_wird_ausgeschlossen(proben: Path, tmp_path: Path) -> None:
+    # Befund 2026-11-22: der Vocoder-Kandidat ließ die 2-s-Lücke leer (−25…−28 dB) — das Paket prüfte keine Synthese.
+    for i in range(6):
+        k = _ton(10 + i, 10.0)
+        k[4000 * 3 : 4000 * 7] = 0.0  # Lücke (2 s bei 16 kHz = 32000 Samples, mittig)
+        n = k.size
+        k[n // 2 - SR : n // 2 + SR] = 0.0
+        _wav(proben / "m5_rekonstruktion" / f"s{i}__B.wav", k)
+    r = _plan(proben, tmp_path / "s", mit_nicht_entscheidbaren=True)
+    assert "m5_rekonstruktion" not in r["bloecke"]
+    gruende = [a["grund"] for a in r["ausgeschlossen"] if a["block"] == "m5_rekonstruktion"]
+    assert len(gruende) == 6 and all("Lücke im Kandidaten nicht gefüllt" in g for g in gruende)
+
+
 def test_nicht_entscheidbare_koennen_bewusst_mitgehoert_werden(proben: Path, tmp_path: Path) -> None:
     r = _plan(proben, tmp_path / "s", mit_nicht_entscheidbaren=True)
     assert set(r["bloecke"]) == {

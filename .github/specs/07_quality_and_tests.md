@@ -631,6 +631,11 @@ effizient nutzen und darf **nie** Evidenz erzeugen, die keine ist.
   (2 s, Vorbelegung) liegt, werden zurückgestellt — isolierte Defektregionen (0,05–0,4 s,
   ohne Musik) tragen kein Wohlklang-Urteil (Befund 2026-11-22: erster Hörversuch, 60 von
   74 Proben betroffen). Nachbau mit musikalischem Kontext (≥ 4 s).
+- **Gültigkeit des Prüfgegenstands:** Ein Paket muss prüfen, was die Entscheidung behauptet.
+  Beim M5-Paket (Lücken-Synthese) wird ein Kandidat mit ungefüllter Lücke (Pegel < −15 dB
+  gegenüber dem Rest, Vorbelegung) ausgeschlossen. Befund 2026-11-22: Vocoder-Resynthese
+  ließ die Lücke leer; das Urteil „Bestand 6:0“ war als Beleg wertlos. Der Generator
+  (`erstelle_hoerproben.py`) bricht in diesem Fall ab (fail-closed).
 - **Bias-Kontrolle:** je Block exakt ausbalancierte Position (Kandidat erste/zweite Hälfte),
   Pegelabgleich auf Body-Perzentil p25 (nur Abschwächung, Toleranz 0,5 dB), Tiefpass-Anker
   (3,5 kHz, ITU-R BS.1534) und identische Paare als Kontrollen; Hörer mit

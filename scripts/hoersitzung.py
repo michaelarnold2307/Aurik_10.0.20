@@ -69,6 +69,9 @@ PEGEL_TOL_DB = 0.5  # p25-Pegelunterschied, ab dem abgeschwächt wird (Vorbelegu
 ANKER_CUTOFF_HZ = 3500.0  # ITU-R BS.1534: 3,5-kHz-Tiefpass-Anker
 ANKER_MIN_RICHTIG = 0.75  # Gültigkeit: Anteil richtig erkannter Anker (Vorbelegung, Hörpanel offen)
 MIN_HOER_DAUER_S = 2.0  # Je Hälfte: kürzere Schnipsel (z. B. 0,1-s-Defektregionen) tragen kein Wohlklang-Urteil (Vorbelegung, Hörpanel offen)
+LUECKE_MIN_REL_DB = (
+    15.0  # M5: gefüllte Lücke darf höchstens so viel leiser sein wie der Rest (Vorbelegung, Hörpanel offen)
+)
 ANKER_MIN_DAUER_S = 5.0  # Anker nur auf ausreichend langen Proben (1-s-Clicks tragen keinen Tiefpass)
 KONTROLL_ANTEIL = 0.05
 KONTROLL_MIN = 3
@@ -363,7 +366,25 @@ def _pruefe_paar(paar: Paar) -> tuple[tuple[np.ndarray, np.ndarray, int] | None,
         return None, "leere Datei"
     if np.array_equal(b, k):
         return None, "Bestand und Kandidat sind identisch (A=B) — kein hörbarer Unterschied zu prüfen"
+    if paar.block == "m5_rekonstruktion":
+        luecke = _luecke_ungefuellt_db(k, sr_b)
+        if luecke is not None and luecke < -LUECKE_MIN_REL_DB:
+            return None, (
+                f"Lücke im Kandidaten nicht gefüllt (Lückenpegel {luecke:+.1f} dB gegenüber dem Rest, "
+                f"Mindestwert {-LUECKE_MIN_REL_DB:+.0f} dB) — das Paket prüft keine Lücken-Synthese"
+            )
     return (b, k, sr_b), ""
+
+
+def _luecke_ungefuellt_db(k: np.ndarray, sr: int) -> float | None:
+    """Pegel der M5-Lücke (2 s um die Mitte, Konvention von erstelle_hoerproben.py) relativ zum Rest, in dB."""
+    n = k.shape[0]
+    lo, hi = n // 2 - sr, n // 2 + sr
+    if lo < 0 or hi > n or n < 4 * sr:
+        return None
+    innen = float(np.sqrt(np.mean(np.square(k[lo:hi])) + 1e-20))
+    aussen = float(np.sqrt(np.mean(np.square(np.concatenate([k[:lo], k[hi:]]))) + 1e-20))
+    return 20.0 * math.log10(innen / aussen)
 
 
 def _balanciert(n: int, rng: np.random.Generator) -> list[bool]:
@@ -1189,7 +1210,12 @@ def main(argv: list[str] | None = None) -> int:
         print(status(ausgang))
         return 0
     if befehl == "bauen" or (befehl in ("los", "hoeren") and (args.neu or not (ausgang / "plan.json").is_file())):
-        _bauen()
+        try:
+            _bauen()
+        except ValueError as exc:
+            print(f"\nKeine Sitzung möglich: {exc}", file=sys.stderr)
+            print("Nachbau-Hinweise: docs/guides/HOERSITZUNG.md (Zurückgestellte Blöcke).", file=sys.stderr)
+            return 2
         if befehl == "bauen":
             return 0
     if befehl in ("los", "hoeren"):

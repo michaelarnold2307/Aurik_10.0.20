@@ -7,7 +7,7 @@
   ".github/specs/04_dsp_standards.md": "e345576566bc6030957078d798870e646652ca1310e5faa265d68059226654b2",
   ".github/specs/05_material_system.md": "8069152229c01401c26bde6aebcc2740b50f99fbd96d00f295910145880828af",
   ".github/specs/06_phases_system.md": "f143da15b7a0669d648396c5298bbd882d243a2d339f78f3e25b9ac19b95f2ed",
-  ".github/specs/07_quality_and_tests.md": "965b038658e40cd925acc903ec232906a58ab8f8637847fc614934f57969a197",
+  ".github/specs/07_quality_and_tests.md": "bc8b53424c5fa6896730cef0ee7e65f18f9a35e11be4de6d76cac4560c2ea1bf",
   ".github/specs/08_architecture_and_distribution.md": "016bb109c9d9560c996dd01d5e810ef643a9589ddd569458ec07616bbc7771d4",
   "tests/normative/test_amrb_ci_gate.py": "434310e84aa33a06f176e3e8d8a83b624f62a8d499c50e6539cab429a9eb6a3a",
   "tests/normative/test_competitive_ci_gate.py": "194d100c56e145810fd580122ff27b0a9894cfdecc408c86858e6ec0805f0fdf",

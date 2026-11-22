@@ -172,6 +172,14 @@ def erzeuge_m5_proben(
         # B: vocos-Finetune-Resynthese des destruierten Fensters
         synthese = vocode(FT_ONNX, _mel_torch(destruiert))
         synthese = synthese[:n]
+        lo_pegel = float(np.sqrt(np.mean(np.square(synthese[lo:hi])) + 1e-20))
+        rest_pegel = float(np.sqrt(np.mean(np.square(np.concatenate([synthese[:lo], synthese[hi:]]))) + 1e-20))
+        if 20.0 * np.log10(lo_pegel / rest_pegel) < -15.0:
+            # Ein Vocoder erzeugt aus einem leeren Mel-Fenster keine Musik: das Paar würde keine Lücken-Synthese prüfen.
+            raise RuntimeError(
+                f"M5: Lücke in der Synthese nicht gefüllt ({stamm}) — ein Vocoder ist kein Inpainter; "
+                "echten Inpainter (CQTDiff+/GACELA) als Kandidat verwenden"
+            )
         pa = ziel / f"{stamm[:60]}__A_linear.wav"
         pb = ziel / f"{stamm[:60]}__B_vocos_ft.wav"
         sf.write(str(pa), linear, SR)

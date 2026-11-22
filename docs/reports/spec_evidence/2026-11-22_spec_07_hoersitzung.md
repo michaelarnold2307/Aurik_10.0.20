@@ -33,6 +33,13 @@
 - Änderung: `MIN_HOER_DAUER_S = 2,0` (Vorbelegung, Hörpanel offen) — Blöcke mit kürzerem Median je Hälfte werden zurückgestellt, mit Grund und Nachbau-Hinweis; Spec 07 §8.8 ergänzt. Die Sitzung umfasst jetzt 12 Proben (M5, 6 Paare + 6 Kontrollen, ≈ 5 min).
 - Zusätzliche Unsicherheit: Ob M5 (A_linear vs B_vocos_ft) eine sinnvolle Entscheidung abbildet, ist nicht geprüft; die Hörbarkeit der Witness-Klassen ist nur mit Kontext-Paaren prüfbar.
 
+## Nachtrag 2 (erste vollständige Sitzung, 2026-11-22)
+
+- Befund: Der Hörer schloss M5 ab (Anker 3/3, gültig; 0:6 für den Bestand, p = 0,03125) und meldete in allen 12 Proben eine nicht ausgefüllte Lücke. Messung bestätigt: Kandidat B ließ die 2-s-Lücke leer (−37…−43 dBFS, 23–28 dB unter dem Rest), A war eine DC-Rampe; B war zudem außerhalb der Lücke ≈ 5 dB lauter. Die Vocoder-Resynthese ist kein Inpainter. Das Verdikt ist als Beleg für M5 **ungültig** (archiviert als `sitzung_s42_m5_ungueltig`, die Rohantworten bleiben echt).
+- Änderung: Paarprüfung „Lücke gefüllt“ (`LUECKE_MIN_REL_DB`, Vorbelegung) in `hoersitzung.py`; Generator fail-closed; saubere CLI-Meldung, wenn kein Block hörbar ist; Test ergänzt.
+- Konsequenz: Es gibt derzeit keinen hörbaren Block. Offen: M5 mit echtem Inpainter, Witness-Kontextpaare, C4, Declip/Stereo/Dereverb.
+- Lehre: Die Vorprüfung muss Inhalt, nicht nur Länge und Statistik prüfen; ein gültiger Hörer kann ein ungültiges Paket nicht retten.
+
 ## Validierung
 
 - `tests/unit/test_hoersitzung.py` und `tests/unit/test_flag_freigabe.py`: bestanden (siehe Befehl oben).
