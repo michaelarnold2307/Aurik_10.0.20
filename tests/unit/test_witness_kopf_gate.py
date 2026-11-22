@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -90,3 +91,90 @@ def test_quelltext_pin_kein_flag() -> None:
     assert "music_model_flags" not in quelltext
     assert "flippe_flag" not in quelltext
     assert "cuda()" not in quelltext
+
+
+# ---------------------------------------------------------------------------
+# rms_skip-Parität (D-K3-95-Nacharbeit, 2026-11-22) — Produktions-Konvention
+# ---------------------------------------------------------------------------
+
+
+class _FakeWitnessSkip(torch.nn.Module):
+    rms_skip = True
+
+
+class _FakeWitnessAlt(torch.nn.Module):
+    rms_skip = False
+
+
+def test_p_fuehrt_wahren_pegel_an_rms_skip_witness() -> None:
+    """Bei rms_skip-Witness muss das Gate den wahren RAW-Pegel übergeben — nicht
+    den konstanten Normalisierungs-Pegel (Befund 2026-11-22)."""
+    import torch
+
+    gesehen: dict[str, object] = {}
+
+    class Aufzeichner(_FakeWitnessSkip):
+        def forward(self, x, rms_global=None):
+            gesehen["rms"] = rms_global.detach().cpu().numpy().tolist()
+            return torch.zeros(x.shape[0])
+
+    w = Aufzeichner()
+    x = torch.zeros(1, 1, 44100)
+    p = gate._p(w, x, raw_db=-5.25)
+    assert p == pytest.approx(0.5)  # sigmoid(0)
+    assert gesehen["rms"] == pytest.approx([-5.25])
+
+
+def test_p_alt_ohne_rms_skip_uebergibt_keinen_pegel() -> None:
+    """Ohne rms_skip-Witness bleibt der Aufruf ohne rms_global (bit-identisch)."""
+    import torch
+
+    gesehen: dict[str, object] = {}
+
+    class Aufzeichner(_FakeWitnessAlt):
+        def forward(self, x, rms_global=None):
+            gesehen["rms"] = rms_global
+            return torch.zeros(x.shape[0])
+
+    w = Aufzeichner()
+    x = torch.zeros(1, 1, 44100)
+    assert gate._p(w, x) == pytest.approx(0.5)
+    assert gesehen["rms"] is None
+
+
+def test_messe_rms_skip_misst_produktions_konvention(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Im rms_skip-Pfad misst das Gate exakt wie die Produktions-Inferenz
+    `_witness_p`: clean-Referenz mit EIGENER RMS + wahrem Pegel, Kopf-Ausgang
+    denormalisiert und mit eigener RMS renormiert."""
+    import torch
+
+    aufrufe: list[tuple[float | None, np.ndarray]] = []
+    werte = iter([0.9, 0.1, 0.4, 0.1, 0.1])
+
+    def fake_p(_witness, x, raw_db=None):
+        arr = x.detach().cpu().numpy() if isinstance(x, torch.Tensor) else np.asarray(x)
+        aufrufe.append((raw_db, np.asarray(arr, dtype=np.float64)))
+        return next(werte)
+
+    monkeypatch.setattr(gate, "_lade_mono", lambda pfad: np.ones(600, dtype=np.float32))
+    monkeypatch.setattr(gate, "_p", fake_p)
+    result = gate.messe(
+        lambda audio: audio,
+        _FakeWitnessSkip(),
+        [("title", Path("damaged.wav"), Path("clean.wav"))],
+    )
+    assert result["q_values"] == pytest.approx([0.625])
+    assert result["never_worsen_flags"] == [True]
+    assert len(aufrufe) == 5  # p_s, p_c, p_out_s, p_c_ref, p_out_c
+    s_w = gate._fenster(np.ones(600, dtype=np.float32))
+    db_s = gate._roh_db(s_w)
+    # p_s: wahrer Pegel des Schaden-Fensters
+    assert aufrufe[0][0] == pytest.approx(db_s, rel=1e-5)
+    # p_c: clean mit EIGENER RMS (≈ RMS_ZIEL) + wahrem Pegel
+    assert aufrufe[1][0] == pytest.approx(db_s, rel=1e-5)
+    assert float(np.sqrt(np.mean(aufrufe[1][1] ** 2))) == pytest.approx(gate.RMS_ZIEL, rel=1e-5)
+    # p_out_s: denormalisiert → renormiert (RMS ≈ RMS_ZIEL)
+    assert float(np.sqrt(np.mean(aufrufe[2][1] ** 2))) == pytest.approx(gate.RMS_ZIEL, rel=1e-5)
+    # p_c_ref (Schutz-Arm): clean-eigene RMS + wahrer Pegel
+    assert aufrufe[3][0] == pytest.approx(db_s, rel=1e-5)
+    assert float(np.sqrt(np.mean(aufrufe[3][1] ** 2))) == pytest.approx(gate.RMS_ZIEL, rel=1e-5)

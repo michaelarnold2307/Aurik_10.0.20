@@ -187,7 +187,7 @@ def test_backward_compat_default_aus() -> None:
     assert '"--lambda-mos"' in _SRC_TRAIN
     assert "default=0.0" in _SRC_TRAIN
     assert "if lam_mos > 0.0" in _SRC_TRAIN
-    assert "if mos_proxy is None and nw_min is None:" in _SRC_TRAIN
+    assert "if mos_proxy is None and nw_min is None and q_ziel is None:" in _SRC_TRAIN
     assert "_zwei_metrik_auswahl" in _SRC_TRAIN
     assert "MOS_JND" in _SRC_TRAIN
 

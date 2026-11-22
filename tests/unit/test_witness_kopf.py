@@ -83,7 +83,18 @@ def test_training_without_selected_checkpoint_fails_explicitly(monkeypatch: pyte
     monkeypatch.setattr(
         wk,
         "_lade_split",
-        lambda regionen, holdout_titel, max_regionen: ([audio], [audio], [audio], [audio], [audio], [audio]),
+        lambda regionen, holdout_titel, max_regionen: (
+            [audio],
+            [audio],
+            [audio],
+            [audio],
+            [audio],
+            [audio],
+            [0.2],
+            [0.2],
+            [0.2],
+            [0.2],
+        ),
     )
 
     with pytest.raises(RuntimeError, match="Kein gültiger Witness-Kopf-Checkpoint"):
@@ -96,3 +107,23 @@ def test_quelltext_pin_kein_flag_kein_cuda_zwang() -> None:
     assert "flippe_flag" not in quelltext
     assert "cuda()" not in quelltext  # Gerät kommt aus --device, kein Zwang
     assert "to('cuda" not in quelltext
+
+
+def test_db_roh_ausgabe_entspricht_produktions_denormalisierung() -> None:
+    """dBFS(out_raw) = dBFS(out_norm) + 20·log10(rms_lin/RMS_ZIEL) — exakt die
+    Denormalisierung der Produktions-Inferenz (_kopf_out)."""
+    import torch
+
+    out_norm = torch.full((2, 1, wk.FENSTER), wk.RMS_ZIEL)
+    rms_lin = torch.tensor([0.1, 0.4])
+    db = wk._db_roh_ausgabe(out_norm, rms_lin)
+    erwartet = 20.0 * torch.log10(rms_lin)  # RMS(out_norm) == RMS_ZIEL ⇒ dBFS(out_norm) == 20·log10(RMS_ZIEL)
+    assert torch.allclose(db, erwartet, atol=1e-5)
+
+
+def test_db_roh_fenster_ist_20_log10_rms() -> None:
+    """Wahrer Pegel eines RAW-Fensters = 20·log10(rms_lin) (10·log10(mean(x²)))."""
+    import torch
+
+    rms_lin = torch.tensor([0.05, 0.2, 0.5])
+    assert torch.allclose(wk._db_roh_fenster(rms_lin), 20.0 * torch.log10(rms_lin), atol=1e-6)

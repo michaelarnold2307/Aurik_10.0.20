@@ -164,3 +164,73 @@ def test_trainiere_defaults_bit_identisch_ohne_flag() -> None:
     signatur = inspect.signature(tw.trainiere)
     assert signatur.parameters["lambda_kontrast"].default == 0.0
     assert signatur.parameters["clean_gewicht"].default == 1.0
+
+
+# ---------------------------------------------------------------------------
+# 4) Pegel-Instrumente (D-K3-95-Nacharbeit, 2026-11-22) — Produktions-Parität
+# ---------------------------------------------------------------------------
+
+
+def test_rms_ziel_spiegel_pin() -> None:
+    """Der Spiegelwert muss exakt dem kanonischen RMS_ZIEL des Kopf-Trainers
+    entsprechen (eine Quelle der Wahrheit, §V25; Import wäre zirkulär)."""
+    from scripts import train_witness_kopf as kopf
+
+    assert tw._RMS_ZIEL == kopf.RMS_ZIEL
+
+
+def test_fenster_1s_pad_und_crop_konvention() -> None:
+    """Kurze Regionen werden auf 1 s gepolstert, lange zentriert beschnitten
+    (exakt die Konvention der Produktions-Inferenz)."""
+    kurz = np.ones(1000, dtype=np.float32)
+    assert len(tw._fenster_1s(kurz)) == 44100
+    assert np.all(tw._fenster_1s(kurz)[1000:] == 0.0)
+    lang = np.arange(60000, dtype=np.float32)
+    fenster = tw._fenster_1s(lang)
+    assert len(fenster) == 44100
+    start = (60000 - 44100) // 2
+    assert float(fenster[0]) == pytest.approx(float(lang[start]))
+
+
+def test_abs_mel_normiert_entspricht_produktions_normalisierung() -> None:
+    """abs_mel muss auf dem RMS-normalisierten 1-s-Fenster gebildet werden —
+    exakt die Konvention der Produktions-Inferenz `_witness_p` (DRT-4)."""
+    rng = np.random.default_rng(42)
+    audio = (rng.standard_normal(50000) * 0.1).astype(np.float32)
+    x1 = tw._fenster_1s(audio)
+    rms = float(np.sqrt(np.mean(x1.astype(np.float64) ** 2)) + 1e-8)
+    manuell = tw._mel_fest_abs((x1 / rms * tw._RMS_ZIEL).astype(np.float32), 44100)
+    normiert = tw._mel_fest_abs_normiert(audio, 44100)
+    assert np.allclose(normiert, manuell, atol=1e-6)
+    # Normalisiertes Fenster hat tatsächlich RMS_ZIEL als Pegel-Ziel
+    assert float(np.sqrt(np.mean((x1 / rms * tw._RMS_ZIEL) ** 2))) == pytest.approx(tw._RMS_ZIEL, rel=1e-5)
+
+
+def test_cli_leitet_kontrast_und_clean_gewicht_weiter(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Die Qualitätshebel müssen über die CLI erreichbar sein — der Befund
+    2026-11-22 (AttributeError) darf nicht zurückkehren."""
+    manifest = tmp_path / "manifest.jsonl"
+    manifest.write_text("", encoding="utf-8")
+    aufrufe: list[tuple] = []
+
+    def fake_trainiere(klasse, manifest_pfad, lambda_kontrast, clean_gewicht, abs_mel, rms_skip):
+        aufrufe.append((klasse, lambda_kontrast, clean_gewicht, abs_mel, rms_skip))
+        return {"klasse": klasse}
+
+    monkeypatch.setattr(tw, "trainiere", fake_trainiere)
+    rc = tw.main(
+        [
+            "--klassen",
+            "dropouts",
+            "--manifest",
+            str(manifest),
+            "--abs-mel",
+            "--rms-skip",
+            "--lambda-kontrast",
+            "0.5",
+            "--clean-gewicht",
+            "2.0",
+        ]
+    )
+    assert rc == 0
+    assert aufrufe == [("dropouts", 0.5, 2.0, True, True)]

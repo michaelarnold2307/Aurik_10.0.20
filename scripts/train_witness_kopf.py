@@ -370,7 +370,13 @@ def _baue_regionen(klasse: str) -> tuple[list[tuple[str, Path, Path]], str, int]
 
 
 def _lade_split(regionen: list[tuple[str, Path, Path]], holdout_titel: str, max_regionen: int):
-    """Regionen → (train, hold) mit Titel-Leak-Schutz; deterministische Permutation (Seed 42)."""
+    """Regionen → (train, hold) mit Titel-Leak-Schutz; deterministische Permutation (Seed 42).
+
+    Rückgabe um die RAW-RMS je Region erweitert (D-K3-95-Nacharbeit, DRT-4):
+    das rms_skip-Feature des Witness braucht den wahren Pegel des RAW-Fensters
+    (Produktions-Inferenz ``_witness_p``) — ohne ihn sähe das Witness im
+    Training einen konstanten Normalisierungs-Pegel statt des Produktions-Pegels.
+    Alte Aufrufer ohne rms_skip ignorieren die zusätzlichen Listen."""
     rng = np.random.default_rng(SEED)
     regionen = [regionen[i] for i in rng.permutation(len(regionen))]
     if max_regionen > 0:
@@ -378,6 +384,8 @@ def _lade_split(regionen: list[tuple[str, Path, Path]], holdout_titel: str, max_
     train = [r for r in regionen if r[0] != holdout_titel]
     hold = [r for r in regionen if r[0] == holdout_titel]
     xs, xc, xc_id = [], [], []
+    r_s_tr: list[float] = []
+    r_c_tr: list[float] = []
     for _, s, c in train:
         a, b = _fenster_mitte(_lade_mono(str(s))), _fenster_mitte(_lade_mono(str(c)))
         if a is None or b is None:
@@ -390,7 +398,11 @@ def _lade_split(regionen: list[tuple[str, Path, Path]], holdout_titel: str, max_
         # der CLEAN-EIGENEN RMS — das Gate normalisiert clean-Regionen mit ihrer eigenen RMS.
         rms_c = float(np.sqrt(np.mean(b**2)) + 1e-8)
         xc_id.append((b / rms_c * RMS_ZIEL).astype(np.float32))
+        r_s_tr.append(rms)
+        r_c_tr.append(rms_c)
     hs, hc, hc_id = [], [], []
+    r_s_ho: list[float] = []
+    r_c_ho: list[float] = []
     for _, s, c in hold:
         a, b = _fenster_mitte(_lade_mono(str(s))), _fenster_mitte(_lade_mono(str(c)))
         if a is None or b is None:
@@ -400,19 +412,52 @@ def _lade_split(regionen: list[tuple[str, Path, Path]], holdout_titel: str, max_
         hc.append((b / rms * RMS_ZIEL).astype(np.float32))
         rms_c = float(np.sqrt(np.mean(b**2)) + 1e-8)
         hc_id.append((b / rms_c * RMS_ZIEL).astype(np.float32))
-    return xs, xc, xc_id, hs, hc, hc_id
+        r_s_ho.append(rms)
+        r_c_ho.append(rms_c)
+    return xs, xc, xc_id, hs, hc, hc_id, r_s_tr, r_c_tr, r_s_ho, r_c_ho
 
 
 def _stack(x: list[np.ndarray]) -> torch.Tensor:
     return torch.from_numpy(np.stack(x)[:, None]) if x else torch.zeros(0, 1, FENSTER)
 
 
-def _witness_p_mittel(witness: nn.Module, mel: torch.Tensor, device: str, audio: torch.Tensor | None = None) -> float:
+def _db_roh_fenster(rms_lin: torch.Tensor) -> torch.Tensor:
+    """Wahrer Pegel (dBFS) eines RAW-Fensters aus seiner linearen RMS.
+
+    Produktions-Parität (DRT-4): das rms_skip-Feature bekommt den Pegel des
+    RAW-Signals — 10·log10(mean(x²)) = 20·log10(rms_lin)."""
+    return 20.0 * torch.log10(rms_lin.clamp(min=1e-8))
+
+
+def _db_roh_ausgabe(out_norm: torch.Tensor, rms_lin: torch.Tensor) -> torch.Tensor:
+    """Wahrer Pegel (dBFS) des Produktions-Ausgangs eines Kopf-Fensters.
+
+    Die Produktions-Inferenz denormalisiert (``_kopf_out``: out_raw = out_norm ·
+    rms_lin/RMS_ZIEL), also dBFS(out_raw) = dBFS(out_norm) + 20·log10(rms_lin/RMS_ZIEL)."""
+    return witness_rms_tensor(out_norm.reshape(len(out_norm), -1)) + 20.0 * torch.log10(
+        (rms_lin / RMS_ZIEL).clamp(min=1e-8)
+    )
+
+
+def _witness_p_mittel(
+    witness: nn.Module,
+    mel: torch.Tensor,
+    device: str,
+    audio: torch.Tensor | None = None,
+    raw_db: torch.Tensor | None = None,
+) -> float:
     with torch.no_grad():
-        rms = (
-            witness_rms_tensor(audio.to(device)) if audio is not None and getattr(witness, "rms_skip", False) else None
-        )
-        logit = witness(mel.to(device)[:, None, :, :], rms_global=rms)
+        if getattr(witness, "rms_skip", False):
+            rms = (
+                raw_db if raw_db is not None else (witness_rms_tensor(audio.to(device)) if audio is not None else None)
+            )
+            logit = (
+                witness(mel.to(device)[:, None, :, :], rms_global=rms.to(device))
+                if rms is not None
+                else witness(mel.to(device)[:, None, :, :])
+            )
+        else:
+            logit = witness(mel.to(device)[:, None, :, :])
         return float(torch.sigmoid(logit).mean())
 
 
@@ -421,21 +466,46 @@ def _never_worsen_anteil(
     clean_output: torch.Tensor,
     clean_reference: torch.Tensor,
     device: str,
+    raw_db_out: torch.Tensor | None = None,
+    raw_db_ref: torch.Tensor | None = None,
 ) -> float | None:
     if len(clean_output) == 0 or len(clean_output) != len(clean_reference):
         return None
     with torch.no_grad():
         mel_out = _mel_torch(clean_output.reshape(len(clean_output), -1))
         mel_reference = _mel_torch(clean_reference.reshape(len(clean_reference), -1))
-        rms_out = witness_rms_tensor(clean_output.to(device)) if getattr(witness, "rms_skip", False) else None
-        rms_ref = witness_rms_tensor(clean_reference.to(device)) if getattr(witness, "rms_skip", False) else None
+        rms_skip = bool(getattr(witness, "rms_skip", False))
+        rms_out = (
+            (raw_db_out if raw_db_out is not None else witness_rms_tensor(clean_output.to(device)))
+            if rms_skip
+            else None
+        )
+        rms_ref = (
+            (raw_db_ref if raw_db_ref is not None else witness_rms_tensor(clean_reference.to(device)))
+            if rms_skip
+            else None
+        )
         p_out = (
-            torch.sigmoid(witness(mel_out.to(device)[:, None, :, :], rms_global=rms_out))
+            torch.sigmoid(
+                witness(
+                    mel_out.to(device)[:, None, :, :],
+                    rms_global=rms_out.to(device),
+                )
+                if rms_out is not None
+                else witness(mel_out.to(device)[:, None, :, :])
+            )
             .view(len(clean_output), -1)
             .mean(dim=1)
         )
         p_reference = (
-            torch.sigmoid(witness(mel_reference.to(device)[:, None, :, :], rms_global=rms_ref))
+            torch.sigmoid(
+                witness(
+                    mel_reference.to(device)[:, None, :, :],
+                    rms_global=rms_ref.to(device),
+                )
+                if rms_ref is not None
+                else witness(mel_reference.to(device)[:, None, :, :])
+            )
             .view(len(clean_reference), -1)
             .mean(dim=1)
         )
@@ -459,13 +529,17 @@ def trainiere(
     q_ziel: float | None = None,
 ) -> dict[str, Any]:
     regionen, holdout_titel, n_gesamt = _baue_regionen(klasse)
-    xs, xc, xc_id, hs, hc, hc_id = _lade_split(regionen, holdout_titel, max_regionen)
+    xs, xc, xc_id, hs, hc, hc_id, r_s_tr, r_c_tr, r_s_ho, r_c_ho = _lade_split(regionen, holdout_titel, max_regionen)
     if not xs:
         return {"klasse": klasse, "fehler": "keine verwertbaren Regionen"}
     Xs_t, Xc_t = _stack(xs), _stack(xc)
     Xc_id_t = _stack(xc_id)
     Hs_t, Hc_t = _stack(hs), _stack(hc)
     Hc_id_t = _stack(hc_id)
+    R_s_tr = torch.tensor(r_s_tr, dtype=torch.float32)
+    R_c_tr = torch.tensor(r_c_tr, dtype=torch.float32)
+    R_s_ho = torch.tensor(r_s_ho, dtype=torch.float32) if r_s_ho else torch.zeros(0)
+    R_c_ho = torch.tensor(r_c_ho, dtype=torch.float32) if r_c_ho else torch.zeros(0)
 
     w_ckpt = _ROOT / "models" / f"witness_{klasse}" / "witness.pt"
     if not w_ckpt.is_file():
@@ -486,6 +560,7 @@ def trainiere(
     for p in witness.parameters():
         p.requires_grad_(False)
     witness.to(device)
+    w_skip = bool(getattr(witness, "rms_skip", False))  # rms_skip-Witness ⇒ wahrer RAW-Pegel (DRT-4)
 
     _seed_all(SEED)
     model = WitnessKopf(hidden, stufen).to(device)
@@ -530,7 +605,15 @@ def trainiere(
             out_id = model(Xc_id_t[idx].to(device))
             l1_id = nn.functional.l1_loss(out_id, Xc_id_t[idx].to(device))
             mel_out = _mel_torch(out.reshape(len(out), -1))
-            pen = torch.sigmoid(witness(mel_out[:, None, :, :])).mean()
+            # rms_skip-Parität (DRT-4): das Witness bekommt den wahren Pegel des
+            # Produktions-Ausgangs (denormalisiert mit der Schaden-RMS des Fensters)
+            # statt des konstanten Normalisierungs-Pegels.
+            rms_pen = _db_roh_ausgabe(out, R_s_tr[idx].to(device)) if w_skip else None
+            pen = (
+                torch.sigmoid(witness(mel_out[:, None, :, :], rms_global=rms_pen)).mean()
+                if rms_pen is not None
+                else torch.sigmoid(witness(mel_out[:, None, :, :])).mean()
+            )
             # Wohlklang-Term IM TRAININGS-LOSS (lambda-Sweep-Befund 2026-11-16): die
             # Auswahl-Gewichtung allein konvergiert bei mos-Verlust 0,057 (knapp über JND) —
             # der Gradient muss Wohlklang optimieren, nicht nur die Auswahl (§V7 (copilot-instructions.md)).
@@ -556,7 +639,12 @@ def trainiere(
             out_h_id = model(Hc_id_t.to(device))
             l1_id_h = nn.functional.l1_loss(out_h_id, Hc_id_t.to(device)).item()
             mel_h = _mel_torch(out_h.reshape(len(out_h), -1))
-            pen_h = float(torch.sigmoid(witness(mel_h[:, None, :, :])).mean())
+            rms_pen_h = _db_roh_ausgabe(out_h, R_s_ho.to(device)) if w_skip else None
+            pen_h = float(
+                torch.sigmoid(witness(mel_h[:, None, :, :], rms_global=rms_pen_h)).mean()
+                if rms_pen_h is not None
+                else torch.sigmoid(witness(mel_h[:, None, :, :])).mean()
+            )
             spec_h = float(
                 _spektral_abstand(out_h.reshape(len(out_h), -1), Hc_t.to(device).reshape(len(Hc_t), -1)).item()
             )
@@ -581,21 +669,55 @@ def trainiere(
             mos_h = float(np.mean(lehrer)) if lehrer else None
             # NW-Schutzarm (DRT-2/5): nur Clean→Clean am Holdout zählt; der
             # beschädigte Eingang gehört zum Gewinn-Arm und darf NW nicht vortäuschen.
-            nw_h = _never_worsen_anteil(witness, out_h_id, Hc_id_t, device)
+            nw_h = _never_worsen_anteil(
+                witness,
+                out_h_id,
+                Hc_id_t,
+                device,
+                raw_db_out=_db_roh_ausgabe(out_h_id, R_c_ho.to(device)) if w_skip else None,
+                raw_db_ref=_db_roh_fenster(R_c_ho.to(device)) if w_skip else None,
+            )
             if q_ziel is not None:
                 # Holdout-Q je Epoche (Anti-Überrestauration): (P_s − P_out)/(P_s − P_c)
                 # auf den schaden-RMS-normalisierten 1-s-Fenstern — exakt die Gate-Metrik.
                 ps_h = (
-                    _witness_p_mittel(witness, _mel_torch(Hs_t.reshape(len(Hs_t), -1)), device, Hs_t)
+                    _witness_p_mittel(
+                        witness,
+                        _mel_torch(Hs_t.reshape(len(Hs_t), -1)),
+                        device,
+                        Hs_t,
+                        _db_roh_fenster(R_s_ho.to(device)) if w_skip else None,
+                    )
                     if len(Hs_t)
                     else None
                 )
-                pc_h = (
-                    _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device, Hc_t)
-                    if len(Hc_t)
-                    else None
+                if w_skip:
+                    # rms_skip ⇒ Produktions-Konvention: clean mit der EIGENEN RMS
+                    # (Hc_id_t) + wahrem Pegel — exakt ``_witness_p(c_w)``.
+                    pc_h = (
+                        _witness_p_mittel(
+                            witness,
+                            _mel_torch(Hc_id_t.reshape(len(Hc_id_t), -1)),
+                            device,
+                            Hc_id_t,
+                            _db_roh_fenster(R_c_ho.to(device)),
+                        )
+                        if len(Hc_id_t)
+                        else None
+                    )
+                else:
+                    pc_h = (
+                        _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device, Hc_t)
+                        if len(Hc_t)
+                        else None
+                    )
+                pout_h = _witness_p_mittel(
+                    witness,
+                    _mel_torch(out_h.reshape(len(out_h), -1)),
+                    device,
+                    out_h,
+                    _db_roh_ausgabe(out_h, R_s_ho.to(device)) if w_skip else None,
                 )
-                pout_h = _witness_p_mittel(witness, _mel_torch(out_h.reshape(len(out_h), -1)), device, out_h)
                 q_h = _witness_q(ps_h, pc_h, pout_h) if (ps_h is not None and pc_h is not None) else None
             kandidaten.append(
                 {
@@ -662,15 +784,71 @@ def trainiere(
     with torch.no_grad():
         out_s = model(Xs_t.to(device))
         out_h = model(Hs_t.to(device)) if len(Hs_t) else out_s
-    ps = _witness_p_mittel(witness, _mel_torch(Xs_t.reshape(len(Xs_t), -1)), device, Xs_t) if len(Xs_t) else 0.0
-    pc = _witness_p_mittel(witness, _mel_torch(Xc_t.reshape(len(Xc_t), -1)), device, Xc_t) if len(Xc_t) else 0.0
-    pout_s = _witness_p_mittel(witness, _mel_torch(out_s.reshape(len(out_s), -1)), device, out_s)
+    ps = (
+        _witness_p_mittel(
+            witness,
+            _mel_torch(Xs_t.reshape(len(Xs_t), -1)),
+            device,
+            Xs_t,
+            _db_roh_fenster(R_s_tr) if w_skip else None,
+        )
+        if len(Xs_t)
+        else 0.0
+    )
+    if w_skip:
+        pc = (
+            _witness_p_mittel(
+                witness,
+                _mel_torch(Xc_id_t.reshape(len(Xc_id_t), -1)),
+                device,
+                Xc_id_t,
+                _db_roh_fenster(R_c_tr),
+            )
+            if len(Xc_id_t)
+            else 0.0
+        )
+    else:
+        pc = _witness_p_mittel(witness, _mel_torch(Xc_t.reshape(len(Xc_t), -1)), device, Xc_t) if len(Xc_t) else 0.0
+    pout_s = _witness_p_mittel(
+        witness,
+        _mel_torch(out_s.reshape(len(out_s), -1)),
+        device,
+        out_s,
+        _db_roh_ausgabe(out_s, R_s_tr) if w_skip else None,
+    )
     q_in = _witness_q(ps, pc, pout_s)
     q_hold = None
     if len(Hs_t):
-        ps_h = _witness_p_mittel(witness, _mel_torch(Hs_t.reshape(len(Hs_t), -1)), device, Hs_t)
-        pc_h = _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device, Hc_t)
-        pout_h = _witness_p_mittel(witness, _mel_torch(out_h.reshape(len(out_h), -1)), device, out_h)
+        ps_h = _witness_p_mittel(
+            witness,
+            _mel_torch(Hs_t.reshape(len(Hs_t), -1)),
+            device,
+            Hs_t,
+            _db_roh_fenster(R_s_ho.to(device)) if w_skip else None,
+        )
+        if w_skip:
+            pc_h = (
+                _witness_p_mittel(
+                    witness,
+                    _mel_torch(Hc_id_t.reshape(len(Hc_id_t), -1)),
+                    device,
+                    Hc_id_t,
+                    _db_roh_fenster(R_c_ho.to(device)),
+                )
+                if len(Hc_id_t)
+                else None
+            )
+        else:
+            pc_h = (
+                _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device, Hc_t) if len(Hc_t) else None
+            )
+        pout_h = _witness_p_mittel(
+            witness,
+            _mel_torch(out_h.reshape(len(out_h), -1)),
+            device,
+            out_h,
+            _db_roh_ausgabe(out_h, R_s_ho.to(device)) if w_skip else None,
+        )
         q_hold = _witness_q(ps_h, pc_h, pout_h)
 
     report = {

@@ -111,6 +111,42 @@ def _mel_fest_abs(audio: np.ndarray, sr: int) -> np.ndarray:
     return db
 
 
+_RMS_ZIEL = 0.2
+# Spiegel von ``scripts/train_witness_kopf.py::RMS_ZIEL`` (Produktions-
+# Normalisierung). Kanonisch ist die Definition im Kopf-Trainer — dieser Wert
+# darf nur dort geändert werden und ist über einen Paritäts-Test gepinnt
+# (test_witness_detektor.py::test_rms_ziel_spiegel_pin). Der Import vom
+# Kopf-Trainer wäre zirkulär (train_witness_kopf importiert dieses Modul).
+
+
+def _fenster_1s(audio: np.ndarray) -> np.ndarray:
+    """1-s-Fenster (Zentrum/Pad) — dieselbe Konvention wie ``_rms_pad`` und die
+    Produktions-Inferenz (``witness_kopf_*``: kurze k398-Regionen werden auf 1 s
+    gepolstert, lange zentriert beschnitten)."""
+    a = np.asarray(audio, dtype=np.float32)
+    if len(a) < 44100:
+        a = np.pad(a, (0, 44100 - len(a)))
+    elif len(a) > 44100:
+        start = (len(a) - 44100) // 2
+        a = a[start : start + 44100]
+    return a
+
+
+def _mel_fest_abs_normiert(audio: np.ndarray, sr: int) -> np.ndarray:
+    """Absolute Mel auf dem RMS-normalisierten 1-s-Fenster (Produktions-Parität, DRT-4).
+
+    Die Produktions-Inferenz (``_witness_p`` in ``witness_kopf_*``) normalisiert
+    jedes 1-s-Fenster mit seiner EIGENEN RMS auf RMS_ZIEL, bevor sie die Mel
+    bildet — der Pegel selbst geht als rms_skip-Feature ein (``_rms_pad``).
+    Ohne diese Normalisierung lernt der Detektor die Pegel-Dimension aus der Mel
+    statt aus dem Skip-Feature und driftet gegen Gate/Produktion
+    (D-K3-95-Nacharbeit, ANT-3/DRT-4).
+    """
+    x1 = _fenster_1s(audio)
+    rms = float(np.sqrt(np.mean(x1.astype(np.float64) ** 2)) + 1e-8)
+    return _mel_fest_abs((x1 / rms * _RMS_ZIEL).astype(np.float32), sr)
+
+
 def witness_rms_global_db(audio: np.ndarray) -> float:
     """Globaler Pegel (dBFS) des Witness-Fensters — Skip-Feature für den Head.
 
@@ -236,8 +272,17 @@ def _baue_dataset(
         if c is None or s is None or len(c) < 512 or len(s) < 512:
             uebersprungen += 1
             continue
-        daten.append((_mel_fest_abs(c, SR) if abs_mel else _mel_fest(c, SR), 0, e["titel"], _rms_pad(c)))
-        daten.append((_mel_fest_abs(s, SR) if abs_mel else _mel_fest(s, SR), 1, e["titel"], _rms_pad(s)))
+        if abs_mel:
+            # Produktions-Parität (DRT-4): Mel auf dem RMS-normalisierten 1-s-Fenster,
+            # Pegel separat über das rms_skip-Feature — exakt die Konvention der
+            # Produktions-Inferenz ``_witness_p``.
+            mel_c = _mel_fest_abs_normiert(c, SR)
+            mel_s = _mel_fest_abs_normiert(s, SR)
+        else:
+            mel_c = _mel_fest(c, SR)
+            mel_s = _mel_fest(s, SR)
+        daten.append((mel_c, 0, e["titel"], _rms_pad(c)))
+        daten.append((mel_s, 1, e["titel"], _rms_pad(s)))
     return daten, [holdout_titel], uebersprungen
 
 
@@ -369,7 +414,7 @@ def trainiere(
     return report
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Per-Klassen-Schadens-Witness trainieren (report-only)")
     ap.add_argument("--klassen", default=None, help="Komma-Liste (Default: alle Erstbeleg-Klassen)")
     ap.add_argument(
@@ -385,7 +430,19 @@ def main() -> int:
         action="store_true",
         help="Globaler Pegel (dBFS) als Skip-Feature am BatchNorm vorbei in den Head (pegellebende Defekte, D-K3-95-Nacharbeit 2026-11-22)",
     )
-    args = ap.parse_args()
+    ap.add_argument(
+        "--lambda-kontrast",
+        type=float,
+        default=0.0,
+        help="Kontrast-Hinge-Gewicht (DRT-3: p_schaden − p_clean ≥ 0,5 als Loss-Ziel); Default AUS = bit-identisch (§G5 (GEBOTE.md))",
+    )
+    ap.add_argument(
+        "--clean-gewicht",
+        type=float,
+        default=1.0,
+        help="BCE-Gewichtung der Clean-Klasse (Kalibrierung: zu hohes p_clean senken); Default 1.0 = bit-identisch (§G5 (GEBOTE.md))",
+    )
+    args = ap.parse_args(argv)
     klassen = (
         (args.klassen or "").split(",")
         if args.klassen

@@ -137,10 +137,26 @@ def _lade(checkpoint: Path, klasse: str) -> tuple[Any, Any]:
     return kopf, witness
 
 
-def _p(witness: Any, x: torch.Tensor) -> float:
+def _roh_db(x: np.ndarray) -> float:
+    """Wahrer Pegel (dBFS) eines RAW-Fensters — rms_skip-Quelle der Wahrheit.
+
+    Formel-identisch zu ``witness_rms_global_db`` (eine Quelle, §V25)."""
+    return float(10.0 * np.log10(float(np.mean(x.astype(np.float64) ** 2)) + 1e-10))
+
+
+def _p(witness: Any, x: torch.Tensor, raw_db: float | None = None) -> float:
+    """Witness-P auf dem RMS-normalisierten Fenster (Produktions-Parität, DRT-4).
+
+    raw_db: wahrer Pegel (dBFS) des zugehörigen RAW-Fensters — die Produktions-
+    Inferenz ``_witness_p`` führt genau diesen Pegel dem rms_skip-Witness zu
+    (dort: Mel auf dem RMS-normalisierten Fenster, Pegel vom Roh-Signal). Ohne
+    rms_skip-Witness ungenutzt (bit-identisch zum Vorgänger, §G5 (GEBOTE.md)).
+    """
     mel = _mel_torch(x.reshape(len(x), -1))[:, None, :, :]
-    rms = witness_rms_tensor(x) if getattr(witness, "rms_skip", False) else None
-    return float(torch.sigmoid(witness(mel, rms_global=rms)).mean())
+    if getattr(witness, "rms_skip", False):
+        rms = torch.full((len(x),), float(raw_db) if raw_db is not None else -14.0, dtype=torch.float32)
+        return float(torch.sigmoid(witness(mel, rms_global=rms)).mean())
+    return float(torch.sigmoid(witness(mel)).mean())
 
 
 def _fenster(x: np.ndarray) -> np.ndarray:
@@ -170,14 +186,32 @@ def messe(
                 continue
             s_w, c_w = _fenster(s), _fenster(c)
             rms = float(np.sqrt(np.mean(s_w**2)) + 1e-8)
+            rms_skip = bool(getattr(witness, "rms_skip", False))
+            db_s = _roh_db(s_w)
+            db_c = _roh_db(c_w)
             s_n = (s_w / rms * RMS_ZIEL).astype(np.float32)
-            c_n = (c_w / rms * RMS_ZIEL).astype(np.float32)
             s_t = torch.from_numpy(s_n[None, None])
-            c_t = torch.from_numpy(c_n[None, None])
             out_s = kopf(s_t)
-            p_s = _p(witness, s_t)
-            p_c = _p(witness, c_t)
-            p_out_s = _p(witness, out_s)
+            if rms_skip:
+                p_s = _p(witness, s_t, db_s)
+                # Q-Arm in Produktions-Konvention (DRT-4): die Referenz p_c misst
+                # clean mit der EIGENEN RMS + wahren Pegel — exakt ``_witness_p(c_w)``
+                # der Produktions-Inferenz. Der Kopf-Ausgang wird wie in der
+                # Produktion denormalisiert (·rms/RMS_ZIEL) und mit eigener RMS
+                # renormiert gemessen.
+                rms_c = float(np.sqrt(np.mean(c_w**2)) + 1e-8)
+                c_ref = (c_w / rms_c * RMS_ZIEL).astype(np.float32)
+                p_c = _p(witness, torch.from_numpy(c_ref[None, None]), db_c)
+                out_raw = (out_s.detach().cpu().numpy()[0, 0] * rms / RMS_ZIEL).astype(np.float32)
+                rms_out = float(np.sqrt(np.mean(out_raw**2)) + 1e-8)
+                out_ref = (out_raw / rms_out * RMS_ZIEL).astype(np.float32)
+                p_out_s = _p(witness, torch.from_numpy(out_ref[None, None]), _roh_db(out_raw))
+            else:
+                p_s = _p(witness, s_t)
+                c_n = (c_w / rms * RMS_ZIEL).astype(np.float32)
+                c_t = torch.from_numpy(c_n[None, None])
+                p_c = _p(witness, c_t)
+                p_out_s = _p(witness, out_s)
             q = _witness_q(p_s, p_c, p_out_s)
             if q is not None:
                 quoten.append(q)
@@ -197,8 +231,18 @@ def messe(
                 out_c_prod = modul_fn(c_w, _TARGET_SR)
                 if out_c_prod is None:
                     out_c_prod = c_w
-                p_out_c = _p(witness, torch.from_numpy(np.asarray(out_c_prod, np.float32)[None]))
-                p_c_ref = p_c
+                out_c_prod = np.asarray(out_c_prod, np.float32)
+                if rms_skip:
+                    # Produktions-Konvention (DRT-4): der Modul-Ausgang wird mit
+                    # seiner EIGENEN RMS renormiert und mit seinem wahren Pegel
+                    # gemessen — exakt ``_witness_p(kandidat_seg)`` der Produktion.
+                    rms_p = float(np.sqrt(np.mean(out_c_prod.astype(np.float64) ** 2)) + 1e-8)
+                    out_p_ref = (out_c_prod / rms_p * RMS_ZIEL).astype(np.float32)
+                    p_out_c = _p(witness, torch.from_numpy(out_p_ref[None, None]), _roh_db(out_c_prod))
+                    p_c_ref = p_c  # bereits Produktions-Konvention (clean-eigene RMS + wahrer Pegel)
+                else:
+                    p_out_c = _p(witness, torch.from_numpy(out_c_prod[None]))
+                    p_c_ref = p_c
             else:
                 # DRT-4-Parität (Spec 26): ohne Produktions-DSP misst der
                 # Schutz-Arm den rohen Kopf auf clean mit CLEAN-EIGENER RMS —
@@ -210,8 +254,16 @@ def messe(
                 rms_c = float(np.sqrt(np.mean(c_w**2)) + 1e-8)
                 c_own = (c_w / rms_c * RMS_ZIEL).astype(np.float32)
                 c_own_t = torch.from_numpy(c_own[None, None])
-                p_c_ref = _p(witness, c_own_t)
-                p_out_c = _p(witness, kopf(c_own_t))
+                if rms_skip:
+                    p_c_ref = _p(witness, c_own_t, db_c)
+                    out_own = kopf(c_own_t)
+                    out_own_raw = (out_own.detach().cpu().numpy()[0, 0] * rms_c / RMS_ZIEL).astype(np.float32)
+                    rms_o = float(np.sqrt(np.mean(out_own_raw**2)) + 1e-8)
+                    out_own_ref = (out_own_raw / rms_o * RMS_ZIEL).astype(np.float32)
+                    p_out_c = _p(witness, torch.from_numpy(out_own_ref[None, None]), _roh_db(out_own_raw))
+                else:
+                    p_c_ref = _p(witness, c_own_t)
+                    p_out_c = _p(witness, kopf(c_own_t))
             never_worsen.append(p_out_c <= p_c_ref + NW_TOL)
     ergebnis = {
         "n_regionen": len(regionen),
