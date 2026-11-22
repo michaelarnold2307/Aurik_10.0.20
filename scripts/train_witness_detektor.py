@@ -312,6 +312,7 @@ def trainiere(
     clean_gewicht: float = 1.0,
     abs_mel: bool = False,
     rms_skip: bool = False,
+    init_von: str | None = None,
 ) -> dict[str, Any]:
     daten, holdouts, uebersprungen = _baue_dataset(klasse, manifest, abs_mel, rms_skip)
     if not daten:
@@ -331,6 +332,25 @@ def trainiere(
 
     _seed_all(SEED)
     model = WitnessCRNN(n_mels, rms_skip=rms_skip)
+    if init_von is not None:
+        # Transfer-Warmstart innerhalb derselben Defekt-Familie (D-K3-95-Nacharbeit
+        # 2026-11-22, Spec-27-Zeile-7-Maximalausbau): daten-arme Klassen starten aus
+        # dem Witness der verwandten Klasse (z.B. dropout_head_contact aus dropouts).
+        # Fail-closed: die rms_skip-Repräsentation muss exakt übereinstimmen — sonst
+        # wäre der Zustand unbrauchbar (Head-Dimension 192 vs. 193).
+        init_pfad = MODELS_DIR / f"witness_{init_von}" / "witness.pt"
+        if not init_pfad.is_file():
+            raise FileNotFoundError(
+                f"Init-Witness fehlt: {init_pfad} — erst train_witness_detektor.py --klassen {init_von} ausführen"
+            )
+        init_daten = torch.load(str(init_pfad), map_location="cpu", weights_only=False)
+        init_skip = bool(init_daten.get("rms_skip", False))
+        if init_skip != bool(rms_skip):
+            raise ValueError(
+                f"Init-Witness {init_von} hat rms_skip={init_skip}, Ziel rms_skip={bool(rms_skip)} — "
+                "Repräsentationen unvereinbar (fail-closed, §V6 (VERBOTEN.md))"
+            )
+        model.load_state_dict(init_daten["state_dict"], strict=True)
     opt = torch.optim.Adam(model.parameters(), lr=LR)
     # Clean-Gewichtung (Kalibrierungs-Hebel, D-K3-95-Nacharbeit 2026-11-22):
     # p_clean zu hoch ⇒ Trigger feuert auf sauberen Regionen (dropouts-Befund
@@ -408,6 +428,7 @@ def trainiere(
         "clean_gewicht": clean_gewicht,
         "abs_mel": bool(abs_mel),
         "rms_skip": bool(rms_skip),
+        "init_von": init_von,
         "checkpoint": str(checkpoint.relative_to(_ROOT)),
     }
     (out_dir / "report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -442,6 +463,11 @@ def main(argv: list[str] | None = None) -> int:
         default=1.0,
         help="BCE-Gewichtung der Clean-Klasse (Kalibrierung: zu hohes p_clean senken); Default 1.0 = bit-identisch (§G5 (GEBOTE.md))",
     )
+    ap.add_argument(
+        "--init-von",
+        default=None,
+        help="Transfer-Warmstart aus dem Witness einer verwandten Klasse (z.B. dropout_head_contact aus dropouts); fail-closed bei rms_skip-Mismatch",
+    )
     args = ap.parse_args(argv)
     klassen = (
         (args.klassen or "").split(",")
@@ -456,7 +482,15 @@ def main(argv: list[str] | None = None) -> int:
         ]
     )
     out = [
-        trainiere(k, args.manifest, args.lambda_kontrast, args.clean_gewicht, args.abs_mel, args.rms_skip)
+        trainiere(
+            k,
+            args.manifest,
+            args.lambda_kontrast,
+            args.clean_gewicht,
+            args.abs_mel,
+            args.rms_skip,
+            args.init_von,
+        )
         for k in klassen
     ]
     print(json.dumps(out, indent=2, ensure_ascii=False))

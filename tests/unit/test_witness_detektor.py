@@ -213,8 +213,8 @@ def test_cli_leitet_kontrast_und_clean_gewicht_weiter(monkeypatch: pytest.Monkey
     manifest.write_text("", encoding="utf-8")
     aufrufe: list[tuple] = []
 
-    def fake_trainiere(klasse, manifest_pfad, lambda_kontrast, clean_gewicht, abs_mel, rms_skip):
-        aufrufe.append((klasse, lambda_kontrast, clean_gewicht, abs_mel, rms_skip))
+    def fake_trainiere(klasse, manifest_pfad, lambda_kontrast, clean_gewicht, abs_mel, rms_skip, init_von=None):
+        aufrufe.append((klasse, lambda_kontrast, clean_gewicht, abs_mel, rms_skip, init_von))
         return {"klasse": klasse}
 
     monkeypatch.setattr(tw, "trainiere", fake_trainiere)
@@ -233,4 +233,80 @@ def test_cli_leitet_kontrast_und_clean_gewicht_weiter(monkeypatch: pytest.Monkey
         ]
     )
     assert rc == 0
-    assert aufrufe == [("dropouts", 0.5, 2.0, True, True)]
+    assert aufrufe == [("dropouts", 0.5, 2.0, True, True, None)]
+
+
+def test_cli_leitet_init_von_weiter(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Transfer-Warmstart muss über die CLI erreichbar sein (--init-von)."""
+    manifest = tmp_path / "manifest.jsonl"
+    manifest.write_text("", encoding="utf-8")
+    aufrufe: list[tuple] = []
+
+    def fake_trainiere(klasse, manifest_pfad, lambda_kontrast, clean_gewicht, abs_mel, rms_skip, init_von=None):
+        aufrufe.append((klasse, init_von))
+        return {"klasse": klasse}
+
+    monkeypatch.setattr(tw, "trainiere", fake_trainiere)
+    rc = tw.main(
+        [
+            "--klassen",
+            "dropout_head_contact",
+            "--manifest",
+            str(manifest),
+            "--abs-mel",
+            "--rms-skip",
+            "--init-von",
+            "dropouts",
+        ]
+    )
+    assert rc == 0
+    assert aufrufe == [("dropout_head_contact", "dropouts")]
+
+
+def test_init_von_laedt_verwandten_witness(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Transfer-Warmstart lädt den Witness-Zustand der verwandten Klasse
+    (Zeile-7-Maximalausbau: dropout_head_contact aus dropouts)."""
+    import torch
+
+    mel = np.zeros((128, tw.FRAMES), dtype=np.float32)
+    daten = [(mel, 0, "train", -20.0), (mel, 1, "holdout", -20.0)]
+    monkeypatch.setattr(
+        tw,
+        "_baue_dataset",
+        lambda klasse, manifest=None, abs_mel=False, rms_skip=False: (daten, ["holdout"], 0),
+    )
+    monkeypatch.setattr(tw, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(tw, "EPOCHS", 1)
+    src_dir = tmp_path / "witness_dropouts"
+    src_dir.mkdir(parents=True)
+    quellmodell = tw.WitnessCRNN(128, rms_skip=True)
+    torch.save(
+        {"state_dict": quellmodell.state_dict(), "n_mels": 128, "rms_skip": True},
+        src_dir / "witness.pt",
+    )
+    report = tw.trainiere("dropout_head_contact", init_von="dropouts", abs_mel=True, rms_skip=True)
+    assert report["init_von"] == "dropouts"
+
+
+def test_init_von_rms_skip_mismatch_fail_closed(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """rms_skip-Mismatch zwischen Init- und Ziel-Witness bricht ab (fail-closed,
+    §V6 (VERBOTEN.md)) statt einen unbrauchbaren Zustand zu laden."""
+    import torch
+
+    mel = np.zeros((128, tw.FRAMES), dtype=np.float32)
+    daten = [(mel, 0, "train", -20.0), (mel, 1, "holdout", -20.0)]
+    monkeypatch.setattr(
+        tw,
+        "_baue_dataset",
+        lambda klasse, manifest=None, abs_mel=False, rms_skip=False: (daten, ["holdout"], 0),
+    )
+    monkeypatch.setattr(tw, "MODELS_DIR", tmp_path)
+    src_dir = tmp_path / "witness_dropouts"
+    src_dir.mkdir(parents=True)
+    quellmodell = tw.WitnessCRNN(128, rms_skip=True)
+    torch.save(
+        {"state_dict": quellmodell.state_dict(), "n_mels": 128, "rms_skip": True},
+        src_dir / "witness.pt",
+    )
+    with pytest.raises(ValueError, match="Repräsentationen unvereinbar"):
+        tw.trainiere("dropout_head_contact", init_von="dropouts", abs_mel=True, rms_skip=False)
