@@ -30,7 +30,7 @@ if str(_ROOT) not in sys.path:
 
 import torch
 
-from scripts.train_witness_detektor import WitnessCRNN
+from scripts.train_witness_detektor import WitnessCRNN, lade_witness, witness_rms_tensor
 from scripts.train_witness_kopf import (
     FENSTER,
     MANIFEST,
@@ -131,7 +131,7 @@ def _lade(checkpoint: Path, klasse: str) -> tuple[Any, Any]:
             f"Witness-Checkpoint fehlt: {w_ckpt} — erst scripts/train_witness_detektor.py ausführen"
         )
     wd = torch.load(str(w_ckpt), map_location="cpu", weights_only=False)
-    witness = WitnessCRNN(int(wd["n_mels"]))
+    witness = lade_witness(wd)
     witness.load_state_dict(wd["state_dict"])
     witness.eval()
     return kopf, witness
@@ -139,7 +139,8 @@ def _lade(checkpoint: Path, klasse: str) -> tuple[Any, Any]:
 
 def _p(witness: Any, x: torch.Tensor) -> float:
     mel = _mel_torch(x.reshape(len(x), -1))[:, None, :, :]
-    return float(torch.sigmoid(witness(mel)).mean())
+    rms = witness_rms_tensor(x) if getattr(witness, "rms_skip", False) else None
+    return float(torch.sigmoid(witness(mel, rms_global=rms)).mean())
 
 
 def _fenster(x: np.ndarray) -> np.ndarray:

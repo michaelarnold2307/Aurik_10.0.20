@@ -45,8 +45,12 @@ def test_seed_konstanten() -> None:
 
 def test_training_without_selected_checkpoint_fails_explicitly(monkeypatch: pytest.MonkeyPatch) -> None:
     mel = np.zeros((64, tw.FRAMES), dtype=np.float32)
-    daten = [(mel, 0, "train"), (mel, 1, "holdout")]
-    monkeypatch.setattr(tw, "_baue_dataset", lambda klasse, manifest=None: (daten, ["holdout"], 0))
+    daten = [(mel, 0, "train", -20.0), (mel, 1, "holdout", -20.0)]
+    monkeypatch.setattr(
+        tw,
+        "_baue_dataset",
+        lambda klasse, manifest=None, abs_mel=False, rms_skip=False: (daten, ["holdout"], 0),
+    )
     monkeypatch.setattr(tw, "EPOCHS", 0)
 
     with pytest.raises(RuntimeError, match="Kein gültiger Witness-Checkpoint"):
@@ -89,10 +93,10 @@ def test_dataset_leak_frei_nach_titel(monkeypatch: pytest.MonkeyPatch, tmp_path:
     daten, holdouts, _ = tw._baue_dataset("groove_echo")
     assert len(holdouts) == 1
     holdout_titel = holdouts[0]
-    train_titel = {t for _, _, t in daten if t != holdout_titel}
+    train_titel = {t for _, _, t, _ in daten if t != holdout_titel}
     assert holdout_titel not in train_titel
     # jedes Titel-Label kommt genau zweimal vor (clean=0, schaden=1)
-    assert {t for _, _, t in daten} == {"TitelA", "TitelB", "TitelC"}
+    assert {t for _, _, t, _ in daten} == {"TitelA", "TitelB", "TitelC"}
 
 
 # ---------------------------------------------------------------------------

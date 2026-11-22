@@ -53,6 +53,7 @@ _HOP = 22050  # 0,5 s OLA-Schritt
 # (scripts/train_witness_kopf.py::RMS_ZIEL) und wird für die Training→Produktion-
 # Parität IMPORTIERT statt dupliziert (§V25 (copilot-instructions.md): kein
 # hartcodierter Schwellwert; §G5 (copilot-instructions.md)-Determinismus: eine Quelle der Wahrheit).
+from scripts.train_witness_detektor import witness_rms_tensor
 from scripts.train_witness_kopf import RMS_ZIEL as _RMS_ZIEL
 
 _FADE = 8820  # 200 ms @ 44,1 kHz (§III 6 dB/200 ms)
@@ -90,7 +91,12 @@ def _witness_p(witness: Any, x: np.ndarray) -> float:
     rms = float(np.sqrt(np.mean(x.astype(np.float64) ** 2)) + 1e-8)
     t = torch.from_numpy((x / rms * _RMS_ZIEL).astype(np.float32))[None]
     with torch.no_grad():
-        return float(torch.sigmoid(witness(_mel_torch(t)[:, None])).mean())
+        rms_global = (
+            witness_rms_tensor(torch.from_numpy(np.asarray(x, np.float32))[None])
+            if getattr(witness, "rms_skip", False)
+            else None
+        )
+        return float(torch.sigmoid(witness(_mel_torch(t)[:, None], rms_global=rms_global)).mean())
 
 
 def _kopf_out(kopf: Any, x: np.ndarray) -> np.ndarray:
@@ -140,7 +146,11 @@ def witness_kopf_dropout_oxide(
         logger.warning("Witness-Kopf dropout_oxide: sr=%d ungültig — Ersatzpfad.", sample_rate)
         return None
     try:
-        from scripts.train_witness_detektor import WitnessCRNN  # pylint: disable=import-outside-toplevel
+        from scripts.train_witness_detektor import (  # pylint: disable=import-outside-toplevel
+            WitnessCRNN,
+            lade_witness,
+            witness_rms_tensor,
+        )
         from scripts.train_witness_kopf import WitnessKopf  # pylint: disable=import-outside-toplevel
 
         x = np.asarray(audio, dtype=np.float32)
@@ -161,7 +171,7 @@ def witness_kopf_dropout_oxide(
         kopf.load_state_dict(ckpt["state_dict"])
         kopf.eval()
         wd = torch.load(str(_WITNESS_CKPT), map_location="cpu", weights_only=False)
-        witness = WitnessCRNN(int(wd["n_mels"]))
+        witness = lade_witness(wd)
         witness.load_state_dict(wd["state_dict"])
         witness.eval()
 

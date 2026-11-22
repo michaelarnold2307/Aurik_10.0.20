@@ -60,7 +60,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from scripts.train_witness_detektor import WitnessCRNN
+from scripts.train_witness_detektor import WitnessCRNN, lade_witness, witness_rms_tensor
 
 MANIFEST = _ROOT / "data" / "klassen_paare" / "manifest.jsonl"
 OUT_BASE = _ROOT / "models" / "klassen_koepfe"
@@ -407,9 +407,12 @@ def _stack(x: list[np.ndarray]) -> torch.Tensor:
     return torch.from_numpy(np.stack(x)[:, None]) if x else torch.zeros(0, 1, FENSTER)
 
 
-def _witness_p_mittel(witness: nn.Module, mel: torch.Tensor, device: str) -> float:
+def _witness_p_mittel(witness: nn.Module, mel: torch.Tensor, device: str, audio: torch.Tensor | None = None) -> float:
     with torch.no_grad():
-        logit = witness(mel.to(device)[:, None, :, :])
+        rms = (
+            witness_rms_tensor(audio.to(device)) if audio is not None and getattr(witness, "rms_skip", False) else None
+        )
+        logit = witness(mel.to(device)[:, None, :, :], rms_global=rms)
         return float(torch.sigmoid(logit).mean())
 
 
@@ -424,9 +427,17 @@ def _never_worsen_anteil(
     with torch.no_grad():
         mel_out = _mel_torch(clean_output.reshape(len(clean_output), -1))
         mel_reference = _mel_torch(clean_reference.reshape(len(clean_reference), -1))
-        p_out = torch.sigmoid(witness(mel_out.to(device)[:, None, :, :])).view(len(clean_output), -1).mean(dim=1)
+        rms_out = witness_rms_tensor(clean_output.to(device)) if getattr(witness, "rms_skip", False) else None
+        rms_ref = witness_rms_tensor(clean_reference.to(device)) if getattr(witness, "rms_skip", False) else None
+        p_out = (
+            torch.sigmoid(witness(mel_out.to(device)[:, None, :, :], rms_global=rms_out))
+            .view(len(clean_output), -1)
+            .mean(dim=1)
+        )
         p_reference = (
-            torch.sigmoid(witness(mel_reference.to(device)[:, None, :, :])).view(len(clean_reference), -1).mean(dim=1)
+            torch.sigmoid(witness(mel_reference.to(device)[:, None, :, :], rms_global=rms_ref))
+            .view(len(clean_reference), -1)
+            .mean(dim=1)
         )
     return float((p_out <= p_reference + NW_TOL).float().mean())
 
@@ -462,7 +473,7 @@ def trainiere(
             f"Witness-Checkpoint fehlt: {w_ckpt} — erst scripts/train_witness_detektor.py ausführen"
         )
     wdaten = torch.load(str(w_ckpt), map_location="cpu", weights_only=False)
-    witness = WitnessCRNN(int(wdaten["n_mels"]))
+    witness = lade_witness(wdaten)
     witness.load_state_dict(wdaten["state_dict"])
     # MIOpen/CUDA: der GRU-Backward braucht den Training-Modus („miopen RNN backward
     # can only be called in training mode", Befund 2026-11-15, venv_rocm72). Deshalb
@@ -575,12 +586,16 @@ def trainiere(
                 # Holdout-Q je Epoche (Anti-Überrestauration): (P_s − P_out)/(P_s − P_c)
                 # auf den schaden-RMS-normalisierten 1-s-Fenstern — exakt die Gate-Metrik.
                 ps_h = (
-                    _witness_p_mittel(witness, _mel_torch(Hs_t.reshape(len(Hs_t), -1)), device) if len(Hs_t) else None
+                    _witness_p_mittel(witness, _mel_torch(Hs_t.reshape(len(Hs_t), -1)), device, Hs_t)
+                    if len(Hs_t)
+                    else None
                 )
                 pc_h = (
-                    _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device) if len(Hc_t) else None
+                    _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device, Hc_t)
+                    if len(Hc_t)
+                    else None
                 )
-                pout_h = _witness_p_mittel(witness, _mel_torch(out_h.reshape(len(out_h), -1)), device)
+                pout_h = _witness_p_mittel(witness, _mel_torch(out_h.reshape(len(out_h), -1)), device, out_h)
                 q_h = _witness_q(ps_h, pc_h, pout_h) if (ps_h is not None and pc_h is not None) else None
             kandidaten.append(
                 {
@@ -647,15 +662,15 @@ def trainiere(
     with torch.no_grad():
         out_s = model(Xs_t.to(device))
         out_h = model(Hs_t.to(device)) if len(Hs_t) else out_s
-    ps = _witness_p_mittel(witness, _mel_torch(Xs_t.reshape(len(Xs_t), -1)), device) if len(Xs_t) else 0.0
-    pc = _witness_p_mittel(witness, _mel_torch(Xc_t.reshape(len(Xc_t), -1)), device) if len(Xc_t) else 0.0
-    pout_s = _witness_p_mittel(witness, _mel_torch(out_s.reshape(len(out_s), -1)), device)
+    ps = _witness_p_mittel(witness, _mel_torch(Xs_t.reshape(len(Xs_t), -1)), device, Xs_t) if len(Xs_t) else 0.0
+    pc = _witness_p_mittel(witness, _mel_torch(Xc_t.reshape(len(Xc_t), -1)), device, Xc_t) if len(Xc_t) else 0.0
+    pout_s = _witness_p_mittel(witness, _mel_torch(out_s.reshape(len(out_s), -1)), device, out_s)
     q_in = _witness_q(ps, pc, pout_s)
     q_hold = None
     if len(Hs_t):
-        ps_h = _witness_p_mittel(witness, _mel_torch(Hs_t.reshape(len(Hs_t), -1)), device)
-        pc_h = _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device)
-        pout_h = _witness_p_mittel(witness, _mel_torch(out_h.reshape(len(out_h), -1)), device)
+        ps_h = _witness_p_mittel(witness, _mel_torch(Hs_t.reshape(len(Hs_t), -1)), device, Hs_t)
+        pc_h = _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device, Hc_t)
+        pout_h = _witness_p_mittel(witness, _mel_torch(out_h.reshape(len(out_h), -1)), device, out_h)
         q_hold = _witness_q(ps_h, pc_h, pout_h)
 
     report = {
