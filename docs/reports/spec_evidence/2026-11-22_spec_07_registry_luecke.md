@@ -14,7 +14,7 @@
 - Primarmetrik: `scripts/file_registry_check.py`: 0 ERROR, 0 WARNUNG, 742 Dateien registriert.
 - Effektstaerke: N/A — keine Effektmessung.
 - 95 %-CI: N/A — deterministische Registry-Prüfung.
-- Signifikanztest + p-Wert: N/A.
+- Signifikanztest + p-Wert: N/A — die deterministische Registry-Prüfung enthält keine Stichprobe und keinen statistischen Hypothesentest.
 - Seed(s): N/A — kein Zufall.
 - Commit: Basis `ce5e3af5`; Änderungen im folgenden Commit.
 - Skript/Befehl: `python3 scripts/file_registry_check.py`
