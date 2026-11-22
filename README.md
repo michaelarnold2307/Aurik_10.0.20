@@ -35,7 +35,7 @@ vollständig offline, ohne Cloud- oder Netzwerkabhängigkeiten.
 **Aktuelle Ergebnisse (Stand 2026-09-11, Fullsuite verify3):**
 
 - ✅ **19.040+ Tests grün** — 19.700+ gesammelt, 14 failed, 31 skipped; 261 Denker-Tests in 11 Dateien
-- ✅ **62/62 Defekttypen** — vollständig erkannt und auf Phasen gemappt
+- ✅ **65/65 Defekttypen** — vollständig erkannt und auf Phasen gemappt
 - ✅ **16 Materialien** — auto-erkannt mit Transfer-Chain-Analyse
 - ✅ **19 Genre-Profile** — inkl. Reggae, Latin, Gospel, Country, Funk, Ambient, World
 - ✅ **17 SourceMediums** — Wax Cylinder, Wire Recording, Lacquer Disc u.v.m.
@@ -71,7 +71,7 @@ verblindete Hörtests und reproduzierbare Wettbewerbsvergleiche belastbar.
 ### Entscheidungskette pro Defekt
 
 ```
-DefectScanner (62 Typen)
+DefectScanner (65 Typen)
   → DefectPhaseMapper (Primary + Secondary Phases)
   → PhaseInteractionDenker (Material-Kritische-Phasen-Injektion §2.5a)
   → VocalNoHarmGate (Material-adaptive PANNS-Schwelle)

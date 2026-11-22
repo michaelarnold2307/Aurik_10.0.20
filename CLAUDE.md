@@ -207,7 +207,7 @@ mp3_low  (Physical)       → IQR-Guard, Bandbreiten-Cap, Pre-Echo-Schutz
 ```
 backend/
   ├─ core/
-  │  ├─ defect_scanner.py             # Audio-Defekt-Klassifizierung (62 Types)
+  │  ├─ defect_scanner.py             # Audio-Defekt-Klassifizierung (65 Types)
   │  ├─ unified_restorer_v3.py        # Haupt-Orchestrator + SongCalibration
   │  ├─ singer_voice_model.py         # VFA-Daten-Integration (§2.9)
   │  ├─ vocal_focus_analyzer.py       # Register, Formanten, Vibrato, Style

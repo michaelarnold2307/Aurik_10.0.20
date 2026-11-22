@@ -572,12 +572,17 @@ gescheitert war (jetzt: kein Metadatum).
    §4-Verfahren (`flag_freigabe.py`) in den Pfad aufgenommen oder in
    `.github/FILE_REGISTRY.md` als DEPRECATED/TEST_ONLY/ARCHIVED geführt —
    nicht still als „aktiv“ belassen (Anti-Parallelwelten-Prinzip, AGENTS.md §3).
-   **Offene Schuld (Stand 2026-11-22):** Von den 32 nicht verdrahteten Modulen
-   der Tabelle steht nur `regulator_v8.py` im FILE_REGISTRY (DEPRECATED); die
-   übrigen 31 sind dort nicht geführt. Die Entscheidung je Modul — mit Hörnachweis
-   integrieren, als TEST_ONLY führen oder archivieren — ist eine
-   Architekturentscheidung (u. a. importiert `backend/core/onnx/__init__.py` den
-   Quantizer) und steht aus.
+   **Registry-Lücke geschlossen (2026-11-22):** Alle nicht verdrahteten Module der
+   Tabelle sind jetzt im FILE_REGISTRY geführt — ohne Löschung und ohne
+   Pipeline-Anspruch: `TEST_ONLY` bei null Produktions-Importeuren
+   (Backend/Denker/Plugins/Aurik10/CLI/Forensics, ohne die Diagnose-Tabelle selbst),
+   sonst `ACTIVE` als Bibliothek mit dem Vermerk „nicht in die Restaurierungs-Pipeline
+   verdrahtet“. Die Klassifikation ist eine Importer-Tatsache, **keine**
+   Qualitätsaussage und keine Integrationsentscheidung. **Offene Schuld:** die
+   Entscheidung je Modul — mit Hörnachweis nach §4 integrieren oder archivieren —
+   steht weiter aus (u. a. importiert `backend/core/onnx/__init__.py` den Quantizer;
+   mehrere Module sind nur über andere nicht verdrahtete Module erreichbar, die
+   Klassifikation ist nicht transitiv).
    **Offene Schuld (Schreibzugriffe ohne Leser):** Der Phasen-Akkumulator
    `UnifiedRestorerV3._phase_metadata_accumulator` erreicht das Ergebnis nicht als
    Ganzes; nur einzeln kopierte Schlüssel kommen an. Eine statische Suche

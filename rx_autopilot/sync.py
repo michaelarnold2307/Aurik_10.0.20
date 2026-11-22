@@ -15,10 +15,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import shutil
 import time
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
 PROJECT = Path(__file__).resolve().parents[1]
 SHARE_DEFAULT = PROJECT.parent / "rx_vm" / "share"
 
@@ -77,6 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--timeout-s", type=float, default=7200.0, help="Maximale Wartezeit auf RX-Ausgaben")
     ap.add_argument("--nur-manifest", action="store_true", help="Nur Manifest bauen (ohne Queue/Warten/Harness)")
     args = ap.parse_args(argv)
+    logging.basicConfig(level=logging.INFO, format="%(message)s")  # CLI: Meldungen auf stderr
 
     szenarien = json.loads(args.szenarien.read_text(encoding="utf-8"))
     share = args.share.resolve()
@@ -95,13 +98,13 @@ def main(argv: list[str] | None = None) -> int:
             if not ziel.exists():
                 shutil.copy2(quelle, ziel)
             ausgaben[s["stamm"]] = out_dir / f"{s['stamm']}_rx12.wav"
-        print(f"Queue: {len(ausgaben)} Paare → {queue} (Agent in der VM verarbeitet automatisch)")
+        logger.info("Queue: %d Paare → %s (Agent in der VM verarbeitet automatisch)", len(ausgaben), queue)
         _warten_auf(ausgaben, args.timeout_s)
-        print("Alle RX-Ausgaben vorhanden.")
+        logger.info("Alle RX-Ausgaben vorhanden.")
 
     manifest_ziel = PROJECT / "benchmarks" / "competitive" / "manifest_rx_autopilot.json"
     _baue_manifest(szenarien, share, manifest_ziel)
-    print(f"Manifest: {manifest_ziel}")
+    logger.info("Manifest: %s", manifest_ziel)
     return 0
 
 

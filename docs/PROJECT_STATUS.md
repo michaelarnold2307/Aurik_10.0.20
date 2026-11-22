@@ -122,7 +122,7 @@ DCOffset-Removal
 -> RestorabilityEstimator -> SongCalibrationProfile
 -> EraClassifier + GermanSchlagerClassifier + MediumDetector (parallel)
 -> GoalApplicabilityFilter -> AdaptiveGoalThresholds
--> DefectScanner (62 DetectionTypes) -> CausalDefectReasoner (62 CAUSES)
+-> DefectScanner (65 DefectTypes) -> CausalDefectReasoner
 -> GPParameterOptimizer -> HarmonicPreservationGuard
 -> PerPhaseMusicalGoalsGate (umhüllt jede Phase)
 -> Hör-Gates: Level-1-Invarianten / Defect-Audibility / Wohlklang-Ordnung (E3-Audit) / Vocal-Overdrive / Einladungs-Gate

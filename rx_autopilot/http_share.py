@@ -17,11 +17,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import shutil
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 PROJECT = Path(__file__).resolve().parents[1]
 SHARE_DEFAULT = PROJECT.parent / "rx_vm" / "share"
@@ -122,13 +125,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--share", type=Path, default=SHARE_DEFAULT)
     ap.add_argument("--port", type=int, default=8090)
     args = ap.parse_args(argv)
+    logging.basicConfig(level=logging.INFO, format="%(message)s")  # CLI: Meldungen auf stderr
     share = args.share.resolve()
     share.mkdir(parents=True, exist_ok=True)
     (share / "queue").mkdir(exist_ok=True)
     (share / "output").mkdir(exist_ok=True)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     server.share = share  # type: ignore[attr-defined]
-    print(f"RX-Autopilot-Share: http://127.0.0.1:{args.port} -> {share}", flush=True)
+    logger.info("RX-Autopilot-Share: http://127.0.0.1:%d -> %s", args.port, share)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
