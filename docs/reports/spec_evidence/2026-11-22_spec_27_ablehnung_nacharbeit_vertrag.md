@@ -35,3 +35,25 @@ Prozess; die zitierten Messzahlen stammen aus den jeweiligen Gate-Belegen
 Autonom vorbereitet; die Spec tritt mit Merge auf `main` in Kraft. Die in §3
 priorisierten Umkehr-Arbeiten laufen in den bestehenden Ketten bzw. brauchen
 GPU-Fenster — keine davon ändert den bit-identischen Bestand (alle Flags AUS).
+
+## Nachtrag 2026-11-22 (gleiche Nacht): Register-Priorität 4, Runde 1
+
+- **dropouts — GATE BESTANDEN:** Detektor-Neutraining (abs-Mel + rms_skip +
+  Clean-Gewichtung 2.0) senkt p_clean_holdout 0,76→0,30 (hoAUC 0,9474);
+  Re-Gate über den Produktions-Pfad: q_median 0,71, q_anteil 1,0,
+  never_worsen 1,0 (vorher 0,9286), musik_mos +1,35 — Beleg
+  `2026-11-22_witness_kopf_gate_dropouts.json`. Kein Kopf-Retraining nötig,
+  kein Flag-Flip (ANT-5/ANT-7).
+- **dropout_oxide / tape_splice — ehrliche Umkehr:** Die Pegel-Instrumente
+  verschlechtern diese Detektoren (hoAUC 0,79→0,21 bzw. 0,76→0,53) — die
+  ANT-B-Hypothese gilt für dropouts, nicht für diese beiden Klassen (Pegel-
+  Kontrast im Musik-Dynamikbereich bzw. durch das 1-s-Pad verdünnt).
+  Deterministische Wiederherstellung der alten Instrumenten-Checkpoints
+  (Seed 42, Default-Flags, hoAUC wieder 0,7853/0,7645); Ursache ist
+  ANT-A-Datenarmut (tape_splice 51 Regionen/32 Trainingspaare, dropout_oxide
+  58 trainierbare Trainingsregionen). Nächste Runde nach der
+  Daten-Expansions-Kette (ANT-8: ehrliches Scheitern dokumentiert).
+- **Messpfad-Reparatur (ANT-B, Commit `a55fa13e`):** rms_skip-Parität über
+  Trainer/Gate/Produktion (DRT-4) + CLI-Flags `--lambda-kontrast`/
+  `--clean-gewicht` (waren unerreichbar, AttributeError); 75/75 Tests grün.
+  Gate-Schwellen unangetastet (ANT-4).

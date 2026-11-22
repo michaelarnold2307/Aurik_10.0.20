@@ -91,5 +91,29 @@ Trainer/Gate und der Produktions-Inferenz `_witness_p`:
 4. Umkehr-Register (Spec 27 §9) + SOTA-HANDOVER-Nachtrag mit den Gate-Ergebnissen.
 
 Die Daten-Expansions-Ketten (`kette_dropout_drt8.sh`, `kette_dropouts_followup.sh`)
-laufen parallel weiter und wurden auf dieselben neuen Flags umgestellt — ihre
-Trainings auf dem erweiterten Manifest sind die kanonischen Folgeläufe.
+laufen parallel weiter; ihre Folgeläufe auf dem erweiterten Manifest sind die
+kanonischen nächsten Runden (dropouts mit den bewährten neuen Instrumenten,
+tape_splice/dropout_oxide mit den alten — siehe §6).
+
+## 6. Zwischenergebnis Runde 1 (2026-11-22, gleiche Nacht)
+
+**dropouts — GATE BESTANDEN** (Beleg `2026-11-22_witness_kopf_gate_dropouts.json`):
+Detektor-Neutraining mit abs-Mel + rms_skip + Clean-Gewichtung 2.0 senkt
+`p_clean_holdout` von 0,76 auf **0,30** (hoAUC 0,9474) — der Trigger feuert nicht
+mehr auf clean. Gate: **q_median 0,71, q_anteil 1,0, never_worsen 1,0** (vorher
+0,9286), musik_mos +1,35, alle über JND. Kein Kopf-Retraining nötig — der
+bestehende Kopf besteht mit dem kalibrierten Witness. Flag bleibt Default-AUS
+(ANT-5); die §4-Freigabe bleibt menschlich.
+
+**tape_splice_artifact / dropout_oxide — weiter verfehlt, ehrliche Umkehr (ANT-A):**
+Die Pegel-Instrumente **verschlechtern** diese beiden Detektoren (hoAUC
+0,76→0,53 bzw. 0,79→0,21; Richtung verkehrt) — der Pegel-Kontrast trägt in der
+1-s-Fenster-Domäne bei diesen Klassen nicht (tape_splice +4,6 dB liegt im
+Musik-Dynamikbereich; dropout_oxide-Holdout besteht zu 62/100 aus
+<512-Sample-Mini-Regionen, deren Pegel durch das 1-s-Pad verdünnt wird).
+Umkehr gemäß ANT: die alten Instrumenten-Checkpoints werden deterministisch
+wiederhergestellt (Seed 42, Default-Flags) — sie sind der bessere Zwischenstand.
+Ursache ist Datenarmut: tape_splice 51 Regionen (32 Trainingspaare),
+dropout_oxide 58 trainierbare Trainingsregionen. Die Expansions-Kette läuft;
+mit dem erweiterten Manifest ist die nächste ANT-A-Runde daten-gedeckt.
+Gate-Schwellen unangetastet (ANT-4), kein Flag-Flip (ANT-5).

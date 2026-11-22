@@ -67,7 +67,7 @@ Beispiele (belegt):
 | 1 | Cantus (Gesang) | A | +0,74 MOS auf degradiertem Gesang | Clean-seitige Never-worsen-Regularisierung im Domain-Adapt |
 | 2 | W-1 (Brillanz/Air) | B | HF-Gain-Beschluss bestätigt; entspricht §4-Wunschrichtung „heller UND weniger Rauschen" | Stereo-bewusste Messung + §7-Hör-Entscheidung |
 | 3 | W-2/W-3 (Musik-Denoise) | B/A | „Decrackle ist nach Denoise der größte Register-Hebel" (SOTA-HANDOVER) | W-2: Schalter-Lesestelle verifizieren, dann echt messen; W-3: 9 Fallbacks beheben |
-| 4 | Witness dropouts / dropout_oxide / tape_splice | B | 8–17 dB Pegel-Kontrast der Defekte; Dropout-Reparatur = unmittelbarer Hörgewinn auf Bandmaterial | abs-Mel (Drift-Schluss) + RMS-Skip + Kontrast-Hinge + Clean-Gewichtung; Re-Gate über den Produktions-Pfad |
+| 4 | Witness dropouts / dropout_oxide / tape_splice | B | 8–17 dB Pegel-Kontrast der Defekte; Dropout-Reparatur = unmittelbarer Hörgewinn auf Bandmaterial | **Runde 1 (2026-11-22): dropouts GATE BESTANDEN** (abs-Mel + rms_skip + Clean-Gewichtung 2.0: p_clean 0,76→0,30; q_median 0,71, never_worsen 1,0, mos +1,35; Beleg `2026-11-22_witness_kopf_gate_dropouts.json`); dropout_oxide/tape_splice: Pegel-Instrumente negativ (hoAUC 0,79→0,21 bzw. 0,76→0,53) ⇒ deterministische Umkehr auf alte Instrumente, ANT-A-Datenarmut (51 bzw. 38 verwertbare Regionen) — nächste Runde nach Daten-Expansions-Kette (Befund `docs/reports/current/2026-11-22_witness_nacharbeit_tiefenanalyse.md`) |
 | 5 | M4-Router | A | indirekt (Routing-Präzision) | nur nach belegtem Router-Fehlerbild |
 | 6 | BigVGAN-F3 / FlashSR-Finetunes | A | inkrementeller HF-Gewinn über funktionierender Basis | Produktions-Mel-Training (BigVGAN) bzw. HF-Residual (FlashSR) |
 
