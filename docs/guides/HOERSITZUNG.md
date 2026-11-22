@@ -15,7 +15,7 @@ Der Befehl baut die Sitzung beim ersten Aufruf (wenige Sekunden), spielt alle Pr
 verblindet ab und wertet am Ende automatisch aus. Ohne Argumente: `los`.
 
 - Ort: `output_audio/hoersitzung/sitzung_s42/` (git-ignoriert).
-- Dauer: im Plan angegeben (aktuell ≈ 13 Minuten für 74 Proben, in Runden mit Pause).
+- Dauer: im Plan angegeben (aktuell ≈ 5 Minuten für 12 Proben, davon 6 Kontrollen).
 - Abbrechen jederzeit mit `q`; derselbe Befehl setzt genau dort fort (jede Antwort ist sofort gesichert).
 
 ## Hörumgebung (einmalig)
@@ -61,7 +61,16 @@ bucht nichts.
 `aurik.ab_stats/2` trägt die Richtung selbst. Ältere `ab_stats/1`-Belege sind nur mit
 `--kandidat-seite A|B` buchbar (richtungsblinde Belege sind abgewiesen).
 
-## Zurückgestellte Blöcke (statistisch unentscheidbar)
+## Zurückgestellte Blöcke
+
+**Zu kurz zum Hören:** Die 12 Witness-Pakete bestehen aus isolierten Defektregionen von
+0,05–0,44 s ohne Musik. Darüber ist kein Wohlklang-Urteil möglich (Befund 2026-11-22: erster
+Hörversuch). Blöcke mit weniger als 2 s je Hälfte werden nicht abgespielt (auch nicht mit
+`--auch-nicht-entscheidbare`). Nachbau: Paare mit musikalischem Kontext (Defekt eingebettet
+in ≥ 4 s Musik) neu erzeugen — `scripts/erstelle_witness_kopf_hoerproben.py` schneidet
+bisher nur die Region aus.
+
+**Statistisch unentscheidbar:**
 
 Der exakte Vorzeichentest erreicht bei n Paaren höchstens p = 2/2ⁿ; Signifikanz braucht
 n ≥ 6 (ohne Gleichstände). Blöcke mit weniger Paaren (Declip 3, Stereo 2, Jitter 1,

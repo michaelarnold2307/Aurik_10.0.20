@@ -68,6 +68,7 @@ ANTWORTZEIT_S = 6.0  # Planungsannahme je Versuch (nur Zeitschätzung, keine Ent
 PEGEL_TOL_DB = 0.5  # p25-Pegelunterschied, ab dem abgeschwächt wird (Vorbelegung, Hörpanel offen)
 ANKER_CUTOFF_HZ = 3500.0  # ITU-R BS.1534: 3,5-kHz-Tiefpass-Anker
 ANKER_MIN_RICHTIG = 0.75  # Gültigkeit: Anteil richtig erkannter Anker (Vorbelegung, Hörpanel offen)
+MIN_HOER_DAUER_S = 2.0  # Je Hälfte: kürzere Schnipsel (z. B. 0,1-s-Defektregionen) tragen kein Wohlklang-Urteil (Vorbelegung, Hörpanel offen)
 ANKER_MIN_DAUER_S = 5.0  # Anker nur auf ausreichend langen Proben (1-s-Clicks tragen keinen Tiefpass)
 KONTROLL_ANTEIL = 0.05
 KONTROLL_MIN = 3
@@ -411,6 +412,22 @@ def baue_plan(
                 continue
             gueltig.append((paar, *ergebnis))
         n = len(gueltig)
+        median_s = float(np.median([min(len(b), len(k)) / sr for _p, b, k, sr in gueltig])) if gueltig else 0.0
+        if gueltig and median_s < MIN_HOER_DAUER_S:
+            machbarkeit[block.id] = {"n_paare": n, "hoerbar": False, "median_halbdauer_s": round(median_s, 2)}
+            zurueckgestellt.append(
+                {
+                    "block": block.id,
+                    "name": block.name,
+                    "n_paare": n,
+                    "p_minimal": round(p_minimal(n), 6),
+                    "grund": f"Proben zu kurz für ein Hörurteil (Median {median_s:.2f} s < {MIN_HOER_DAUER_S:.0f} s je Hälfte, ohne musikalischen Kontext)",
+                    "nachbau": block.nachbau
+                    or "Paare mit musikalischem Kontext (Defekt eingebettet in ≥ 4 s Musik) neu erzeugen",
+                }
+            )
+            logger.warning("hoersitzung: Block %s zurückgestellt — Proben zu kurz (Median %.2f s)", block.id, median_s)
+            continue
         entscheidbar = p_minimal(n) < ALPHA
         machbarkeit[block.id] = {
             "n_paare": n,
@@ -1054,7 +1071,7 @@ def _bericht(
         z += ["", "## Zurückgestellt — statistisch nicht entscheidbar (zu wenige Paare)", ""]
         for r in schluessel["zurueckgestellt"]:
             z.append(
-                f"- **{r['block']}**: n={r['n_paare']}, kleinstmögliches p={r['p_minimal']} (≥ 0,05). {('Nächster Schritt: ' + r['nachbau']) if r['nachbau'] else ''}"
+                f"- **{r['block']}**: n={r['n_paare']}, {r.get('grund') or ('kleinstmögliches p=' + str(r['p_minimal']) + ' (≥ 0,05)')}. {('Nächster Schritt: ' + r['nachbau']) if r['nachbau'] else ''}"
             )
     if schluessel["ausgeschlossen"]:
         z += ["", "## Ausgeschlossene Paare", ""]
@@ -1102,9 +1119,13 @@ def _drucke_plan(r: dict[str, Any]) -> None:
     )
     print("Blöcke (Paare):", ", ".join(f"{b}={n}" for b, n in r["bloecke"].items()))
     if r["zurueckgestellt"]:
-        print(f"\nZurückgestellt (statistisch nicht entscheidbar, Signifikanz braucht ≥ {n_fuer_signifikanz()} Paare):")
+        print(
+            f"\nZurückgestellt (nicht hörbar oder statistisch nicht entscheidbar; Signifikanz braucht ≥ {n_fuer_signifikanz()} Paare):"
+        )
         for z in r["zurueckgestellt"]:
-            print(f"  - {z['block']}: n={z['n_paare']}, kleinstmögliches p={z['p_minimal']}")
+            print(
+                f"  - {z['block']}: n={z['n_paare']}, {z.get('grund') or 'kleinstmögliches p=' + str(z['p_minimal'])}"
+            )
     if r["ausgeschlossen"]:
         print(f"\nAusgeschlossene Paare: {len(r['ausgeschlossen'])} (Gründe im Plan/Bericht)")
 

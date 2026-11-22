@@ -81,13 +81,13 @@ def _baue_pakete(proben: Path) -> Path:
         key[f"{stamm}_A.wav"], key[f"{stamm}_B.wav"] = ka, kb
     (stereo / "schluessel.json").write_text(json.dumps(key), encoding="utf-8")
 
-    # Witness: A = Schaden (Bestand), B = repariert (Kandidat); 1-s-Clips
+    # Witness: A = Schaden (Bestand), B = repariert (Kandidat); 2,5-s-Clips
     for klasse, n in (("clicks", 6), ("jitter_artifacts", 1)):
         ordner = proben / "witness_kopf" / klasse
         zeilen = []
         for i in range(1, n + 1):
-            a = _wav(ordner / f"probe{i:02d}_a.wav", _ton(80 + i, 1.0, klick=True))
-            b = _wav(ordner / f"probe{i:02d}_b.wav", _ton(80 + i, 1.0))
+            a = _wav(ordner / f"probe{i:02d}_a.wav", _ton(80 + i, 2.5, klick=True))
+            b = _wav(ordner / f"probe{i:02d}_b.wav", _ton(80 + i, 2.5))
             zeilen.append(json.dumps({"probe": i, "a": str(a), "b": str(b), "titel": f"{klasse}-{i}"}))
         (ordner / "manifest.jsonl").write_text("\n".join(zeilen) + "\n", encoding="utf-8")
     return proben
@@ -213,6 +213,19 @@ def test_unentscheidbare_bloecke_werden_vor_dem_hoeren_zurueckgestellt(proben: P
     assert set(r["bloecke"]) == {"witness_clicks", "c4_vocos", "m5_rekonstruktion"}
     assert r["machbarkeit"]["declip"]["fehlende_paare"] == 3
     assert r["machbarkeit"]["c4_vocos"]["entscheidbar"] is True
+
+
+def test_zu_kurze_proben_werden_nicht_zum_hoeren_angeboten(proben: Path, tmp_path: Path) -> None:
+    # Befund 2026-11-22: reale Witness-Proben sind 0,05–0,4 s Defektregionen ohne Musik — kein Wohlklang-Urteil möglich.
+    for i in range(1, 7):
+        for seite, klick in (("a", True), ("b", False)):
+            _wav(proben / "witness_kopf" / "clicks" / f"probe{i:02d}_{seite}.wav", _ton(80 + i, 0.1, klick=klick))
+    r = _plan(proben, tmp_path / "s")
+    z = {x["block"]: x for x in r["zurueckgestellt"]}
+    assert "zu kurz" in z["witness_clicks"]["grund"] and "witness_clicks" not in r["bloecke"]
+    assert r["machbarkeit"]["witness_clicks"]["hoerbar"] is False
+    # auch mit --auch-nicht-entscheidbare bleibt „zu kurz“ ausgeschlossen (Kürze ist kein Statistik-, sondern ein Hörproblem)
+    assert "witness_clicks" not in _plan(proben, tmp_path / "s2", mit_nicht_entscheidbaren=True)["bloecke"]
 
 
 def test_nicht_entscheidbare_koennen_bewusst_mitgehoert_werden(proben: Path, tmp_path: Path) -> None:

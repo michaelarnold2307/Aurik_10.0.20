@@ -627,6 +627,10 @@ effizient nutzen und darf **nie** Evidenz erzeugen, die keine ist.
   p = 2/2ⁿ; Signifikanz (α = 0,05) braucht n ≥ 6. Blöcke mit weniger Paaren werden
   zurückgestellt und mit Nachbau-Hinweis ausgewiesen, statt Menschenzeit ohne mögliches
   Ergebnis zu verbrauchen. Byte-identische Paare (A=B) werden mit Grund ausgeschlossen.
+- **Hörbarkeit vor Statistik:** Blöcke, deren Median je Hälfte unter `MIN_HOER_DAUER_S`
+  (2 s, Vorbelegung) liegt, werden zurückgestellt — isolierte Defektregionen (0,05–0,4 s,
+  ohne Musik) tragen kein Wohlklang-Urteil (Befund 2026-11-22: erster Hörversuch, 60 von
+  74 Proben betroffen). Nachbau mit musikalischem Kontext (≥ 4 s).
 - **Bias-Kontrolle:** je Block exakt ausbalancierte Position (Kandidat erste/zweite Hälfte),
   Pegelabgleich auf Body-Perzentil p25 (nur Abschwächung, Toleranz 0,5 dB), Tiefpass-Anker
   (3,5 kHz, ITU-R BS.1534) und identische Paare als Kontrollen; Hörer mit

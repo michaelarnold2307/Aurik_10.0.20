@@ -1,21 +1,19 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-22 12:49 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-22 13:08 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/FILE_REGISTRY.md` | modifiziert |
 | M | `.github/specs/07_quality_and_tests.md` | modifiziert |
-| M | `CLAUDE.md` | modifiziert |
-| M | `README.md` | modifiziert |
-| M | `docs/PROJECT_STATUS.md` | modifiziert |
+| M | `TASK_CHANGES.md` | modifiziert |
+| M | `docs/guides/HOERSITZUNG.md` | modifiziert |
+| M | `docs/reports/spec_evidence/2026-11-22_spec_07_hoersitzung.md` | modifiziert |
 | M | `reports/spec_drift_baseline.json` | modifiziert |
-| M | `rx_autopilot/http_share.py` | modifiziert |
-| M | `rx_autopilot/sync.py` | modifiziert |
-| ?? | `docs/reports/spec_evidence/2026-11-22_spec_07_registry_luecke.md` | ungetrackt |
+| M | `scripts/hoersitzung.py` | modifiziert |
+| M | `tests/unit/test_hoersitzung.py` | modifiziert |
 
 ## Entscheidungen
 

@@ -27,6 +27,12 @@
 - Maintainer Sign-off: AUSSTEHEND — ein Maintainer-Sign-off wird nicht fingiert.
 - Datum: 2026-11-22
 
+## Nachtrag (erster realer Hörversuch, 2026-11-22)
+
+- Befund: Die 12 Witness-Pakete (60 von 74 Proben) sind isolierte Defektregionen von 0,05–0,44 s ohne Musik; der Hörer meldete, dass nur ein kurzer Ausschnitt zu hören war. Die Machbarkeits-Vorprüfung kannte nur die Statistik, nicht die Hörbarkeit.
+- Änderung: `MIN_HOER_DAUER_S = 2,0` (Vorbelegung, Hörpanel offen) — Blöcke mit kürzerem Median je Hälfte werden zurückgestellt, mit Grund und Nachbau-Hinweis; Spec 07 §8.8 ergänzt. Die Sitzung umfasst jetzt 12 Proben (M5, 6 Paare + 6 Kontrollen, ≈ 5 min).
+- Zusätzliche Unsicherheit: Ob M5 (A_linear vs B_vocos_ft) eine sinnvolle Entscheidung abbildet, ist nicht geprüft; die Hörbarkeit der Witness-Klassen ist nur mit Kontext-Paaren prüfbar.
+
 ## Validierung
 
 - `tests/unit/test_hoersitzung.py` und `tests/unit/test_flag_freigabe.py`: bestanden (siehe Befehl oben).
