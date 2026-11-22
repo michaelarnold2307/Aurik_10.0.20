@@ -36,7 +36,8 @@ def _lade_presets() -> dict[str, list[dict]]:
         data = json.load(f)
     if data.get("schema") != "aurik.rx_autopilot_presets/1":
         raise ValueError("Unbekanntes Preset-Schema")
-    return data["presets"]
+    presets: dict[str, list[dict]] = data["presets"]
+    return presets
 
 
 def _rxconnect_import() -> object:
