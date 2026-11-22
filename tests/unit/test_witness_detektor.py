@@ -134,3 +134,29 @@ def test_witness_checkpoint_liegt_nach_training() -> None:
     assert report["gate_bestanden"] is True
     assert report["richtung_ok"] is True
     assert report["holdout_auc"] >= tw.AUC_ZIEL
+
+
+# ---------------------------------------------------------------------------
+# 3) Kontrast-Hinge + Clean-Gewichtung (D-K3-95-Nacharbeit, 2026-11-22)
+# ---------------------------------------------------------------------------
+
+
+def test_kontrast_hinge_erzwingt_drt3_margin() -> None:
+    """Kontrast-Hinge: aktiv unter der 0,5-Marge, null darüber (DRT-3-Preflight)."""
+    import torch
+
+    # p_schaden − p_clean ≈ 0,2 < 0,5 ⇒ Hinge ≈ 0,3
+    hinge = tw._kontrast_hinge(torch.tensor([1.0]), torch.tensor([0.5]))
+    assert float(hinge) == pytest.approx(0.5 - (0.7311 - 0.6225), abs=0.05)
+    # p_schaden − p_clean ≥ 0,5 ⇒ 0 (kein Gradient)
+    hinge_null = tw._kontrast_hinge(torch.tensor([10.0]), torch.tensor([-10.0]))
+    assert float(hinge_null) == pytest.approx(0.0, abs=1e-6)
+
+
+def test_trainiere_defaults_bit_identisch_ohne_flag() -> None:
+    """Ohne neue Flags: lambda_kontrast=0.0, clean_gewicht=1.0 (Default-AUS, §G5 (GEBOTE.md))."""
+    import inspect
+
+    signatur = inspect.signature(tw.trainiere)
+    assert signatur.parameters["lambda_kontrast"].default == 0.0
+    assert signatur.parameters["clean_gewicht"].default == 1.0

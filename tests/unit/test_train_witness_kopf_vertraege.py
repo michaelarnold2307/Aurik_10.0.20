@@ -33,3 +33,29 @@ def test_smoke_schreibt_separaten_pfad() -> None:
     assert "_ist_smoke" in src
     assert "smoke_witness_" in src
     assert 'f"witness_{klasse}_best.pt"' in src  # kanonischer Pfad bleibt fuer echte Laeufe
+
+
+def test_q_ziel_default_aus_und_pfad_klar() -> None:
+    """--q-ziel ist Default-AUS: ohne Flag bleibt der Score-Pfad unveraendert (§G5 (GEBOTE.md))."""
+    src = _text()
+    assert "q_ziel: float | None = None" in src
+    assert "and q_ziel is None" in src
+    assert "def _q_nahe_auswahl" in src
+
+
+def test_q_nahe_auswahl_anti_ueberrestauration() -> None:
+    """Q-nahe Auswahl: Epoche mit q nahe 1,0 gewinnt; MOS-JND-Floor bleibt aktiv."""
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from scripts import train_witness_kopf as twk
+
+    kandidaten = [
+        {"ep": 1, "q": 2.0, "mos": 4.9, "score": 0.5, "state": {"a": 1}},
+        {"ep": 2, "q": 1.05, "mos": 4.85, "score": 0.6, "state": {"a": 2}},
+        {"ep": 3, "q": 0.4, "mos": 4.4, "score": 0.4, "state": {"a": 3}},
+    ]
+    gew = twk._q_nahe_auswahl(kandidaten, 1.0)
+    assert gew is not None and gew["ep"] == 2
+    # Epoche 3 faellt aus dem MOS-Floor (4,9 − 0,05), Epoche 1 ist Ueberrestauration (q 2,0)
+    assert twk._q_nahe_auswahl([{"ep": 1, "q": None, "mos": 4.0, "score": 0.5}], 1.0) is None

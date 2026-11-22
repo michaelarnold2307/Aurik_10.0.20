@@ -162,7 +162,23 @@ def _auc(y: np.ndarray, p: np.ndarray) -> float:
     return float(roc_auc_score(y, p))
 
 
-def trainiere(klasse: str, manifest: Path | None = None) -> dict[str, Any]:
+def _kontrast_hinge(p_schaden: torch.Tensor, p_clean: torch.Tensor, margin: float = 0.5) -> torch.Tensor:
+    """Kontrast-Hinge für den Witness-Trainer (D-K3-95-Nacharbeit, 2026-11-22).
+
+    Erzwingt die DRT-3-Voraussetzung (p_schaden − p_clean ≥ 0,5) als Loss-Ziel
+    statt nur über BCE zu hoffen: `clamp(margin − (mean_p_schaden − mean_p_clean), 0)`.
+    Default-AUS (lambda_kontrast=0.0) — ohne Flag bit-identisch (§G5 (GEBOTE.md)).
+    """
+    differenz = torch.sigmoid(p_schaden).mean() - torch.sigmoid(p_clean).mean()
+    return torch.clamp(margin - differenz, min=0.0)
+
+
+def trainiere(
+    klasse: str,
+    manifest: Path | None = None,
+    lambda_kontrast: float = 0.0,
+    clean_gewicht: float = 1.0,
+) -> dict[str, Any]:
     daten, holdouts, uebersprungen = _baue_dataset(klasse, manifest)
     if not daten:
         return {"klasse": klasse, "fehler": "keine verwertbaren Regionen"}
@@ -180,7 +196,11 @@ def trainiere(klasse: str, manifest: Path | None = None) -> dict[str, Any]:
     _seed_all(SEED)
     model = WitnessCRNN(n_mels)
     opt = torch.optim.Adam(model.parameters(), lr=LR)
-    loss_fn = nn.BCEWithLogitsLoss()
+    # Clean-Gewichtung (Kalibrierungs-Hebel, D-K3-95-Nacharbeit 2026-11-22):
+    # p_clean zu hoch ⇒ Trigger feuert auf sauberen Regionen (dropouts-Befund
+    # p_clean 0,76). Gewicht > 1 bestraft Clean-Fehlklassifikation stärker.
+    # Default 1.0 = bit-identisch zum Vorgänger (§G5 (GEBOTE.md)).
+    loss_fn = nn.BCEWithLogitsLoss(reduction="none")
     Xt = torch.from_numpy(X_tr)
     yt = torch.from_numpy(y_tr)
     best: _BestCheckpoint = {"auc": 0.0, "epoch": -1, "state": None}
@@ -190,8 +210,16 @@ def trainiere(klasse: str, manifest: Path | None = None) -> dict[str, Any]:
         for i in range(0, len(Xt), BATCH):
             idx = perm[i : i + BATCH]
             opt.zero_grad()
-            out = model(Xt[idx])
-            loss = loss_fn(out, yt[idx])
+            logits = model(Xt[idx])
+            yb = yt[idx]
+            bce = loss_fn(logits, yb)
+            gewichte = torch.where(yb > 0.5, torch.ones_like(bce), torch.full_like(bce, clean_gewicht))
+            loss = (bce * gewichte).mean()
+            if lambda_kontrast > 0.0:
+                schaden_mask = yb > 0.5
+                clean_mask = ~schaden_mask
+                if bool(schaden_mask.any()) and bool(clean_mask.any()):
+                    loss = loss + lambda_kontrast * _kontrast_hinge(logits[schaden_mask], logits[clean_mask])
             loss.backward()
             opt.step()
         model.eval()
@@ -234,6 +262,8 @@ def trainiere(klasse: str, manifest: Path | None = None) -> dict[str, Any]:
         "gate_bestanden": gate,
         "mean_p_schaden_holdout": round(float(np.mean(p_ho[y_ho == 1])), 4),
         "mean_p_clean_holdout": round(float(np.mean(p_ho[y_ho == 0])), 4),
+        "lambda_kontrast": lambda_kontrast,
+        "clean_gewicht": clean_gewicht,
         "checkpoint": str(checkpoint.relative_to(_ROOT)),
     }
     (out_dir / "report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -259,7 +289,7 @@ def main() -> int:
             "transport_bump",
         ]
     )
-    out = [trainiere(k, args.manifest) for k in klassen]
+    out = [trainiere(k, args.manifest, args.lambda_kontrast, args.clean_gewicht) for k in klassen]
     print(json.dumps(out, indent=2, ensure_ascii=False))
     return 0
 

@@ -264,6 +264,30 @@ def _zwei_metrik_auswahl(
     return min(schwellen_ok, key=lambda k: float(k["score"]))
 
 
+def _q_nahe_auswahl(
+    kandidaten: list[dict[str, Any]], q_ziel: float = 1.0, mos_jnd: float = MOS_JND
+) -> dict[str, Any] | None:
+    """Checkpoint-Auswahl nach Q-Nähe (Anti-Überrestauration, D-K3-95-Nacharbeit 2026-11-22).
+
+    dropouts-Befund: die Score-Auswahl wählte eine Epoche mit Holdout-Q 2,0
+    (Clip-Obergrenze = Überrestauration). Stattdessen gewinnt die Epoche, deren
+    Holdout-Q am nächsten an 1,0 liegt (voller Gewinn, keine Überrestauration),
+    mit musik_mos-JND-Floor (DRT-8/10-Muster): gewinnen kann nur, wer höchstens
+    mos_jnd unter dem besten gesehenen mos liegt.
+    """
+    messbar = [k for k in kandidaten if k.get("q") is not None]
+    if not messbar:
+        return None
+    with_mos = [k for k in messbar if k.get("mos") is not None]
+    if with_mos:
+        best_mos = max(float(k["mos"]) for k in with_mos)
+        # 1e-9-Epsilon: 4,85 >= 4,9 − 0,05 scheitert sonst an der Float-Darstellung.
+        pool = [k for k in with_mos if float(k["mos"]) >= best_mos - float(mos_jnd) - 1e-9]
+    else:
+        pool = messbar
+    return min(pool, key=lambda k: abs(float(k["q"]) - float(q_ziel)))
+
+
 def _kombinierter_loss(
     l1: torch.Tensor,
     pen: torch.Tensor,
@@ -421,6 +445,7 @@ def trainiere(
     lam_mos: float = 0.0,
     mos_ziel: float = MOS_ZIEL,
     nw_min: float | None = None,
+    q_ziel: float | None = None,
 ) -> dict[str, Any]:
     regionen, holdout_titel, n_gesamt = _baue_regionen(klasse)
     xs, xc, xc_id, hs, hc, hc_id = _lade_split(regionen, holdout_titel, max_regionen)
@@ -526,7 +551,8 @@ def trainiere(
             )
         score_h = l1_h + lam * pen_h + lam_id * l1_id_h + lam_spec * spec_h
         mos_h: float | None = None
-        if mos_proxy is None and nw_min is None:
+        q_h: float | None = None
+        if mos_proxy is None and nw_min is None and q_ziel is None:
             # Unveränderter Default-Auswahlpfad: kleinster Holdout-Score
             # (bit-identisch ohne Flag, §G5 (GEBOTE.md)).
             if score_h < best["score"]:
@@ -545,12 +571,24 @@ def trainiere(
             # NW-Schutzarm (DRT-2/5): nur Clean→Clean am Holdout zählt; der
             # beschädigte Eingang gehört zum Gewinn-Arm und darf NW nicht vortäuschen.
             nw_h = _never_worsen_anteil(witness, out_h_id, Hc_id_t, device)
+            if q_ziel is not None:
+                # Holdout-Q je Epoche (Anti-Überrestauration): (P_s − P_out)/(P_s − P_c)
+                # auf den schaden-RMS-normalisierten 1-s-Fenstern — exakt die Gate-Metrik.
+                ps_h = (
+                    _witness_p_mittel(witness, _mel_torch(Hs_t.reshape(len(Hs_t), -1)), device) if len(Hs_t) else None
+                )
+                pc_h = (
+                    _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device) if len(Hc_t) else None
+                )
+                pout_h = _witness_p_mittel(witness, _mel_torch(out_h.reshape(len(out_h), -1)), device)
+                q_h = _witness_q(ps_h, pc_h, pout_h) if (ps_h is not None and pc_h is not None) else None
             kandidaten.append(
                 {
                     "ep": ep,
                     "score": float(score_h),
                     "mos": mos_h,
                     "nw": nw_h,
+                    "q": q_h,
                     "state": {k: v.cpu().clone() for k, v in model.state_dict().items()},
                 }
             )
@@ -573,9 +611,23 @@ def trainiere(
             if mos_proxy is not None:
                 print(f"    mos-hold {mos_h:.3f}" if mos_h is not None else "    mos-hold n/a", flush=True)
 
-    if mos_proxy is not None or nw_min is not None:
-        # Auswahl am Epochen-Ende: NW-Minimum zuerst, dann ggf. MOS-JND und Score.
-        gewaehlt = _zwei_metrik_auswahl(kandidaten, nw_min=nw_min)
+    if mos_proxy is not None or nw_min is not None or q_ziel is not None:
+        # Auswahl am Epochen-Ende: NW-Filter (falls gesetzt), dann Q-Nähe
+        # (Anti-Überrestauration) oder die bestehende Zwei-Metrik-Auswahl.
+        pool = kandidaten
+        if nw_min is not None:
+            pool = [k for k in pool if k.get("nw") is not None and float(k["nw"]) >= float(nw_min)]
+            if not pool:
+                nw_werte = [float(k["nw"]) for k in kandidaten if k.get("nw") is not None]
+                nw_max = max(nw_werte) if nw_werte else None
+                nw_max_text = f"{nw_max:.4f}" if nw_max is not None else "nicht messbar"
+                raise RuntimeError(
+                    f"Kein Witness-Kopf-Checkpoint für {klasse} erfüllt --nw-min={nw_min}; "
+                    f"bestes nw={nw_max_text}, "
+                    f"geeignete Epochen={sum(value >= nw_min for value in nw_werte)}/{len(kandidaten)}; "
+                    "der vorhandene Checkpoint bleibt unverändert."
+                )
+        gewaehlt = _q_nahe_auswahl(pool, q_ziel) if q_ziel is not None else _zwei_metrik_auswahl(pool, nw_min=None)
         if gewaehlt is not None:
             best = {
                 "score": float(gewaehlt["score"]),
@@ -583,17 +635,8 @@ def trainiere(
                 "state": gewaehlt["state"],
                 "mos": float(gewaehlt["mos"]) if gewaehlt.get("mos") is not None else None,
                 "nw": float(gewaehlt["nw"]) if gewaehlt.get("nw") is not None else None,
+                "q": float(gewaehlt["q"]) if gewaehlt.get("q") is not None else None,
             }
-        elif nw_min is not None:
-            nw_werte = [float(k["nw"]) for k in kandidaten if k.get("nw") is not None]
-            nw_max = max(nw_werte) if nw_werte else None
-            nw_max_text = f"{nw_max:.4f}" if nw_max is not None else "nicht messbar"
-            raise RuntimeError(
-                f"Kein Witness-Kopf-Checkpoint für {klasse} erfüllt --nw-min={nw_min}; "
-                f"bestes nw={nw_max_text}, "
-                f"geeignete Epochen={sum(value >= nw_min for value in nw_werte)}/{len(kandidaten)}; "
-                "der vorhandene Checkpoint bleibt unverändert."
-            )
         else:
             logger.warning("§V6 (VERBOTEN.md): Zwei-Metrik-Auswahl ohne Kandidaten — kein Checkpoint gewählt")
     best_state = best["state"]
@@ -638,12 +681,17 @@ def trainiere(
         "preflight_q_ge_0_5": bool(q_in is not None and q_in >= 0.5),
         "hinweis": "Report-only: Aktivierung erst nach Never-worsen-Gate (verify_witness_kopf_gate.py) + §4",
     }
-    if mos_proxy is not None or nw_min is not None:
+    if mos_proxy is not None or nw_min is not None or q_ziel is not None:
+        if q_ziel is not None:
+            report["q_ziel"] = q_ziel
+            report["auswahl_modus"] = "nw_gefiltert_q_nahe" if nw_min is not None else "q_nahe"
+            report["holdout_q_gewaehlt"] = round(float(best["q"]), 4) if best.get("q") is not None else None
         if mos_proxy is not None:
             report["lambda_mos"] = lam_mos
             report["mos_ziel"] = mos_ziel
             report["mos_jnd"] = MOS_JND
-            report["auswahl_modus"] = "zwei_metrik_drt_8_10"
+            if q_ziel is None:
+                report["auswahl_modus"] = "zwei_metrik_drt_8_10"
             report["holdout_mos"] = round(best["mos"], 4) if best["mos"] is not None else None
             report["drt_8_10"] = (
                 "Zwei-Metrik-Modellauswahl (defektlast UND musik_mos, Mindest-Schwelle JND) — "
@@ -723,6 +771,15 @@ def main(argv: list[str] | None = None) -> int:
             "ohne passende Epoche Abbruch ohne Checkpoint-Überschreibung. Funktioniert auch ohne --lambda-mos."
         ),
     )
+    ap.add_argument(
+        "--q-ziel",
+        type=float,
+        default=None,
+        help=(
+            "Anti-Überrestauration: Auswahl der Epoche, deren Holdout-Q am nächsten an 1,0 liegt "
+            "(musik_mos-JND-Floor bleibt aktiv); Default AUS = Zwei-Metrik-Auswahl (§G5 (GEBOTE.md))."
+        ),
+    )
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-regionen", type=int, default=0, help=">0 = Smoke (begrenzte Regionen)")
     args = ap.parse_args(argv)
@@ -742,6 +799,7 @@ def main(argv: list[str] | None = None) -> int:
         args.lambda_mos,
         args.mos_ziel,
         nw_min=args.nw_min,
+        q_ziel=args.q_ziel,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
     return 0

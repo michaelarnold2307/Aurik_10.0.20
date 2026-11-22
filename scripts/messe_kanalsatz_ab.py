@@ -65,8 +65,8 @@ SCHEMA = "aurik.kanalsatz_ab/1"
 REPORT_DIR = _ROOT / "docs" / "reports" / "current"
 JND = 0.05
 
-# Gate-bestandene Witness-Kanäle (10 Alt + 2 Neu; groove_echo trägt die
-# mos-Variante über denselben Kanal, DRT-8/10-Erstbeleg 2026-11-19).
+# Gate-bestandene Witness-Kanäle (12 Alt; hum und wow 2026-11-21 neu bestanden;
+# groove_echo trägt die mos-Variante über denselben Kanal, DRT-8/10-Erstbeleg 2026-11-19).
 KANALSAETZ_FLAGS = [
     "use_witness_kopf_groove_echo",
     "use_witness_kopf_tape_head_level_dip",
@@ -80,6 +80,8 @@ KANALSAETZ_FLAGS = [
     "use_witness_kopf_transport_bump",
     "use_witness_kopf_dynamic_compression_excess",
     "use_witness_kopf_dropout_head_contact",
+    "use_witness_kopf_hum",
+    "use_witness_kopf_wow",
 ]
 
 

@@ -21,12 +21,14 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_kanalsatz_flags_vollstaendig() -> None:
-    """Alle 12 gate-bestandenen Kanal-Flags sind gelistet (10 Alt + 2 Neu)."""
-    assert len(ab.KANALSAETZ_FLAGS) == 12
+    """Alle 14 gate-bestandenen Kanal-Flags sind gelistet (12 Alt + hum/wow 2026-11-21)."""
+    assert len(ab.KANALSAETZ_FLAGS) == 14
     assert "use_witness_kopf_clicks" in ab.KANALSAETZ_FLAGS
     assert "use_witness_kopf_groove_echo" in ab.KANALSAETZ_FLAGS
     assert "use_witness_kopf_dynamic_compression_excess" in ab.KANALSAETZ_FLAGS
     assert "use_witness_kopf_dropout_head_contact" in ab.KANALSAETZ_FLAGS
+    assert "use_witness_kopf_hum" in ab.KANALSAETZ_FLAGS
+    assert "use_witness_kopf_wow" in ab.KANALSAETZ_FLAGS
 
 
 def test_flag_aktivierung_nur_prozess_lokal() -> None:
