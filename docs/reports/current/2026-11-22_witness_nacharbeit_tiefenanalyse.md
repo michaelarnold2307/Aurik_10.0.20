@@ -136,3 +136,21 @@ q≥0,5 = 0,93, never_worsen 1,0, musik_mos +1,30** — Beleg
 (q 2,0 → 0,58) ist behoben, der Witness-Kontrast von 0,03 auf 0,66 gehoben.
 Transfer-Warmstart ist damit das dokumentierte Muster für daten-arme
 Witness-Klassen derselben Defekt-Familie.
+
+## 8. Register-Zeilen 8/9 GELÖST (2026-11-23)
+
+- **transport_bump** (Q-Anteil 0,63): Witness-Kalibrierung (Clean-Gewichtung 2.0,
+  p_clean 0,76→0,63, hoAUC 0,97) + Kopf-Retraining mit Q-Ziel 1.0. Befund dabei:
+  die Q-Ziel-Auswahl über den **Mittelwert der P-Werte** wählte trotzdem eine
+  Überrestauration-Epoche (mean-Q 1,20 vs. Gate-Median 2,0) — die Auswahl-Metrik
+  musste auf **Regionen-Median** gestellt werden (ANT-3/DRT-4: Auswahl ==
+  Gate-Metrik, Commit `c99f2b88`). Danach: **q_median 0,82, q≥0,5 = 1,0,
+  nw 1,0, mos +1,29** (Beleg `2026-11-23_witness_kopf_gate_transport_bump.json`).
+- **jitter_artifacts** (Q-Anteil 0,70): Kopf mit Q-Ziel 1.0 ⇒ **q 0,57→1,03,
+  Q-Anteil 1,0, nw 1,0, mos +1,12** (Beleg `2026-11-23_…_jitter_artifacts.json`).
+- **sibilance** (nw 0,9598): Identitäts-Anker 0,9 + NW-Filter 0,97 ⇒
+  **never_worsen 1,0, q 1,09, mos +0,89** (Beleg `2026-11-23_…_sibilance.json`).
+
+Rest-Beobachtung (Register-Zeile 10, keine Handlungs-Pflicht): wow 0,984,
+phase_rotation 0,979, dynamic_compression_excess 0,9885 — alle über der
+0,95-Schwelle.
