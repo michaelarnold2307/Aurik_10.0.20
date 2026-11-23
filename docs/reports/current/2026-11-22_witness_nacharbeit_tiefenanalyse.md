@@ -154,3 +154,20 @@ Witness-Klassen derselben Defekt-Familie.
 Rest-Beobachtung (Register-Zeile 10, keine Handlungs-Pflicht): wow 0,984,
 phase_rotation 0,979, dynamic_compression_excess 0,9885 — alle über der
 0,95-Schwelle.
+
+## 9. Zeile 4 KOMPLETT — dropout_oxide + tape_splice_artifact per Transfer (2026-11-23)
+
+Das Transfer-Muster aus §7 löst auch die letzten zwei daten-armen Klassen:
+- **dropout_oxide**: `--init-von dropouts` + Pegel-Rezeptur (abs-Mel, rms_skip,
+  Clean-Gewichtung 2.0, Kontrast-Hinge 0.5) ⇒ **hoAUC 0,7853→0,9855**, p_schaden
+  0,53 / p_clean 0,04. Kopf mit Q-Ziel 1.0 ⇒ **Gate BESTANDEN: q 0,81,
+  q≥0,5 = 0,74, nw 1,0, mos +1,09** (Beleg `2026-11-23_…_dropout_oxide.json`).
+- **tape_splice_artifact**: `--init-von transport_bump` (Transienten-Familie,
+  alte Instrumente — Pegel-Instrumente waren für diese Klasse negativ) +
+  Kontrast-Hinge 0.5 ⇒ hoAUC 0,7645→**1,0**; der Trigger-Fehler auf clean
+  (p_clean 0,57 > 0,5) wurde wie bei dropouts über **Clean-Gewichtung 4.0**
+  behoben (p_clean→0,35). Kopf (Identitäts-Anker 0,9, Q-Ziel 1.0) ⇒
+  **Gate BESTANDEN: nw 0,9474→1,0, mos +1,49** (Beleg
+  `2026-11-23_…_tape_splice_artifact.json`); q 2,0-Clip bleibt dokumentierte
+  Rest-Signatur (Feinjustierung auf den erweiterten Daten des kanonischen
+  Nachlaufs `/tmp/post_exp_kette.sh`).
