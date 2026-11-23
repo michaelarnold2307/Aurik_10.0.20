@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-11-15T09:39:41.136248",
+  "generated_at": "2026-11-23T18:28:52.905074+00:00",
   "status": "attention",
   "latest": {
-    "date": "2026-11-15",
-    "source_file": "uat_results_2026-11-15.json",
-    "recommendation": "GO",
+    "date": "2026-11-23",
+    "source_file": "uat_results_2026-11-23.json",
+    "recommendation": "NO-GO",
     "gates": {
-      "passed": 5,
+      "passed": 6,
       "total": 7
     },
     "r5_r12": {
@@ -81,6 +81,16 @@
       "source_file": "uat_results_2026-11-15.json",
       "recommendation": "GO",
       "gates_passed": 5,
+      "gates_total": 7,
+      "r5_r12_passed": 7,
+      "r5_r12_total": 8,
+      "r5_r12_pass_rate": 0.875
+    },
+    {
+      "date": "2026-11-23",
+      "source_file": "uat_results_2026-11-23.json",
+      "recommendation": "NO-GO",
+      "gates_passed": 6,
       "gates_total": 7,
       "r5_r12_passed": 7,
       "r5_r12_total": 8,
