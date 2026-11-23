@@ -1,18 +1,18 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-22 14:00 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-23 18:34 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `.github/specs/07_quality_and_tests.md` | modifiziert |
-| M | `CLAUDE.md` | modifiziert |
-| M | `backend/core/unified_restorer_v3.py` | modifiziert |
-| M | `reports/spec_drift_baseline.json` | modifiziert |
-| M | `tests/normative/test_diagnostic_metadata_truth_gate.py` | modifiziert |
-| ?? | `docs/reports/spec_evidence/2026-11-22_spec_07_akkumulator_diagnosen.md` | ungetrackt |
+| M | `.github/specs/27_ablehnung_nacharbeit_vertrag.md` | modifiziert |
+| M | `docs/SOTA_HANDOVER.md` | modifiziert |
+| M | `docs/reports/current/2026-11-23_witness_kopf_gate_transport_bump.json` | modifiziert |
+| M | `scripts/train_witness_kopf.py` | modifiziert |
+| M | `tests/unit/test_witness_mos_loss.py` | modifiziert |
+| ?? | `docs/reports/current/2026-11-23_transport_bump_nor_anti_ueberrestauration.md` | ungetrackt |
 
 ## Entscheidungen
 
