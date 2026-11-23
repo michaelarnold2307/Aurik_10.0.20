@@ -71,23 +71,28 @@ trainingsfreien Fenster, menschliche Sign-offs parallel nach Verfügbarkeit.
    Klassen-Befund im Paritäts-Register (DRT-14) belegt.
 3. ✅ **Declip-Hörpaket gerendert (2026-11-18, CPU-only):** 3 Paare + Schlüssel —
    §4-Sign-off-Material ist frisch (Punkt 9).
-4. **(läuft, GPU) Cantus-Leiter v2:** pretrain(50) → fine_tune(30) →
+4. ✅ **Cantus-Leiter v2 (2026-11-19, §3-37(a)):** pretrain(50) → fine_tune(30) →
    domain_adapt v3 (20 Epochen NUR CC0-Vinyl) — automatisiert mit
    Hash-Verifikation je Phase; danach **Never-worsen-Gate + Hörabnahme**
    (kein Deploy ohne Gate).
-5. **(läuft, CPU) raum-n≥10 + Stereo-Sinn-Beweis:** Dereverb-Evidenz auf 10
-   Titel und erster Stereo-Titel-Beleg → Paritäts-Register-Zeilen nachziehen
-   (Regel: kein Statuswechsel ohne Mess-Beleg).
-6. **Nächster GPU-Block: Witness-Training mit `--lambda-mos`** (DRT-8/10, Code
-   integriert, 22/22 Tests) → `verify_witness_kopf_gate.py --mos` → bei
-   Bestehen §4-Paket (`erstelle_witness_kopf_hoerproben.py`). Das ist der
-   strukturelle Gegenbeweis zum „0/12“-Muster und der Denoise-Kandidat.
-7. **VinylNet-Retrain mit `--noise-bank data/vinyl_noise_bank`** (D-K1-4-Rest):
-   echte CC0-Vinyl-Leerrillen statt Schellack → Never-worsen + RX-12-Vergleich.
-8. **D-K3-13-UAT-Neulauf** erst im trainingsfreien Fenster (Scheduler-Regel: keine
-   Voll-Suites während der GPU-Kette) — `change_ledger.py snapshot` +
-   `audit/uat_report_generator.py`; `test_daily_gate_stored_recently` bleibt bis
-   dahin rot (dokumentiert).
+5. ✅ **raum-n≥10 + Stereo-Sinn-Beweis (2026-11-18/23):** Dereverb-Evidenz auf 10
+   Titel (raum GESICHERT, §3-42) und **Stereo-n≥10-Auswertung 2026-11-23:
+   8/10 besser, balance 8/10, ΔMOS −0,010 sub-JND** (§3-48(c)) —
+   Paritäts-Register-Zeilen nachgezogen (Regel: kein Statuswechsel ohne Mess-Beleg).
+6. ✅ **Witness-Training mit `--lambda-mos`** (DRT-8/10, Code
+   integriert, 22/22 Tests) — Gates mit `--mos` gelaufen (Re-Gates 2026-11-23
+   mit DRT-8/10-Feldern, report-only; §4-Pakete für dropouts/dropout_oxide/
+   tape_splice/hum/wow/transport_bump/jitter erzeugt, §3-48(e)). Das ist der
+   strukturelle Gegenbeweis zum „0/12“-Muster und der Denoise-Kandidat —
+   **der §4-Batch bleibt menschlich (Regel 6: erst Kanalsatz-A/B-Gewinn).**
+7. ✅ **VinylNet-Retrain mit `--noise-bank data/vinyl_noise_bank`** (D-K1-4-Rest):
+   echte CC0-Vinyl-Leerrillen statt Schellack — **FERTIG 2026-11-20** (100/100
+   Epochen, SI-SDR 14,66→19,55 dB, §3-48(b)); offen: Never-worsen-Re-Eval gegen
+   die Basis (läuft 2026-11-23) + RX-12-Vergleich.
+8. 🔄 **D-K3-13-UAT-Neulauf gestartet 2026-11-23** (GPU frei, §3-48(f)) —
+   `change_ledger.py snapshot` + `audit/uat_report_generator.py` läuft;
+   `test_daily_gate_stored_recently` wird nach `audit/daily_real_audio_gate.py`
+   wieder grün (vorher dokumentiert rot).
 9. **Menschliche Sign-offs (parallel, unabhängig von der GPU):** Declip
    (`hoer_entscheidung.py`, Paket frisch), BW-V5 (+17 dB-Risiko), material_crnn,
    10 Witness-Flags (§4), §9/7 Vinyl-Lizenz — Reihenfolge per Hör-Batch-Brief
