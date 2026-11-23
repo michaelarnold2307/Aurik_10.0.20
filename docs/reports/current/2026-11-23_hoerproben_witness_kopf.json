@@ -22,6 +22,14 @@
     "wow": {
       "paare": 6,
       "ziel": "study_stimuli/hoerproben/witness_kopf/wow"
+    },
+    "transport_bump": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/transport_bump"
+    },
+    "jitter_artifacts": {
+      "paare": 6,
+      "ziel": "study_stimuli/hoerproben/witness_kopf/jitter_artifacts"
     }
   }
 }
