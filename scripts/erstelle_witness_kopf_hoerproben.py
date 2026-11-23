@@ -25,15 +25,20 @@ import numpy as np
 from backend.core.dsp.witness_kopf_clicks import witness_kopf_clicks
 from backend.core.dsp.witness_kopf_compression import witness_kopf_compression_artifacts
 from backend.core.dsp.witness_kopf_dropout_head import witness_kopf_dropout_head_contact
+from backend.core.dsp.witness_kopf_dropout_oxide import witness_kopf_dropout_oxide
+from backend.core.dsp.witness_kopf_dropouts import witness_kopf_dropouts
 from backend.core.dsp.witness_kopf_dynamic_compression import witness_kopf_dynamic_compression_excess
 from backend.core.dsp.witness_kopf_groove_echo import witness_kopf_groove_echo
+from backend.core.dsp.witness_kopf_hum import witness_kopf_hum
 from backend.core.dsp.witness_kopf_jitter import witness_kopf_jitter_artifacts
 from backend.core.dsp.witness_kopf_phase_rotation import witness_kopf_phase_rotation
 from backend.core.dsp.witness_kopf_sibilance import witness_kopf_sibilance
 from backend.core.dsp.witness_kopf_sticky_shed import witness_kopf_sticky_shed_residue
 from backend.core.dsp.witness_kopf_tape_head import witness_kopf_tape_head_level_dip
 from backend.core.dsp.witness_kopf_tape_head_clog import witness_kopf_tape_head_clog
+from backend.core.dsp.witness_kopf_tape_splice_artifact import witness_kopf_tape_splice_artifact
 from backend.core.dsp.witness_kopf_transport_bump import witness_kopf_transport_bump
+from backend.core.dsp.witness_kopf_wow import witness_kopf_wow
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
@@ -59,6 +64,11 @@ KANAELE = frozenset(
         "transport_bump",
         "dynamic_compression_excess",
         "dropout_head_contact",
+        "dropouts",
+        "dropout_oxide",
+        "tape_splice_artifact",
+        "hum",
+        "wow",
     }
 )
 
@@ -86,6 +96,11 @@ def _lade_funktion(klasse: str) -> Callable[..., np.ndarray | None]:
         "transport_bump": witness_kopf_transport_bump,
         "dynamic_compression_excess": witness_kopf_dynamic_compression_excess,
         "dropout_head_contact": witness_kopf_dropout_head_contact,
+        "dropouts": witness_kopf_dropouts,
+        "dropout_oxide": witness_kopf_dropout_oxide,
+        "tape_splice_artifact": witness_kopf_tape_splice_artifact,
+        "hum": witness_kopf_hum,
+        "wow": witness_kopf_wow,
     }
     # Resolve only through this fixed mapping; never import or look up an
     # attribute using the CLI value.

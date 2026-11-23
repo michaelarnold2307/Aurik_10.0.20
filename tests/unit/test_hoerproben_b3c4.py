@@ -101,6 +101,13 @@ def test_witness_class_parser_accepts_only_unique_mapped_classes() -> None:
     from scripts.erstelle_witness_kopf_hoerproben import _parse_klassen
 
     assert _parse_klassen("clicks, sibilance") == ["clicks", "sibilance"]
+    assert _parse_klassen("dropouts, dropout_oxide, tape_splice_artifact, hum, wow") == [
+        "dropouts",
+        "dropout_oxide",
+        "tape_splice_artifact",
+        "hum",
+        "wow",
+    ]
     with pytest.raises(argparse.ArgumentTypeError):
         _parse_klassen("clicks,backend.core.dsp.unknown")
     with pytest.raises(argparse.ArgumentTypeError):
