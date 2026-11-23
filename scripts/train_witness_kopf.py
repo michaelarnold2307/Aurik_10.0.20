@@ -294,10 +294,12 @@ def _kombinierter_loss(
     l1_id: torch.Tensor,
     spec_train: torch.Tensor,
     mos_term: torch.Tensor | None,
+    nor: torch.Tensor | None,
     lam: float,
     lam_id: float,
     lam_spec: float,
     lam_mos: float,
+    lam_nor: float,
 ) -> torch.Tensor:
     """Gesamt-Loss-Assemblage des Witness-Kopfes.
 
@@ -305,8 +307,12 @@ def _kombinierter_loss(
     (l1 + λ·pen + λ_id·l1_id + λ_spec·spec_train) ohne Zusatz-Operation —
     bestehende Läufe ohne --lambda-mos bleiben bit-identisch
     (§G5 (GEBOTE.md) Rückwärtskompatibilität).
+
+    nor None oder lam_nor == 0 ⇒ kein Anti-Überrestaurations-Term (bit-identisch).
     """
     loss = l1 + lam * pen + lam_id * l1_id + lam_spec * spec_train
+    if nor is not None and lam_nor > 0.0:
+        loss = loss + lam_nor * nor
     if mos_term is not None and lam_mos > 0.0:
         loss = loss + lam_mos * mos_term
     return loss
@@ -582,6 +588,7 @@ def trainiere(
     mos_ziel: float = MOS_ZIEL,
     nw_min: float | None = None,
     q_ziel: float | None = None,
+    lam_nor: float = 0.0,
 ) -> dict[str, Any]:
     regionen, holdout_titel, n_gesamt = _baue_regionen(klasse)
     xs, xc, xc_id, hs, hc, hc_id, r_s_tr, r_c_tr, r_s_ho, r_c_ho = _lade_split(regionen, holdout_titel, max_regionen)
@@ -680,7 +687,22 @@ def trainiere(
             mos_term = (
                 _mos_proxy_verlust(mos_proxy(mel_out[:, None, :, :]), mos_ziel) if mos_proxy is not None else None
             )
-            loss = _kombinierter_loss(l1, pen, l1_id, spec_train, mos_term, lam, lam_id, lam_spec, lam_mos)
+            nor = None
+            if lam_nor > 0.0:
+                # Anti-Überrestauration (transport_bump-Befund 2026-11-23, DRT-3): der
+                # Ausgang darf witness-seitig nicht „sauberer" als die clean-Referenz
+                # werden (q > 1 ⇒ Überrestauration). Penalty nur, wenn p_out < p_clean.
+                mel_clean = _mel_torch(c_b.reshape(len(c_b), -1))
+                rms_clean = _db_roh_fenster(R_s_tr[idx].to(device)) if w_skip else None
+                p_clean_ref = (
+                    torch.sigmoid(witness(mel_clean[:, None, :, :], rms_global=rms_clean)).mean()
+                    if rms_clean is not None
+                    else torch.sigmoid(witness(mel_clean[:, None, :, :])).mean()
+                )
+                nor = torch.relu(p_clean_ref - pen)
+            loss = _kombinierter_loss(
+                l1, pen, l1_id, spec_train, mos_term, nor, lam, lam_id, lam_spec, lam_mos, lam_nor
+            )
             opt.zero_grad()
             loss.backward()
             opt.step()
@@ -882,6 +904,7 @@ def trainiere(
         "lambda_id": lam_id,
         "lambda_lokal": lam_lokal,
         "lambda_spektral": lam_spec,
+        "lambda_nor": lam_nor,
         "n_regionen_gesamt": n_gesamt,
         "n_train": len(xs),
         "n_holdout": len(hs),
@@ -992,6 +1015,16 @@ def main(argv: list[str] | None = None) -> int:
             "(musik_mos-JND-Floor bleibt aktiv); Default AUS = Zwei-Metrik-Auswahl (§G5 (GEBOTE.md))."
         ),
     )
+    ap.add_argument(
+        "--lambda-nor",
+        type=float,
+        default=0.0,
+        help=(
+            "Anti-Überrestauration im LOSS (transport_bump-Befund 2026-11-23, DRT-3): der Ausgang "
+            "darf witness-seitig nicht ‚sauberer' als die clean-Referenz werden (q > 1). "
+            "Default AUS = bit-identisch (§G5 (GEBOTE.md))."
+        ),
+    )
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-regionen", type=int, default=0, help=">0 = Smoke (begrenzte Regionen)")
     args = ap.parse_args(argv)
@@ -1012,6 +1045,7 @@ def main(argv: list[str] | None = None) -> int:
         args.mos_ziel,
         nw_min=args.nw_min,
         q_ziel=args.q_ziel,
+        lam_nor=args.lambda_nor,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
     return 0

@@ -36,12 +36,12 @@ def test_gewicht_null_bitidentisch_zum_alten_loss() -> None:
     lam, lam_id, lam_spec = 0.1, 0.5, 0.3
     alt = l1 + lam * pen + lam_id * l1_id + lam_spec * spec
     assert torch.equal(
-        wk._kombinierter_loss(l1, pen, l1_id, spec, mos_term, lam, lam_id, lam_spec, 0.0),
+        wk._kombinierter_loss(l1, pen, l1_id, spec, mos_term, None, lam, lam_id, lam_spec, 0.0, 0.0),
         alt,
     )
     # mos_term None (Default-Pfad ohne Proxy) ebenfalls bit-identisch
     assert torch.equal(
-        wk._kombinierter_loss(l1, pen, l1_id, spec, None, lam, lam_id, lam_spec, 0.0),
+        wk._kombinierter_loss(l1, pen, l1_id, spec, None, None, lam, lam_id, lam_spec, 0.0, 0.0),
         alt,
     )
 
@@ -53,8 +53,37 @@ def test_gewicht_positiv_addiert_mos_term_exakt() -> None:
     lam, lam_id, lam_spec, lam_mos = 0.1, 0.5, 0.3, 2.0
     alt = l1 + lam * pen + lam_id * l1_id + lam_spec * spec
     assert torch.equal(
-        wk._kombinierter_loss(l1, pen, l1_id, spec, mos_term, lam, lam_id, lam_spec, lam_mos),
+        wk._kombinierter_loss(l1, pen, l1_id, spec, mos_term, None, lam, lam_id, lam_spec, lam_mos, 0.0),
         alt + lam_mos * mos_term,
+    )
+
+
+def test_nor_term_penalisiert_nur_p_out_unter_clean() -> None:
+    """Anti-Überrestauration (transport_bump-Befund 2026-11-23): der NOR-Term
+    ist relu(p_clean − p_out) — er straft nur, wenn der Ausgang witness-seitig
+    „sauberer“ als die clean-Referenz wird (q > 1)."""
+    import torch
+
+    p_clean = torch.tensor(0.6)
+    pen = torch.tensor(0.4)  # p_out < p_clean ⇒ Überrestauration
+    assert float(torch.relu(p_clean - pen)) == pytest.approx(0.2)
+    pen_ok = torch.tensor(0.7)  # p_out >= p_clean ⇒ kein Penalty
+    assert float(torch.relu(p_clean - pen_ok)) == pytest.approx(0.0)
+    # Gewicht > 0 addiert den Term exakt; Gewicht 0 bleibt bit-identisch.
+    l1, l1_id, spec, mos_term = (torch.rand(()) for _ in range(4))
+    lam, lam_id, lam_spec, lam_nor = 0.1, 0.5, 0.3, 1.5
+    alt = l1 + lam * pen + lam_id * l1_id + lam_spec * spec
+    assert torch.equal(
+        wk._kombinierter_loss(
+            l1, pen, l1_id, spec, mos_term, torch.relu(p_clean - pen), lam, lam_id, lam_spec, 0.0, lam_nor
+        ),
+        alt + lam_nor * 0.2,
+    )
+    assert torch.equal(
+        wk._kombinierter_loss(
+            l1, pen, l1_id, spec, mos_term, torch.relu(p_clean - pen), lam, lam_id, lam_spec, 0.0, 0.0
+        ),
+        alt,
     )
 
 
