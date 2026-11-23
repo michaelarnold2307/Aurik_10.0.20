@@ -1,9 +1,9 @@
 """§SOTA-R5 (Determinismus-Zertifikat) — bit-identische Läufe als CI-Nachweis.
 
-Roadmap 2026-09-14, R5 (TRUST-A): „gleicher Input ⇒ MD5-identischer Output je
+Roadmap 2026-09-14, R5 (TRUST-A): „gleicher Input ⇒ hash-identischer (SHA-256) Output je
 Release als Studio-Feature + CI-Nachweis." Dieses Zertifikat fährt eine feste,
 maschinen-unabhängige DSP-Phasenkette zweimal auf identischem Input und
-vergleicht MD5 + Bit-Identität — zweimal im selben Prozess (innerhalb der
+vergleicht SHA-256 + Bit-Identität — zweimal im selben Prozess (innerhalb der
 Version reproduzierbar, §G5 (GEBOTE.md)) und mit NEU instanziierten Phasen-Objekten
 (kein versteckter Objektzustand).
 
@@ -51,7 +51,8 @@ def _make_input() -> np.ndarray:
         + 0.15 * np.sin(2 * np.pi * 1000 * t)
         + rng.normal(0, 0.01, SR).astype(np.float32)
     )
-    return (x / (np.max(np.abs(x)) + 1e-9) * 0.5).astype(np.float32)
+    normalized: np.ndarray = np.asarray(x / (np.max(np.abs(x)) + 1e-9) * 0.5, dtype=np.float32)
+    return np.asarray(normalized, dtype=np.float32)
 
 
 def _run_chain(audio: np.ndarray) -> np.ndarray:
@@ -67,8 +68,9 @@ def _run_chain(audio: np.ndarray) -> np.ndarray:
     return out
 
 
-def _md5(x: np.ndarray) -> str:
-    return hashlib.md5(np.ascontiguousarray(x.astype(np.float32)).tobytes()).hexdigest()
+def _sha256(x: np.ndarray) -> str:
+    data = np.ascontiguousarray(x.astype(np.float32)).tobytes()
+    return hashlib.sha256(data).hexdigest()
 
 
 class TestDeterminismCertificate:
@@ -77,16 +79,16 @@ class TestDeterminismCertificate:
         run1 = _run_chain(audio)
         run2 = _run_chain(audio)
         assert np.array_equal(run1, run2)
-        assert _md5(run1) == _md5(run2)
+        assert _sha256(run1) == _sha256(run2)
         # Kette verändert das Signal tatsächlich (kein trivialer Passthrough-Test)
         assert not np.array_equal(run1, audio)
 
-    def test_chain_md5_stable_across_fresh_instances(self):
-        # Neue Phasen-Objekte (kein versteckter Instanzzustand) ⇒ identisches MD5.
+    def test_chain_sha256_stable_across_fresh_instances(self):
+        # Neue Phasen-Objekte (kein versteckter Instanzzustand) ⇒ identisches SHA-256.
         audio = _make_input()
-        md5_a = _md5(_run_chain(audio))
-        md5_b = _md5(_run_chain(audio))
-        assert md5_a == md5_b
+        sha256_a = _sha256(_run_chain(audio))
+        sha256_b = _sha256(_run_chain(audio))
+        assert sha256_a == sha256_b
 
     def test_chain_short_input_and_nan_guarded(self):
         audio = _make_input()[: SR // 2]
@@ -100,6 +102,7 @@ class TestDeterminismCertificate:
         from backend.core.phases.phase_38_presence_boost import PresenceBoost
 
         audio = _make_input()
-        r1 = PresenceBoost().process(audio, sample_rate=SR, material_type=MaterialType.VINYL)
-        r2 = PresenceBoost().process(audio, sample_rate=SR, material_type=MaterialType.VINYL)
+        material: str = str(getattr(MaterialType.VINYL, "value", "vinyl"))
+        r1 = PresenceBoost().process(audio, sample_rate=SR, material_type=material)
+        r2 = PresenceBoost().process(audio, sample_rate=SR, material_type=material)
         assert np.array_equal(r1.audio, r2.audio)

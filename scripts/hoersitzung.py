@@ -600,8 +600,9 @@ def baue_plan(
 def _erste_probe(v: dict[str, Any]) -> np.ndarray:
     """Hörprobe zum Einstellen der Lautstärke (die ohnehin in der Sitzung vorkommt)."""
     if v["art"] == "paar":
-        return v["_k"] if v["erstes"] == "kandidat" else v["_b"]
-    return v["_erst"]
+        probe: np.ndarray[Any, Any] = np.asarray(v["_k"] if v["erstes"] == "kandidat" else v["_b"], dtype=np.float64)
+        return probe
+    return np.asarray(v["_erst"], dtype=np.float64)
 
 
 def _baue_kontrollen(echte: list[dict[str, Any]], rng: np.random.Generator) -> list[dict[str, Any]]:
@@ -675,14 +676,16 @@ def spiele(pfad: Path, player: str | None = None) -> bool:
     player = player or finde_player()
     if not player:
         return False
+    # Ein absoluter Pfad kann nicht als Player-Option oder URL interpretiert werden.
+    datei = os.path.abspath(pfad)
     befehle = {
-        "ffplay": ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", str(pfad)],
-        "pw-play": ["pw-play", str(pfad)],
-        "aplay": ["aplay", "-q", str(pfad)],
-        "paplay": ["paplay", str(pfad)],
+        "ffplay": ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", datei],
+        "pw-play": ["pw-play", datei],
+        "aplay": ["aplay", "-q", datei],
+        "paplay": ["paplay", datei],
     }
     try:
-        subprocess.run(befehle[player], check=True, capture_output=True, stdin=subprocess.DEVNULL)
+        subprocess.run(befehle[player], check=True, capture_output=True, stdin=subprocess.DEVNULL, shell=False)
         return True
     except Exception as exc:
         logger.warning("Abspielen fehlgeschlagen (%s): %s", player, exc)

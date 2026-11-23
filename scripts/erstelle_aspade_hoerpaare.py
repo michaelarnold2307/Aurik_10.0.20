@@ -60,6 +60,17 @@ def _wav_schreiben(pfad: Path, audio: np.ndarray, sr: int) -> None:
     wavfile.write(pfad, sr, (np.clip(audio, -1.0, 1.0) * 32767.0).astype(np.int16))
 
 
+def _ausgabe_pfad(out: Path, dateiname: str) -> Path:
+    """Resolve generated paths and reject destinations outside the output directory."""
+    basis = out.resolve()
+    ziel = (basis / dateiname).resolve()
+    try:
+        ziel.relative_to(basis)
+    except ValueError as exc:
+        raise ValueError(f"Ausgabepfad liegt außerhalb des Ausgabe-Verzeichnisses: {dateiname}") from exc
+    return ziel
+
+
 def _declip_lauf(audio: np.ndarray, sr: int, aspade_an: bool) -> np.ndarray:
     import backend.core.music_model_flags as mmf
     from backend.core.phases.phase_07_declipper import DeclipperPhase
@@ -157,16 +168,16 @@ def main(argv: list[str] | None = None) -> int:
             an = _pegel_gematcht(segment, an)
             a_ist_an = bool(rng.random() < 0.5)
             slug = "".join(c if c.isalnum() else "_" for c in schaden_pfad.stem)[:60]
-            _wav_schreiben(out / f"{slug}_A.wav", an if a_ist_an else aus, sr)
-            _wav_schreiben(out / f"{slug}_B.wav", aus if a_ist_an else an, sr)
+            _wav_schreiben(_ausgabe_pfad(out, f"{slug}_A.wav"), an if a_ist_an else aus, sr)
+            _wav_schreiben(_ausgabe_pfad(out, f"{slug}_B.wav"), aus if a_ist_an else an, sr)
             schluessel[slug] = "A=flag_an" if a_ist_an else "A=flag_aus"
         else:
             pchip = _declip_lauf(segment, sr, aspade_an=False)
             aspade = _declip_lauf(segment, sr, aspade_an=True)
             a_ist_aspade = bool(rng.random() < 0.5)
             slug = "".join(c if c.isalnum() else "_" for c in schaden_pfad.stem)[:60]
-            _wav_schreiben(out / f"{slug}_A.wav", aspade if a_ist_aspade else pchip, sr)
-            _wav_schreiben(out / f"{slug}_B.wav", pchip if a_ist_aspade else aspade, sr)
+            _wav_schreiben(_ausgabe_pfad(out, f"{slug}_A.wav"), aspade if a_ist_aspade else pchip, sr)
+            _wav_schreiben(_ausgabe_pfad(out, f"{slug}_B.wav"), pchip if a_ist_aspade else aspade, sr)
             schluessel[slug] = "A=aspade" if a_ist_aspade else "A=pchip"
         anzahl += 1
 
@@ -184,8 +195,12 @@ def main(argv: list[str] | None = None) -> int:
         "paare": anzahl,
         "hinweis": "Hör-Entscheidung menschlich (scripts/hoer_entscheidung.py) — kein Flag-Flip.",
     }
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    (out / "schluessel.json").write_text(json.dumps(schluessel, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    _ausgabe_pfad(out, "manifest.json").write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    _ausgabe_pfad(out, "schluessel.json").write_text(
+        json.dumps(schluessel, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     print(f"Hörpaare: {anzahl} nach {out} (Schlüssel getrennt in schluessel.json)")
     return 0
 

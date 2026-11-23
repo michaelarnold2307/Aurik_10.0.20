@@ -18,7 +18,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import shutil
+import os
+import re
 import sys
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -56,8 +57,12 @@ class Handler(BaseHTTPRequestHandler):
             if "/" in name or ".." in name:
                 self._send_json({"error": "ungueltiger Name"}, 400)
                 return
-            datei = self.server.share / "agent" / name  # type: ignore[attr-defined]
-            if not datei.is_file():
+            if "\\" in name or name != Path(name).name or not name:
+                self._send_json({"error": "ungueltiger Name"}, 400)
+                return
+            basis = (self.server.share / "agent").resolve()  # type: ignore[attr-defined]
+            datei = (basis / name).resolve()
+            if datei.parent != basis or not datei.is_file():
                 self._send_json({"error": "nicht vorhanden"}, 404)
                 return
             self._send_bytes(datei.read_bytes(), "application/octet-stream")
@@ -80,8 +85,12 @@ class Handler(BaseHTTPRequestHandler):
             if "/" in name or ".." in name:
                 self._send_json({"error": "ungueltiger Name"}, 400)
                 return
-            datei = self.server.share / name  # type: ignore[attr-defined]
-            if not datei.is_file():
+            if "\\" in name or name != Path(name).name or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.\- ]*", name):
+                self._send_json({"error": "ungueltiger Name"}, 400)
+                return
+            basis = self.server.share.resolve()  # type: ignore[attr-defined]
+            datei = (basis / name).resolve()
+            if datei.parent != basis or not datei.is_file():
                 self._send_json({"error": "nicht vorhanden"}, 404)
                 return
             self._send_bytes(datei.read_bytes(), "audio/wav")
@@ -104,16 +113,34 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"error": "nur /result/<name>"}, 400)
             return
         name = pfad[len("/result/") :]
-        if "/" in name or ".." in name or not name.endswith(".wav"):
+        if "/" in name or "\\" in name or ".." in name or not name.endswith(".wav") or name != Path(name).name:
             self._send_json({"error": "ungueltiger Name"}, 400)
             return
-        laenge = int(self.headers.get("Content-Length", "0"))
+        if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.\- ]*\.wav", name):
+            self._send_json({"error": "ungueltiger Name"}, 400)
+            return
+        try:
+            laenge = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self._send_json({"error": "ungueltige Laenge"}, 400)
+            return
+        if laenge < 0:
+            self._send_json({"error": "ungueltige Laenge"}, 400)
+            return
         daten = self.rfile.read(laenge)
-        out_dir = self.server.share / "output"  # type: ignore[attr-defined]
+        out_dir = (self.server.share / "output").resolve()  # type: ignore[attr-defined]
         out_dir.mkdir(parents=True, exist_ok=True)
-        tmp = out_dir / f"{name}.part"
+        sicher = os.path.basename(name)
+        if sicher != name or not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.\- ]*\.wav", sicher):
+            self._send_json({"error": "ungueltiger Name"}, 400)
+            return
+        ziel = Path(os.path.normpath(os.path.join(str(out_dir), sicher)))
+        tmp = Path(os.path.normpath(os.path.join(str(out_dir), sicher + ".part")))
+        if ziel.parent != out_dir or tmp.parent != out_dir:
+            self._send_json({"error": "ungueltiger Name"}, 400)
+            return
         tmp.write_bytes(daten)
-        shutil.move(str(tmp), str(out_dir / name))
+        os.replace(tmp, ziel)
         self._send_json({"ok": True, "bytes": len(daten)})
 
     def log_message(self, fmt: str, *args: object) -> None:

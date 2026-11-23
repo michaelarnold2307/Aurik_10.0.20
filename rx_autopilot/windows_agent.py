@@ -137,6 +137,7 @@ def _watch(queue: Path, out: Path, intervall_s: float = 5.0) -> int:
 
 def _watch_http(basis: str, tmp: Path, intervall_s: float = 5.0) -> int:
     """HTTP-Modus: Queue des Hosts pollen (QEMU-Usernet: http://10.0.2.2:8090)."""
+    import urllib.parse
     import urllib.request
 
     rx = _rxconnect_import()
@@ -150,16 +151,33 @@ def _watch_http(basis: str, tmp: Path, intervall_s: float = 5.0) -> int:
             if not auftrag:
                 time.sleep(intervall_s)
                 continue
-            name = auftrag["name"]
-            stamm = auftrag["stamm"]
+            # Path-Traversal-Schutz: nur reine Dateinamen aus Remote-Daten zulassen
+            name = str(auftrag["name"])
+            stamm = str(auftrag["stamm"])
             klasse = auftrag["klasse"]
+            if (
+                name != Path(name).name
+                or stamm != Path(stamm).name
+                or "\\" in name
+                or "\\" in stamm
+                or name in ("", ".", "..")
+                or stamm in ("", ".", "..")
+            ):
+                logger.error("Ungültiger Auftrags-Dateiname abgelehnt: %r / %r", name, stamm)
+                time.sleep(intervall_s)
+                continue
             kette = presets.get(klasse)
             if kette is None:
                 logger.warning("Unbekannte Defektklasse %r — übersprungen: %s", klasse, name)
                 continue
-            eingabe = tmp / name
-            urllib.request.urlretrieve(basis + "/files/" + name, eingabe)
-            ausgabe = tmp / f"{stamm}_rx12.wav"
+            tmp_basis = tmp.resolve()
+            eingabe = (tmp_basis / name).resolve()
+            ausgabe = (tmp_basis / f"{stamm}_rx12.wav").resolve()
+            if eingabe.parent != tmp_basis or ausgabe.parent != tmp_basis:
+                logger.error("Pfad außerhalb des Temp-Ordners abgelehnt: %r", name)
+                time.sleep(intervall_s)
+                continue
+            urllib.request.urlretrieve(basis + "/files/" + urllib.parse.quote(name), eingabe)
             logger.info("Verarbeite %s (Klasse %s, %d Schritte) …", name, klasse, len(kette))
             _verarbeite(rx, eingabe, ausgabe, kette)
             with ausgabe.open("rb") as f:
