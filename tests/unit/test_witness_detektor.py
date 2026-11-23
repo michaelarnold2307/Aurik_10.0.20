@@ -276,6 +276,7 @@ def test_init_von_laedt_verwandten_witness(monkeypatch: pytest.MonkeyPatch, tmp_
         lambda klasse, manifest=None, abs_mel=False, rms_skip=False: (daten, ["holdout"], 0),
     )
     monkeypatch.setattr(tw, "MODELS_DIR", tmp_path)
+    monkeypatch.setattr(tw, "_ROOT", tmp_path)
     monkeypatch.setattr(tw, "EPOCHS", 1)
     src_dir = tmp_path / "witness_dropouts"
     src_dir.mkdir(parents=True)
