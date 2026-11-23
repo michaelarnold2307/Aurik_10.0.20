@@ -86,6 +86,36 @@ def test_fail_closed_ohne_checkpoint(tmp_path: Path) -> None:
     assert rc == 2
 
 
+def test_messe_modul_zweig_misst_produktions_konvention_auch_ohne_rms_skip(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Der Modul-Zweig des Schutz-Arms muss für ALLE Witnesses die Produktions-
+    Konvention nutzen: Modul-Ausgang mit EIGENER RMS renormiert, Referenz clean
+    mit EIGENER RMS — die frühere RAW-Messung driftete bei leisen clean-Regionen
+    über die 0,02-Toleranz (dce-Befund 2026-11-23: p_raw vs p_norm bis 0,046)."""
+    aufrufe: list[tuple[float | None, np.ndarray]] = []
+    werte = iter([0.9, 0.1, 0.4, 0.1, 0.1])
+
+    def fake_p(_witness, x, raw_db=None):
+        arr = x.detach().cpu().numpy() if isinstance(x, torch.Tensor) else np.asarray(x)
+        aufrufe.append((raw_db, np.asarray(arr, dtype=np.float64)))
+        return next(werte)
+
+    monkeypatch.setattr(gate, "_lade_mono", lambda pfad: np.ones(600, dtype=np.float32))
+    monkeypatch.setattr(gate, "_p", fake_p)
+    # Modul-Funktion: Bypass (None) — wie der dce-Produktionspfad auf clean.
+    result = gate.messe(
+        lambda audio: audio,
+        _FakeWitnessAlt(),
+        [("title", Path("damaged.wav"), Path("clean.wav"))],
+        modul_fn=lambda audio, sr: None,
+    )
+    assert result["never_worsen_flags"] == [True]
+    assert len(aufrufe) == 5  # p_s, p_c, p_out_s, p_c_ref, p_out_c
+    # p_out_c (5. Aufruf) und p_c_ref (4. Aufruf) müssen EIGENE-RMS-normalisiert sein.
+    for idx in (3, 4):
+        rms = float(np.sqrt(np.mean(aufrufe[idx][1] ** 2)))
+        assert rms == pytest.approx(gate.RMS_ZIEL, rel=1e-5)
+
+
 def test_quelltext_pin_kein_flag() -> None:
     quelltext = Path(gate.__file__).read_text(encoding="utf-8")
     assert "music_model_flags" not in quelltext

@@ -232,17 +232,22 @@ def messe(
                 if out_c_prod is None:
                     out_c_prod = c_w
                 out_c_prod = np.asarray(out_c_prod, np.float32)
+                # Produktions-Konvention (DRT-4) für ALLE Witnesses: der Modul-Ausgang
+                # wird mit seiner EIGENEN RMS renormiert gemessen — die Referenz ist
+                # clean mit der EIGENEN RMS (c_own), exakt die Inferenz-Konvention
+                # ``_witness_p``. Die frühere RAW-Messung driftete bei leisen
+                # clean-Regionen über die 0,02-Toleranz (dce-Befund 2026-11-23:
+                # p_raw vs p_norm bis 0,046 auf Jets-Regionen mit rms 0,07–0,12).
+                rms_p = float(np.sqrt(np.mean(out_c_prod.astype(np.float64) ** 2)) + 1e-8)
+                out_p_ref = (out_c_prod / rms_p * RMS_ZIEL).astype(np.float32)
+                rms_c = float(np.sqrt(np.mean(c_w.astype(np.float64) ** 2)) + 1e-8)
+                c_own = (c_w / rms_c * RMS_ZIEL).astype(np.float32)
                 if rms_skip:
-                    # Produktions-Konvention (DRT-4): der Modul-Ausgang wird mit
-                    # seiner EIGENEN RMS renormiert und mit seinem wahren Pegel
-                    # gemessen — exakt ``_witness_p(kandidat_seg)`` der Produktion.
-                    rms_p = float(np.sqrt(np.mean(out_c_prod.astype(np.float64) ** 2)) + 1e-8)
-                    out_p_ref = (out_c_prod / rms_p * RMS_ZIEL).astype(np.float32)
                     p_out_c = _p(witness, torch.from_numpy(out_p_ref[None, None]), _roh_db(out_c_prod))
-                    p_c_ref = p_c  # bereits Produktions-Konvention (clean-eigene RMS + wahrer Pegel)
+                    p_c_ref = _p(witness, torch.from_numpy(c_own[None, None]), db_c)
                 else:
-                    p_out_c = _p(witness, torch.from_numpy(out_c_prod[None]))
-                    p_c_ref = p_c
+                    p_out_c = _p(witness, torch.from_numpy(out_p_ref[None, None]))
+                    p_c_ref = _p(witness, torch.from_numpy(c_own[None, None]))
             else:
                 # DRT-4-Parität (Spec 26): ohne Produktions-DSP misst der
                 # Schutz-Arm den rohen Kopf auf clean mit CLEAN-EIGENER RMS —
