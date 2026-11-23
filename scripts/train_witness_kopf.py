@@ -358,6 +358,61 @@ def _witness_q(ps: float, pc: float, pout: float) -> float | None:
     return float(np.clip((ps - pout) / kontrast, -1.0, 2.0))
 
 
+def _q_holdout_pro_region(
+    witness: nn.Module,
+    Hs_t: torch.Tensor,
+    Hc_id_t: torch.Tensor,
+    Hc_t: torch.Tensor,
+    out_h: torch.Tensor,
+    R_s_ho: torch.Tensor,
+    R_c_ho: torch.Tensor,
+    device: str,
+    w_skip: bool,
+) -> float | None:
+    """Holdout-Q als Median der REGIONEN-Q — exakt die Gate-Metrik (ANT-3/DRT-4).
+
+    Der frühere Mittelwert-P-Weg verwischte die Verteilung (transport_bump-
+    Befund 2026-11-23: mean-Q 1,20 vs. Gate-Median 2,0 = Überrestauration trotz
+    Q-Ziel-Auswahl). Je Region wird q = (p_s − p_out)/(p_s − p_c) gerechnet
+    (Kontrast ≤ 0,05 ⇒ unbewertbar, wie im Gate), gewertet wird der Median.
+    """
+    qs: list[float] = []
+    with torch.no_grad():
+        for i in range(len(Hs_t)):
+            mel_s = _mel_torch(Hs_t[i : i + 1].reshape(1, -1))
+            p_si = _witness_p_mittel(
+                witness,
+                mel_s,
+                device,
+                Hs_t[i : i + 1],
+                _db_roh_fenster(R_s_ho[i : i + 1].to(device)) if w_skip else None,
+            )
+            if w_skip:
+                mel_c = _mel_torch(Hc_id_t[i : i + 1].reshape(1, -1))
+                p_ci = _witness_p_mittel(
+                    witness,
+                    mel_c,
+                    device,
+                    Hc_id_t[i : i + 1],
+                    _db_roh_fenster(R_c_ho[i : i + 1].to(device)),
+                )
+            else:
+                mel_c = _mel_torch(Hc_t[i : i + 1].reshape(1, -1))
+                p_ci = _witness_p_mittel(witness, mel_c, device, Hc_t[i : i + 1])
+            mel_o = _mel_torch(out_h[i : i + 1].reshape(1, -1))
+            p_oi = _witness_p_mittel(
+                witness,
+                mel_o,
+                device,
+                out_h[i : i + 1],
+                _db_roh_ausgabe(out_h[i : i + 1], R_s_ho[i : i + 1].to(device)) if w_skip else None,
+            )
+            q_i = _witness_q(p_si, p_ci, p_oi)
+            if q_i is not None:
+                qs.append(q_i)
+    return float(np.median(qs)) if qs else None
+
+
 def _baue_regionen(klasse: str) -> tuple[list[tuple[str, Path, Path]], str, int]:
     eintraege = []
     for line in MANIFEST.open(encoding="utf-8"):
@@ -678,47 +733,11 @@ def trainiere(
                 raw_db_ref=_db_roh_fenster(R_c_ho.to(device)) if w_skip else None,
             )
             if q_ziel is not None:
-                # Holdout-Q je Epoche (Anti-Überrestauration): (P_s − P_out)/(P_s − P_c)
-                # auf den schaden-RMS-normalisierten 1-s-Fenstern — exakt die Gate-Metrik.
-                ps_h = (
-                    _witness_p_mittel(
-                        witness,
-                        _mel_torch(Hs_t.reshape(len(Hs_t), -1)),
-                        device,
-                        Hs_t,
-                        _db_roh_fenster(R_s_ho.to(device)) if w_skip else None,
-                    )
-                    if len(Hs_t)
-                    else None
-                )
-                if w_skip:
-                    # rms_skip ⇒ Produktions-Konvention: clean mit der EIGENEN RMS
-                    # (Hc_id_t) + wahrem Pegel — exakt ``_witness_p(c_w)``.
-                    pc_h = (
-                        _witness_p_mittel(
-                            witness,
-                            _mel_torch(Hc_id_t.reshape(len(Hc_id_t), -1)),
-                            device,
-                            Hc_id_t,
-                            _db_roh_fenster(R_c_ho.to(device)),
-                        )
-                        if len(Hc_id_t)
-                        else None
-                    )
-                else:
-                    pc_h = (
-                        _witness_p_mittel(witness, _mel_torch(Hc_t.reshape(len(Hc_t), -1)), device, Hc_t)
-                        if len(Hc_t)
-                        else None
-                    )
-                pout_h = _witness_p_mittel(
-                    witness,
-                    _mel_torch(out_h.reshape(len(out_h), -1)),
-                    device,
-                    out_h,
-                    _db_roh_ausgabe(out_h, R_s_ho.to(device)) if w_skip else None,
-                )
-                q_h = _witness_q(ps_h, pc_h, pout_h) if (ps_h is not None and pc_h is not None) else None
+                # Holdout-Q je Epoche (Anti-Überrestauration) — als Median der
+                # REGIONEN-Q, exakt die Gate-Metrik (ANT-3/DRT-4): der frühere
+                # Mittelwert-P-Weg verwischte die Verteilung (transport_bump-
+                # Befund 2026-11-23: mean-Q 1,20 vs. Gate-Median 2,0).
+                q_h = _q_holdout_pro_region(witness, Hs_t, Hc_id_t, Hc_t, out_h, R_s_ho, R_c_ho, device, w_skip)
             kandidaten.append(
                 {
                     "ep": ep,

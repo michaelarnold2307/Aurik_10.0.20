@@ -127,3 +127,30 @@ def test_db_roh_fenster_ist_20_log10_rms() -> None:
 
     rms_lin = torch.tensor([0.05, 0.2, 0.5])
     assert torch.allclose(wk._db_roh_fenster(rms_lin), 20.0 * torch.log10(rms_lin), atol=1e-6)
+
+
+def test_q_holdout_pro_region_medianiert_wie_das_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Die Q-Ziel-Auswahl muss den Median der REGIONEN-Q nutzen — exakt die
+    Gate-Metrik (ANT-3/DRT-4, transport_bump-Befund 2026-11-23: mean-Q 1,20
+    vs. Gate-Median 2,0). Regionen mit Kontrast ≤ 0,05 sind unbewertbar."""
+    import torch
+
+    werte = iter([0.9, 0.1, 0.4, 0.8, 0.1, 0.3, 0.5, 0.48, 0.3])
+
+    def fake_p_mittel(_witness, mel, device, audio=None, raw_db=None):
+        return next(werte)
+
+    monkeypatch.setattr(wk, "_witness_p_mittel", fake_p_mittel)
+    n = 3
+    Hs = torch.zeros(n, 1, wk.FENSTER)
+    Hc_id = torch.zeros(n, 1, wk.FENSTER)
+    Hc = torch.zeros(n, 1, wk.FENSTER)
+    out = torch.zeros(n, 1, wk.FENSTER)
+    R_s = torch.tensor([0.2, 0.2, 0.2])
+    R_c = torch.tensor([0.2, 0.2, 0.2])
+    q = wk._q_holdout_pro_region(object(), Hs, Hc_id, Hc, out, R_s, R_c, "cpu", w_skip=False)
+    q1 = (0.9 - 0.4) / (0.9 - 0.1)
+    q2 = (0.8 - 0.3) / (0.8 - 0.1)
+    assert q == pytest.approx(np.median([q1, q2]))
+    # dritte Region (0,5/0,48) hat Kontrast 0,02 ≤ 0,05 ⇒ unbewertbar
+    assert q != pytest.approx((0.5 - 0.3) / (0.5 - 0.48))
