@@ -1,0 +1,31 @@
+{
+  "titel": "Determinismus-Probe: Go/No-Go-Flip der Pipeline auf identischem Input",
+  "datum": "2026-11-23",
+  "paar": "Snowmine - Curfews (hum).wav",
+  "methode": "2x restauriere_schnipsel (gleiche Flags: keine Witness-Kanäle aktiv) im selben Prozess, gleicher Input, gleiche Version (HEAD 406eb527 + WIP train_witness_kopf)",
+  "ergebnisse": [
+    {
+      "lauf": 1,
+      "delta_defektlast": 0.3646,
+      "delta_musik_mos": -0.0672,
+      "deutung": "volle Verarbeitung, Ergebnis schlechter als Eingang"
+    },
+    {
+      "lauf": 2,
+      "delta_defektlast": 0.0,
+      "delta_musik_mos": 0.0,
+      "deutung": "bit-identischer Pass-Through (Rollback auf Eingang)"
+    }
+  ],
+  "ursache": "PipelineGuard §0h VETO: artifact_freedom=0.862 < 0.88 (depth=2) — grenzwertiger Konstitutions-Wert; Kandidat-Ergebnisse unterscheiden sich minimal zwischen Läufen (async pre_Analyse-Race), VETO kippt ⇒ Rollback auf Eingang (§0c-bestmögliches sicheres Ergebnis)",
+  "folgen_fuer_ab": [
+    "A/B-Vergleich Kanalsatz-Pass vs. alte Bestand-Bewertung (andere Session) ist durch Go/No-Go-Flip kontaminiert: Paar-Deltas bis ±0,36 sind möglich ohne jede Kanalwirkung",
+    "Snowmine-hum +0,36 und Music-Delta-raum +1,62 sind NICHT den Witness-Kanälen zuzuschreiben — Solo-Probe: alle 11 Weizen-Kanäle Pass-Through auf beiden Titeln (20-s-Fenstermitte)",
+    "Korrekte Interpretation erfordert gepaarte Messung: Bestand-Pass und Kanalsatz-Pass in derselben Session/Reihenfolge"
+  ],
+  "geplante_fixes": [
+    "P1: gepaarte A/B-Nachmessung (frischer Bestand-Pass pro Paar in derselben Session) sobald CPU frei (nach NOR-Runde)",
+    "P2: async pre_Analyse-Race in unified_restorer_v3 prüfen (Phasen-Plan wartet auf async-Schritte?)",
+    "P3: artifact_freedom-Grenzwert-Verhalten dokumentieren (kein Schwellwert-Eingriff — §0h ist Konstitution)"
+  ]
+}

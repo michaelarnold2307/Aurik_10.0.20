@@ -193,6 +193,20 @@ Priorität C→B→A→D→E/F:
 
 ## 3. Zustand & Wiederherstellung nach Abbruch/Reboot
 
+**Wiederaufnahme-Stand 2026-11-23 (Abend/Nacht, HEAD 406eb527 + WIP):**
+- **Laufende Ketten (Hintergrund-Shells, nicht committen bis jeweiliges END):**
+  NOR-Runde (`/tmp/nor_runde.log`: ts_artifact/jitter/tdhl mit `--lambda-nor 0.5`, Q-Ziel 1.0, NW 0.95) → danach `kette_nor_followup.sh` (Gates + Trennung).
+  Dropout-EXP-Kette (`kette_dropout_drt8.sh`, Marker `/tmp/dropout_exp_summary.txt`) → `kette_dropouts_followup.sh` + `kette_post_exp.sh` (beide warten auf `DROPOUT_EXP_END`).
+  Weizen-A/B (`scripts/messe_kanalsatz_ab.py`, 45 Paare, Ziel `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll.json` + `_zeilen/`).
+  WIP uncommittet: `scripts/train_witness_kopf.py`, `tests/unit/test_witness_mos_loss.py` (NOR-Erweiterung, 17/17 Tests grün).
+- **⚠ Neuer Befund D-K3-GoNoGo (Beleg `docs/reports/current/2026-11-23_determinismus_go_nogo_befund.json`):**
+  Die Pipeline flippt auf identischem Input zwischen voller Verarbeitung und bit-identischem Pass-Through.
+  Ursache: `PipelineGuard §0h VETO: artifact_freedom=0.862 < 0.88 (depth=2)` — grenzwertiger Konstitutions-Wert, minimal verschiedene Kandidaten zwischen Läufen (Verdacht async pre_Analyse-Race) ⇒ VETO kippt ⇒ Rollback auf Eingang.
+  Folge: A/B-Paar-Deltas bis ±0,36 sind ohne jede Kanalwirkung möglich; Bestand-Baseline (alte Session) und Kanalsatz-Pass (neue Session) sind nicht vergleichbar.
+  Solo-Probe (11 Weizen-Kanäle, 20-s-Fenstermitte, raum/hum-Paare): ALLE Pass-Through — die frühen A/B-Ausreißer stammen nicht von den Kanälen.
+  Offen: P1 gepaarte A/B-Nachmessung (frischer Bestand-Pass pro Paar, gleiche Session), P2 async-Race-Untersuchung, P3 Dokumentation (KEIN Eingriff in §0h-Schwelle).
+- **Wiederaufnahme:** Ketten via `/tmp/monitor_aurik.py` prüfen; Marker-Dateien unter `/tmp/*_summary.txt`; nach Abbruch: NOR-Runde ggf. neu starten (Beleg-Pfade in `docs/reports/current/2026-11-23_*`), WIP-Diff zuerst begutachten.
+
 **Wiederaufnahme-Stand 2026-11-12 (Nacht, committet bis c3d4606f):**
 - **Commits des Tages:** `c3d4606f` (§G13-Q-Ziel im Defekt-Delta sichtbar), `f73a81ac` (§G13 Hörbarkeits-Dominanz — Verbesserungs-Pflicht über alle 65 Defektklassen), `401b069e` (D-K3-98-Folgemessung: Enhancer No-Op auf Rezepten), `5330dce2` (M4-Stufen — 4-Modelle-B3-Lauf rekonstruierbar), `756cb836` (Handover-Nachtrag), `a0517137` (B3-Iteration 2: W-8 NICHT_MESSBAR (D-K3-92), F9-Identity-Gate, autarke Daten R5/R6/R7/D-K0-8, Song-Isolation, D-K3-96-Mel-Wahrheit), `e097a672` (D-K3-98-Rezepte-Zyklus gebucht), `4ba83b71` (Zyklus: §V8-Fix, M5-vocos-Stage, UAT, W-3/M12-Buchungen), `052188e7` (D-K3-98 Air-Presence, Parallel-Sitzung), `ba9770e6` (Norm §G191 + Defekt-Delta-Witness), `8ac4ec5e` (Erstbelege + Scanner-Anbindung), `8aa16dd0` (Schema /2: Body-Matching + relative Sättigung), `3928ae53` (M5-vocos-Beschluss-KeyError-Fix), `09e7d20c` (Handover-Abendstand), `d126b2b4` (Defektlast-Zertifikats-Grenzen D-K3-95/97), `192766eb` (M5-vocos-Messung gebucht, ABGELEHNT), `fd2acde3` (A-1-Messung gebucht, ABGELEHNT), `cfe19143` (W-2-Neumessung gebucht, ABGELEHNT).
 - **M5-vocos-B3-Messung FERTIG (2026-11-11, 22:05) und gebucht:** **ABGELEHNT auf Substanz** — pfad_wirksam ✓, never_worsen ✓, 1/6 Vorteile, p=0,21875 ⇒ **Flag bleibt AUS** (bei Ablehnung kein Hör-Sign-off nötig). Belege: `b3_objektivbeschluss_M5-vocos.json` + `b3_stufenmessung_M5-vocos.json` (Register D-K3-90). Der erste Lauf der Parallel-Sitzung starb am Beschluss-Schreiben (`KeyError 'M5-vocos'` — D-K3-82-Klasse, gefixt in `3928ae53` inkl. generischem Konsistenz-Test).
