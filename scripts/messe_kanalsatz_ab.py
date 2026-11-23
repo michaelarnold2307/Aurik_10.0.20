@@ -85,18 +85,33 @@ KANALSAETZ_FLAGS = [
 ]
 
 
-def _aktiviere_kanalsatz(kanal: str | None = None) -> None:
-    """Aktiviert den vollständigen Satz oder genau einen Kanal, nur prozess-lokal."""
+def _aktiviere_kanalsatz(kanal: str | None = None, kanalsatz_flags: list[str] | None = None) -> None:
+    """Aktiviert den vollständigen Satz (oder die übergebene Liste), nur prozess-lokal."""
     import backend.core.music_model_flags as flags
 
-    if kanal is not None and kanal not in KANALSAETZ_FLAGS:
+    satz = KANALSAETZ_FLAGS if kanalsatz_flags is None else kanalsatz_flags
+    if kanal is not None and kanal not in satz:
         raise ValueError(f"Unbekannter DRT-12-Kanal: {kanal}")
-    aktiviert = KANALSAETZ_FLAGS if kanal is None else [kanal]
-    for name in KANALSAETZ_FLAGS:
-        if not hasattr(flags, name):
-            raise RuntimeError(f"Kanal-Flag fehlt im music_model_flags-Modul: {name}")
+    fehlend = [name for name in satz if not hasattr(flags, name)]
+    if fehlend:
+        raise RuntimeError(f"Kanal-Flag fehlt im music_model_flags-Modul: {', '.join(fehlend)}")
+    aktiviert = satz if kanal is None else [kanal]
+    for name in set(KANALSAETZ_FLAGS) | set(satz):
         setattr(flags, name, name in aktiviert)
     print(f"Kanalsatz aktiviert ({len(aktiviert)} Flags, prozess-lokal).")
+
+
+def _parse_flags(roh: str) -> list[str]:
+    """Komma-Liste zu deduplizierter Flag-Liste (Reihenfolge erhalten, fail-closed)."""
+    teile = [t.strip() for t in roh.split(",") if t.strip()]
+    if not teile:
+        raise ValueError("--flags braucht mindestens einen Flag-Namen")
+    import backend.core.music_model_flags as flags
+
+    fehlend = [name for name in teile if not hasattr(flags, name)]
+    if fehlend:
+        raise ValueError(f"Unbekannte Kanal-Flags: {', '.join(fehlend)}")
+    return list(dict.fromkeys(teile))
 
 
 def _zeugen(schaden: np.ndarray, restauriert: np.ndarray, sr: int) -> dict[str, Any]:
@@ -219,6 +234,11 @@ def _kind_einzel(argv: list[str]) -> int:
     ap.add_argument("--bestand", type=Path, default=None)
     ap.add_argument("--ausgang", type=Path, default=None)
     ap.add_argument("--kanal", choices=KANALSAETZ_FLAGS, default=None)
+    ap.add_argument(
+        "--flags",
+        default=None,
+        help="Komma-Liste von Kanal-Flags (übersteuert --kanal); z. B. den Weizen-Satz der Spreu/Weizen-Trennung.",
+    )
     ap.add_argument("--index", type=int, required=True)
     ap.add_argument("--paare", type=int, required=True)
     ap.add_argument("--zeile-datei", type=Path, required=True)
@@ -229,8 +249,8 @@ def _kind_einzel(argv: list[str]) -> int:
 
     from scripts.erstelle_schadens_proben import restauriere_schnipsel  # pylint: disable=import-outside-toplevel
 
-    kanal_flags = KANALSAETZ_FLAGS if args.kanal is None else [args.kanal]
-    _aktiviere_kanalsatz(args.kanal)
+    kanal_flags = _parse_flags(args.flags) if args.flags else (KANALSAETZ_FLAGS if args.kanal is None else [args.kanal])
+    _aktiviere_kanalsatz(args.kanal, kanal_flags)
     bestand = _bestand_laden(args.bestand)
     paare = _paare_auswaehlen(Path(args.verzeichnis), args.paare, args.seed)
     stamm, pfad = paare[args.index]
@@ -310,9 +330,14 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Nur diesen Witness-Kanal testen; ohne Angabe läuft der vollständige 12-Flag-Satz.",
     )
+    ap.add_argument(
+        "--flags",
+        default=None,
+        help="Komma-Liste von Kanal-Flags (übersteuert --kanal); z. B. den Weizen-Satz der Spreu/Weizen-Trennung.",
+    )
     args = ap.parse_args(argv)
-    kanal_flags = KANALSAETZ_FLAGS if args.kanal is None else [args.kanal]
-    kanal_suffix = f"_{args.kanal}" if args.kanal is not None else ""
+    kanal_flags = _parse_flags(args.flags) if args.flags else (KANALSAETZ_FLAGS if args.kanal is None else [args.kanal])
+    kanal_suffix = f"_{args.kanal}" if args.kanal is not None else ("_flags" if args.flags else "")
 
     os.environ.setdefault("AURIK_FORCE_CPU", "1")
     os.environ.setdefault("AURIK_NO_RT_LIMIT", "1")
@@ -418,6 +443,8 @@ def main(argv: list[str] | None = None) -> int:
         ]
         if args.kanal is not None:
             kind_argv += ["--kanal", args.kanal]
+        if args.flags is not None:
+            kind_argv += ["--flags", args.flags]
         if args.bestand is not None:
             kind_argv += ["--bestand", str(args.bestand)]
         if args.ausgang is not None:

@@ -60,6 +60,44 @@ def test_aktivierung_eines_kanals_deaktiviert_die_restlichen(monkeypatch) -> Non
     assert all(not getattr(flags, name) for name in ab.KANALSAETZ_FLAGS if name != ausgewaehlt)
 
 
+def test_flags_override_aktiviert_nur_den_uebergebenen_satz(monkeypatch) -> None:
+    import backend.core.music_model_flags as flags
+
+    for name in ab.KANALSAETZ_FLAGS:
+        monkeypatch.setattr(flags, name, False)
+    monkeypatch.setattr(flags, "use_witness_kopf_hum", False)
+    monkeypatch.setattr(flags, "use_witness_kopf_wow", False)
+
+    satz = ["use_witness_kopf_clicks", "use_witness_kopf_hum"]
+    ab._aktiviere_kanalsatz(kanalsatz_flags=satz)
+
+    assert flags.use_witness_kopf_clicks is True
+    assert flags.use_witness_kopf_hum is True
+    assert flags.use_witness_kopf_wow is False
+    assert all(not getattr(flags, name) for name in ab.KANALSAETZ_FLAGS if name not in satz)
+
+
+def test_parse_flags_dedup_fail_closed() -> None:
+    assert ab._parse_flags("use_witness_kopf_clicks, use_witness_kopf_clicks,use_witness_kopf_hum") == [
+        "use_witness_kopf_clicks",
+        "use_witness_kopf_hum",
+    ]
+    with pytest.raises(ValueError):
+        ab._parse_flags("")
+    with pytest.raises(ValueError):
+        ab._parse_flags("use_gibts_nicht")
+
+
+def test_flags_fehlen_im_modul_wirft_runtime_error(monkeypatch) -> None:
+    with pytest.raises(RuntimeError):
+        ab._aktiviere_kanalsatz(kanalsatz_flags=["use_gibts_nicht"])
+
+
+def test_kanal_muss_im_uebergebenen_satz_liegen() -> None:
+    with pytest.raises(ValueError):
+        ab._aktiviere_kanalsatz("use_witness_kopf_clicks", kanalsatz_flags=["use_witness_kopf_hum"])
+
+
 def test_zeugen_traegt_kanonische_ueberrestauration(monkeypatch) -> None:
     from backend.core.dsp import wohlklang_zeuge
 

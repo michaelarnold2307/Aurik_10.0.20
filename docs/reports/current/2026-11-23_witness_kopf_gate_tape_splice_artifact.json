@@ -10,9 +10,9 @@
   "n_q_bewertbar": 18,
   "n_never_worsen_bewertbar": 19,
   "q_values": [
-    2.0, 2.0, 1.7216490442238837, 2.0, 2.0, 2.0, 2.0, 1.2885348742347607, 2.0,
-    2.0, 1.9787939830834986, 2.0, 2.0, 2.0, 2.0, 1.4684734802739516,
-    1.8306731311545597, 2.0
+    1.6768973549346828, 2.0, 1.3353620376709536, 2.0, 2.0, 2.0, 2.0,
+    1.0025393168029149, 2.0, 2.0, 1.5408975726338792, 2.0, 2.0, 2.0, 2.0,
+    1.0500571987871954, 1.4521998978015829, 2.0
   ],
   "never_worsen_flags": [
     true,
@@ -39,7 +39,7 @@
   "q_anteil_ge_0_5": 1.0,
   "never_worsen_anteil": 1.0,
   "gate_bestanden": true,
-  "musik_mos_delta_mittel": 1.4905,
+  "musik_mos_delta_mittel": 1.5326,
   "musik_mos_delta_anteil_ge_minus_jnd": 1.0,
   "drt_8_10": "Report-only Zwei-Metrik-Messung (defektlast UND musik_mos); Gate-Urteil unverändert",
   "gate_qualitaet_bestanden": true,
