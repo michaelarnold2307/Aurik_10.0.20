@@ -239,3 +239,25 @@ def test_gate_mos_messung_default_aus() -> None:
     assert 'action="store_true"' in _SRC_GATE
     assert "if mos_messen:" in _SRC_GATE
     assert "musik_mos_delta_mittel" in _SRC_GATE
+
+
+def test_init_von_fehlender_checkpoint_fail_loud() -> None:
+    """--init-von mit unbekannter Klasse bricht VOR dem Training ab (FileNotFoundError)."""
+    with pytest.raises(FileNotFoundError):
+        wk.trainiere(
+            "dropout_head_contact",
+            1,
+            64,
+            4,
+            0.1,
+            "cpu",
+            init_von="gibt_es_nicht",
+        )
+
+
+def test_init_von_parser_akzeptiert_flag(capsys) -> None:
+    """Der CLI-Parser kennt --init-von (Transfer-Warmstart, Spec 27 ANT-B)."""
+    with pytest.raises(SystemExit) as _ex:
+        wk.main(["--help"])
+    assert _ex.value.code == 0
+    assert "--init-von" in capsys.readouterr().out

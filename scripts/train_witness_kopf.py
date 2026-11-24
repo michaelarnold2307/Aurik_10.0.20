@@ -589,6 +589,7 @@ def trainiere(
     nw_min: float | None = None,
     q_ziel: float | None = None,
     lam_nor: float = 0.0,
+    init_von: str | None = None,
 ) -> dict[str, Any]:
     regionen, holdout_titel, n_gesamt = _baue_regionen(klasse)
     xs, xc, xc_id, hs, hc, hc_id, r_s_tr, r_c_tr, r_s_ho, r_c_ho = _lade_split(regionen, holdout_titel, max_regionen)
@@ -626,6 +627,27 @@ def trainiere(
 
     _seed_all(SEED)
     model = WitnessKopf(hidden, stufen).to(device)
+    if init_von:
+        # Transfer-Warmstart (Spec 27 ANT-B, Muster dropouts→dropout_head_contact):
+        # daten-arme Familien-Klassen starten von einem verwandten, gate-bestandenen
+        # Kopf — der Identitäts-Anker + die Loss-Terme übernehmen danach die
+        # Fein-Kalibrierung. Architektur muss übereinstimmen (fail-loud).
+        init_pfad = _ROOT / "models" / "klassen_koepfe" / f"witness_{init_von}_best.pt"
+        if not init_pfad.is_file():
+            raise FileNotFoundError(f"--init-von: Checkpoint fehlt: {init_pfad}")
+        init_ckpt = torch.load(str(init_pfad), map_location="cpu", weights_only=False)
+        init_state = init_ckpt.get("state_dict")
+        if not isinstance(init_state, dict):
+            raise RuntimeError(f"--init-von: {init_pfad} hat keinen state_dict")
+        missing, unexpected = model.load_state_dict(init_state, strict=False)
+        if unexpected:
+            raise RuntimeError(f"--init-von: Architektur-Mismatch, unerwartete Keys: {list(unexpected)[:5]}")
+        logger.info(
+            "Witness-Kopf %s: Transfer-Warmstart von %s (%d Keys übernommen).",
+            klasse,
+            init_von,
+            len(init_state) - len(missing),
+        )
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     best: _BestCheckpoint = {"score": float("inf"), "ep": -1, "state": None, "mos": None, "nw": None}
     # musik_mos-Proxy-Term (DRT-8/10, SOTA-HANDOVER Punkt 34f): Default AUS —
@@ -1027,6 +1049,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--max-regionen", type=int, default=0, help=">0 = Smoke (begrenzte Regionen)")
+    ap.add_argument(
+        "--init-von",
+        default=None,
+        help=(
+            "Transfer-Warmstart: Kopf-Gewichte eines verwandten, gate-bestandenen "
+            "Klassen-Kopfs laden (z. B. dropouts für dropout_head_contact); "
+            "Architektur muss übereinstimmen (fail-loud)."
+        ),
+    )
     args = ap.parse_args(argv)
     if args.nw_min is not None and not 0.0 <= args.nw_min <= 1.0:
         ap.error("--nw-min muss zwischen 0 und 1 liegen")
@@ -1045,6 +1076,7 @@ def main(argv: list[str] | None = None) -> int:
         args.mos_ziel,
         nw_min=args.nw_min,
         q_ziel=args.q_ziel,
+        init_von=args.init_von,
         lam_nor=args.lambda_nor,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))

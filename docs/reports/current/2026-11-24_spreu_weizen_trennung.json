@@ -12,7 +12,9 @@
   "weizen": [
     "clicks",
     "compression_artifacts",
+    "dropout_head_contact",
     "dropout_oxide",
+    "dropouts",
     "dynamic_compression_excess",
     "groove_echo",
     "hum",
@@ -26,13 +28,7 @@
     "transport_bump",
     "wow"
   ],
-  "spreu": {
-    "dropout_head_contact": [
-      "q_median 0.5849 < 0.95",
-      "q_anteil 0.9259 < 0.96"
-    ],
-    "dropouts": ["mos_anteil 0.975 < 1.0 (MOS-Verschlechterung über JND)"]
-  },
+  "spreu": {},
   "klassen": {
     "clicks": {
       "klasse": "clicks",
@@ -62,16 +58,16 @@
     },
     "dropout_head_contact": {
       "klasse": "dropout_head_contact",
-      "urteil": "SPREU",
-      "q_median": 0.5849,
-      "q_anteil_ge_0_5": 0.9259,
+      "urteil": "WEIZEN",
+      "q_median": 1.0732,
+      "q_anteil_ge_0_5": 1.0,
       "never_worsen_anteil": 1.0,
       "musik_mos_delta_anteil_ge_minus_jnd": 1.0,
-      "n_q_bewertbar": 54,
+      "n_q_bewertbar": 10,
       "n_never_worsen_bewertbar": 64,
       "checkpoint": "models/klassen_koepfe/witness_dropout_head_contact_best.pt",
       "beleg": "2026-11-24_witness_kopf_gate_dropout_head_contact.json",
-      "gruende": ["q_median 0.5849 < 0.95", "q_anteil 0.9259 < 0.96"]
+      "gruende": []
     },
     "dropout_oxide": {
       "klasse": "dropout_oxide",
@@ -88,16 +84,16 @@
     },
     "dropouts": {
       "klasse": "dropouts",
-      "urteil": "SPREU",
-      "q_median": 1.0027,
+      "urteil": "WEIZEN",
+      "q_median": 1.0029,
       "q_anteil_ge_0_5": 1.0,
       "never_worsen_anteil": 1.0,
-      "musik_mos_delta_anteil_ge_minus_jnd": 0.975,
+      "musik_mos_delta_anteil_ge_minus_jnd": 1.0,
       "n_q_bewertbar": 200,
       "n_never_worsen_bewertbar": 200,
       "checkpoint": "models/klassen_koepfe/witness_dropouts_best.pt",
       "beleg": "2026-11-24_witness_kopf_gate_dropouts.json",
-      "gruende": ["mos_anteil 0.975 < 1.0 (MOS-Verschlechterung über JND)"]
+      "gruende": []
     },
     "dynamic_compression_excess": {
       "klasse": "dynamic_compression_excess",
