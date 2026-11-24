@@ -273,6 +273,33 @@ def _pruefe_drt_16(fehler: list[str]) -> None:
         _fehler("DRT-16: Register ohne getrennte interne/externe Statusgrenze", fehler)
 
 
+def _pruefe_drt_17(fehler: list[str]) -> None:
+    """DRT-17 (2026-11-24): Sechs Klang-Muster — Infrastruktur-Checks."""
+    spec26 = _ROOT / ".github" / "specs" / "26_defekt_reparatur_trainingsvertrag.md"
+    if spec26.is_file() and "## DRT-17 — Sechs Klang-Muster" not in spec26.read_text(encoding="utf-8"):
+        _fehler("DRT-17: Spec-26-Abschnitt fehlt", fehler)
+    hoerordnung = _ROOT / ".github" / "instructions" / "hoerordnung.instructions.md"
+    if hoerordnung.is_file() and "## 8c. Sechs Klang-Muster" not in hoerordnung.read_text(encoding="utf-8"):
+        _fehler("DRT-17: Hörordnung §8c fehlt (normative Verankerung)", fehler)
+    if TRAINER.is_file():
+        q = TRAINER.read_text(encoding="utf-8")
+        for begriff in ("lambda-nor", "q-ziel", "lambda-mos", "mos-ziel", "init-von"):
+            if begriff not in q:
+                _fehler(f"DRT-17/§G192-194: Trainer ohne Kalibrierungs-Hebel {begriff!r}", fehler)
+    if GATE_SKRIPT.is_file():
+        qg = GATE_SKRIPT.read_text(encoding="utf-8")
+        if "modul_fn(s_w, _TARGET_SR)" not in qg:
+            _fehler("DRT-17/§G193: Gate-mos-Arm ohne Produktions-Semantik (Trigger+Guard)", fehler)
+    plm_mod = _ROOT / "backend" / "core" / "plugin_lifecycle_manager.py"
+    if plm_mod.is_file():
+        qp = plm_mod.read_text(encoding="utf-8")
+        if "def pin_song_models" not in qp or "_pinned_models" not in qp:
+            _fehler("DRT-17/§G196: PLM ohne Song-Plan-Pin (Determinismus)", fehler)
+    uv3 = _ROOT / "backend" / "core" / "unified_restorer_v3.py"
+    if uv3.is_file() and "pin_song_models" not in uv3.read_text(encoding="utf-8"):
+        _fehler("DRT-17/§G196: UV3 pinnt den Song-Phasenplan nicht", fehler)
+
+
 def main() -> int:
     fehler: list[str] = []
     _pruefe_trainer(fehler)
@@ -282,6 +309,7 @@ def main() -> int:
     _pruefe_drt_131415(fehler)
     _pruefe_drt_12(fehler)
     _pruefe_drt_16(fehler)
+    _pruefe_drt_17(fehler)
     if fehler:
         print("🔌 DRT-VERTRAG (Spec 26) — VERSTOSS:")
         for f in fehler:
