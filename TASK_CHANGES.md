@@ -1,13 +1,12 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-24 02:35 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-24 02:58 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `TASK_CHANGES.md` | modifiziert |
 | M | `docs/SOTA_HANDOVER.md` | modifiziert |
 | ?? | `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll.json` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll_zeilen/000_Music Delta - Rock (wowflutter).json` | ungetrackt |
@@ -19,6 +18,7 @@
 | ?? | `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll_zeilen/006_Snowmine - Curfews (verzerrung).json` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll_zeilen/007_Snowmine - Curfews (clipping).json` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll_zeilen/008_Alexander Ross - Goodbye Bolero (hum).json` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-24_beschleunigungsstrategie.md` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-24_spreu_weizen_trennung.json` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-24_witness_kopf_gate_jitter_artifacts.json` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-24_witness_kopf_gate_tape_head_level_dip.json` | ungetrackt |
