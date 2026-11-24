@@ -1,13 +1,15 @@
 # TASK_CHANGES — Live-Ledger der aktuellen Aufgabe
 
-> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-24 03:36 CET).
+> Generiert von `scripts/change_ledger.py snapshot` (Base: `HEAD`, Stand: 2026-11-24 06:18 CET).
 > CI (`ci-lite.yml` pr-evidence-gate) erzwingt Abdeckung: jede geänderte Code-Datei muss hier stehen.
 
 ## Geänderte Dateien
 
 | Status | Pfad | Art |
 |---|---|---|
-| M | `docs/SOTA_HANDOVER.md` | modifiziert |
+| M | `docs/reports/current/2026-11-24_spreu_weizen_trennung.json` | modifiziert |
+| M | `docs/reports/current/2026-11-24_witness_kopf_gate_tape_head_level_dip.json` | modifiziert |
+| M | `scripts/verify_witness_kopf_gate.py` | modifiziert |
 | ?? | `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll.json` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll_zeilen/000_Music Delta - Rock (wowflutter).json` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll_zeilen/001_Snowmine - Curfews (hum).json` | ungetrackt |
@@ -20,14 +22,13 @@
 | ?? | `docs/reports/current/2026-11-23_kanalsatz_ab_weizen_voll_zeilen/008_Alexander Ross - Goodbye Bolero (hum).json` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-24_kanalsatz_ab_use_witness_kopf_hum.json` | ungetrackt |
 | ?? | `docs/reports/current/2026-11-24_kanalsatz_ab_use_witness_kopf_hum_zeilen/000_Alexander Ross - Goodbye Bolero (hum).json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-24_klassen_manifest_anhaengen_dropout_oxide.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-24_klassen_manifest_anhaengen_dropouts.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-24_klassen_manifest_anhaengen_tape_splice_artifact.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-24_spreu_weizen_trennung.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-24_witness_kopf_gate_dropout_oxide.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-24_witness_kopf_gate_jitter_artifacts.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-24_witness_kopf_gate_tape_head_level_dip.json` | ungetrackt |
-| ?? | `docs/reports/current/2026-11-24_witness_kopf_gate_tape_splice_artifact.json` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-24_kanalsatz_ab_use_witness_kopf_hum_zeilen/001_Alexander Ross - Velvet Curtain (hum).json` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-24_kanalsatz_ab_use_witness_kopf_hum_zeilen/002_ANiMAL - Clinic A (hum).json` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-24_kanalsatz_ab_use_witness_kopf_hum_zeilen/003_Angela Thomas Wade - Milk Cow Blues (hum.json` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-24_kanalsatz_ab_use_witness_kopf_hum_zeilen/004_Actions - South Of The Water (hum).json` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-24_kanalsatz_ab_use_witness_kopf_hum_zeilen/005_ANiMAL - Rockshow (hum).json` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-24_witness_kopf_gate_dropout_head_contact.json` | ungetrackt |
+| ?? | `docs/reports/current/2026-11-24_witness_kopf_gate_dropouts.json` | ungetrackt |
 
 ## Entscheidungen
 

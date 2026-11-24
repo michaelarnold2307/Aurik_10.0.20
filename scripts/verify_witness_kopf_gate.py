@@ -218,9 +218,20 @@ def messe(
             if mos_messen:
                 # DRT-8/10-Zwei-Metrik-Zeuge (Report-only, nur mit --mos): der
                 # zertifizierte musik_mos-Teacher misst den Wohlklang-Delta des
-                # Kopf-Ausgangs gegen den Schaden-Input (höher = besser; JND 0,05).
+                # PRODUKTIONS-Ausgangs gegen den Schaden-Input (höher = besser;
+                # JND 0,05). DRT-4-Produktions-Semantik (Befund 2026-11-24):
+                # gemessen wird, was die Produktion tatsächlich ausgibt — Trigger +
+                # Never-worsen-Guard. Regionen, auf denen der Witness keinen
+                # Schaden sieht (P <= Schwelle), werden durchgereicht und dürfen
+                # den mos-Arm nicht belasten (tdhl-Region-4-Befund: P(schaden)=
+                # 0,0015, Modul Pass-Through, roher Kopf −0,091).
                 lehrer_s = _mos_teacher_werte(s_w.astype(np.float32)[None])
-                lehrer_out = _mos_teacher_werte(out_s.detach().cpu().numpy())
+                if modul_fn is not None:
+                    _out_prod = modul_fn(s_w, _TARGET_SR)
+                    _out_prod = np.asarray(_out_prod if _out_prod is not None else s_w, np.float32)
+                    lehrer_out = _mos_teacher_werte(_out_prod[None])
+                else:
+                    lehrer_out = _mos_teacher_werte(out_s.detach().cpu().numpy())
                 if lehrer_s and lehrer_out:
                     mos_deltas.append(lehrer_out[0] - lehrer_s[0])
             # Schutz-Arm misst die PRODUKTIONS-Semantik (DRT-4, Befund 2026-11-15):

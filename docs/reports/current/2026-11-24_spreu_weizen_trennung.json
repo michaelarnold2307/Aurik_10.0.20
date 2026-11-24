@@ -21,6 +21,7 @@
     "sibilance",
     "sticky_shed_residue",
     "tape_head_clog",
+    "tape_head_level_dip",
     "tape_splice_artifact",
     "transport_bump",
     "wow"
@@ -30,10 +31,7 @@
       "q_median 0.5849 < 0.95",
       "q_anteil 0.9259 < 0.96"
     ],
-    "dropouts": ["q_median 0.7133 < 0.95"],
-    "tape_head_level_dip": [
-      "mos_anteil 0.9947 < 1.0 (MOS-Verschlechterung über JND)"
-    ]
+    "dropouts": ["mos_anteil 0.975 < 1.0 (MOS-Verschlechterung über JND)"]
   },
   "klassen": {
     "clicks": {
@@ -72,7 +70,7 @@
       "n_q_bewertbar": 54,
       "n_never_worsen_bewertbar": 64,
       "checkpoint": "models/klassen_koepfe/witness_dropout_head_contact_best.pt",
-      "beleg": "2026-11-23_witness_kopf_gate_dropout_head_contact.json",
+      "beleg": "2026-11-24_witness_kopf_gate_dropout_head_contact.json",
       "gruende": ["q_median 0.5849 < 0.95", "q_anteil 0.9259 < 0.96"]
     },
     "dropout_oxide": {
@@ -91,15 +89,15 @@
     "dropouts": {
       "klasse": "dropouts",
       "urteil": "SPREU",
-      "q_median": 0.7133,
+      "q_median": 1.0027,
       "q_anteil_ge_0_5": 1.0,
       "never_worsen_anteil": 1.0,
-      "musik_mos_delta_anteil_ge_minus_jnd": 1.0,
-      "n_q_bewertbar": 94,
-      "n_never_worsen_bewertbar": 112,
+      "musik_mos_delta_anteil_ge_minus_jnd": 0.975,
+      "n_q_bewertbar": 200,
+      "n_never_worsen_bewertbar": 200,
       "checkpoint": "models/klassen_koepfe/witness_dropouts_best.pt",
-      "beleg": "2026-11-23_witness_kopf_gate_dropouts.json",
-      "gruende": ["q_median 0.7133 < 0.95"]
+      "beleg": "2026-11-24_witness_kopf_gate_dropouts.json",
+      "gruende": ["mos_anteil 0.975 < 1.0 (MOS-Verschlechterung über JND)"]
     },
     "dynamic_compression_excess": {
       "klasse": "dynamic_compression_excess",
@@ -207,16 +205,16 @@
     },
     "tape_head_level_dip": {
       "klasse": "tape_head_level_dip",
-      "urteil": "SPREU",
-      "q_median": 0.9829,
+      "urteil": "WEIZEN",
+      "q_median": 0.9949,
       "q_anteil_ge_0_5": 1.0,
       "never_worsen_anteil": 1.0,
-      "musik_mos_delta_anteil_ge_minus_jnd": 0.9947,
+      "musik_mos_delta_anteil_ge_minus_jnd": 1.0,
       "n_q_bewertbar": 29,
       "n_never_worsen_bewertbar": 189,
       "checkpoint": "models/klassen_koepfe/witness_tape_head_level_dip_best.pt",
       "beleg": "2026-11-24_witness_kopf_gate_tape_head_level_dip.json",
-      "gruende": ["mos_anteil 0.9947 < 1.0 (MOS-Verschlechterung über JND)"]
+      "gruende": []
     },
     "tape_splice_artifact": {
       "klasse": "tape_splice_artifact",
