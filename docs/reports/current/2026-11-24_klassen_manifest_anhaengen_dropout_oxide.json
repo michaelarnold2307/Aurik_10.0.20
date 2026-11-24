@@ -1,0 +1,10 @@
+{
+  "schema": "aurik.klassen_manifest_anhaengen/1",
+  "datum": "2026-11-24",
+  "klasse": "dropout_oxide",
+  "quelle": "data/klassen_paare_dropout_regions/manifest.jsonl",
+  "ziel": "/media/michael/Software 4TB/Aurik_Standalone/data/klassen_paare/manifest.jsonl",
+  "quelle_zeilen": 338,
+  "neu_angehaengt": 338,
+  "uebersprungen_duplikat": 0
+}
