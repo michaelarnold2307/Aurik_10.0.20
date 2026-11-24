@@ -1,0 +1,13 @@
+{
+  "stamm": "ANiMAL - Rockshow (wowflutter)",
+  "status": "ok",
+  "kanalsatz_delta_musik_mos": 0.0,
+  "kanalsatz_delta_defektlast": 0.0,
+  "kanalsatz_ueberrestauration": false,
+  "bestand_delta_musik_mos": -0.0156,
+  "bestand_delta_defektlast": -0.0519,
+  "bestand_ueberrestauration": false,
+  "delta_zu_bestand_mos": 0.0156,
+  "delta_zu_bestand_defektlast": 0.0519,
+  "kanalsatz_flags": ["use_witness_kopf_wow"]
+}

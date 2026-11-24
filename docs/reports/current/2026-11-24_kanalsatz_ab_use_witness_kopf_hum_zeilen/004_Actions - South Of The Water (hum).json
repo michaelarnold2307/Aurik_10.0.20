@@ -1,0 +1,13 @@
+{
+  "stamm": "Actions - South Of The Water (hum)",
+  "status": "ok",
+  "kanalsatz_delta_musik_mos": -0.05,
+  "kanalsatz_delta_defektlast": 0.0143,
+  "kanalsatz_ueberrestauration": false,
+  "bestand_delta_musik_mos": -0.0114,
+  "bestand_delta_defektlast": 0.0009,
+  "bestand_ueberrestauration": false,
+  "delta_zu_bestand_mos": -0.0386,
+  "delta_zu_bestand_defektlast": 0.0134,
+  "kanalsatz_flags": ["use_witness_kopf_hum"]
+}

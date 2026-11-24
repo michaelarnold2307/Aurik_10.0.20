@@ -1,0 +1,13 @@
+{
+  "stamm": "Alexander Ross - Velvet Curtain (wowflutter)",
+  "status": "ok",
+  "kanalsatz_delta_musik_mos": -1.4801,
+  "kanalsatz_delta_defektlast": -0.1369,
+  "kanalsatz_ueberrestauration": true,
+  "bestand_delta_musik_mos": 0.0325,
+  "bestand_delta_defektlast": -0.0776,
+  "bestand_ueberrestauration": false,
+  "delta_zu_bestand_mos": -1.5126,
+  "delta_zu_bestand_defektlast": -0.0593,
+  "kanalsatz_flags": ["use_witness_kopf_wow"]
+}

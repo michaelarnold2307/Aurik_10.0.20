@@ -1,0 +1,13 @@
+{
+  "stamm": "ANiMAL - Clinic A (wowflutter)",
+  "status": "ok",
+  "kanalsatz_delta_musik_mos": 0.1312,
+  "kanalsatz_delta_defektlast": -0.4344,
+  "kanalsatz_ueberrestauration": false,
+  "bestand_delta_musik_mos": -0.0208,
+  "bestand_delta_defektlast": -0.0011,
+  "bestand_ueberrestauration": false,
+  "delta_zu_bestand_mos": 0.152,
+  "delta_zu_bestand_defektlast": -0.4333,
+  "kanalsatz_flags": ["use_witness_kopf_wow"]
+}
