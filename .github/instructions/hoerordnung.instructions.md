@@ -379,6 +379,48 @@ Behauptung ohne Messdaten.
 4. Neue Träger auf Ebene 1/2 MÜSSEN ihre interauralen Invarianten im
 `aurik-horordnung-calibration`-Harness ergänzen (§8a).
 
+## 8c. Sechs Klang-Muster — Natürlichkeits-Kalibrierung (2026-11-24, normativ)
+
+Diese Muster sind die operationale Verdichtung der Ebenen 1–4 für die
+Reparatur-Arbeit. Sie ändern KEINE Ebene, KEINE Schwelle und KEIN Gate —
+sie sagen, WIE die Ziele der Ebenen erreicht werden. Beleg-Basis:
+Trennung 2026-11-24 (17/17 Witness-Kanäle), Belege
+`docs/reports/current/2026-11-24_witness_kopf_gate_*.json` und
+`docs/reports/current/2026-11-24_spreu_weizen_trennung.json`.
+
+1. **Clean-Referenz-Kalibrierung (q ≈ 1,0).** Reparatur kalibriert auf die
+   Clean-Referenz, nicht auf maximale Wirkung: Q = (schaden−restauriert) /
+   (schaden−clean); q = 1,0 ist das Ziel, q > 1,0 ist Überrestauration und
+   wird wie ein Defekt behandelt (DRT-10, §G13 (copilot-instructions.md)).
+   Instrumente: `--lambda-nor` (bestraft nur Überschreitung), `--q-ziel 1.0`
+   (Epochen-Auswahl min|q−1,0|). Belege: ts 2,0→1,0893, jitter 0,78→1,0063.
+2. **Zurückhaltung durch Detektor-Präzision.** Ein Kanal feuert NUR auf
+   sicherem Witness-Trigger; wo der Detektor sauber erkennt (P ≤ Schwelle),
+   wird durchgereicht. Der Detektor ist der Engpass der Natürlichkeit — jede
+   Verbesserung der Schaden/Clean-Diskrimination (hoAUC, p_clean) verbessert
+   den Klang mehr als jede stärkere Reparatur (DRT-11, Ebene 1, tdhl-Region-4-
+   Befund P=0,0015 ⇒ Pass-Through; dropouts-Witness hoAUC 1,000).
+3. **Wahrnehmungs-Lehrer im Loss.** Wo objektive Metrik und wahrgenommene
+   Qualität streiten, entscheidet der zertifizierte musik_mos-Teacher im
+   Training mit (`--lambda-mos`), nie gegen Ebene 1. Der Gate-/§4-Weg bleibt
+   unverändert — der Lehrer kalibriert, die Hör-Instanz entscheidet (DRT-8/10,
+   §7). Beleg: dropouts mos_anteil 0,965→1,0 bei q 1,0027.
+4. **Audibility statt Mess-Null.** Reparaturziel ist die Maskierungsschwelle:
+   ein Defekt unter der Hörschwelle ist erledigt, auch wenn er messbar bleibt
+   (§G13 (copilot-instructions.md), Ebene 2). Messkanäle (Sättigung, jitter,
+   defekt_delta) bleiben Zeugen; Ziele werden an der Hörschwelle formuliert.
+5. **Determinismus als Klang-Stabilität.** Gleicher Song, gleiche Version ⇒
+   bit-identischer Klang (§G5 (copilot-instructions.md)). Verboten ist jede
+   last-/speicherabhängige Pfad-Wahl, die den Klang kippt — Implementierung:
+   PLM-Pin (Modelle des Song-Phasenplans werden während des Songs nicht
+   evakuiert; §V8-Reset am Song-Ende). Keine Schwellenänderung (DRT-5).
+6. **Daten-Authentizität.** Trainings-Daten kommen aus realen Quellen;
+   synthetische Rezepte, die die physikalische Defekt-Signatur nicht
+   reproduzieren, sind kein Ersatz (DRT-1/2 leak-frei, autarke
+   Daten-Beschaffung). Beleg: dhc — synthetische vinyl/dropout-Rezepte liefern
+   0 Scanner-Treffer; die 112 realen Regionen + clean-gewicht-Witness trugen
+   den Kanal (q 0,5849→1,0732).
+
 ## 9. Verhältnis zur normativen Kette
 
 - Kein Widerspruch zu den Mess-Definitionen in `musical_goals.instructions.md`,

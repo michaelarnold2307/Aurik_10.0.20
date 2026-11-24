@@ -165,6 +165,11 @@ class PluginLifecycleManager:
         # Leer = Originalverhalten (nur eigenes Phasenmodell geschützt). Rein RAM-Scheduling,
         # bit-identisches Audio.
         self._lookahead_models: frozenset[str] = frozenset()
+        # §G196 (GEBOTE.md) / Hörordnung §8c Muster 5 — Song-Plan-Pin: Modelle
+        # des finalen Song-Phasenplans werden während des Songs von JEDER
+        # Eviction (auch Notfall) verschont. Reset am Song-Ende in
+        # force_evict_all (§V8 (copilot-instructions.md)-Reset-Kette).
+        self._pinned_models: frozenset[str] = frozenset()
         self._last_swap_warn_ts: float = (
             0.0  # Cooldown für Swap-Druck-Warnungen (min. 60 s zwischen identischen Meldungen)
         )
@@ -211,6 +216,27 @@ class PluginLifecycleManager:
         with self._lock:
             if name in self._entries:
                 self._entries[name].last_used_ts = time.monotonic()
+
+    def pin_song_models(self, models: frozenset[str] | set[str]) -> None:
+        """Pinnt die Modelle des finalen Song-Phasenplans (§G196 (GEBOTE.md)).
+
+        Gepinnte Modelle werden von JEDER Eviction übersprungen — normal UND
+        Notfall — bis zum Song-Ende (Reset in force_evict_all). Damit ist die
+        Klang-Pfad-Wahl last-/speicherabhängig NICHT mehr möglich
+        (§G5 (copilot-instructions.md), Hörordnung §8c Muster 5).
+        """
+        with self._lock:
+            self._pinned_models = frozenset(models)
+            logger.info(
+                "PLM: %d Modell(e) für Song gepinnt: %s",
+                len(self._pinned_models),
+                ", ".join(sorted(self._pinned_models))[:220],
+            )
+
+    def unpin_song_models(self) -> None:
+        """Hebt den Song-Plan-Pin auf (expliziter Song-Ende-Reset, §V8 (copilot-instructions.md))."""
+        with self._lock:
+            self._pinned_models = frozenset()
 
     def set_active(self, name: str, active: bool) -> None:
         """Markiert ein Plugin als aktiv (Eviction gesperrt) oder inaktiv."""
@@ -321,6 +347,8 @@ class PluginLifecycleManager:
         with self._lock:
             # §Perf: Look-Ahead-Fenster der abgeschlossenen Datei verwerfen.
             self._lookahead_models = frozenset()
+            # §G196: Song-Plan-Pin der abgeschlossenen Datei verwerfen (§V8-Reset).
+            self._pinned_models = frozenset()
         return self._do_evict(target_pct=0.0, force_all=True)
 
     def evict_for_phase(self, phase_id: str) -> int:
@@ -349,6 +377,8 @@ class PluginLifecycleManager:
             candidates = [
                 e for e in self._entries.values() if not e.active and e.name not in needed and not e.keep_warm
             ]
+            # §G196: gepinnte Song-Plan-Modelle nie evakuieren.
+            candidates = [e for e in candidates if e.name not in self._pinned_models]
             # LRU: älteste zuerst
             candidates.sort(key=lambda e: e.last_used_ts)
 
@@ -431,6 +461,8 @@ class PluginLifecycleManager:
             candidates = [
                 e for e in self._entries.values() if not e.active and e.name not in needed and not e.keep_warm
             ]
+            # §G196: gepinnte Song-Plan-Modelle nie evakuieren.
+            candidates = [e for e in candidates if e.name not in self._pinned_models]
             # LRU: älteste zuerst
             candidates.sort(key=lambda e: e.last_used_ts)
 
@@ -498,9 +530,11 @@ class PluginLifecycleManager:
         """Führt die eigentliche Eviction durch (LRU-Reihenfolge)."""
         required_free_mb = max(_MIN_FREE_MB_HARD, float(required_mb))
         with self._lock:
-            # LRU-Sortierung: ältester Zugriff zuerst; aktive ausgenommen
+            # LRU-Sortierung: ältester Zugriff zuerst; aktive ausgenommen.
+            # §G196: gepinnte Song-Plan-Modelle werden von JEDER Eviction
+            # (auch Notfall) verschont.
             candidates: list[_PluginEntry] = sorted(
-                [e for e in self._entries.values() if not e.active],
+                [e for e in self._entries.values() if not e.active and e.name not in self._pinned_models],
                 key=lambda e: e.last_used_ts,
             )
 

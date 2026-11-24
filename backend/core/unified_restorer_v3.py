@@ -14183,6 +14183,24 @@ class UnifiedRestorerV3:
             if isinstance(getattr(self, "_restoration_context", None), dict):
                 self._restoration_context["invalid_selected_phases"] = list(_invalid_selected_phases)
 
+        # §G196 (GEBOTE.md) / Hörordnung §8c Muster 5 — PLM-Pin: die Modelle des
+        # finalen Song-Phasenplans werden während des Songs von JEDER Eviction
+        # (auch Notfall) verschont ⇒ last-/speicherabhängige Klang-Pfad-Wahl ist
+        # ausgeschlossen (§G5 (copilot-instructions.md)). Reset am Song-Ende in
+        # force_evict_all (§V8 (copilot-instructions.md)-Reset-Kette).
+        try:
+            from backend.core.plugin_lifecycle_manager import (
+                _PHASE_REQUIRED_MODELS,
+                get_plugin_lifecycle_manager,
+            )
+
+            _pin_modelle: set[str] = set()
+            for _phase_id in selected_phases:
+                _pin_modelle |= set(_PHASE_REQUIRED_MODELS.get(str(_phase_id), frozenset()))
+            get_plugin_lifecycle_manager().pin_song_models(_pin_modelle)
+        except Exception:
+            logger.debug("PLM-Pin nicht verfügbar (nicht blockierend)", exc_info=True)
+
         self._prepare_runtime_phase_parameter_hints(
             causal_plan=_causal_plan,
             selected_phases=selected_phases,
@@ -14298,9 +14316,9 @@ class UnifiedRestorerV3:
 
                             _sp = SurgicalPlan(audio_duration_s=float(audio.shape[-1]) / max(sample_rate, 1))
                             for z in _zones:
-                                _phase_id = SURGICAL_DEFECT_TO_PHASE.get(z.defect_type)
-                                if _phase_id:
-                                    _sp.add(z.defect_type, _phase_id, z.start_s, z.end_s, z.severity)
+                                _phase_id_neu = SURGICAL_DEFECT_TO_PHASE.get(z.defect_type)
+                                if _phase_id_neu:
+                                    _sp.add(z.defect_type, _phase_id_neu, z.start_s, z.end_s, z.severity)
                             self._restoration_context["surgical_plan"] = _sp
                             logger.debug("SurgicalPlan: %d Instruktionen für %d Phasen", len(_sp), len(_sp.by_phase()))
                         except Exception:

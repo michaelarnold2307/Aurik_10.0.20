@@ -544,6 +544,21 @@ Der ExcellenceOptimizer ist auf iZotope-RX11-Niveau kalibriert (Naturalness 0.86
 | ---- | ------- | ------------- |
 | §G191 | **Reparatur-Nachweis je Defektklasse** | Für jede der 65 DefectTypes MUSS die Wirkung der Restaurierung **messbar belegbar** sein — globales Never-worsen allein ist kein Reparatur-Nachweis. Methode: Defekt-Delta (`aurik.defektdelta/2`): Metriken nur in den annotierten Defektregionen, vorher (Schaden) / nachher (restauriert), **pegel-gematcht** (Body-Perzentil p25; D-K3-95-Lehre: ungematcht misst man den Loudness-Regelkreis), JND 0,05 (eine Wahrheit `wohlklang_zeuge.JND_TOLERANZ`), Reparaturquote Q = Δ(schaden→restauriert) / Δ(schaden→clean) wo ein sauberes Original vorliegt — **Ziel Q ≥ 0,5** (`REPARATURQUOTE_ZIEL`, §G13 (copilot-instructions.md): mindestens die Hälfte des Schaden→Clean-Deltas zurückgewinnen), Sättigungs-Zusatzkomponente `flat_top_anteil` (relativ, gain-invariant), Aggregat je DefectType + Kontrollregionen (Δ ≈ 0 erwartet). Never-worsen bleibt harte Leitplanke (§G4 (GEBOTE.md)-Prinzip, Hörordnung Ebene 1); die Verbesserung ist die Pflicht (§G13 (copilot-instructions.md)). Status: **Report-Only-Zeuge** (Hörordnung §7) bis zur Richtungs-Zertifizierung über Hör-Labels (D-K4-9/Hör-Instanz); Stärke-/Schwellen-Entscheidungen daraus NUR über das §4-Verfahren (`flag_freigabe.py`). Sinn-Beweis-Klasse: Jets·clipping (defektlast 0,478 → 0,716) wäre mit §G191 lokalisiert statt nur beobachtet (D-K3-95). |
 
+## Kategorie XXVII — Sechs Klang-Muster (Natürlichkeits-Kalibrierung, §G192–§G197)
+
+Diese Kategorie operationalisiert das Ziel aus §G190 (maximaler Wohlklang
+bei natürlichem Klang und unhörbaren Defekten) in sechs belegten Mustern
+(Hörordnung §8c; Belege: Trennung 2026-11-24, 17/17 Witness-Kanäle).
+
+| ID | Regel | Beschreibung |
+| ---- | ------- | ------------- |
+| §G192 | **Clean-Referenz-Kalibrierung (q ≈ 1,0)** | Reparatur wird auf die Clean-Referenz kalibriert, nicht auf maximale Wirkung: Q = Δ(schaden→restauriert)/Δ(schaden→clean); q = 1,0 ist das Ziel, q > 1,0 ist Überrestauration und wird wie ein Defekt behandelt (DRT-10, §G13 (copilot-instructions.md)). Instrumente: `--lambda-nor` (bestraft nur Überschreitung, DRT-3), `--q-ziel 1.0` (Epochen-Auswahl min \|q−1,0\|). Belege: ts 2,0→1,0893; jitter 0,78→1,0063. |
+| §G193 | **Zurückhaltung durch Detektor-Präzision** | Ein Reparatur-Kanal feuert NUR auf sicherem Witness-Trigger; wo der Detektor keinen Schaden erkennt (P ≤ Schwelle), wird durchgereicht. Die Schaden/Clean-Diskrimination des Detektors ist der Engpass der Natürlichkeit — Detektor-Verbesserung (hoAUC, p_clean) geht jeder stärkeren Reparatur vor (DRT-11, Hörordnung Ebene 1; tdhl-Region-4-Befund P=0,0015 ⇒ Pass-Through; dropouts-Witness hoAUC 1,000). |
+| §G194 | **Wahrnehmungs-Lehrer im Loss** | Wo objektive Metrik und wahrgenommene Qualität streiten, kalibriert der zertifizierte musik_mos-Teacher im Training mit (`--lambda-mos`, DRT-8/10, deterministisch/differenzierbar); die Entscheidung bleibt bei Gate und §4-Hör-Instanz (Hörordnung §7). Beleg: dropouts mos_anteil 0,965→1,0 bei q 1,0027. |
+| §G195 | **Audibility statt Mess-Null** | Reparaturziel ist die Maskierungsschwelle: ein Defekt unter der Hörschwelle ist erledigt, auch wenn er messbar bleibt (§G13 (copilot-instructions.md), Hörordnung Ebene 2; §G8/§G15 Rauschprofil-Maskierung). Messkanäle bleiben Zeugen. |
+| §G196 | **Determinismus als Klang-Stabilität** | Gleicher Song, gleiche Version ⇒ bit-identischer Klang (§G5 (copilot-instructions.md)). Last-/speicherabhängige Pfad-Wahlen, die den Klang kippen, sind verboten — Implementierung: PLM-Pin (Modelle des Song-Phasenplans werden während des Songs nicht evakuiert; §V8 (copilot-instructions.md)-Reset am Song-Ende). Keine Schwellenänderung (DRT-5). |
+| §G197 | **Daten-Authentizität** | Trainings-Daten stammen aus realen Quellen; synthetische Rezepte, die die physikalische Defekt-Signatur nicht reproduzieren, sind kein Ersatz (DRT-1/2 leak-frei; autarke Daten-Beschaffung). Beleg: dhc — synthetische vinyl/dropout-Rezepte liefern 0 Scanner-Treffer; 112 reale Regionen + clean-gewicht-Witness trugen den Kanal (q 0,5849→1,0732). |
+
 ## Änderungshistorie
 
 | Version | Datum | Änderung |

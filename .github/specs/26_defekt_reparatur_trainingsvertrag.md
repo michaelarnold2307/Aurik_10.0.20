@@ -107,6 +107,13 @@ Aktivierungs-Entscheidung braucht beide Ebenen. Befund 2026-11-15 (voller
 Zwei-Metrik-Maß; der 4-Paar-Teilbefund war ein Kontext-Artefakt (DRT-9-korrigiert).
 Reproduzierbar: Boogie-kassette defektlast −0,079 (mos-neutral).
 
+**Produktions-Semantik im mos-Arm (2026-11-24):** Der musik_mos-Arm des
+Gate-Zeugen misst die PRODUKTIONS-Ausgabe (Trigger + Never-worsen-Guard),
+nicht den rohen Kopf — Regionen, auf denen der Witness keinen Schaden sieht
+(P ≤ Schwelle), werden durchgereicht und dürfen den mos-Anteil nicht belasten
+(tdhl-Region-4-Befund: P(schaden)=0,0015, Modul Pass-Through, roher Kopf
+−0,091; nach Korrektur mos_anteil 1,0).
+
 ## DRT-9 — No-Op-Erkennung, kein stilles Verschwinden
 
 Kommt ein Kanal auf seinem Zielmaterial bit-identisch zurück (No-Op — Befund
@@ -342,3 +349,27 @@ extrapoliert.
    Disziplin, Referenz, Version, Konfiguration und Holdout-Abdeckung.
    `NICHT_MESSBAR`, fehlender lizenzierter Zugriff, ein synthetischer
    RX-Ersatz oder ein bloß geplanter Hörtest zählt nie als Parität.
+
+## DRT-17 — Sechs Klang-Muster (Natürlichkeits-Kalibrierung, 2026-11-24)
+
+Jeder Reparatur-Kandidat MUSS die sechs Klang-Muster der Hörordnung §8c
+(§G192–§G197 (GEBOTE.md, Kategorie XXVII)) einhalten:
+
+1. **Clean-Referenz-Kalibrierung:** Q-Ziel ist q ≈ 1,0 — Überschreitung ist
+   Überrestauration und wird wie ein Defekt behandelt (Instrumente:
+   `--lambda-nor`, `--q-ziel 1.0`).
+2. **Zurückhaltung durch Detektor-Präzision:** Eingriff nur auf sicherem
+   Witness-Trigger; Detektor-Verbesserung geht stärkerer Reparatur vor.
+3. **Wahrnehmungs-Lehrer:** bei Metrik/Wahrnehmungs-Dissens kalibriert der
+   musik_mos-Teacher im Training (`--lambda-mos`); Entscheidung bleibt bei
+   Gate und §4.
+4. **Audibility:** Ziel ist die Maskierungsschwelle, nicht Mess-Null.
+5. **Determinismus:** last-/speicherabhängige Klang-Pfad-Wahl ist verboten
+   (PLM-Pin; §G5 (copilot-instructions.md)).
+6. **Daten-Authentizität:** reale Quellen; synthetische Ersatz-Rezepte nur mit
+   Scanner-Nachweis der Defekt-Signatur.
+
+Beleg: Trennung 2026-11-24 — 17/17 Witness-Kanäle Weizen
+(`docs/reports/current/2026-11-24_spreu_weizen_trennung.json`; ts q 1,0893,
+jitter 1,0063, dropouts 1,0027, dhc 1,0732). Kein Flag-Flip, keine
+Schwellenänderung (DRT-5).
