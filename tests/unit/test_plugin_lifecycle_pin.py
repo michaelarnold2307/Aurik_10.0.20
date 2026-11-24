@@ -21,6 +21,8 @@ def _neu_manager() -> plm.PluginLifecycleManager:
     m._pipeline_active = 0
     m._lookahead_models = frozenset()
     m._pinned_models = frozenset()
+    m._song_window_active = False
+    m._song_touched = set()
     m._last_swap_warn_ts = 0.0
     m._last_evict_was_empty = False
     return m
@@ -92,3 +94,36 @@ def test_unpin_gibt_modelle_frei() -> None:
     assert m._pinned_models == frozenset()
     m._do_evict(target_pct=0.0, force_all=True)
     assert "ModellA" in entladen
+
+
+def test_pin_on_touch_schuetzt_beruehrte_modelle(monkeypatch) -> None:
+    """§G196-Ausbau: Modelle, die der Song berührt (touch/set_active), sind
+    im Song-Fenster vor Eviction geschützt — auch ohne Plan-Eintrag."""
+    m = _neu_manager()
+    entladen: list[str] = []
+    m.register("Teacher", 0.5, lambda: entladen.append("Teacher"))
+    m.register("Stale", 0.5, lambda: entladen.append("Stale"))
+    m.pin_song_models(set())  # Plan leer — alles Weitere kommt aus dem Touch
+    m.touch("Teacher")
+
+    monkeypatch.setattr(plm.PluginLifecycleManager, "_ram_percent", lambda self: 99.0)
+    monkeypatch.setattr(plm.PluginLifecycleManager, "_free_mb", lambda self: 100.0)
+    monkeypatch.setattr(plm.PluginLifecycleManager, "_swap_percent", lambda self: 0.0)
+
+    m.evict_if_needed(required_mb=0.0)
+    assert "Teacher" not in entladen  # berührt ⇒ geschützt
+    assert "Stale" in entladen  # unberührt ⇒ evakuierbar (RAM-Entlastung bleibt)
+
+
+def test_pin_on_touch_reset_am_song_ende(monkeypatch) -> None:
+    """force_evict_all beendet das Song-Fenster — berührte Modelle werden
+    danach wieder evakuierbar (§V8 (copilot-instructions.md)-Reset)."""
+    m = _neu_manager()
+    entladen: list[str] = []
+    m.register("Teacher", 0.5, lambda: entladen.append("Teacher"))
+    m.pin_song_models(set())
+    m.touch("Teacher")
+    m.force_evict_all()  # Song-Ende: Fenster zu, dann volle Eviction
+    assert "Teacher" in entladen
+    assert m._song_window_active is False
+    assert m._song_touched == set()

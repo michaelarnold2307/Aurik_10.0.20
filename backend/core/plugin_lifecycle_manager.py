@@ -170,6 +170,12 @@ class PluginLifecycleManager:
         # Eviction (auch Notfall) verschont. Reset am Song-Ende in
         # force_evict_all (§V8 (copilot-instructions.md)-Reset-Kette).
         self._pinned_models: frozenset[str] = frozenset()
+        # §G196-Ausbau (2026-11-24, PIN-Probe-Befund): auch Modelle AUSSERHALB des
+        # Phasenplans (z. B. Teacher/Zeugen), die der Song tatsächlich berührt,
+        # werden im Song-Fenster gepinnt (pin-on-touch) — Rest-Varianz durch
+        # Eviction berührter Nicht-Plan-Modelle entfällt. Reset am Song-Ende.
+        self._song_window_active: bool = False
+        self._song_touched: set[str] = set()
         self._last_swap_warn_ts: float = (
             0.0  # Cooldown für Swap-Druck-Warnungen (min. 60 s zwischen identischen Meldungen)
         )
@@ -216,6 +222,8 @@ class PluginLifecycleManager:
         with self._lock:
             if name in self._entries:
                 self._entries[name].last_used_ts = time.monotonic()
+            if self._song_window_active:
+                self._song_touched.add(name)
 
     def pin_song_models(self, models: frozenset[str] | set[str]) -> None:
         """Pinnt die Modelle des finalen Song-Phasenplans (§G196 (GEBOTE.md)).
@@ -227,6 +235,8 @@ class PluginLifecycleManager:
         """
         with self._lock:
             self._pinned_models = frozenset(models)
+            self._song_window_active = True
+            self._song_touched = set()
             logger.info(
                 "PLM: %d Modell(e) für Song gepinnt: %s",
                 len(self._pinned_models),
@@ -237,10 +247,14 @@ class PluginLifecycleManager:
         """Hebt den Song-Plan-Pin auf (expliziter Song-Ende-Reset, §V8 (copilot-instructions.md))."""
         with self._lock:
             self._pinned_models = frozenset()
+            self._song_window_active = False
+            self._song_touched = set()
 
     def set_active(self, name: str, active: bool) -> None:
         """Markiert ein Plugin als aktiv (Eviction gesperrt) oder inaktiv."""
         with self._lock:
+            if active and self._song_window_active:
+                self._song_touched.add(name)
             if name in self._entries:
                 self._entries[name].active = active
 
@@ -349,6 +363,8 @@ class PluginLifecycleManager:
             self._lookahead_models = frozenset()
             # §G196: Song-Plan-Pin der abgeschlossenen Datei verwerfen (§V8-Reset).
             self._pinned_models = frozenset()
+            self._song_window_active = False
+            self._song_touched = set()
         return self._do_evict(target_pct=0.0, force_all=True)
 
     def evict_for_phase(self, phase_id: str) -> int:
@@ -377,8 +393,9 @@ class PluginLifecycleManager:
             candidates = [
                 e for e in self._entries.values() if not e.active and e.name not in needed and not e.keep_warm
             ]
-            # §G196: gepinnte Song-Plan-Modelle nie evakuieren.
-            candidates = [e for e in candidates if e.name not in self._pinned_models]
+            # §G196: gepinnte Song-Plan-Modelle + berührte Song-Modelle nie evakuieren.
+            _geschuetzt = self._pinned_models | self._song_touched
+            candidates = [e for e in candidates if e.name not in _geschuetzt]
             # LRU: älteste zuerst
             candidates.sort(key=lambda e: e.last_used_ts)
 
@@ -461,8 +478,9 @@ class PluginLifecycleManager:
             candidates = [
                 e for e in self._entries.values() if not e.active and e.name not in needed and not e.keep_warm
             ]
-            # §G196: gepinnte Song-Plan-Modelle nie evakuieren.
-            candidates = [e for e in candidates if e.name not in self._pinned_models]
+            # §G196: gepinnte Song-Plan-Modelle + berührte Song-Modelle nie evakuieren.
+            _geschuetzt = self._pinned_models | self._song_touched
+            candidates = [e for e in candidates if e.name not in _geschuetzt]
             # LRU: älteste zuerst
             candidates.sort(key=lambda e: e.last_used_ts)
 
@@ -531,10 +549,11 @@ class PluginLifecycleManager:
         required_free_mb = max(_MIN_FREE_MB_HARD, float(required_mb))
         with self._lock:
             # LRU-Sortierung: ältester Zugriff zuerst; aktive ausgenommen.
-            # §G196: gepinnte Song-Plan-Modelle werden von JEDER Eviction
-            # (auch Notfall) verschont.
+            # §G196: gepinnte Song-Plan-Modelle + berührte Song-Modelle werden
+            # von JEDER Eviction (auch Notfall) verschont.
+            _geschuetzt = self._pinned_models | self._song_touched
             candidates: list[_PluginEntry] = sorted(
-                [e for e in self._entries.values() if not e.active and e.name not in self._pinned_models],
+                [e for e in self._entries.values() if not e.active and e.name not in _geschuetzt],
                 key=lambda e: e.last_used_ts,
             )
 
