@@ -291,6 +291,13 @@ def messe(
         ergebnis["musik_mos_delta_anteil_ge_minus_jnd"] = (
             round(float(np.mean([d >= -MOS_JND for d in mos_deltas])), 4) if mos_deltas else None
         )
+        # Diagnostik (D-K3-GoNoGo-Folge, 2026-11-24): per-Region-Deltas + das
+        # schlechteste Fenster, um head-invariante mos-Ausreißer zu identifizieren.
+        ergebnis["musik_mos_deltas_pro_region"] = [round(float(d), 4) for d in mos_deltas] if mos_deltas else None
+        if mos_deltas:
+            _argmin = int(np.argmin(mos_deltas))
+            ergebnis["musik_mos_delta_min"] = round(float(mos_deltas[_argmin]), 4)
+            ergebnis["musik_mos_delta_min_index"] = _argmin if _argmin < len(regionen) else None
         ergebnis["drt_8_10"] = "Report-only Zwei-Metrik-Messung (defektlast UND musik_mos); Gate-Urteil unverändert"
     return ergebnis
 
