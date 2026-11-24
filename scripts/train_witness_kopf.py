@@ -495,7 +495,7 @@ def _db_roh_ausgabe(out_norm: torch.Tensor, rms_lin: torch.Tensor) -> torch.Tens
 
     Die Produktions-Inferenz denormalisiert (``_kopf_out``: out_raw = out_norm ·
     rms_lin/RMS_ZIEL), also dBFS(out_raw) = dBFS(out_norm) + 20·log10(rms_lin/RMS_ZIEL)."""
-    return witness_rms_tensor(out_norm.reshape(len(out_norm), -1)) + 20.0 * torch.log10(
+    return witness_rms_tensor(out_norm.reshape(len(out_norm), -1)).to(rms_lin.device) + 20.0 * torch.log10(
         (rms_lin / RMS_ZIEL).clamp(min=1e-8)
     )
 
