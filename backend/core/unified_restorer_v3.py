@@ -23220,6 +23220,16 @@ class UnifiedRestorerV3:
                 "warmth_band_loss_cumulative_db": float(
                     (getattr(self, "_restoration_context", None) or {}).get("warmth_band_loss_db", 0.0)
                 ),
+                # §Wohlklang-Ordnung (2026-11-25, Muster-Befund Rollback): die
+                # Ordnungs-Verletzungs- und Enforcement-Metadaten des §P1-1-Gates
+                # in den Ergebnis-Vertrag übernehmen — report-only, damit der
+                # Ordnungs-Konformitäts-Sweep sie maschinell auswerten kann.
+                "wohlklang_ordnung": dict(
+                    (self._phase_metadata_accumulator or {}).get("wohlklang_ordnung_violation", {})
+                ),
+                "wohlklang_ordnung_enforcement": dict(
+                    (self._phase_metadata_accumulator or {}).get("wohlklang_ordnung_enforcement", {})
+                ),
                 # §P4 MIIPHER-Aktivierungsstatus (True = W2v-BERT-2.0 war aktiv, False = DFN-Fallback)
                 "miipher_tier0_applied": bool(
                     (self._phase_metadata_accumulator or {}).get("miipher_tier0_applied", False)
