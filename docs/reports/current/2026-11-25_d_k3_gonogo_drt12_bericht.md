@@ -127,11 +127,14 @@ fixiertem Code neu gestartet; Vor-Fix-Paare 1–9 gesichert als
 - **Stromausfall-Resume:** Ergebnis-JSONL `data/gepaarte_messung.jsonl`;
   fertige Paare werden beim Neustart übersprungen.
 
-**Laufende Kampagne** (Start 2026-11-25 ~12:58):
+**Laufende Kampagne** (Cache-Fix-Neustart 2026-11-25 ~21:30; erster Start 12:58, Neustarts nach Determinismus-Fix ~17:40):
 - 18 Paare (Rezepte: dropout, kassette, hum, wowflutter, kompression,
   clicks), 3 Pässe je Paar, `nice 19`, CPU-only.
 - ETA ~26–31 h bei ~25–35 min/Pass (OOM-Probe aktiv, kein RAM-Risiko).
-- Log: `/tmp/gepaarte_repo_kind.log`.
+- Log: `/tmp/gepaarte_repo_fix.log`.
+- **Cache-Fix-Verifikation (25.11. ~22:00):** Paar 1 stabil mit **exakt
+  B1≡B2** — die deepcopy-Isolation (D-K3-112) wirkt; die Kanal↔Bestand-
+  Vergleiche sind ab hier echt.
 
 ## 6. B3-Verlauf (Kontext aus der Fix-Kette)
 
