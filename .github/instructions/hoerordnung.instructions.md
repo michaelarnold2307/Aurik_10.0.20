@@ -225,6 +225,27 @@ Restaurations-Arbeit wurde verworfen, Eingang = Ausgang.** Daraus gilt:
    gilt der kleinste blend_factor, der die Ordnung wiederherstellt, niemals
    0.0 als Default-Lösung.
 
+**§5b Chirurgische Dosierung — Feed-Forward-Schutz (2026-11-25):**
+
+Die Reparatur-Stärke wird je Bark×Frame-Kachel **VOR der Aktion** dosiert,
+nicht nachher korrigiert (Vorrang der konstruktiven vor der korrektiven
+Konformität, §5a):
+
+1. **Maskiert ⇒ kein Eingriff:** SMR ≤ 0 (Defekt-Energie unter der
+   Maskierungsschwelle) ⇒ Erlaubnis 0 — ein unhörbarer Defekt ist erledigt
+   (Ebene 2), die Musik bleibt unberührt.
+2. **Musik-/Gesangs-Schutz:** Intentionale Musik und Gesang (§AID-1
+   intentionality, phoneme_timeline, panns_singing) drosseln die Erlaubnis
+   multiplikativ — voll geschützte Kacheln erhalten keine Reparatur.
+3. **Ziel:** Rest ≤ Maskierungsschwelle − 6 dB Marge (§G13
+   (copilot-instructions.md)); volle Stärke nur auf klar hörbaren Defekten
+   (SMR > Marge).
+4. **Kanonische Entscheidungs-Funktionen (reine Funktionen, §G5):**
+   `backend/core/psychoacoustic_masking_model.py::reparatur_erlaubnis_aus_smr`
+   (skalar) und `reparatur_erlaubnis_karte` ([n_frames × 24]). Die
+   Dosierungs-Kurve ist eine Konvention; ihre Kalibrierung gegen
+   Hör-Befunde läuft über den Ordnungs-Sweep und das §4-Verfahren.
+
 ## 6. Ebene 4 — Einladungs-Gate (positiver Nachweis)
 
 „Wohlklang, in den sich das Ohr hineinlegt" ist ein **positives** Kriterium und

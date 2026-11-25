@@ -47,6 +47,11 @@ Jedes GEBOT ist eine nicht verhandelbare Vorschrift. Verstöße sind Build-Fehle
   (Beleg: `docs/reports/current/2026-11-25_d_k3_gonogo_drt12_bericht.md` §4b).
   Live-Notbremsen (z. B. available < 4.0 GB) sind als **Notfall** gekennzeichnet
   und nur im Überlebensbereich zulässig.
+- **Lauf-Unabhängigkeit (2026-11-25, D-K3-112):** Wiederholte Läufe desselben
+  Inputs sind voneinander unabhängig — kein Analyse-/Cache-Leak zwischen
+  Läufen (content-adressierter Pre-Analyse-Cache liefert jedem Lauf eine
+  private Kopie, `backend/core/pre_analysis.py`). Der zweite Lauf desselben
+  Songs MUSS identisch restaurieren wie der erste.
 
 ### §G6 — Kategorie II: Psychoakustische Präzision
 **Alle Signaländerungen werden gegen das menschliche Gehör validiert.**
