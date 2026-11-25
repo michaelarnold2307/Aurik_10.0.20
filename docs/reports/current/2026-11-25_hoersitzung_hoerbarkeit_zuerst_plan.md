@@ -14,8 +14,8 @@ Witness-Satz (der ist auf echtem Material metrisch inert, Paar 2/18:
 | Block | Defekt | Amtsinhaber | Paket-Status | Vergleich |
 | --- | --- | --- | --- | --- |
 | A | Clipping | `phase_07_declipper` (+ ASPADE-Kandidat `use_aspade_declipper`) | **FERTIG** — `study_stimuli/hoerproben/declip_produktionspfad/` (3 Paare, 10 s, p25-Matching, Schlüssel getrennt; MUSDB-Gate 4/10 besser, 0/10 schlechter, k398-LOO 3/3) | Flag AUS vs. AN |
-| B | Wow/Flutter | `phase_12_wow_flutter_fix` | **Generator nötig** — nach A-1-Konvention (Schlimmstfenster, p25-Matching, Schlüssel getrennt, `--produktionspfad`) | Amtsinhaber AN vs. Pass-Through |
-| C | Brumm | `phase_02_hum_removal` | **Generator nötig** — wie Block B | Amtsinhaber AN vs. Pass-Through |
+| B | Wow/Flutter | `phase_12_wow_flutter_fix` | **Generator FERTIG** — `scripts/erstelle_hoerpaare_amtstraeger.py` (A = Amtsträger aktiv, B = Phase via `AURIK_PHASE_AUSLASSEN` deaktiviert; p25-Matching, Seiten per Seed, Schlüssel getrennt; Start NACH der DRT-12-Kampagne) | Amtsinhaber AN vs. Pass-Through |
+| C | Brumm | `phase_02_hum_removal` | **Generator FERTIG** — wie Block B (`--kanal phase_02_hum_removal --rezept hum`) | Amtsinhaber AN vs. Pass-Through |
 
 ## 2. Warum genau diese drei zuerst
 
