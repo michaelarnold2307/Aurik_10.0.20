@@ -32,6 +32,14 @@ der laufenden Kampagne.
 Kanal-Pass lief vollständig durch, ohne dass dies als Fehler sichtbar war.
 Metrik-Zeugen wiesen den Flip nur indirekt aus (B1≠B2-Diskrepanzen).
 
+**Zweite Wurzel (25.11., Drift-Bisektion bestätigt):** Die
+Vor-Phasen-Notbremse in `unified_restorer_v3.py` (Zeile ~41428) las den
+**Live-Speicher** (`available < 4.0 GB`) — unter Last verschob sie je nach
+Maschinen-Zustand UNTERSCHIEDLICHE Phasen nach Stufe 2 (Bisektion: 27 bzw.
+33 Deferrals, Phasen-Teilnahme variierte). Die Merge-Menge variierte ⇒
+identische Läufe drifteten. Die In-Prozess-Wiederverwendung war nur der
+Auslöser des Last-Profils, nicht die Ursache.
+
 ## 3. Fix (9 Zeilen, kein Verhaltenswechsel im Normalfall)
 
 Der Kollisions-Schlüssel des Schutz-Arms wird jetzt aus dem **normierten
@@ -54,13 +62,32 @@ Referenz-Fenster (10 s, Kassette), zwei Läufe ohne Rezept-Flags:
 | In-Prozess, Pass 1 vs. Pass 2 (Wiederverwendung) | **1.172 vs. 0.951** | Drift **~0.17** — dominante Varianzquelle |
 | Zwei frische Einzel-Prozesse | 1.102 vs. 1.103 | Drift **~0.001** — ~100× kleiner |
 
-**Konsequenz:** Die In-Prozess-Wiederverwendung trägt die Varianz, nicht der
-Schutz-Arm-Fix. B1/K/B2-Vergleiche, die im selben Prozess laufen, messen
-überwiegend diesen Zustands-Leak statt des Kanal↔Bestand-Unterschieds.
-Rest-Drift frischer Prozesse liegt bei ~0.001 (unter der
-Stabilitätsschwelle).
+**Konsequenz (aktualisiert nach Bisektion):** Die In-Prozess-Wiederverwendung
+war nicht die Ursache — die Last-abhängige Phasen-Teilnahme war es (§2, zweite
+Wurzel). B1/K/B2 laufen je in einem frischen Child-Prozess; die
+Rest-Drift frischer Prozesse liegt bei ~0.001 (unter der Stabilitätsschwelle).
 
-## 5. Erneuertes Mess-Protokoll
+## 4b. Zweiter Fix (2026-11-25): Last-unabhängige Phasen-RAM-Planung
+
+`backend/core/ml_memory_budget.py`: `ram_deferral_projektion(phase_id,
+own_rss_gb, total_ram_gb)` — reine Funktion (§G5): eigene Prozess-Projektion
+(own RSS + statische Phasen-Schätzung `PHASE_RAM_ESTIMATE_GB`) gegen ein
+**maschinenfestes** Budget (`max(10.0, total × 0.5)`). Die Live-Notbremse
+(4.0 GB) bleibt **unverändert** als reine Notfall-Sicherung.
+
+**Verifikation (Probe 3, Kampagne lief parallel = Last):**
+- Planer feuerte deterministisch (`phase_deferred_ram_plan` für 65/68 in
+  Pass 0), Live-Notbremse blieb im Normalbereich stumm (0 × `deferred_low_ram`
+  bis 93 % Systemlast — dort griff sie als Notfall, wie entworfen).
+- **Phasen-Ausgänge bit-identisch:** KEINE divergierende Phase zwischen
+  Pass 0 und Pass 1 — der DSP-Kern selbst ist deterministisch.
+- Rest-Vektor dokumentiert: `phase_03_denoise`-Teilnahme via
+  `_resolved_defects_accumulator` (In-Prozess-Übertrag über den §V8-Reset
+  hinaus) — durch das Child-pro-Pass-Design (frischer Prozess je Pass)
+  umgangen.
+- 9 Vertragstests (`tests/unit/test_ml_memory_ram_planung.py`) grün.
+
+## 5. Erneuertes Mess-Protokoll (Kampagne mit fixiertem Code neu gestartet 25.11. ~17:40)
 
 `scripts/gepaarte_messung.py` (Commits `d1cb0654`, `580631e8`):
 
@@ -90,7 +117,20 @@ DRT-12-Abschlussbeleg.
 
 ## 7. Ergebnis-Matrix
 
+**Vorläufige Paare (Vor-Fix-Code, Harness bereits Child-pro-Pass — gesichert
+in `data/gepaarte_messung_vor_determinismus_fix.jsonl`):**
+
+| Paar | Stabilität | Δ zu Bestand (MOS/DL) |
+| --- | --- | --- |
+| 1 Music Delta - Rock (wowflutter) | INSTABIL (Proben-Last, Vor-Fix) | +0.095 / +0.001 |
+| 2 Snowmine - Curfews (hum) | stabil (B1≡B2) | **+0.000 / +0.000** |
+| 3 Snowmine - Curfews (wowflutter) | stabil (B1≡B2) | **+0.000 / +0.000** |
+
+**Laufende Kampagne (fixierter Code, `data/gepaarte_messung.jsonl`):**
+18 Paare × 3 Pässe, Start 25.11. ~17:40, ETA ~26–31 h. Der GoNoGo-Flip ist
+aus dem Harness entfernt (Child-pro-Pass + deterministische RAM-Planung);
+B1≡B2 (exakt) in den ersten stabilen Paaren.
+
 > **NOCH OFFEN — wird nach Kampagnen-Abschluss hier befüllt:**
-> pro Paar: Bestand-Δ (MOS/DL), Kanal-Δ (MOS/DL), Δ-zu-Bestand,
-> Stabilitäts-Flag; Aggregat je Rezept und über alle Paare
-> (Nichtunterlegenheit Kanal ≥ Bestand nach Spec 26 DRT-12/DRT-16).
+> Aggregat je Rezept und über alle Paare (Nichtunterlegenheit Kanal ≥
+> Bestand nach Spec 26 DRT-12/DRT-16).
