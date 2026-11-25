@@ -41426,6 +41426,38 @@ class UnifiedRestorerV3:
                             _ram_pct_pre,
                             _avail_pre,
                         )
+                    # §2.24-Determinismus (2026-11-25, Drift-Bisektions-Befund):
+                    # Normalpfad = Last-unabhängige Projektion (eigener RSS +
+                    # statische Phasen-Schätzung gegen maschinenfestes Budget) —
+                    # der frühere reine Live-Avail-Check machte die
+                    # Phasen-Teilnahme lastabhängig (Merge-Menge variierte,
+                    # In-Prozess-Drift ~0.17 Δ-MOS). Die Live-Notbremse bleibt
+                    # als reine Notfall-Sicherung unverändert.
+                    _soll_ram_defer = False
+                    _ram_proj_gb = 0.0
+                    try:
+                        from backend.core.ml_memory_budget import ram_deferral_projektion
+
+                        _own_rss_gb = float(_ps_pre.Process().memory_info().rss) / (1024.0**3)
+                        _soll_ram_defer, _ram_proj_gb = ram_deferral_projektion(
+                            str(phase_id), _own_rss_gb, float(_vm_pre.total) / (1024.0**3)
+                        )
+                    except Exception as _ram_plan_exc:
+                        logger.debug(
+                            "§2.24 RAM-Planung nicht verfügbar (unkritisch): %s", _ram_plan_exc
+                        )
+                    if _soll_ram_defer:
+                        logger.warning(
+                            "§2.24 RAM-Planung: %s wird deferred (Projektion %.2f GB > Budget) — deterministisch",
+                            phase_id,
+                            _ram_proj_gb,
+                        )
+                        skipped.append(phase_id)
+                        deferred.append(phase_id)
+                        _record_oom_probe(
+                            "phase_deferred_ram_plan", phase_id, projektion_gb=float(_ram_proj_gb)
+                        )
+                        continue
                     if _avail_pre < 4.0:
                         logger.warning(
                             "⚠️ Nur %.1f GB frei nach Eviction+GC — %s wird deferred (KMV Stufe 2)",

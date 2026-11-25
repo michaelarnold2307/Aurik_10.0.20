@@ -951,3 +951,63 @@ def get_ml_memory_budget() -> _MLMemoryBudgetProxy:
     module-level functions, so both usage styles work.
     """
     return _proxy_instance
+
+
+# ---------------------------------------------------------------------------
+# §2.24-Determinismus: Last-unabhängige Phasen-RAM-Planung (2026-11-25)
+# ---------------------------------------------------------------------------
+# Befund Drift-Bisektion (scripts/drift_bisektion_probe.py): die
+# Vor-Phasen-Notbremse in unified_restorer_v3.py las den LIVE-Speicher
+# (psutil available < 4.0 GB) — unter Last wurden dadurch je nach
+# Maschinen-Zustand UNTERSCHIEDLICHE Phasen nach Stufe 2 verschoben
+# (Merge-Menge variiert ⇒ Ausgang variiert; In-Prozess-Drift ~0.17 Δ-MOS).
+# Fix: Der Normalpfad entscheidet über die EIGENE Prozess-Projektion
+# (own RSS + statische Phasen-Schätzung) gegen ein maschinenfestes Budget
+# (nur total RAM — eine Maschinen-Konstante, keine Last-Größe). Die
+# Live-Notbremse bleibt als reine Notfall-Sicherung unverändert.
+PHASE_RAM_ESTIMATE_GB: dict[str, float] = {
+    # Inkrementelle Spitzen-Allokation (transient, konservativ geschätzt).
+    # Nur ML-/Spektral-Phasen mit nennenswertem Zusatzbedarf gelistet;
+    # reine DSP-Phasen tragen 0. Summe liegt unter dem 32-GB-Budget
+    # (16 GB), damit Maschinen mit ≥ 32 GB im Normalfall NIE deterministisch
+    # deferrieren (Verhaltens-Erhalt: bisher lief auf ruhigen Maschinen der
+    # volle Phasen-Satz). Auf kleinen Maschinen übernimmt die deterministische
+    # Planung das bisher last-abhängige Deferral-Verhalten.
+    "phase_03_denoise": 1.0,
+    "phase_09_crackle_removal": 1.5,
+    "phase_23_spectral_repair": 1.0,
+    "phase_24_dropout_repair": 0.8,
+    "phase_29_tape_hiss_reduction": 0.8,
+    "phase_50_spectral_repair": 1.0,
+    "phase_53_semantic_audio": 1.2,
+    "phase_56_spectral_band_gap_repair": 0.6,
+    "phase_59_modulation_noise_reduction": 0.6,
+    "phase_63_intermodulation_reduction": 0.6,
+    "phase_65_vocal_naturalness_restoration": 1.0,
+    "phase_67_crackle_texture_removal": 0.6,
+    "phase_68_vinylnet_decrackle": 1.0,
+    "phase_ambience_polish": 0.4,
+    "phase_glue_stage": 0.4,
+    "phase_41_output_format_optimization": 0.4,
+}
+
+OWN_RAM_BUDGET_MIN_GB: float = 10.0
+OWN_RAM_BUDGET_TOTAL_FACTOR: float = 0.5
+
+
+def ram_deferral_projektion(
+    phase_id: str,
+    own_rss_gb: float,
+    total_ram_gb: float,
+) -> tuple[bool, float]:
+    """Deterministische Deferral-Entscheidung (reine Funktion, §G5).
+
+    True = Phase nach Stufe 2 verschieben, wenn die Projektion aus eigenem
+    Prozess-Fußabdruck und statischer Phasen-Schätzung das maschinenfeste
+    Budget überschreitet. Kein `time.time()`, kein Live-Avail — gleicher
+    Input ⇒ gleiche Entscheidung (Maschinen-Konstanten: total_ram_gb,
+    own_rss_gb nur aus dem EIGENEN Prozess).
+    """
+    budget = max(OWN_RAM_BUDGET_MIN_GB, float(total_ram_gb) * OWN_RAM_BUDGET_TOTAL_FACTOR)
+    proj = float(own_rss_gb) + float(PHASE_RAM_ESTIMATE_GB.get(str(phase_id), 0.0))
+    return proj > budget, round(proj, 3)
