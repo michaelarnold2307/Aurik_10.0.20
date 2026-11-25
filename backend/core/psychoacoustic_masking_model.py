@@ -473,12 +473,51 @@ def compute_masking_threshold(audio: np.ndarray, sr: int) -> MaskingResult:
     return get_masking_model().compute_threshold(audio, sr)
 
 
+REPARATUR_ZIEL_MARGE_DB: float = 6.0  # §G13 (copilot-instructions.md): Rest ≤ Maskierungsschwelle − 6 dB Marge
+
+
+def reparatur_erlaubnis_aus_smr(
+    smr_db: float,
+    schutz: float,
+    ziel_marge_db: float = REPARATUR_ZIEL_MARGE_DB,
+) -> float:
+    """Feed-Forward-Reparatur-Erlaubnis je Bark×Frame-Kachel (reine Funktion, §G5).
+
+    Muster „Maskierungslücke statt Pauschal-Stärke“ (2026-11-25, §G14-Audit):
+    die Reparatur-Stärke wird je Kachel VOR der Aktion aus der Hörbarkeits-Lücke
+    (SMR = Defekt-Energie über der Maskierungsschwelle) und dem Musik-/Gesangs-
+    Schutz entschieden — statt pauschal zu wirken und nachher korrektiv
+    zurückzublenden (Voll-Rollback-Muster D-K3-109).
+
+    - smr_db ≤ 0 → 0.0 (maskiert = kein Eingriff, Hörordnung Ebene 2)
+    - schutz ∈ [0,1] drosselt multiplikativ (1 = voll geschützt, z. B.
+      Gesangs-Formanten/intentionale Musik — §AID-1 intentionality)
+    - 0 < smr_db ≤ ziel_marge_db → proportional (Ziel: Rest ≤ −Marge, §G13)
+    - smr_db > ziel_marge_db → 1.0 (klar hörbarer Defekt, volle Stärke)
+
+    Deterministisch, Ausgang ∈ [0,1]. Die Kurve ist eine Dosierungs-Konvention;
+    die Kalibrierung gegen Hör-Befunde erfolgt über den Ordnungs-Sweep/§4.
+    """
+    schutz_c = float(np.clip(schutz, 0.0, 1.0))
+    smr = float(smr_db)
+    if smr <= 0.0:
+        return 0.0
+    marge = max(float(ziel_marge_db), 1e-6)
+    if smr <= marge:
+        erlaubnis = float(np.clip(smr / marge, 0.0, 1.0))
+    else:
+        erlaubnis = 1.0
+    return float(np.clip(erlaubnis * (1.0 - schutz_c), 0.0, 1.0))
+
+
 __all__ = [
     "GAIN_FLOOR",
     "N_BARK",
     "SILENCE_DB",
     "SILENCE_GAIN_MAX",
     "_MASKING_SLOPE_DB",
+    "REPARATUR_ZIEL_MARGE_DB",
+    "reparatur_erlaubnis_aus_smr",
     "MaskingResult",
     "PsychoacousticMaskingModel",
     "compute_masking_threshold",
