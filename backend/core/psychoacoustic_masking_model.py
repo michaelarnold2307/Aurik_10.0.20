@@ -532,6 +532,35 @@ def reparatur_erlaubnis_karte(
     return np.clip(erlaubnis * (1.0 - schutz_c), 0.0, 1.0).astype(np.float32)
 
 
+def smr_karte(band_energie_db: np.ndarray, masking_threshold_db: np.ndarray) -> np.ndarray:
+    """Hörbarkeits-Lücke je Kachel: SMR = Band-Energie − Maskierungsschwelle.
+
+    Reine Funktion (§G5), Shape-Wache. Die Eingangs-Quelle (Signal- oder
+    Defekt-Energie je Kachel) bestimmt der Aufrufer — die Karte ist der
+    neutrale Hörbarkeits-Differenz-Kanal für den Feed-Forward-Schutz
+    (Hörordnung §5b, D-K3-111).
+    """
+    band = np.asarray(band_energie_db, dtype=np.float64)
+    thr = np.asarray(masking_threshold_db, dtype=np.float64)
+    if band.shape != thr.shape:
+        raise ValueError(f"Shape-Mismatch band {band.shape} vs. threshold {thr.shape}")
+    return (band - thr).astype(np.float32)
+
+
+def schutz_karte_aus_signalen(vocal: np.ndarray, intentionalitaet: np.ndarray) -> np.ndarray:
+    """Musik-/Gesangs-Schutz-Karte: max(vocal, intentionalitaet) ∈ [0,1].
+
+    Schützenswert ist, was gesungen ODER als intentionale Musik erkannt ist
+    (§AID-1, panns_singing) — konservative Maximal-Kombination, reine
+    Funktion (§G5), Shape-Wache.
+    """
+    v = np.clip(np.asarray(vocal, dtype=np.float64), 0.0, 1.0)
+    i = np.clip(np.asarray(intentionalitaet, dtype=np.float64), 0.0, 1.0)
+    if v.shape != i.shape:
+        raise ValueError(f"Shape-Mismatch vocal {v.shape} vs. intent {i.shape}")
+    return np.maximum(v, i).astype(np.float32)
+
+
 __all__ = [
     "GAIN_FLOOR",
     "N_BARK",
@@ -541,6 +570,8 @@ __all__ = [
     "REPARATUR_ZIEL_MARGE_DB",
     "reparatur_erlaubnis_aus_smr",
     "reparatur_erlaubnis_karte",
+    "smr_karte",
+    "schutz_karte_aus_signalen",
     "MaskingResult",
     "PsychoacousticMaskingModel",
     "compute_masking_threshold",

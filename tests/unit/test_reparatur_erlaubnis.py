@@ -14,6 +14,8 @@ from backend.core.psychoacoustic_masking_model import (
     REPARATUR_ZIEL_MARGE_DB,
     reparatur_erlaubnis_aus_smr,
     reparatur_erlaubnis_karte,
+    schutz_karte_aus_signalen,
+    smr_karte,
 )
 
 
@@ -94,3 +96,47 @@ def test_karte_determinismus():
     a = reparatur_erlaubnis_karte(smr, schutz)
     b = reparatur_erlaubnis_karte(smr, schutz)
     assert np.array_equal(a, b)
+
+
+def test_smr_karte_differenz():
+    band = np.array([[40.0, 25.0, 10.0]])
+    thr = np.array([[35.0, 25.0, 15.0]])
+    karte = smr_karte(band, thr)
+    assert np.allclose(karte, [[5.0, 0.0, -5.0]])
+
+
+def test_smr_karte_shape_mismatch_wirft():
+    import pytest
+
+    with pytest.raises(ValueError):
+        smr_karte(np.zeros((4, 24)), np.zeros((5, 24)))
+
+
+def test_schutz_karte_max_kombination():
+    vocal = np.array([[0.9, 0.2, 0.0]])
+    intent = np.array([[0.1, 0.8, 0.0]])
+    karte = schutz_karte_aus_signalen(vocal, intent)
+    assert np.allclose(karte, [[0.9, 0.8, 0.0]])
+
+
+def test_schutz_karte_geclippt_und_shape_wache():
+    import pytest
+
+    assert np.allclose(schutz_karte_aus_signalen(np.array([[1.5]]), np.array([[-0.5]])), [[1.0]])
+    with pytest.raises(ValueError):
+        schutz_karte_aus_signalen(np.zeros((2, 24)), np.zeros((3, 24)))
+
+
+def test_endekette_smr_schutz_erlaubnis():
+    """Gesamt-Kette: Band-Energie − Schwelle → SMR → Erlaubnis je Kachel."""
+    band = np.array([[40.0, 25.0, 10.0, 40.0]])
+    thr = np.array([[35.0, 25.0, 15.0, 35.0]])
+    vocal = np.array([[0.0, 0.0, 0.0, 1.0]])
+    intent = np.array([[0.0, 0.0, 0.0, 0.0]])
+    smr = smr_karte(band, thr)
+    schutz = schutz_karte_aus_signalen(vocal, intent)
+    erlaubnis = reparatur_erlaubnis_karte(smr, schutz)
+    assert float(erlaubnis[0, 0]) > 0.5  # SMR 5 dB über Schwelle
+    assert float(erlaubnis[0, 1]) == 0.0  # exakt an der Schwelle → 0
+    assert float(erlaubnis[0, 2]) == 0.0  # maskiert
+    assert float(erlaubnis[0, 3]) == 0.0  # voll geschützter Gesang
