@@ -170,6 +170,13 @@ Eingriff ist das Minimum, nicht das Ziel.**
   Phasen, Denker, Export) — nicht nur für den angefragten Defekt. Widerspricht
   ein Modul dem Maximum, wird es im SOTA-Defizit-Register als Defizit geführt
   (D-K3-109-Klasse) und der Fix geplant.
+- **Audit-Pflicht (einzeln UND in Kombination):** Alle DSP-/ML-Module werden
+  einzeln auf ihren Wohlklang-Beitrag geprüft (per-Phasen-Goal-Deltas,
+  `scripts/wohlklang_modul_audit.py`) und in Kombination miteinander — die
+  Gesamt-Kettenmessung (WohlklangOrdnungGate, `scripts/wohlklang_ordnungs_sweep.py`)
+  ist der Kombinations-Nachweis der obersten Ebene; die Ablations-Ebene
+  (Einzel-Phase weg = marginaler Beitrag) ist als D-K3-110 geführt. Fehlender
+  Nachweis = offen, nie „bestanden“ (§V6).
 - **Kein Schaden:** Das Maximum gilt unter den harten Leitplanken (§G5
   Deterministische Reproduzierbarkeit, §G10/§G13 Never-worsen-Boden,
   Hörordnung Ebene 1–3, §4-Verfahren für Flag-Flips).

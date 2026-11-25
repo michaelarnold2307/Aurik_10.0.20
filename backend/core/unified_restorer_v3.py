@@ -23230,6 +23230,10 @@ class UnifiedRestorerV3:
                 "wohlklang_ordnung_enforcement": dict(
                     (self._phase_metadata_accumulator or {}).get("wohlklang_ordnung_enforcement", {})
                 ),
+                # §G14-Modul-Audit (2026-11-25): per-Phasen-Goal-Deltas in den
+                # Ergebnis-Vertrag — report-only; Grundlage für den Einzel-Modul-
+                # Wohlklang-Beitrag je Phase (scripts/wohlklang_modul_audit.py).
+                "phase_deltas": dict(getattr(self, "_phase_deltas", {}) or {}),
                 # §P4 MIIPHER-Aktivierungsstatus (True = W2v-BERT-2.0 war aktiv, False = DFN-Fallback)
                 "miipher_tier0_applied": bool(
                     (self._phase_metadata_accumulator or {}).get("miipher_tier0_applied", False)
