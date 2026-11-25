@@ -510,6 +510,28 @@ def reparatur_erlaubnis_aus_smr(
     return float(np.clip(erlaubnis * (1.0 - schutz_c), 0.0, 1.0))
 
 
+def reparatur_erlaubnis_karte(
+    smr_db: np.ndarray,
+    schutz: np.ndarray,
+    ziel_marge_db: float = REPARATUR_ZIEL_MARGE_DB,
+) -> np.ndarray:
+    """Vektorisierte Form von `reparatur_erlaubnis_aus_smr` je Kachel.
+
+    `smr_db` und `schutz` müssen die gleiche Shape teilen (z. B.
+    [n_frames × 24] Bark-Kacheln). Deterministisch, Ausgang ∈ [0,1] je
+    Kachel — der Baustein für die Feed-Forward-Erlaubnis-Karte, die später
+    in den Stärke-Pfad (strength_envelope/masking_scalar) eingemischt wird.
+    """
+    smr = np.asarray(smr_db, dtype=np.float64)
+    schutz_c = np.clip(np.asarray(schutz, dtype=np.float64), 0.0, 1.0)
+    if smr.shape != schutz_c.shape:
+        raise ValueError(f"Shape-Mismatch smr {smr.shape} vs. schutz {schutz_c.shape}")
+    marge = max(float(ziel_marge_db), 1e-6)
+    erlaubnis = np.where(smr > marge, 1.0, np.clip(smr / marge, 0.0, 1.0))
+    erlaubnis = np.where(smr <= 0.0, 0.0, erlaubnis)
+    return np.clip(erlaubnis * (1.0 - schutz_c), 0.0, 1.0).astype(np.float32)
+
+
 __all__ = [
     "GAIN_FLOOR",
     "N_BARK",
@@ -518,6 +540,7 @@ __all__ = [
     "_MASKING_SLOPE_DB",
     "REPARATUR_ZIEL_MARGE_DB",
     "reparatur_erlaubnis_aus_smr",
+    "reparatur_erlaubnis_karte",
     "MaskingResult",
     "PsychoacousticMaskingModel",
     "compute_masking_threshold",

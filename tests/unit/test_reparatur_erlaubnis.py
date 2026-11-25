@@ -13,6 +13,7 @@ import numpy as np
 from backend.core.psychoacoustic_masking_model import (
     REPARATUR_ZIEL_MARGE_DB,
     reparatur_erlaubnis_aus_smr,
+    reparatur_erlaubnis_karte,
 )
 
 
@@ -56,3 +57,40 @@ def test_determinismus_und_margen_parameter():
     # größere Marge = mehr Spielraum vor voller Stärke
     assert reparatur_erlaubnis_aus_smr(4.0, 0.0, ziel_marge_db=10.0) == 0.4
     assert np.isclose(reparatur_erlaubnis_aus_smr(4.0, 0.0, ziel_marge_db=10.0), 0.4)
+
+
+def test_karte_gleicht_skalar_pro_kachel():
+    rng = np.random.default_rng(42)
+    smr = rng.uniform(-12.0, 20.0, size=(50, 24))
+    schutz = rng.uniform(0.0, 1.0, size=(50, 24))
+    karte = reparatur_erlaubnis_karte(smr, schutz)
+    assert karte.shape == (50, 24)
+    for _ in range(200):
+        i = int(rng.integers(0, 50))
+        j = int(rng.integers(0, 24))
+        erwartet = reparatur_erlaubnis_aus_smr(smr[i, j], schutz[i, j])
+        assert abs(float(karte[i, j]) - erwartet) < 1e-6
+
+
+def test_karte_maskiert_und_schutz():
+    smr = np.array([[-5.0, 3.0, 12.0]])
+    schutz = np.array([[0.0, 0.5, 1.0]])
+    karte = reparatur_erlaubnis_karte(smr, schutz)
+    assert float(karte[0, 0]) == 0.0  # maskiert
+    assert abs(float(karte[0, 1]) - 0.25) < 1e-6  # 3/6 * (1-0.5)
+    assert float(karte[0, 2]) == 0.0  # voll geschützt
+
+
+def test_karte_shape_mismatch_wirft():
+    import pytest
+
+    with pytest.raises(ValueError):
+        reparatur_erlaubnis_karte(np.zeros((4, 24)), np.zeros((3, 24)))
+
+
+def test_karte_determinismus():
+    smr = np.array([[0.5, 6.0, 9.0], [-2.0, 3.0, 4.0]])
+    schutz = np.array([[0.1, 0.2, 0.3], [0.0, 0.5, 0.9]])
+    a = reparatur_erlaubnis_karte(smr, schutz)
+    b = reparatur_erlaubnis_karte(smr, schutz)
+    assert np.array_equal(a, b)
