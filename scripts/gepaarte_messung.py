@@ -1,42 +1,52 @@
 #!/usr/bin/env python
 """Gepaarte DRT-12-Nachmessung (D-K3-GoNoGo-Kontrolle, 2026-11-24/25).
 
-Pro Paar laufen BESTAND- und KANALSATZ-Pass im selben Prozess; zusätzlich ein
-zweiter BESTAND-Pass (B1/K/B2) als Stabilitätskontrolle — weichen die
-Bestand-Pässe ab, wird das Paar als instabil geflaggt statt gewertet.
-Cache-Busting: eindeutiger input_path je Pass (Bridge-Voranalyse-Cache).
-Stromausfall-Resilienz (25.11.): Ergebnis-JSONL liegt persistent unter data/
-und fertige Paare werden beim Neustart übersprungen (Resume).
+Pro Paar laufen BESTAND- und KANALSATZ-Pass sowie ein zweiter BESTAND-Pass
+(B1/K/B2) — JEDER Pass in einem EIGENEN Child-Prozess (Befund 25.11.: der
+In-Prozess-Wiederverwendungs-Drift ist ~100× größer als die Rest-Varianz
+frischer Prozesse). Weichen die Bestand-Pässe ab, wird das Paar als instabil
+geflaggt statt gewertet. Cache-Busting: eindeutiger input_path je Pass.
+Stromausfall-Resilienz: Ergebnis-JSONL persistent unter data/, fertige Paare
+werden beim Neustart übersprungen.
 
 Verwendung:
   python3 -B scripts/gepaarte_messung.py --seed 42 --paare 45 \
       --rezepte dropout,kassette,hum,wowflutter,kompression,clicks \
       --weizen-flags <17 Flags, Komma-getrennt>
 """
-
 from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
+import subprocess
 import sys
 from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 os.environ.setdefault("AURIK_FORCE_CPU", "1")
 os.environ.setdefault("AURIK_NO_RT_LIMIT", "1")
 
-import numpy as np
-from scipy.io import wavfile
-
-from scripts.erstelle_schadens_proben import restauriere_schnipsel
-from scripts.messe_kanalsatz_ab import (
+from scripts.messe_kanalsatz_ab import (  # noqa: E402
     KANALSAETZ_FLAGS,
     _paare_auswaehlen,
     _parse_flags,
-    _zeugen,
 )
 
-_ROOT = Path(__file__).resolve().parent.parent
+_PASS_KIND = r"""
+import json, os, sys
+import numpy as np
+from scipy.io import wavfile
+
+os.environ.setdefault("AURIK_FORCE_CPU", "1")
+os.environ.setdefault("AURIK_NO_RT_LIMIT", "1")
+
+from scripts.messe_kanalsatz_ab import KANALSAETZ_FLAGS, _parse_flags, _zeugen
+from scripts.erstelle_schadens_proben import restauriere_schnipsel
 
 
 def _setze_flags(aktiv: list[str]) -> None:
@@ -44,6 +54,72 @@ def _setze_flags(aktiv: list[str]) -> None:
 
     for name in set(KANALSAETZ_FLAGS) | set(aktiv):
         setattr(flags, name, name in aktiv)
+
+
+def main() -> int:
+    pfad = sys.argv[1]
+    ausgang = sys.argv[2]
+    flags_roh = sys.argv[3] if len(sys.argv) > 3 and sys.argv[3] != "-" else ""
+    roh = wavfile.read(pfad)
+    sr = int(roh[0])
+    d = np.asarray(roh[1], np.float32) / 32768.0 if np.asarray(roh[1]).dtype != np.float32 else np.asarray(roh[1], np.float32)
+    schaden = d.mean(axis=1) if d.ndim == 2 else d
+    weizen = _parse_flags(flags_roh) if flags_roh else []
+    _setze_flags(weizen)
+    out = restauriere_schnipsel(schaden, sr, pfad + "#" + ausgang)
+    z = _zeugen(schaden, out, sr)
+    with open(ausgang, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "delta_musik_mos": float(z["delta_musik_mos"]),
+                "delta_defektlast": float(z["delta_defektlast"]),
+                "ueberrestauration": bool(z["ueberrestauration"]),
+            },
+            f,
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+"""
+
+
+def _pass_kind_skript() -> Path:
+    pfad = _ROOT / "data" / "_gepaarte_pass_kind.py"
+    pfad.write_text(_PASS_KIND, encoding="utf-8")
+    return pfad
+
+
+def _ein_pass(pfad: Path, kind: str, weizen: list[str], kind_skript: Path) -> dict:
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=f".{kind}.zeuge.json", delete=False) as tmp:
+        zeuge_pfad = Path(tmp.name)
+    try:
+        flags_roh = ",".join(weizen) if kind == "k" else "-"
+        umgebung = dict(os.environ)
+        umgebung["PYTHONPATH"] = str(_ROOT)
+        umgebung["AURIK_FORCE_CPU"] = "1"
+        umgebung["AURIK_NO_RT_LIMIT"] = "1"
+        subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                str(kind_skript),
+                str(pfad),
+                str(zeuge_pfad),
+                flags_roh,
+            ],
+            cwd=str(_ROOT),
+            env=umgebung,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return json.loads(zeuge_pfad.read_text(encoding="utf-8"))
+    finally:
+        zeuge_pfad.unlink(missing_ok=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -67,7 +143,6 @@ def main(argv: list[str] | None = None) -> int:
 
     ausgang = Path(args.ausgang)
     fertig: set[str] = set()
-    _kaputte_zeilen = 0
     if ausgang.exists():
         for line in ausgang.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -75,51 +150,32 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             try:
                 fertig.add(json.loads(line)["stamm"])
-            except Exception as _exc:
-                _kaputte_zeilen += 1
-                print(f"WARNUNG: unlesbare Resume-Zeile übersprungen ({_exc}) — Zeile {line[:60]!r}", flush=True)
-    if _kaputte_zeilen:
-        print(f"RESUME: {_kaputte_zeilen} unlesbare Zeile(n) ignoriert", flush=True)
+            except Exception as exc:  # noqa: BLE001 - Resumme-Zeilen sind Belegdaten
+                logging.getLogger(__name__).debug("Überspringe korrupte Resume-Zeile: %s", exc)
     if fertig:
         print(f"RESUME: {len(fertig)} Paar(e) bereits fertig — übersprungen", flush=True)
 
+    kind_skript = _pass_kind_skript()
     for i, (stamm, pfad) in enumerate(auswahl):
         if stamm in fertig:
             continue
-        roh = wavfile.read(pfad)
-        sr = int(roh[0])
-        d = (
-            np.asarray(roh[1], np.float32) / 32768.0
-            if np.asarray(roh[1]).dtype != np.float32
-            else np.asarray(roh[1], np.float32)
-        )
-        schaden = d.mean(axis=1) if d.ndim == 2 else d
-
-        # Cache-Busting (D-K3-GoNoGo-Folge): eindeutiger input_path je Pass.
-        _setze_flags([])  # B1
-        bestand_out = restauriere_schnipsel(schaden, sr, f"{pfad}#b1")
-        bz = _zeugen(schaden, bestand_out, sr)
-
-        _setze_flags(weizen)  # K
-        kanal_out = restauriere_schnipsel(schaden, sr, f"{pfad}#k")
-        kz = _zeugen(schaden, kanal_out, sr)
-
-        _setze_flags([])  # B2 (Stabilitätskontrolle)
-        bestand_out2 = restauriere_schnipsel(schaden, sr, f"{pfad}#b2")
-        bz2 = _zeugen(schaden, bestand_out2, sr)
+        try:
+            bz = _ein_pass(pfad, "b1", [], kind_skript)
+            kz = _ein_pass(pfad, "k", weizen, kind_skript)
+            bz2 = _ein_pass(pfad, "b2", [], kind_skript)
+        except Exception as exc:  # noqa: BLE001 - Paar überspringen statt Kampagne abbrechen
+            logging.getLogger(__name__).warning("Paar %s fehlgeschlagen (%s) — übersprungen", stamm, exc)
+            continue
         flip = (
             abs(bz["delta_musik_mos"] - bz2["delta_musik_mos"]) > 0.05
             or abs(bz["delta_defektlast"] - bz2["delta_defektlast"]) > 0.05
         )
-
         zeile = {
             "stamm": stamm,
             "status": "instabil_d_k3_gonogo" if flip else "ok",
             "bestand_stabilitaet": {
-                "mos_b1": bz["delta_musik_mos"],
-                "mos_b2": bz2["delta_musik_mos"],
-                "dl_b1": bz["delta_defektlast"],
-                "dl_b2": bz2["delta_defektlast"],
+                "mos_b1": bz["delta_musik_mos"], "mos_b2": bz2["delta_musik_mos"],
+                "dl_b1": bz["delta_defektlast"], "dl_b2": bz2["delta_defektlast"],
             },
             "bestand_delta_musik_mos": round(bz["delta_musik_mos"], 4),
             "bestand_delta_defektlast": round(bz["delta_defektlast"], 4),
