@@ -92,6 +92,35 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# §G14/D-K3-110 Modus B (Ablations-Audit, research-only): Umgebungs-Variable
+# zum deterministischen Auslassen einzelner Phasen im Phasen-Plan. Ohne die
+# Variable ist das Produktionsverhalten bit-identisch unverändert.
+_AUSLASSUNG_ENV = "AURIK_PHASE_AUSLASSEN"
+
+
+def phase_auslassungen_anwenden(selected_phases: list[str], roh: str) -> list[str]:
+    """Entfernt die per Komma getrennten Phasen-IDs aus der Auswahl (reine Funktion, §G5).
+
+    Research-only für das Ablations-Audit (D-K3-110): gleicher Input ⇒ gleiche
+    Auswahl; Reihenfolge bleibt erhalten; unbekannte IDs werden gewarnt und
+    ignoriert (Forschungswerkzeug, kein Gate, kein Flag-Flip).
+    """
+    if not roh or not roh.strip():
+        return list(selected_phases)
+    namen = {n.strip() for n in roh.split(",") if n.strip()}
+    vorhanden = set(selected_phases)
+    entfernt = sorted(namen & vorhanden)
+    unbekannt = sorted(namen - vorhanden)
+    if entfernt:
+        logger.warning(
+            "§AUSLASSUNG (research-only, D-K3-110 Modus B): %d Phase(n) entfernt: %s",
+            len(entfernt),
+            entfernt,
+        )
+    if unbekannt:
+        logger.warning("§AUSLASSUNG: unbekannte Phasen-IDs ignoriert: %s", unbekannt)
+    return [p for p in selected_phases if p not in namen]
+
 # §Perf: Session-scoped Cache für _fast_goal_snapshot — wird zu Beginn jedes restore()-Aufrufs
 # geleert. Schlüssel = (id(audio), shape, sr, material_type); id() ist innerhalb einer
 # restore()-Session sicher (Arrays werden nie in-place ersetzt, nur reassigned → neue id).
@@ -40635,6 +40664,12 @@ class UnifiedRestorerV3:
                     len(_forbidden_final_hits),
                     _forbidden_final_hits,
                 )
+
+        # §G14/D-K3-110 Modus B (Ablations-Audit, research-only): Einzel-Phasen
+        # über die Umgebung auslassen — kein Produktionsverhalten ohne Variable.
+        _auslass_roh = os.environ.get(_AUSLASSUNG_ENV, "").strip()
+        if _auslass_roh:
+            selected_phases = phase_auslassungen_anwenden(selected_phases, _auslass_roh)
 
         _active_phase_coalitions = self.get_active_phase_coalitions(
             selected_phases,
