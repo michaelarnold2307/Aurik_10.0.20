@@ -16,9 +16,9 @@ Muster sind optional — der Parser entfernt sie.
 | Muster | Quelle | Status | Hinweis |
 | --- | --- | --- | --- |
 | `§G[1-9]` | `.github/copilot-instructions.md` | ambig | enforced (CI-geparst, hash-gewacht); Quelle immer angeben |
-| `§G1[0-3]` | `.github/copilot-instructions.md` | ambig | neu 2026-10-08 (§G10–§G12 Weltklasse-Verbund; §G13 Hörbarkeits-Dominanz 2026-11-12); Quelle immer angeben |
+| `§G1[0-4]` | `.github/copilot-instructions.md` | ambig | neu 2026-10-08 (§G10–§G12 Weltklasse-Verbund; §G13 Hörbarkeits-Dominanz 2026-11-12; §G14 Wohlklang-Maximierungs-Pflicht 2026-11-25); Quelle immer angeben |
 | `§V[1-9]` | `.github/copilot-instructions.md` | ambig | enforced; Quelle immer angeben |
-| `§G[0-9]+` | `.github/GEBOTE.md` | enforced | Pre-Commit-Verifier (Teilmenge); §G1–§G13 ambig |
+| `§G[0-9]+` | `.github/GEBOTE.md` | enforced | Pre-Commit-Verifier (Teilmenge); §G1–§G14 ambig |
 | `§SC-G[0-9]+` | `.github/GEBOTE.md` Startup-Block (jetzt Kategorie XXIV) | veraltet | Alias auf §G173–§G182 (Phase 1 umgesetzt) |
 | `§G-DB[0-9]+` | `scripts/gebote_verifier.py` | verifier-intern | nicht in Code-Kommentaren zitieren |
 | `G[0-9]{2}` | `.github/GEBOTEN.md` | Referenz | nicht in Code-Kommentaren zitieren |

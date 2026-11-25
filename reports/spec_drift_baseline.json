@@ -1,6 +1,6 @@
 {
-  ".github/copilot-instructions.md": "51fcb1a098f6b19c12205bb8b5e5043aae5666716804d601ad23e1fa40ebfab5",
-  ".github/instructions/hoerordnung.instructions.md": "556f3790f6e5d75f9aa880a53ec51c3541c1195dc2873a34de23001d4d7f1efb",
+  ".github/copilot-instructions.md": "11126f049406ff927308826268cffb37c4ccc32987e4e8e0ca5914db70dcc4f9",
+  ".github/instructions/hoerordnung.instructions.md": "bf9b25b23617a34a2cd2cc8bd2b0a67799e60a5d1ae2f0c59d85345a3055bca4",
   ".github/specs/01_musical_goals.md": "1c1a876b9d908cba293d9a9b4499171ffc422134317d4586d2bdd51e3a49b80c",
   ".github/specs/02_pipeline_architecture.md": "ac336bbce8558ac5b22dbdce7bbcf63e57313c2e2993c6378792934d0aa8b0c0",
   ".github/specs/03_cognitive_modules.md": "c427219f359f5ab5a6c72b2903c3c264c774f44297f3182369270b9222d2c222",
@@ -17,11 +17,11 @@
   "scripts/release_must_coverage_check.py": "d81acc70c2dae8351e7602d20cc8a06e94f8e0a3e60fb954a90b912972c5ae40",
   "scripts/compliance_check.py": "db37afbb38754f2e404eda5c0966de7bb5dbb04d36f30ef4f33330585d97df06",
   "scripts/check_musical_goals.py": "2a2665955188401c25d457cd5e1a40255c28d92b8a2f510ebf1a3e1689b3241b",
-  ".github/ID_REGISTRY.md": "12411b8e0bb822cd6f00c9ef9c507df70925a57d2a4ac171e6616b7287064f3e",
-  ".github/FILE_REGISTRY.md": "77d847a7978372e85cf143d78dbdeaf1e4987b42549564c26bb3b9ed0dbf15e2",
-  ".github/GEBOTE_INTEGRATION_MATRIX.md": "acad1da0e6208ae38dddc6d36f50002daed299fcbcd184baaf58f5b64fec6afe",
-  ".github/specs/00_SPEC_INDEX.md": "bd657b5b17aa5f2cf1755c5bbefa9ac801d90889b35cdd588e3e77e6532d195b",
+  ".github/ID_REGISTRY.md": "91c9333d07bb9fc0c668320b46c7afe15db330d592f39ae2d11dca9e34ff4c2f",
+  ".github/FILE_REGISTRY.md": "185c378205b13fe060145c7658e15152131954761c7c9eeec5b6fc2156572fa7",
+  ".github/GEBOTE_INTEGRATION_MATRIX.md": "d49a9f5725ac1e0180a84bf86697b05412050091c829d0d1c6a3ed566cbdaf19",
+  ".github/specs/00_SPEC_INDEX.md": "c8c404f34ca556673b9718dfb567eb9c7d580763ee580b591957085e0fb5c534",
   "scripts/gen_integration_matrix.py": "629740944935b08e3079d70dde8c86ee193ca33ea8161ea5eef6809241bb5dd3",
   "docs/ID_COLLISION_MAP.md": "44b8be2c56e87cb768bc4d67b1fd76c39358f2d59752982f05839dd58390a136",
-  "AGENTS.md": "b78c8587fda60c88ff5f9f6482d7888d55592766e06eea0d5d05b41bcc538f51"
+  "AGENTS.md": "540d274b65a4483a001440c39283c3b07ee1b94e3dfee5c34b895f0ac1ff6168"
 }

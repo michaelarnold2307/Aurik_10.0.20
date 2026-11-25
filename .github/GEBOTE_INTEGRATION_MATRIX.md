@@ -8,7 +8,7 @@
 > Fehlerprotokoll. `katalog` = Referenzkatalog-Eintrag ohne externes Zitat;
 > `integriert` = extern zitiert; VERBOTEN-IDs zusätzlich mit Linter-Status.
 
-Stand: 243 IDs (189 integriert, 54 katalog).
+Stand: 244 IDs (190 integriert, 54 katalog).
 Regeneriert mit `python scripts/gen_integration_matrix.py`.
 
 | ID | Kategorie | Titel | Status |
@@ -200,12 +200,13 @@ Regeneriert mit `python scripts/gen_integration_matrix.py`.
 | §G189 | Kategorie XXV — Autonome Wirkungs-Kalibrierung (§G188–§G189) | Dokumentierte Ausnahmen & Rest-Autonomie | integriert |
 | §G190 | Kategorie XXV — Autonome Wirkungs-Kalibrierung (§G188–§G189) | Zielfunktion, physikalische Grenzen & Meldeauftrag | integriert |
 | §G191 | Kategorie XXVI — Reparatur-Nachweis je Defektklasse (§G191) | Reparatur-Nachweis je Defektklasse | integriert |
-| §G192 | Kategorie XXVII — Sechs Klang-Muster (Natürlichkeits-Kalibrierung, §G192–§G197) | Clean-Referenz-Kalibrierung (q ≈ 1,0) | integriert |
-| §G193 | Kategorie XXVII — Sechs Klang-Muster (Natürlichkeits-Kalibrierung, §G192–§G197) | Zurückhaltung durch Detektor-Präzision | katalog |
-| §G194 | Kategorie XXVII — Sechs Klang-Muster (Natürlichkeits-Kalibrierung, §G192–§G197) | Wahrnehmungs-Lehrer im Loss | katalog |
-| §G195 | Kategorie XXVII — Sechs Klang-Muster (Natürlichkeits-Kalibrierung, §G192–§G197) | Audibility statt Mess-Null | katalog |
-| §G196 | Kategorie XXVII — Sechs Klang-Muster (Natürlichkeits-Kalibrierung, §G192–§G197) | Determinismus als Klang-Stabilität | integriert |
-| §G197 | Kategorie XXVII — Sechs Klang-Muster (Natürlichkeits-Kalibrierung, §G192–§G197) | Daten-Authentizität | integriert |
+| §G192 | Kategorie XXVII — Klang-Muster + Wohlklang-Pflicht (Natürlichkeits-Kalibrierung, §G192–§G198) | Clean-Referenz-Kalibrierung (q ≈ 1,0) | integriert |
+| §G193 | Kategorie XXVII — Klang-Muster + Wohlklang-Pflicht (Natürlichkeits-Kalibrierung, §G192–§G198) | Zurückhaltung durch Detektor-Präzision | integriert |
+| §G194 | Kategorie XXVII — Klang-Muster + Wohlklang-Pflicht (Natürlichkeits-Kalibrierung, §G192–§G198) | Wahrnehmungs-Lehrer im Loss | katalog |
+| §G195 | Kategorie XXVII — Klang-Muster + Wohlklang-Pflicht (Natürlichkeits-Kalibrierung, §G192–§G198) | Audibility statt Mess-Null | katalog |
+| §G196 | Kategorie XXVII — Klang-Muster + Wohlklang-Pflicht (Natürlichkeits-Kalibrierung, §G192–§G198) | Determinismus als Klang-Stabilität | integriert |
+| §G197 | Kategorie XXVII — Klang-Muster + Wohlklang-Pflicht (Natürlichkeits-Kalibrierung, §G192–§G198) | Daten-Authentizität | integriert |
+| §G198 | Kategorie XXVII — Klang-Muster + Wohlklang-Pflicht (Natürlichkeits-Kalibrierung, §G192–§G198) | Wohlklang-Maximierungs-Pflicht (alle Module, jede Programmier-KI) | katalog |
 | V01 | VERBOTEN.md | `backend/`, `plugins/` | integriert (Linter) |
 | V02 | VERBOTEN.md | `backend/`, `plugins/` | integriert (Linter) |
 | V03 | VERBOTEN.md | `plugins/` | integriert (Linter) |

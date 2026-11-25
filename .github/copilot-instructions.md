@@ -39,6 +39,14 @@ Jedes GEBOT ist eine nicht verhandelbare Vorschrift. Verstöße sind Build-Fehle
 - Alle Zufallsgeneratoren mit fixem Seed (pro Session, nicht global).
 - Keine zeitabhängigen Entscheidungen (kein `time.time()` in Entscheidungslogik).
 - Export-Dither verwendet deterministischen Seed pro Export.
+- **Last-Unabhängigkeit (2026-11-25, Drift-Bisektions-Befund):**
+  Phasen-Teilnahme- und Speicher-Entscheidungen dürfen im Normalpfad NICHT
+  vom Live-System-Zustand abhängen (kein Live-`available`-RAM, kein
+  Live-Swap) — nur Maschinen-Konstanten (total RAM) + Input. Deterministische
+  RAM-Planung: `backend/core/ml_memory_budget.py::ram_deferral_projektion`
+  (Beleg: `docs/reports/current/2026-11-25_d_k3_gonogo_drt12_bericht.md` §4b).
+  Live-Notbremsen (z. B. available < 4.0 GB) sind als **Notfall** gekennzeichnet
+  und nur im Überlebensbereich zulässig.
 
 ### §G6 — Kategorie II: Psychoakustische Präzision
 **Alle Signaländerungen werden gegen das menschliche Gehör validiert.**
@@ -142,6 +150,29 @@ Maskierungsschwelle − 6 dB Marge" verpflichtet, mit Reparaturquote Q ≥ 0,5
   (Seed 42, ≥ 6 Paare, p25-Pegelmatching, JND 0,05); fehlender Beleg = offen.
 - Stärke-/Schwellen-Änderungen aus Q-Befunden laufen ausschließlich über das
   §4-Verfahren (`flag_freigabe.py`) — never-worsen bleibt die harte Leitplanke.
+
+### §G14 — Kategorie I: Wohlklang-Maximierungs-Pflicht (alle Module, jede Programmier-KI)
+**Jede Programmier-KI holt bei jeder Änderung das Maximum des Wohlklangs für
+das menschliche Gehör aus ALLEN Modulen von Aurik heraus — der angefragte
+Eingriff ist das Minimum, nicht das Ziel.**
+- **Wohlklang-Verlust negieren:** Erkannter Wohlklang-Verlust wird nicht
+  akzeptiert — insbesondere der §P1-1-Voll-Rollback (blend_factor 0.0 =
+  Eingang = Ausgang, Muster-Befund 2026-11-25: 1.797 Verstöße / 24
+  Voll-Rollbacks in einem Beleg-Log). Er wird behoben (konstruktive
+  Ordnungs-Konformität, Hörordnung §5a), bis die Verletzungs-/Rollback-Zähler
+  gegen 0 gehen (maschinelles Erfolgskriterium,
+  `scripts/wohlklang_ordnungs_sweep.py`).
+- **Reserven heben:** Jede berührte Stelle wird auf ungenutzte
+  Wohlklang-Reserven geprüft (Ordnungs-Verstöße, maskierte Defekte, verwaiste
+  Verstärkungs-Pfade, metrik-blinde Klassen D-K3-95/97) — Befund
+  dokumentieren, Muster melden, schließen.
+- **Alle Module:** Die Pflicht gilt für den gesamten Signalpfad (DSP, ML,
+  Phasen, Denker, Export) — nicht nur für den angefragten Defekt. Widerspricht
+  ein Modul dem Maximum, wird es im SOTA-Defizit-Register als Defizit geführt
+  (D-K3-109-Klasse) und der Fix geplant.
+- **Kein Schaden:** Das Maximum gilt unter den harten Leitplanken (§G5
+  Deterministische Reproduzierbarkeit, §G10/§G13 Never-worsen-Boden,
+  Hörordnung Ebene 1–3, §4-Verfahren für Flag-Flips).
 
 ---
 

@@ -199,6 +199,32 @@ von Kandidaten-Entscheidungen auf Basis von `goal_priority_protocol.py` und meld
 Verstöße an die GUI-Ampel (`hearing_gates_summary.py`). Kein neuer Schwellwert,
 keine Regeländerung — vgl. §8, Zeile „3“.
 
+**§5a Konstruktive Ordnungs-Konformität (2026-11-25, Muster-Befund):**
+
+Muster-Befund (Beleg `docs/reports/current/2026-11-25_muster_wohlklang_ordnung_rollback.md`):
+die Standard-Verarbeitung kaufte auf bestimmtem Material Brillanz-/Wärme-/
+Transparenz-Gewinne mit **Stufe-1-Verlusten** (Authentizität, Emotionalität,
+Timbre-Authentizität) — 1.797 Verstöße in einem Beleg-Log — und korrigierte
+dann mit vollständigem Rollback (blend_factor 0.0): **die gesamte
+Restaurations-Arbeit wurde verworfen, Eingang = Ausgang.** Daraus gilt:
+
+1. **Konstruktiv statt korrektiv:** Die zentrale Stärke-Logik (§V7
+   (copilot-instructions.md): zentral, keine phasen-individuellen
+   Schwellwerte) begrenzt die Anreicherungs-Phasen so, dass der Ausgang die
+   lexikografische Ordnung **nativ** erfüllt. Der korrektive Voll-Rollback
+   ist nur als **Notfall** zulässig, kein akzeptierter Normalzustand.
+2. **Restauration-Verlust zählen:** Jeder Voll-Rollback wird maschinell
+   gezählt (Verletzungs- und Rollback-Zähler je Lauf, report-only in
+   `result.metadata.wohlklang_ordnung(_enforcement)`).
+3. **Maschinelles Erfolgskriterium (delta-basiert):** Auf dem
+   Schadens-Korpus (`scripts/wohlklang_ordnungs_sweep.py`) gehen Verletzungs-
+   und Voll-Rollback-Zähler gegen **0**, ohne dass die Stufe-1-Deltas sinken
+   (Never-worsen). Die Hör-Instanz validiert anschließend (§4).
+4. **Blend-Hygiene:** Der korrektive Blend (verarbeitet ↔ unverarbeitet)
+   mischt zwei spektral/phasen-verschiedene Signale — wo er unvermeidbar ist,
+   gilt der kleinste blend_factor, der die Ordnung wiederherstellt, niemals
+   0.0 als Default-Lösung.
+
 ## 6. Ebene 4 — Einladungs-Gate (positiver Nachweis)
 
 „Wohlklang, in den sich das Ohr hineinlegt" ist ein **positives** Kriterium und

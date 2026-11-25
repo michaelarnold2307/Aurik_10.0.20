@@ -87,6 +87,16 @@ Die Markdown-Dokumente beschreiben die Regeln; die Gates sind:
 
 Details immer in der normativen Kette (§1) nachlesen.
 
+- **⛔ Wohlklang-Maximierungs-Pflicht (§G14 (copilot-instructions.md), seit
+  2026-11-25):** Jede Programmier-KI holt bei jeder Änderung das **Maximum des
+  Wohlklangs für das menschliche Gehör aus ALLEN Modulen** heraus — der
+  angefragte Eingriff ist das Minimum, nicht das Ziel. **Wohlklang-Verlust
+  negieren:** erkannter Verlust (insbesondere §P1-1-Voll-Rollback,
+  blend_factor 0.0 = Eingang = Ausgang; Muster-Befund 1.797 Verstöße / 24
+  Voll-Rollbacks) wird behoben (konstruktive Ordnungs-Konformität, Hörordnung
+  §5a), maschinelles Erfolgskriterium: Verletzungs-/Rollback-Zähler → 0
+  (`scripts/wohlklang_ordnungs_sweep.py`), unter den harten Leitplanken
+  (§G5 Determinismus, Never-worsen-Boden, Hörordnung Ebene 1–3, §4-Verfahren).
 - **⛔ ML-Domänen-Registry — häufigster KI-Fehlschluss**: Die Behauptung
   „die meisten lokal verfügbaren Modelle sind Sprachmodelle" ist **FALSCH**.
   Belegt: von **61** Verzeichnissen in `models/` sind **37 musik-trainiert**
