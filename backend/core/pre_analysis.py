@@ -1638,6 +1638,8 @@ def run_pre_analysis(
 
 def _store_in_cache(file_path: str, result: PreAnalysisResult) -> None:
     """Store all sub-results in bridge LRU caches."""
+    import copy
+
     try:
         cache_defect_result = cast(
             Callable[[str, object], None],
@@ -1657,20 +1659,20 @@ def _store_in_cache(file_path: str, result: PreAnalysisResult) -> None:
         )
 
         if result.medium is not None:
-            cache_medium_result(file_path, result.medium)
+            cache_medium_result(file_path, copy.deepcopy(result.medium))
 
         if result.era is not None or result.genre is not None:
             cache_era_genre_result(
                 file_path,
-                era_result=result.era,
-                genre_result=result.genre,
+                era_result=copy.deepcopy(result.era) if result.era is not None else None,
+                genre_result=copy.deepcopy(result.genre) if result.genre is not None else None,
             )
 
         if result.defects is not None:
-            cache_defect_result(file_path, result.defects)
+            cache_defect_result(file_path, copy.deepcopy(result.defects))
 
         if result.restorability is not None:
-            cache_restorability_result(file_path, result.restorability)
+            cache_restorability_result(file_path, copy.deepcopy(result.restorability))
 
         logger.debug("pre_Analyse: bridge Zwischenspeicher updated for %s", file_path)
     except Exception as exc:
@@ -1679,6 +1681,8 @@ def _store_in_cache(file_path: str, result: PreAnalysisResult) -> None:
 
 def _load_cached_parts(file_path: str) -> dict[str, object | None]:
     """Lädt verfügbare Bridge-Cache-Teilergebnisse best-effort."""
+    import copy
+
     try:
         get_cached_defect_result = cast(
             Callable[[str], object | None],
@@ -1700,12 +1704,17 @@ def _load_cached_parts(file_path: str) -> dict[str, object | None]:
         era_genre = get_cached_era_genre_result(file_path)
         era_result = era_genre.get("era_result") if isinstance(era_genre, dict) else None
         genre_result = era_genre.get("genre_result") if isinstance(era_genre, dict) else None
+        # §G5/Kontext-Isolation (2026-11-25, D-K3-112): der Cache hält die
+        # PRISTINE Analyse; jeder Lauf erhält eine private Kopie, damit
+        # Restaurations-Mutationen (z. B. transfer_chain-Write-Back,
+        # resolved-Marker) nicht in Folge-Läufe desselben Inhalts leaken
+        # (Produktionsbefund: 2. Lauf desselben Songs = Pass-Through).
         return {
-            "medium": get_cached_medium_result(file_path),
-            "era": era_result,
-            "genre": genre_result,
-            "defects": get_cached_defect_result(file_path),
-            "restorability": get_cached_restorability_result(file_path),
+            "medium": copy.deepcopy(get_cached_medium_result(file_path)),
+            "era": copy.deepcopy(era_result) if era_result is not None else None,
+            "genre": copy.deepcopy(genre_result) if genre_result is not None else None,
+            "defects": copy.deepcopy(get_cached_defect_result(file_path)),
+            "restorability": copy.deepcopy(get_cached_restorability_result(file_path)),
         }
     except Exception as exc:
         logger.debug("pre_Analyse: Zwischenspeicher part laden nicht blockierend (%s)", exc)

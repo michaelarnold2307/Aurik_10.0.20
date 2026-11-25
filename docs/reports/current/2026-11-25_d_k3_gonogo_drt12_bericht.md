@@ -42,6 +42,14 @@ Auslöser des Last-Profils, nicht die Ursache.
 
 ## 3. Fix (9 Zeilen, kein Verhaltenswechsel im Normalfall)
 
+> **Ehrlichkeits-Korrektur (25.11., git-verifiziert):** Die Zuschreibung des
+> Schutz-Arm-Fixes an `backend/core/audio_preprocessing_protector.py` ist
+> unhaltbar — diese Datei existiert nicht in der Git-Historie. Die hier
+> dokumentierte sha1-über-Schaden-Input-Konstruktion stammt aus dem
+> übernommenen Kontext und konnte am Repo nicht verifiziert werden. Der
+> **tatsächliche, heute gemessene** Cross-Prozess-Leak ist der
+> content-adressierte Pre-Analyse-Cache (D-K3-112, §4c).
+
 Der Kollisions-Schlüssel des Schutz-Arms wird jetzt aus dem **normierten
 Schaden-Input** gebildet:
 
@@ -86,6 +94,25 @@ own_rss_gb, total_ram_gb)` — reine Funktion (§G5): eigene Prozess-Projektion
   hinaus) — durch das Child-pro-Pass-Design (frischer Prozess je Pass)
   umgangen.
 - 9 Vertragstests (`tests/unit/test_ml_memory_ram_planung.py`) grün.
+
+## 4c. Dritter Fix (25.11.): Pre-Analyse-Cache-Isolation (D-K3-112)
+
+**Befund (Kampagnen-JSONL, Paare 7–9):** B1 repariert stark (DL −0.48),
+B2 ≈ 0 (Pass-Through) bei identischem Schaden in frischen Child-Prozessen —
+der content-adressierte Bridge-Cache (`backend/api/bridge_cache.py`,
+`content_cache_key`) lieferte MUTIERTE Analyse-Objekte an Folge-Läufe
+desselben Inhalts zurück: `backend/core/pre_analysis.py` speicherte die
+Subresultate per Referenz, die Restauration mutiert sie (transfer_chain-
+Write-Back, resolved-Marker), der nächste Lauf startete mit mutiertem Plan.
+Produktions-Konsequenz: der **zweite Lauf desselben Songs** restauriert
+nicht (§G5-Verletzung).
+
+**Fix:** `copy.deepcopy` auf Store- UND Load-Seite (`_store_in_cache`/
+`_load_cached_parts`) — der Cache hält die PRISTINE Analyse, jeder Lauf
+arbeitet auf einer privaten Kopie. 4 Vertragstests
+(`tests/unit/test_pre_analysis_cache_isolation.py`). Kampagne mit
+fixiertem Code neu gestartet; Vor-Fix-Paare 1–9 gesichert als
+`data/gepaarte_messung_vor_cachekopie_fix.jsonl` (zählen nicht).
 
 ## 5. Erneuertes Mess-Protokoll (Kampagne mit fixiertem Code neu gestartet 25.11. ~17:40)
 
